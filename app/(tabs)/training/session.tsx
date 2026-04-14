@@ -1,0 +1,1336 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  ScrollView,
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  useColorScheme,
+  TouchableOpacity,
+  FlatList,
+  Alert,
+  Keyboard,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { getColors, radius } from '../../../src/theme/tokens';
+import { typography } from '../../../src/theme/typography';
+import { spacing } from '../../../src/theme/spacing';
+import { Card, Button, Badge, ProgressBar, BottomSheet, Modal, Input } from '../../../src/components/ui';
+import { useWorkoutStore, ExerciseInSession, SetInSession } from '../../../src/stores/workoutStore';
+import { useProfileStore } from '../../../src/stores/profileStore';
+import { useRestTimer } from '../../../src/hooks/useRestTimer';
+import { MUSCLE_GROUPS, MUSCLE_GROUP_MAP } from '../../../src/constants/muscleGroups';
+import { MuscleGroup } from '../../../src/types/common';
+import { Exercise, WorkoutSet } from '../../../src/types/workout';
+import { generateId } from '../../../src/utils/id';
+import { getISODate } from '../../../src/utils/format';
+import * as workoutRepo from '../../../src/infra/repositories/workoutRepository';
+import { createNote } from '../../../src/infra/repositories/noteRepository';
+import { calculateWorkoutCalories } from '../../../src/domain/calories';
+import { estimateOneRepMax } from '../../../src/domain/oneRepMax';
+
+export default function SessionScreen() {
+  const scheme = useColorScheme() ?? 'light';
+  const colors = getColors(scheme);
+  const params = useLocalSearchParams<{ sessionId: string; routineId?: string }>();
+  const profile = useProfileStore((s) => s.profile);
+
+  const {
+    sessionId,
+    exercises,
+    startSession,
+    endSession,
+    addExercise,
+    removeExercise,
+    addSetToExercise,
+    updateSet,
+    completeSet,
+    copyPreviousSets,
+  } = useWorkoutStore();
+
+  const restTimer = useRestTimer();
+  const prevTimerRunning = useRef(restTimer.isRunning);
+
+  // Elapsed time
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const elapsedInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Add exercise sheet
+  const [showAddExercise, setShowAddExercise] = useState(false);
+  const [exerciseSearch, setExerciseSearch] = useState('');
+  const [exerciseFilter, setExerciseFilter] = useState<string>('all');
+  const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
+
+  // Expandable detail rows: key = `${exerciseId}_${setId}`
+  const [expandedSets, setExpandedSets] = useState<Record<string, boolean>>({});
+
+  // Custom exercise creation modal
+  const [showCustomExerciseModal, setShowCustomExerciseModal] = useState(false);
+  const [customExerciseName, setCustomExerciseName] = useState('');
+  const [customExerciseMuscle, setCustomExerciseMuscle] = useState<MuscleGroup>('chest');
+  const [customExerciseEquipment, setCustomExerciseEquipment] = useState('');
+
+  // Finish confirmation
+  const [showFinishModal, setShowFinishModal] = useState(false);
+  const [sessionNote, setSessionNote] = useState('');
+
+  // Summary
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryData, setSummaryData] = useState<{
+    duration: number;
+    totalVolume: number;
+    exerciseCount: number;
+    setCount: number;
+    estimatedCalories: number;
+  } | null>(null);
+
+  // Summary memo
+  const [summaryMemo, setSummaryMemo] = useState('');
+
+  // Initialize session
+  useEffect(() => {
+    if (!params.sessionId || sessionId === params.sessionId) return;
+
+    const init = async () => {
+      startSession(params.sessionId, params.routineId ?? null);
+
+      // If from a routine, load routine exercises and previous sets
+      if (params.routineId && profile) {
+        try {
+          const routines = await workoutRepo.getRoutines(profile.id);
+          const routine = routines.find((r) => r.id === params.routineId);
+          if (routine) {
+            for (const item of routine.items) {
+              const previousSets = await workoutRepo.getPreviousSets(
+                profile.id,
+                item.exerciseId,
+              );
+
+              const initialSets: SetInSession[] = [];
+              for (let i = 0; i < item.targetSets; i++) {
+                initialSets.push({
+                  id: generateId(),
+                  setNumber: i + 1,
+                  weightKg: previousSets[i]?.weightKg ?? null,
+                  reps: previousSets[i]?.reps ?? null,
+                  rpe: null,
+                  completed: false,
+                });
+              }
+
+              const exerciseInSession: ExerciseInSession = {
+                exerciseId: item.exerciseId,
+                exerciseName: item.exercise.nameJa,
+                muscleGroup: item.exercise.muscleGroup,
+                sets: initialSets,
+                previousSets,
+              };
+
+              useWorkoutStore.getState().addExercise(exerciseInSession);
+            }
+          }
+        } catch {
+          // silently fail
+        }
+      }
+    };
+
+    init();
+  }, [params.sessionId]);
+
+  // Elapsed timer
+  useEffect(() => {
+    elapsedInterval.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => {
+      if (elapsedInterval.current) {
+        clearInterval(elapsedInterval.current);
+      }
+    };
+  }, []);
+
+  // Haptic feedback when rest timer finishes
+  useEffect(() => {
+    if (prevTimerRunning.current && !restTimer.isRunning && restTimer.remainingSeconds === 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    prevTimerRunning.current = restTimer.isRunning;
+  }, [restTimer.isRunning, restTimer.remainingSeconds]);
+
+  // Load exercises for picker
+  const loadExercises = useCallback(async () => {
+    try {
+      let data: Exercise[];
+      if (exerciseSearch.trim()) {
+        data = await workoutRepo.searchExercises(exerciseSearch.trim());
+      } else if (exerciseFilter !== 'all') {
+        data = await workoutRepo.getExercises(exerciseFilter as MuscleGroup);
+      } else {
+        data = await workoutRepo.getExercises();
+      }
+      setAvailableExercises(data);
+    } catch {
+      // silently fail
+    }
+  }, [exerciseSearch, exerciseFilter]);
+
+  useEffect(() => {
+    if (showAddExercise) {
+      loadExercises();
+    }
+  }, [showAddExercise, loadExercises]);
+
+  const formatTime = (seconds: number): string => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleCompleteSet = async (exerciseId: string, set: SetInSession) => {
+    if (set.completed || !params.sessionId) return;
+
+    // Save to DB
+    try {
+      await workoutRepo.addSet(params.sessionId, {
+        exerciseId,
+        setNumber: set.setNumber,
+        weightKg: set.weightKg,
+        reps: set.reps,
+        rpe: set.rpe,
+      });
+    } catch {
+      Alert.alert('エラー', 'セットの保存に失敗しました');
+      return;
+    }
+
+    completeSet(exerciseId, set.id);
+
+    // Haptic feedback on set completion
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Start rest timer
+    restTimer.start();
+  };
+
+  const handleAddExerciseToSession = async (exercise: Exercise) => {
+    if (!profile) return;
+
+    const alreadyInSession = exercises.some((e) => e.exerciseId === exercise.id);
+    if (alreadyInSession) return;
+
+    const previousSets = await workoutRepo.getPreviousSets(profile.id, exercise.id);
+
+    const initialSets: SetInSession[] = [
+      {
+        id: generateId(),
+        setNumber: 1,
+        weightKg: previousSets[0]?.weightKg ?? null,
+        reps: previousSets[0]?.reps ?? null,
+        rpe: null,
+        completed: false,
+      },
+      {
+        id: generateId(),
+        setNumber: 2,
+        weightKg: previousSets[1]?.weightKg ?? null,
+        reps: previousSets[1]?.reps ?? null,
+        rpe: null,
+        completed: false,
+      },
+      {
+        id: generateId(),
+        setNumber: 3,
+        weightKg: previousSets[2]?.weightKg ?? null,
+        reps: previousSets[2]?.reps ?? null,
+        rpe: null,
+        completed: false,
+      },
+    ];
+
+    addExercise({
+      exerciseId: exercise.id,
+      exerciseName: exercise.nameJa,
+      muscleGroup: exercise.muscleGroup,
+      sets: initialSets,
+      previousSets,
+    });
+
+    setShowAddExercise(false);
+  };
+
+  const handleCopyPrevious = (exerciseId: string) => {
+    copyPreviousSets(exerciseId);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleCopySinglePreviousSet = (
+    exerciseId: string,
+    setId: string,
+    prevSet: WorkoutSet,
+  ) => {
+    updateSet(exerciseId, setId, {
+      weightKg: prevSet.weightKg,
+      reps: prevSet.reps,
+    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const toggleSetDetail = (exerciseId: string, setId: string) => {
+    const key = `${exerciseId}_${setId}`;
+    setExpandedSets((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleCreateCustomExercise = async () => {
+    const name = customExerciseName.trim();
+    if (!name) return;
+    try {
+      const exercise = await workoutRepo.createCustomExercise(
+        name,
+        customExerciseMuscle,
+        customExerciseEquipment.trim() || null,
+      );
+      setShowCustomExerciseModal(false);
+      setCustomExerciseName('');
+      setCustomExerciseMuscle('chest');
+      setCustomExerciseEquipment('');
+      // Add to session immediately
+      await handleAddExerciseToSession(exercise);
+    } catch {
+      Alert.alert('エラー', 'カスタム種目の作成に失敗しました');
+    }
+  };
+
+  const handleFinishSession = async () => {
+    Keyboard.dismiss();
+    if (!params.sessionId) return;
+    try {
+      // Calculate estimated calories burned
+      const bodyWeight = profile?.currentWeightKg ?? 70;
+      const durationMin = Math.round(elapsedSeconds / 60);
+      const estimatedCal = calculateWorkoutCalories(bodyWeight, durationMin, 'moderate');
+
+      await workoutRepo.finishSession(
+        params.sessionId,
+        sessionNote || undefined,
+        estimatedCal,
+      );
+
+      // Calculate summary
+      const totalVolume = exercises.reduce((total, ex) => {
+        return (
+          total +
+          ex.sets
+            .filter((s) => s.completed)
+            .reduce((sum, s) => sum + (s.weightKg ?? 0) * (s.reps ?? 0), 0)
+        );
+      }, 0);
+
+      const completedSetCount = exercises.reduce(
+        (total, ex) => total + ex.sets.filter((s) => s.completed).length,
+        0,
+      );
+
+      setSummaryData({
+        duration: elapsedSeconds,
+        totalVolume,
+        exerciseCount: exercises.length,
+        setCount: completedSetCount,
+        estimatedCalories: estimatedCal,
+      });
+
+      // Pre-fill summary memo with the session note if already entered
+      setSummaryMemo(sessionNote);
+
+      setShowFinishModal(false);
+      setShowSummary(true);
+    } catch {
+      Alert.alert('エラー', 'セッションの終了に失敗しました');
+    }
+  };
+
+  const handleDismissSummary = async () => {
+    // Save summary memo as a training note if provided
+    if (summaryMemo.trim() && profile) {
+      try {
+        await createNote(
+          profile.id,
+          getISODate(),
+          'training',
+          summaryMemo.trim(),
+        );
+      } catch {
+        // silently fail - session already saved
+      }
+    }
+
+    setShowSummary(false);
+    endSession();
+    restTimer.stop();
+    router.back();
+  };
+
+  const handleCancelSession = () => {
+    Alert.alert('セッション中止', '現在のセッションを中止しますか？記録済みのセットは保持されます。', [
+      { text: 'いいえ', style: 'cancel' },
+      {
+        text: 'はい',
+        style: 'destructive',
+        onPress: async () => {
+          if (params.sessionId) {
+            try {
+              await workoutRepo.finishSession(params.sessionId);
+            } catch {
+              // silently fail
+            }
+          }
+          endSession();
+          restTimer.stop();
+          router.back();
+        },
+      },
+    ]);
+  };
+
+  const formatPreviousSet = (prevSet: WorkoutSet): string => {
+    return `${prevSet.weightKg ?? 0}kg × ${prevSet.reps ?? 0}回`;
+  };
+
+  const muscleFilterSegments = [
+    { label: '全て', value: 'all' },
+    ...MUSCLE_GROUPS.map((mg) => ({ label: mg.nameJa, value: mg.id })),
+  ];
+
+  return (
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Rest Timer Overlay */}
+      {restTimer.isRunning && (
+        <View style={[styles.restTimerBar, { backgroundColor: colors.primary }]}>
+          <View style={styles.restTimerContent}>
+            <View style={styles.restTimerLeft}>
+              <Ionicons name="timer-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.restTimerText}>
+                休憩 {formatTime(restTimer.remainingSeconds)}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => restTimer.stop()}>
+              <Text style={styles.restTimerSkip}>スキップ</Text>
+            </TouchableOpacity>
+          </View>
+          <ProgressBar
+            progress={restTimer.progress}
+            color="rgba(255,255,255,0.5)"
+            backgroundColor="rgba(255,255,255,0.15)"
+            height={3}
+          />
+        </View>
+      )}
+
+      {/* Top Bar */}
+      <View style={[styles.topBar, { borderBottomColor: colors.border }]}>
+        <Button title="キャンセル" onPress={handleCancelSession} variant="ghost" size="sm" />
+        <View style={styles.timerContainer}>
+          <Ionicons name="time-outline" size={16} color={colors.primary} />
+          <Text style={[styles.timer, { color: colors.primary }]}>
+            {formatTime(elapsedSeconds)}
+          </Text>
+        </View>
+        <Button
+          title="完了"
+          onPress={() => setShowFinishModal(true)}
+          variant="primary"
+          size="sm"
+        />
+      </View>
+
+      {/* Main Content */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {exercises.length === 0 && (
+          <Card>
+            <View style={styles.emptyState}>
+              <Ionicons name="barbell-outline" size={48} color={colors.textTertiary} />
+              <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
+                種目がありません
+              </Text>
+              <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
+                下のボタンから種目を追加してください
+              </Text>
+            </View>
+          </Card>
+        )}
+
+        {exercises.map((exercise) => (
+          <Card key={exercise.exerciseId}>
+            {/* Exercise header */}
+            <View style={styles.exerciseHeader}>
+              <View style={styles.exerciseHeaderLeft}>
+                <Text style={[styles.exerciseName, { color: colors.textPrimary }]}>
+                  {exercise.exerciseName}
+                </Text>
+                <Badge
+                  label={MUSCLE_GROUP_MAP[exercise.muscleGroup]?.nameJa ?? exercise.muscleGroup}
+                  size="sm"
+                />
+              </View>
+              <TouchableOpacity onPress={() => removeExercise(exercise.exerciseId)}>
+                <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Copy all previous button */}
+            {exercise.previousSets.length > 0 && (
+              <TouchableOpacity
+                style={[styles.copyButton, { borderColor: colors.border }]}
+                onPress={() => handleCopyPrevious(exercise.exerciseId)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="copy-outline" size={14} color={colors.primary} />
+                <Text style={[styles.copyButtonText, { color: colors.primary }]}>
+                  前回を全てコピー
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Set table */}
+            <View style={styles.setTable}>
+              <View style={[styles.setHeader, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.sm }]}>
+                <Text style={[styles.setHeaderText, styles.setNumCol, { color: colors.textTertiary }]}>
+                  #
+                </Text>
+                <Text style={[styles.setHeaderText, styles.setWeightCol, { color: colors.textTertiary }]}>
+                  kg
+                </Text>
+                <Text style={[styles.setHeaderText, styles.setRepsCol, { color: colors.textTertiary }]}>
+                  回数
+                </Text>
+                <Text style={[styles.setHeaderText, styles.set1rmCol, { color: colors.textTertiary }]}>
+                  推定1RM
+                </Text>
+                <View style={styles.setCheckCol} />
+              </View>
+
+              {exercise.sets.map((set, setIndex) => {
+                const prevSet = exercise.previousSets[setIndex];
+                const e1rm =
+                  set.weightKg && set.reps
+                    ? estimateOneRepMax(set.weightKg, set.reps)
+                    : null;
+                const detailKey = `${exercise.exerciseId}_${set.id}`;
+                const isExpanded = expandedSets[detailKey] ?? false;
+                const canComplete = (set.weightKg ?? 0) > 0 && (set.reps ?? 0) > 0;
+
+                return (
+                  <View key={set.id}>
+                    {/* Per-set previous record (tappable to copy) */}
+                    {prevSet && !set.completed && (
+                      <TouchableOpacity
+                        style={styles.prevSetRow}
+                        onPress={() =>
+                          handleCopySinglePreviousSet(
+                            exercise.exerciseId,
+                            set.id,
+                            prevSet,
+                          )
+                        }
+                        activeOpacity={0.6}
+                      >
+                        <Text style={[styles.prevSetText, { color: colors.textTertiary }]}>
+                          前回: {formatPreviousSet(prevSet)} ← タップでコピー
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Main set row */}
+                    <View
+                      style={[
+                        styles.setRow,
+                        { borderBottomColor: colors.border },
+                        set.completed && { backgroundColor: colors.success + '10' },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.setNum, styles.setNumCol, { color: colors.textSecondary }]}
+                      >
+                        {set.setNumber}
+                      </Text>
+                      <View style={styles.setWeightCol}>
+                        <TextInput
+                          style={[
+                            styles.setTextInput,
+                            {
+                              color: colors.textPrimary,
+                              backgroundColor: colors.surfaceSecondary,
+                              borderColor: colors.border,
+                              borderRadius: radius.sm,
+                            },
+                          ]}
+                          value={set.weightKg != null ? String(set.weightKg) : ''}
+                          onChangeText={(text) => {
+                            const parsed = parseFloat(text);
+                            updateSet(exercise.exerciseId, set.id, {
+                              weightKg: text === '' ? null : isNaN(parsed) ? set.weightKg : parsed,
+                            });
+                          }}
+                          keyboardType="decimal-pad"
+                          returnKeyType="next"
+                          placeholder="0"
+                          placeholderTextColor={colors.textTertiary}
+                          selectTextOnFocus
+                          editable={!set.completed}
+                        />
+                      </View>
+                      <View style={styles.setRepsCol}>
+                        <TextInput
+                          style={[
+                            styles.setTextInput,
+                            {
+                              color: colors.textPrimary,
+                              backgroundColor: colors.surfaceSecondary,
+                              borderColor: colors.border,
+                              borderRadius: radius.sm,
+                            },
+                          ]}
+                          value={set.reps != null ? String(set.reps) : ''}
+                          onChangeText={(text) => {
+                            const parsed = parseInt(text, 10);
+                            updateSet(exercise.exerciseId, set.id, {
+                              reps: text === '' ? null : isNaN(parsed) ? set.reps : parsed,
+                            });
+                          }}
+                          keyboardType="number-pad"
+                          returnKeyType="done"
+                          placeholder="0"
+                          placeholderTextColor={colors.textTertiary}
+                          selectTextOnFocus
+                          editable={!set.completed}
+                        />
+                      </View>
+                      <Text
+                        style={[
+                          styles.set1rmText,
+                          styles.set1rmCol,
+                          { color: e1rm ? colors.textSecondary : colors.textTertiary },
+                        ]}
+                      >
+                        {e1rm ? `${e1rm}` : '-'}
+                      </Text>
+                      <View style={styles.setCheckCol}>
+                        <TouchableOpacity
+                          onPress={() => handleCompleteSet(exercise.exerciseId, set)}
+                          disabled={set.completed || !canComplete}
+                        >
+                          <View
+                            style={[
+                              styles.checkCircle,
+                              {
+                                borderColor: set.completed
+                                  ? colors.success
+                                  : canComplete
+                                    ? colors.primary
+                                    : colors.border,
+                                backgroundColor: set.completed ? colors.success : 'transparent',
+                              },
+                            ]}
+                          >
+                            {set.completed && (
+                              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Expandable detail toggle */}
+                    {!set.completed && (
+                      <TouchableOpacity
+                        style={styles.detailToggle}
+                        onPress={() => toggleSetDetail(exercise.exerciseId, set.id)}
+                        activeOpacity={0.6}
+                      >
+                        <Text style={[styles.detailToggleText, { color: colors.textTertiary }]}>
+                          {isExpanded ? '詳細を閉じる' : '詳細'}
+                        </Text>
+                        <Ionicons
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                          size={14}
+                          color={colors.textTertiary}
+                        />
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Expanded detail row: RPE, RIR, memo */}
+                    {isExpanded && !set.completed && (
+                      <View
+                        style={[
+                          styles.detailRow,
+                          { backgroundColor: colors.surfaceSecondary, borderRadius: radius.sm },
+                        ]}
+                      >
+                        <View style={styles.detailInputRow}>
+                          <View style={styles.detailInputGroup}>
+                            <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                              RPE
+                            </Text>
+                            <TextInput
+                              style={[
+                                styles.detailInput,
+                                {
+                                  color: colors.textPrimary,
+                                  borderColor: colors.border,
+                                  borderRadius: radius.sm,
+                                },
+                              ]}
+                              value={set.rpe != null ? String(set.rpe) : ''}
+                              onChangeText={(text) => {
+                                const parsed = parseFloat(text);
+                                updateSet(exercise.exerciseId, set.id, {
+                                  rpe: text === '' ? null : isNaN(parsed) ? set.rpe : parsed,
+                                });
+                              }}
+                              keyboardType="decimal-pad"
+                              placeholder="6-10"
+                              placeholderTextColor={colors.textTertiary}
+                              selectTextOnFocus
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+
+            <Button
+              title="+ セット追加"
+              onPress={() => addSetToExercise(exercise.exerciseId)}
+              variant="ghost"
+              size="sm"
+            />
+          </Card>
+        ))}
+
+        {/* Add exercise button */}
+        <TouchableOpacity
+          style={[styles.addExerciseButton, { borderColor: colors.border, borderRadius: radius.lg }]}
+          onPress={() => setShowAddExercise(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+          <Text style={[styles.addExerciseText, { color: colors.primary }]}>+ 種目を追加</Text>
+        </TouchableOpacity>
+
+        {/* Spacer for bottom button */}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+
+      {/* Bottom fixed button */}
+      <View style={[styles.bottomBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+        <Button
+          title="セッション終了"
+          onPress={() => setShowFinishModal(true)}
+          variant="primary"
+          size="lg"
+          fullWidth
+        />
+      </View>
+
+      {/* Add Exercise BottomSheet */}
+      <BottomSheet
+        visible={showAddExercise}
+        onClose={() => setShowAddExercise(false)}
+        title="種目を追加"
+      >
+        <View style={styles.exercisePickerContent}>
+          {/* Custom exercise creation button */}
+          <TouchableOpacity
+            style={[
+              styles.customExerciseButton,
+              { borderColor: colors.primary, borderRadius: radius.md },
+            ]}
+            onPress={() => {
+              setShowAddExercise(false);
+              setShowCustomExerciseModal(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add-circle" size={20} color={colors.primary} />
+            <Text style={[styles.customExerciseButtonText, { color: colors.primary }]}>
+              ＋ カスタム種目を追加
+            </Text>
+          </TouchableOpacity>
+
+          <Input
+            placeholder="種目を検索..."
+            value={exerciseSearch}
+            onChangeText={setExerciseSearch}
+          />
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScroll}
+          >
+            {muscleFilterSegments.map((seg) => (
+              <TouchableOpacity
+                key={seg.value}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor:
+                      exerciseFilter === seg.value ? colors.primary : colors.surfaceSecondary,
+                    borderRadius: radius.full,
+                  },
+                ]}
+                onPress={() => setExerciseFilter(seg.value)}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    {
+                      color: exerciseFilter === seg.value ? '#FFFFFF' : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  {seg.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <FlatList
+            data={availableExercises}
+            keyExtractor={(item) => item.id}
+            style={styles.exerciseList}
+            renderItem={({ item }) => {
+              const alreadyInSession = exercises.some((e) => e.exerciseId === item.id);
+              return (
+                <TouchableOpacity
+                  style={[styles.exerciseListItem, { borderBottomColor: colors.border }]}
+                  onPress={() => !alreadyInSession && handleAddExerciseToSession(item)}
+                  disabled={alreadyInSession}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.exerciseListItemInfo}>
+                    <Text
+                      style={[
+                        styles.exerciseListItemName,
+                        { color: alreadyInSession ? colors.textTertiary : colors.textPrimary },
+                      ]}
+                    >
+                      {item.nameJa}
+                    </Text>
+                    <Badge
+                      label={MUSCLE_GROUP_MAP[item.muscleGroup]?.nameJa ?? item.muscleGroup}
+                      size="sm"
+                    />
+                    {item.isCustom && (
+                      <Badge label="カスタム" size="sm" />
+                    )}
+                  </View>
+                  {alreadyInSession && (
+                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+            ListEmptyComponent={
+              <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
+                種目が見つかりません
+              </Text>
+            }
+          />
+        </View>
+      </BottomSheet>
+
+      {/* Custom Exercise Creation Modal */}
+      <Modal
+        visible={showCustomExerciseModal}
+        onClose={() => setShowCustomExerciseModal(false)}
+        title="カスタム種目を追加"
+      >
+        <View style={styles.customExerciseContent}>
+          <Input
+            label="種目名（必須）"
+            placeholder="例: ケーブルフライ"
+            value={customExerciseName}
+            onChangeText={setCustomExerciseName}
+          />
+          <Text style={[styles.customExerciseLabel, { color: colors.textSecondary }]}>
+            部位
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.muscleChipRow}>
+              {MUSCLE_GROUPS.map((mg) => (
+                <TouchableOpacity
+                  key={mg.id}
+                  style={[
+                    styles.filterChip,
+                    {
+                      backgroundColor:
+                        customExerciseMuscle === mg.id ? colors.primary : colors.surfaceSecondary,
+                      borderRadius: radius.full,
+                    },
+                  ]}
+                  onPress={() => setCustomExerciseMuscle(mg.id)}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      {
+                        color: customExerciseMuscle === mg.id ? '#FFFFFF' : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {mg.nameJa}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+          <Input
+            label="器具メモ（任意）"
+            placeholder="例: ケーブルマシン"
+            value={customExerciseEquipment}
+            onChangeText={setCustomExerciseEquipment}
+          />
+          <View style={styles.customExerciseActions}>
+            <Button
+              title="キャンセル"
+              onPress={() => setShowCustomExerciseModal(false)}
+              variant="ghost"
+              size="md"
+            />
+            <Button
+              title="追加"
+              onPress={handleCreateCustomExercise}
+              variant="primary"
+              size="md"
+              disabled={!customExerciseName.trim()}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Finish Confirmation Modal */}
+      <Modal
+        visible={showFinishModal}
+        onClose={() => setShowFinishModal(false)}
+        title="セッション終了"
+      >
+        <View style={styles.finishModalContent}>
+          <Text style={[styles.finishConfirmText, { color: colors.textSecondary }]}>
+            トレーニングセッションを終了しますか？
+          </Text>
+          <Input
+            label="メモ（任意）"
+            placeholder="セッションのメモを入力..."
+            value={sessionNote}
+            onChangeText={setSessionNote}
+            multiline
+            numberOfLines={3}
+            blurOnSubmit
+            returnKeyType="done"
+          />
+          <View style={styles.finishModalActions}>
+            <Button
+              title="キャンセル"
+              onPress={() => setShowFinishModal(false)}
+              variant="ghost"
+              size="lg"
+            />
+            <Button
+              title="終了する"
+              onPress={handleFinishSession}
+              variant="primary"
+              size="lg"
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Summary Modal */}
+      <Modal
+        visible={showSummary}
+        onClose={handleDismissSummary}
+        title="トレーニング完了"
+      >
+        {summaryData && (
+          <View style={styles.summaryContent}>
+            <Ionicons
+              name="checkmark-circle"
+              size={56}
+              color={colors.success}
+              style={styles.summaryIcon}
+            />
+
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>
+                  {formatTime(summaryData.duration)}
+                </Text>
+                <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                  経過時間
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>
+                  {summaryData.totalVolume.toLocaleString()}
+                </Text>
+                <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                  総ボリューム (kg)
+                </Text>
+              </View>
+            </View>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>
+                  {summaryData.exerciseCount}
+                </Text>
+                <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                  種目数
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>
+                  {summaryData.setCount}
+                </Text>
+                <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                  完了セット
+                </Text>
+              </View>
+            </View>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryValue, { color: colors.calorie }]}>
+                  {summaryData.estimatedCalories}
+                </Text>
+                <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
+                  推定消費 (kcal)
+                </Text>
+              </View>
+            </View>
+
+            {/* Session memo input */}
+            <View style={styles.summaryMemoContainer}>
+              <Text style={[styles.summaryMemoLabel, { color: colors.textSecondary }]}>
+                セッションメモ (任意)
+              </Text>
+              <TextInput
+                style={[
+                  styles.summaryMemoInput,
+                  {
+                    color: colors.textPrimary,
+                    backgroundColor: colors.surfaceSecondary,
+                    borderRadius: radius.md,
+                  },
+                ]}
+                value={summaryMemo}
+                onChangeText={setSummaryMemo}
+                placeholder="今日のトレーニングの感想..."
+                placeholderTextColor={colors.textTertiary}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                maxLength={500}
+              />
+            </View>
+
+            <Button
+              title="閉じる"
+              onPress={handleDismissSummary}
+              variant="primary"
+              size="lg"
+              fullWidth
+            />
+          </View>
+        )}
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  // Rest timer
+  restTimerBar: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  restTimerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  restTimerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  restTimerText: {
+    ...typography.labelLarge,
+    color: '#FFFFFF',
+  },
+  restTimerSkip: {
+    ...typography.labelMedium,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  // Top bar
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 0.5,
+  },
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  timer: { ...typography.displayMedium },
+  // Scroll
+  scroll: { flex: 1 },
+  content: { padding: spacing.lg, gap: spacing.lg },
+  // Empty state
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxl,
+    gap: spacing.md,
+  },
+  emptyTitle: { ...typography.titleSmall },
+  emptyText: { ...typography.bodySmall, textAlign: 'center' },
+  // Exercise card
+  exerciseHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  exerciseHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  exerciseName: { ...typography.titleMedium },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderWidth: 1,
+    borderRadius: radius.sm,
+    marginTop: spacing.sm,
+  },
+  copyButtonText: { ...typography.labelSmall },
+  // Set table
+  setTable: { marginTop: spacing.md },
+  setHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  setHeaderText: {
+    ...typography.labelSmall,
+    textAlign: 'center',
+  },
+  setNumCol: { width: 28 },
+  setWeightCol: { flex: 1.2 },
+  setRepsCol: { flex: 1 },
+  set1rmCol: { flex: 1, alignItems: 'center' as const },
+  setCheckCol: { width: 32, alignItems: 'center' as const },
+  setRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 0.5,
+  },
+  setNum: {
+    ...typography.labelMedium,
+    textAlign: 'center',
+  },
+  setTextInput: {
+    ...typography.bodyMedium,
+    height: 36,
+    textAlign: 'center',
+    paddingHorizontal: spacing.sm,
+    borderWidth: 1,
+  },
+  set1rmText: {
+    ...typography.bodySmall,
+    textAlign: 'center',
+  },
+  prevSetRow: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    marginLeft: 28,
+  },
+  prevSetText: {
+    ...typography.bodySmall,
+    fontSize: 11,
+  },
+  detailToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 4,
+  },
+  detailToggleText: {
+    ...typography.labelSmall,
+    fontSize: 11,
+  },
+  detailRow: {
+    padding: spacing.md,
+    marginHorizontal: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  detailInputRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  detailInputGroup: {
+    flex: 1,
+    gap: 4,
+  },
+  detailLabel: {
+    ...typography.labelSmall,
+  },
+  detailInput: {
+    ...typography.bodyMedium,
+    height: 36,
+    textAlign: 'center',
+    borderWidth: 1,
+    paddingHorizontal: spacing.sm,
+  },
+  checkCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Add exercise
+  addExerciseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+  },
+  addExerciseText: { ...typography.labelLarge },
+  bottomSpacer: { height: 80 },
+  // Bottom bar
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+    borderTopWidth: 0.5,
+  },
+  // Exercise picker
+  exercisePickerContent: { gap: spacing.md },
+  filterScroll: { flexGrow: 0 },
+  filterChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginRight: spacing.sm,
+  },
+  filterChipText: { ...typography.labelSmall },
+  exerciseList: { maxHeight: 300 },
+  exerciseListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 0.5,
+  },
+  exerciseListItemInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  exerciseListItemName: { ...typography.bodyMedium },
+  customExerciseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+  },
+  customExerciseButtonText: { ...typography.labelMedium },
+  customExerciseContent: { gap: spacing.md },
+  customExerciseLabel: { ...typography.labelMedium },
+  muscleChipRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  customExerciseActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  // Finish modal
+  finishModalContent: { gap: spacing.lg },
+  finishConfirmText: { ...typography.bodyMedium },
+  finishModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  // Summary modal
+  summaryContent: {
+    alignItems: 'center',
+    gap: spacing.xl,
+  },
+  summaryIcon: { marginBottom: spacing.sm },
+  summaryRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: spacing.lg,
+  },
+  summaryItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  summaryValue: { ...typography.numberMedium },
+  summaryLabel: { ...typography.bodySmall },
+  // Summary memo
+  summaryMemoContainer: {
+    width: '100%',
+    gap: spacing.sm,
+  },
+  summaryMemoLabel: {
+    ...typography.labelMedium,
+  },
+  summaryMemoInput: {
+    ...typography.bodyMedium,
+    minHeight: 80,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+});

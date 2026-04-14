@@ -1,0 +1,107 @@
+import { UUID, ISODateTimeString, FoodSource } from './common';
+
+export interface ExtendedNutrients {
+  fiberG: number | null;
+  sodiumMg: number | null;
+  calciumMg: number | null;
+  ironMg: number | null;
+  vitaminAUg: number | null;
+  vitaminB1Mg: number | null;
+  vitaminB2Mg: number | null;
+  vitaminCMg: number | null;
+  vitaminDUg: number | null;
+  vitaminEMg: number | null;
+  potassiumMg: number | null;
+  magnesiumMg: number | null;
+  zincMg: number | null;
+  cholesterolMg: number | null;
+  saturatedFatG: number | null;
+  sugarG: number | null;
+  saltG: number | null;
+}
+
+/** Keys of ExtendedNutrients for iteration */
+export const EXTENDED_NUTRIENT_KEYS: (keyof ExtendedNutrients)[] = [
+  'fiberG', 'sodiumMg', 'calciumMg', 'ironMg',
+  'vitaminAUg', 'vitaminB1Mg', 'vitaminB2Mg', 'vitaminCMg',
+  'vitaminDUg', 'vitaminEMg', 'potassiumMg', 'magnesiumMg',
+  'zincMg', 'cholesterolMg', 'saturatedFatG', 'sugarG', 'saltG',
+];
+
+/** Map camelCase key → snake_case DB column */
+export const EXTENDED_NUTRIENT_DB_COLUMNS: Record<keyof ExtendedNutrients, string> = {
+  fiberG: 'fiber_g',
+  sodiumMg: 'sodium_mg',
+  calciumMg: 'calcium_mg',
+  ironMg: 'iron_mg',
+  vitaminAUg: 'vitamin_a_ug',
+  vitaminB1Mg: 'vitamin_b1_mg',
+  vitaminB2Mg: 'vitamin_b2_mg',
+  vitaminCMg: 'vitamin_c_mg',
+  vitaminDUg: 'vitamin_d_ug',
+  vitaminEMg: 'vitamin_e_mg',
+  potassiumMg: 'potassium_mg',
+  magnesiumMg: 'magnesium_mg',
+  zincMg: 'zinc_mg',
+  cholesterolMg: 'cholesterol_mg',
+  saturatedFatG: 'saturated_fat_g',
+  sugarG: 'sugar_g',
+  saltG: 'salt_g',
+};
+
+export interface Food extends ExtendedNutrients {
+  id: UUID;
+  nameJa: string;
+  nameEn: string | null;
+  brand: string | null;
+  barcode: string | null;
+  servingSizeG: number;
+  servingUnit: string;
+  caloriesPerServing: number;
+  proteinG: number;
+  fatG: number;
+  carbG: number;
+  source: FoodSource;
+  isCustom: boolean;
+  isFavorite: boolean;
+  useCount: number;
+  createdAt: ISODateTimeString;
+  updatedAt: ISODateTimeString;
+}
+
+export interface FoodInput {
+  nameJa: string;
+  nameEn?: string | null;
+  brand?: string | null;
+  barcode?: string | null;
+  servingSizeG: number;
+  servingUnit: string;
+  caloriesPerServing: number;
+  proteinG: number;
+  fatG: number;
+  carbG: number;
+  fiberG?: number | null;
+  sodiumMg?: number | null;
+  calciumMg?: number | null;
+  ironMg?: number | null;
+  vitaminAUg?: number | null;
+  vitaminB1Mg?: number | null;
+  vitaminB2Mg?: number | null;
+  vitaminCMg?: number | null;
+  vitaminDUg?: number | null;
+  vitaminEMg?: number | null;
+  potassiumMg?: number | null;
+  magnesiumMg?: number | null;
+  zincMg?: number | null;
+  cholesterolMg?: number | null;
+  saturatedFatG?: number | null;
+  sugarG?: number | null;
+  saltG?: number | null;
+  source?: FoodSource;
+}
+
+export interface FoodCategory {
+  id: string;
+  nameJa: string;
+  nameEn: string;
+}
