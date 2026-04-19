@@ -1,5 +1,5 @@
 import { getDatabase } from '../database/connection';
-import { Profile, ProfileInput, AdaptiveGoalSensitivity } from '../../types/profile';
+import { Profile, ProfileInput, AdaptiveGoalSensitivity, PlanBillingCycle } from '../../types/profile';
 import { generateId } from '../../utils/id';
 
 function rowToProfile(row: Record<string, unknown>): Profile {
@@ -28,6 +28,9 @@ function rowToProfile(row: Record<string, unknown>): Profile {
     adaptiveGoalLastShownAt: (row.adaptive_goal_last_shown_at as string | null) ?? null,
     dailyWaterTargetMl: (row.daily_water_target_ml as number | null) ?? 2500,
     onboardingVersion: (row.onboarding_version as number | null) ?? 1,
+    trialStartedAt: (row.trial_started_at as string | null) ?? null,
+    planBillingCycle: (row.plan_billing_cycle as PlanBillingCycle | null) ?? null,
+    planExpiresAt: (row.plan_expires_at as string | null) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -82,6 +85,9 @@ export async function updateProfile(id: string, updates: Partial<Profile>): Prom
     adaptiveGoalLastShownAt: 'adaptive_goal_last_shown_at',
     dailyWaterTargetMl: 'daily_water_target_ml',
     onboardingVersion: 'onboarding_version',
+    trialStartedAt: 'trial_started_at',
+    planBillingCycle: 'plan_billing_cycle',
+    planExpiresAt: 'plan_expires_at',
   };
 
   const BOOL_KEYS = new Set(['onboardingCompleted', 'adaptiveGoalEnabled']);
@@ -103,3 +109,14 @@ export async function updateProfile(id: string, updates: Partial<Profile>): Prom
     values
   );
 }
+
+export async function startTrial(id: string, startedAt: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `UPDATE profiles
+     SET trial_started_at = ?, updated_at = datetime('now')
+     WHERE id = ? AND trial_started_at IS NULL`,
+    [startedAt, id],
+  );
+}
+

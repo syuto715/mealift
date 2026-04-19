@@ -3,6 +3,15 @@ import * as ImagePicker from 'expo-image-picker';
 import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
 import { ProgressPhoto, ProgressPhotoInput, PoseType } from '../../types/progressPhoto';
+import { canAddProgressPhoto } from '../../domain/subscription/gates';
+import type { PlanStatus } from '../services/subscriptionService';
+
+export class PhotoLimitExceededError extends Error {
+  constructor() {
+    super('PHOTO_LIMIT_EXCEEDED');
+    this.name = 'PhotoLimitExceededError';
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Photo storage helpers
@@ -93,8 +102,17 @@ function rowToPhoto(row: Record<string, unknown>): ProgressPhoto {
 
 export async function addProgressPhoto(
   input: ProgressPhotoInput,
+  planStatus?: PlanStatus,
 ): Promise<ProgressPhoto> {
   const db = await getDatabase();
+
+  if (planStatus) {
+    const count = await getPhotoCount(input.profileId);
+    if (!canAddProgressPhoto(planStatus, count)) {
+      throw new PhotoLimitExceededError();
+    }
+  }
+
   const id = generateId();
 
   await db.runAsync(
@@ -113,7 +131,13 @@ export async function addProgressPhoto(
 export async function getPhotosByDate(
   profileId: string,
   date: string,
+  historyWindowDays?: number | null,
 ): Promise<ProgressPhoto[]> {
+  if (historyWindowDays != null) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - historyWindowDays);
+    if (date < cutoff.toISOString().substring(0, 10)) return [];
+  }
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
     'SELECT * FROM progress_photos WHERE profile_id = ? AND date = ? ORDER BY created_at',
@@ -125,10 +149,15 @@ export async function getPhotosByDate(
 export async function getPhotoDates(
   profileId: string,
   limit: number = 100,
+  historyWindowDays?: number | null,
 ): Promise<string[]> {
   const db = await getDatabase();
+  const clamp =
+    historyWindowDays != null
+      ? ` AND date >= date('now', '-${historyWindowDays} days')`
+      : '';
   const rows = await db.getAllAsync<{ date: string }>(
-    'SELECT DISTINCT date FROM progress_photos WHERE profile_id = ? ORDER BY date DESC LIMIT ?',
+    `SELECT DISTINCT date FROM progress_photos WHERE profile_id = ?${clamp} ORDER BY date DESC LIMIT ?`,
     [profileId, limit],
   );
   return rows.map((r) => r.date);
@@ -137,10 +166,15 @@ export async function getPhotoDates(
 export async function getAllPhotos(
   profileId: string,
   limit: number = 200,
+  historyWindowDays?: number | null,
 ): Promise<ProgressPhoto[]> {
   const db = await getDatabase();
+  const clamp =
+    historyWindowDays != null
+      ? ` AND date >= date('now', '-${historyWindowDays} days')`
+      : '';
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM progress_photos WHERE profile_id = ? ORDER BY date DESC, created_at DESC LIMIT ?',
+    `SELECT * FROM progress_photos WHERE profile_id = ?${clamp} ORDER BY date DESC, created_at DESC LIMIT ?`,
     [profileId, limit],
   );
   return rows.map(rowToPhoto);

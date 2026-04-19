@@ -33,6 +33,8 @@ import { getRecordedNutritionDates } from '../../../src/infra/repositories/nutri
 import { format as fmtDate } from 'date-fns';
 import { DAILY_NUTRIENT_TARGETS, NutrientTarget } from '../../../src/constants/dailyNutrientTargets';
 import { canUse } from '../../../src/infra/services/subscriptionService';
+import { useSubscription } from '../../../src/hooks/useSubscription';
+import { historyWindowDaysFor } from '../../../src/domain/subscription/gates';
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: '朝食',
@@ -108,12 +110,15 @@ export default function NutritionScreen() {
   const [copyMealType, setCopyMealType] = useState<MealType | null>(null);
   const [copyToast, setCopyToast] = useState<string | null>(null);
 
+  const { status: planStatus } = useSubscription();
+  const historyWindowDays = historyWindowDaysFor(planStatus);
+
   // Load recorded dates for the month around selectedDate
   useEffect(() => {
     if (!profile?.id) return;
     const monthPrefix = selectedDate.slice(0, 7); // 'yyyy-MM'
-    getRecordedNutritionDates(profile.id, monthPrefix).then(setRecordedDates);
-  }, [profile?.id, selectedDate, totalCalories]); // re-fetch when data changes
+    getRecordedNutritionDates(profile.id, monthPrefix, historyWindowDays).then(setRecordedDates);
+  }, [profile?.id, selectedDate, totalCalories, historyWindowDays]); // re-fetch when data changes
 
   const targetCalories = profile?.targetCalories ?? 2200;
   const targetProteinG = profile?.targetProteinG ?? 160;

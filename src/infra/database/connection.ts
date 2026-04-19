@@ -10,6 +10,7 @@ import { migrateV7 } from './migrations/v7';
 import { migrateV8 } from './migrations/v8';
 import { migrateV9 } from './migrations/v9';
 import { migrateV10 } from './migrations/v10';
+import { migrateV11 } from './migrations/v11';
 import { seedFoods, seedExercises } from './seed/foods';
 import { seedDishes } from './seed/dishes';
 import { seedBarcodeProducts } from './seed/barcodeProducts';
@@ -83,6 +84,10 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     if (currentVersion < 10) {
       await migrateV10(db);
       await db.execAsync('PRAGMA user_version = 10;');
+    }
+    if (currentVersion < 11) {
+      await migrateV11(db);
+      await db.execAsync('PRAGMA user_version = 11;');
     }
   } catch (error) {
     throw error;

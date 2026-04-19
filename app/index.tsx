@@ -10,6 +10,8 @@ import { getColors } from '../src/theme/tokens';
 import { useAuthStore } from '../src/stores/authStore';
 import { useProfileStore } from '../src/stores/profileStore';
 import { getProfile } from '../src/infra/repositories/profileRepository';
+import { applyRetroactiveTrialGrantOnce } from '../src/infra/services/planMigrationService';
+import { scheduleTrialNotifications } from '../src/infra/services/notificationService';
 
 const ROUTING_TIMEOUT_MS = 8000;
 
@@ -52,8 +54,13 @@ export default function IndexScreen() {
       try {
         const profile = await getProfile();
         if (profile) {
-          setProfile(profile);
-          setOnboardingCompleted(profile.onboardingCompleted);
+          // Retroactive trial grant: users who onboarded before the billing
+          // system shipped get a fresh 7-day Plus trial on next launch.
+          const hydrated =
+            (await applyRetroactiveTrialGrantOnce(profile)) ?? profile;
+          setProfile(hydrated);
+          setOnboardingCompleted(hydrated.onboardingCompleted);
+          void scheduleTrialNotifications(hydrated);
         }
       } catch (error) {
         // Profile load failed — treat as no profile, proceed to onboarding

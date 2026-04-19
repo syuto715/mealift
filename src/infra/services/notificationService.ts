@@ -1,6 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Profile } from '../../types/profile';
+import { TRIAL_DURATION_DAYS } from '../../constants/pricing';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -98,6 +100,8 @@ const ID_MEAL_LUNCH = 'bf-meal-lunch';
 const ID_MEAL_DINNER = 'bf-meal-dinner';
 const ID_WEEKLY_REPORT = 'bf-weekly-report';
 const ID_TRAINING_PREFIX = 'bf-training-';
+const ID_TRIAL_ENDING = 'bf-trial-ending';
+const ID_TRIAL_ENDED = 'bf-trial-ended';
 
 /** Every static ID owned by scheduleAllNotifications. Rebuilt on each schedule. */
 const STATIC_IDS = [
@@ -249,6 +253,27 @@ async function scheduleDaily(
       hour: time.hour,
       minute: time.minute,
       repeats: true,
+    },
+    identifier,
+  });
+}
+
+async function scheduleOneShot(
+  identifier: string,
+  title: string,
+  body: string,
+  date: Date,
+): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      sound: true,
+      ...(Platform.OS === 'android' ? { channelId: 'reminders' } : {}),
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date,
     },
     identifier,
   });
@@ -409,6 +434,65 @@ export async function scheduleAllNotifications(
 export async function rescheduleNotifications(): Promise<void> {
   const settings = await loadNotificationSettings();
   await scheduleAllNotifications(settings);
+}
+
+// ---------------------------------------------------------------------------
+// Trial notifications
+// ---------------------------------------------------------------------------
+//
+// Two one-shot notifications inform the user about the 7-day Plus trial:
+//   - bf-trial-ending : fires 24h before trial ends, prompts "upgrade to keep"
+//   - bf-trial-ended  : fires at trial end, tells the user they're on Free now
+//
+// These live outside scheduleAllNotifications because they are driven by the
+// Profile (trial_started_at column) rather than NotificationSettings. Callers
+// invoke scheduleTrialNotifications() on trial start and on app launch.
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export async function scheduleTrialNotifications(
+  profile: Profile | null,
+): Promise<void> {
+  // Always cancel first — cheap, and guarantees no stale schedules remain
+  // after trial end, cancellation, or plan purchase.
+  await Promise.all([
+    Notifications.cancelScheduledNotificationAsync(ID_TRIAL_ENDING).catch(() => {}),
+    Notifications.cancelScheduledNotificationAsync(ID_TRIAL_ENDED).catch(() => {}),
+  ]);
+
+  if (!profile?.trialStartedAt) return;
+  const startedMs = Date.parse(profile.trialStartedAt);
+  if (Number.isNaN(startedMs)) return;
+
+  const endMs = startedMs + TRIAL_DURATION_DAYS * DAY_MS;
+  const now = Date.now();
+  if (endMs <= now) return;
+
+  const hasPermission = await requestNotificationPermissions();
+  if (!hasPermission) return;
+
+  // Paid plan overrides trial — skip trial-end pings if they've already upgraded.
+  if (profile.planExpiresAt && Date.parse(profile.planExpiresAt) > now) return;
+
+  const endingMs = endMs - DAY_MS;
+  try {
+    if (endingMs > now) {
+      await scheduleOneShot(
+        ID_TRIAL_ENDING,
+        'トライアル終了まで24時間',
+        'Plus の機能は明日まで。継続するにはプランに加入してください。',
+        new Date(endingMs),
+      );
+    }
+    await scheduleOneShot(
+      ID_TRIAL_ENDED,
+      'トライアルが終了しました',
+      '引き続き Plus 機能をご利用になるにはプランに加入してください。',
+      new Date(endMs),
+    );
+  } catch {
+    // Per-notification failures are non-fatal.
+  }
 }
 
 // Single-shot boot flag. _layout.tsx's useEffect can fire repeatedly during

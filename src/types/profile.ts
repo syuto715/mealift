@@ -2,6 +2,8 @@ import { UUID, ISODateTimeString, ISODateString, GoalType, ActivityLevel, Gender
 
 export type AdaptiveGoalSensitivity = 'conservative' | 'standard' | 'aggressive';
 
+export type PlanBillingCycle = 'monthly' | 'biannual' | 'annual';
+
 export interface Profile {
   id: UUID;
   supabaseUid: string | null;
@@ -27,6 +29,9 @@ export interface Profile {
   adaptiveGoalLastShownAt: ISODateTimeString | null;
   dailyWaterTargetMl: number;
   onboardingVersion: number;
+  trialStartedAt: ISODateTimeString | null;
+  planBillingCycle: PlanBillingCycle | null;
+  planExpiresAt: ISODateTimeString | null;
   createdAt: ISODateTimeString;
   updatedAt: ISODateTimeString;
 }

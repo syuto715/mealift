@@ -37,6 +37,8 @@ import { NoteCategory } from '../../../src/types/common';
 import * as noteRepo from '../../../src/infra/repositories/noteRepository';
 import { getTodayWorkoutCalories, getRecordedSessionDates } from '../../../src/infra/repositories/workoutRepository';
 import { getRecordedBodyLogDates, getBodyLogByDate } from '../../../src/infra/repositories/bodyLogRepository';
+import { useSubscription } from '../../../src/hooks/useSubscription';
+import { historyWindowDaysFor } from '../../../src/domain/subscription/gates';
 import { BodyLog } from '../../../src/types/bodyLog';
 import { calculateAllCalories, calculateDailyBurn } from '../../../src/domain/calories';
 
@@ -120,17 +122,20 @@ export default function ProgressScreen() {
   // Calorie burn state
   const [todayWorkoutCal, setTodayWorkoutCal] = useState(0);
 
+  const { status: planStatus } = useSubscription();
+  const historyWindowDays = historyWindowDaysFor(planStatus);
+
   // Load recorded dates for DateNavigator
   useEffect(() => {
     if (!profile?.id) return;
     const monthPrefix = selectedDate.substring(0, 7);
     Promise.all([
-      getRecordedBodyLogDates(profile.id, monthPrefix),
-      getRecordedSessionDates(profile.id, monthPrefix),
+      getRecordedBodyLogDates(profile.id, monthPrefix, historyWindowDays),
+      getRecordedSessionDates(profile.id, monthPrefix, historyWindowDays),
     ]).then(([bodyDates, sessionDates]) => {
       setRecordedDates([...new Set([...bodyDates, ...sessionDates])]);
     }).catch(() => {});
-  }, [profile?.id, selectedDate]);
+  }, [profile?.id, selectedDate, historyWindowDays]);
 
   // Load selected date's body log + workout calories
   useEffect(() => {

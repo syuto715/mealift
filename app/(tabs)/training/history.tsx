@@ -21,6 +21,12 @@ import { WorkoutSession, WorkoutSet } from '../../../src/types/workout';
 import { estimateOneRepMax } from '../../../src/domain/oneRepMax';
 import * as workoutRepo from '../../../src/infra/repositories/workoutRepository';
 import { getISODate } from '../../../src/utils/format';
+import { useSubscription } from '../../../src/hooks/useSubscription';
+import {
+  historyWindowDaysFor,
+  FREE_HISTORY_WINDOW_DAYS,
+} from '../../../src/domain/subscription/gates';
+import { UpgradePromptModal } from '../../../src/components/subscription/UpgradePromptModal';
 
 interface SessionDisplay {
   session: WorkoutSession & { routineName: string | null };
@@ -50,10 +56,15 @@ export default function HistoryScreen() {
   // Self-best 1RM map: exerciseId -> { oneRepMax, date }
   const [exerciseBests, setExerciseBests] = useState<Record<string, ExerciseBest>>({});
 
+  const { status: planStatus } = useSubscription();
+  const historyWindowDays = historyWindowDaysFor(planStatus);
+  const isHistoryClamped = historyWindowDays !== null;
+  const [upgradeVisible, setUpgradeVisible] = useState(false);
+
   const loadHistory = useCallback(async () => {
     if (!profile) return;
     try {
-      const rawSessions = await workoutRepo.getSessionWithRoutineName(profile.id, 50);
+      const rawSessions = await workoutRepo.getSessionWithRoutineName(profile.id, 50, historyWindowDays);
 
       const displayed: SessionDisplay[] = [];
       const bestsMap: Record<string, ExerciseBest> = {};
@@ -89,16 +100,16 @@ export default function HistoryScreen() {
     } finally {
       setLoading(false);
     }
-  }, [profile]);
+  }, [profile, historyWindowDays]);
 
   // Load recorded dates for DateNavigator
   useEffect(() => {
     if (!profile?.id) return;
     const monthPrefix = selectedDate.substring(0, 7);
-    workoutRepo.getRecordedSessionDates(profile.id, monthPrefix)
+    workoutRepo.getRecordedSessionDates(profile.id, monthPrefix, historyWindowDays)
       .then(setRecordedDates)
       .catch(() => {});
-  }, [profile?.id, selectedDate]);
+  }, [profile?.id, selectedDate, historyWindowDays]);
 
   useFocusEffect(
     useCallback(() => {
@@ -354,7 +365,63 @@ export default function HistoryScreen() {
             </Card>
           ))
         )}
+
+        {isHistoryClamped && !loading && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setUpgradeVisible(true)}
+          >
+            <Card>
+              <View style={styles.upgradeRow}>
+                <View
+                  style={[
+                    styles.upgradeIcon,
+                    { backgroundColor: colors.primary + '15' },
+                  ]}
+                >
+                  <Ionicons
+                    name="sparkles"
+                    size={20}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.upgradeTextWrap}>
+                  <Text
+                    style={[
+                      styles.upgradeTitle,
+                      { color: colors.textPrimary },
+                    ]}
+                  >
+                    Plus で全履歴を表示
+                  </Text>
+                  <Text
+                    style={[
+                      styles.upgradeSubtitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Free プランは直近 {FREE_HISTORY_WINDOW_DAYS} 日まで表示されます
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.textTertiary}
+                />
+              </View>
+            </Card>
+          </TouchableOpacity>
+        )}
       </ScrollView>
+
+      <UpgradePromptModal
+        visible={upgradeVisible}
+        onClose={() => setUpgradeVisible(false)}
+        featureName="全履歴の表示"
+        featureDescription={`Free プランでは直近 ${FREE_HISTORY_WINDOW_DAYS} 日までの履歴に制限されています。Plus で全期間を振り返りましょう。`}
+        requiredPlan="plus"
+        benefits={['全期間のトレーニング履歴', '全期間の栄養記録', '全期間の体組成ログ']}
+      />
     </SafeAreaView>
   );
 }
@@ -450,4 +517,27 @@ const styles = StyleSheet.create({
   },
   volumeLabel: { ...typography.labelSmall },
   volumeValue: { ...typography.numberSmall },
+  // Upgrade CTA
+  upgradeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  upgradeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  upgradeTitle: {
+    ...typography.labelLarge,
+  },
+  upgradeSubtitle: {
+    ...typography.bodySmall,
+  },
 });

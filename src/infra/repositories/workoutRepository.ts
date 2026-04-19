@@ -365,11 +365,16 @@ export async function getSession(sessionId: string): Promise<WorkoutSessionWithS
 export async function getRecordedSessionDates(
   profileId: string,
   monthPrefix: string,
+  historyWindowDays?: number | null,
 ): Promise<string[]> {
   const db = await getDatabase();
+  const clamp =
+    historyWindowDays != null
+      ? ` AND date(started_at) >= date('now', '-${historyWindowDays} days')`
+      : '';
   const rows = await db.getAllAsync<{ d: string }>(
     `SELECT DISTINCT date(started_at) as d FROM workout_sessions
-     WHERE profile_id = ? AND date(started_at) LIKE ? || '%' AND finished_at IS NOT NULL
+     WHERE profile_id = ? AND date(started_at) LIKE ? || '%' AND finished_at IS NOT NULL${clamp}
      ORDER BY d`,
     [profileId, monthPrefix],
   );
@@ -379,10 +384,15 @@ export async function getRecordedSessionDates(
 export async function getSessions(
   profileId: string,
   limit: number = 30,
+  historyWindowDays?: number | null,
 ): Promise<WorkoutSession[]> {
   const db = await getDatabase();
+  const clamp =
+    historyWindowDays != null
+      ? ` AND started_at >= datetime('now', '-${historyWindowDays} days')`
+      : '';
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM workout_sessions WHERE profile_id = ? ORDER BY started_at DESC LIMIT ?',
+    `SELECT * FROM workout_sessions WHERE profile_id = ?${clamp} ORDER BY started_at DESC LIMIT ?`,
     [profileId, limit],
   );
   return rows.map(rowToSession);
@@ -538,13 +548,18 @@ export async function getPreviousSets(
 export async function getSessionWithRoutineName(
   profileId: string,
   limit: number = 30,
+  historyWindowDays?: number | null,
 ): Promise<(WorkoutSession & { routineName: string | null })[]> {
   const db = await getDatabase();
+  const clamp =
+    historyWindowDays != null
+      ? ` AND s.started_at >= datetime('now', '-${historyWindowDays} days')`
+      : '';
   const rows = await db.getAllAsync<Record<string, unknown>>(
     `SELECT s.*, r.name AS routine_name
      FROM workout_sessions s
      LEFT JOIN workout_routines r ON s.routine_id = r.id
-     WHERE s.profile_id = ?
+     WHERE s.profile_id = ?${clamp}
      ORDER BY s.started_at DESC
      LIMIT ?`,
     [profileId, limit],

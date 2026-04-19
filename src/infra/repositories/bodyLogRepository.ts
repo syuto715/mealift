@@ -16,10 +16,18 @@ function rowToBodyLog(row: Record<string, unknown>): BodyLog {
   };
 }
 
-export async function getBodyLogs(profileId: string, limit: number = 90): Promise<BodyLog[]> {
+export async function getBodyLogs(
+  profileId: string,
+  limit: number = 90,
+  historyWindowDays?: number | null,
+): Promise<BodyLog[]> {
   const db = await getDatabase();
+  const clamp =
+    historyWindowDays != null
+      ? ` AND date >= date('now', '-${historyWindowDays} days')`
+      : '';
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM body_logs WHERE profile_id = ? ORDER BY date DESC LIMIT ?',
+    `SELECT * FROM body_logs WHERE profile_id = ?${clamp} ORDER BY date DESC LIMIT ?`,
     [profileId, limit]
   );
   return rows.map(rowToBodyLog);
@@ -36,12 +44,17 @@ export async function getBodyLogByDate(profileId: string, date: string): Promise
 
 export async function getRecordedBodyLogDates(
   profileId: string,
-  monthPrefix: string
+  monthPrefix: string,
+  historyWindowDays?: number | null
 ): Promise<string[]> {
   const db = await getDatabase();
+  const clamp =
+    historyWindowDays != null
+      ? ` AND date >= date('now', '-${historyWindowDays} days')`
+      : '';
   const rows = await db.getAllAsync<{ date: string }>(
     `SELECT DISTINCT date FROM body_logs
-     WHERE profile_id = ? AND date LIKE ? || '%'
+     WHERE profile_id = ? AND date LIKE ? || '%'${clamp}
      ORDER BY date`,
     [profileId, monthPrefix]
   );

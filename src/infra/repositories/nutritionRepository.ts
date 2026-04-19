@@ -173,10 +173,42 @@ export async function removeMealLogItem(itemId: string): Promise<void> {
   await db.runAsync('DELETE FROM meal_log_items WHERE id = ?', [itemId]);
 }
 
+function emptyDailySummary(date: string): DailyNutritionSummary {
+  return {
+    date,
+    totalCalories: 0,
+    totalProteinG: 0,
+    totalFatG: 0,
+    totalCarbG: 0,
+    extended: {
+      fiberG: 0, saltG: 0, calciumMg: 0, ironMg: 0,
+      vitaminAUg: 0, vitaminB1Mg: 0, vitaminB2Mg: 0,
+      vitaminB6Mg: 0, vitaminB12Ug: 0, folateUg: 0,
+      vitaminCMg: 0, vitaminDUg: 0, vitaminEMg: 0,
+      potassiumMg: 0, magnesiumMg: 0, zincMg: 0,
+      cholesterolMg: 0, saturatedFatG: 0, sugarG: 0, sodiumMg: 0,
+    },
+    meals: [],
+  };
+}
+
+function isDateBeyondWindow(date: string, historyWindowDays?: number | null): boolean {
+  if (historyWindowDays == null) return false;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - historyWindowDays);
+  const cutoffStr = cutoff.toISOString().substring(0, 10);
+  return date < cutoffStr;
+}
+
 export async function getDailyNutritionSummary(
   profileId: string,
-  date: string
+  date: string,
+  historyWindowDays?: number | null
 ): Promise<DailyNutritionSummary> {
+  if (isDateBeyondWindow(date, historyWindowDays)) {
+    return emptyDailySummary(date);
+  }
+
   const db = await getDatabase();
 
   const mealRows = await db.getAllAsync<Record<string, unknown>>(
@@ -270,8 +302,10 @@ export async function getDailyNutritionSummary(
 
 export async function getDailyCalories(
   profileId: string,
-  date: string
+  date: string,
+  historyWindowDays?: number | null
 ): Promise<number> {
+  if (isDateBeyondWindow(date, historyWindowDays)) return 0;
   const db = await getDatabase();
   const result = await db.getFirstAsync<{ total: number }>(
     `SELECT COALESCE(SUM(mli.calories), 0) as total
@@ -285,12 +319,19 @@ export async function getDailyCalories(
 
 export async function getRecordedNutritionDates(
   profileId: string,
-  monthPrefix: string
+  monthPrefix: string,
+  historyWindowDays?: number | null
 ): Promise<string[]> {
   const db = await getDatabase();
+  // When historyWindowDays is set, clamp to date('now', '-N days') so Free
+  // users don't see dots for dates they cannot open.
+  const clamp =
+    historyWindowDays != null
+      ? ` AND date >= date('now', '-${historyWindowDays} days')`
+      : '';
   const rows = await db.getAllAsync<{ date: string }>(
     `SELECT DISTINCT date FROM meal_logs
-     WHERE profile_id = ? AND date LIKE ? || '%'
+     WHERE profile_id = ? AND date LIKE ? || '%'${clamp}
      ORDER BY date`,
     [profileId, monthPrefix]
   );
@@ -396,9 +437,14 @@ export interface PreviousMealSummary {
 export async function getPreviousMealsSummary(
   profileId: string,
   mealType: MealType,
-  limit: number = 7
+  limit: number = 7,
+  historyWindowDays?: number | null
 ): Promise<PreviousMealSummary[]> {
   const db = await getDatabase();
+  const clamp =
+    historyWindowDays != null
+      ? ` AND ml.date >= date('now', '-${historyWindowDays} days')`
+      : '';
   const rows = await db.getAllAsync<{
     date: string;
     item_count: number;
@@ -407,7 +453,7 @@ export async function getPreviousMealsSummary(
     `SELECT ml.date, COUNT(mli.id) AS item_count, COALESCE(SUM(mli.calories), 0) AS total_calories
      FROM meal_logs ml
      LEFT JOIN meal_log_items mli ON mli.meal_log_id = ml.id
-     WHERE ml.profile_id = ? AND ml.meal_type = ?
+     WHERE ml.profile_id = ? AND ml.meal_type = ?${clamp}
      GROUP BY ml.date
      HAVING item_count > 0
      ORDER BY ml.date DESC

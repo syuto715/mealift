@@ -16,6 +16,9 @@ import { Food, ExtendedNutrients } from '../../types/food';
 import { DAILY_NUTRIENT_TARGETS } from '../../constants/dailyNutrientTargets';
 import { Gender } from '../../types/common';
 import { formatServingHint } from '../../constants/servingUnits';
+import { useSubscription } from '../../hooks/useSubscription';
+import { hasFeature } from '../../infra/services/subscriptionService';
+import { UpgradePromptModal } from '../subscription/UpgradePromptModal';
 
 // ---------------------------------------------------------------------------
 // Nutrient groups
@@ -115,6 +118,9 @@ export function FoodDetailModal({
   const [mineralsOpen, setMineralsOpen] = useState(true);
   const [vitaminsOpen, setVitaminsOpen] = useState(true);
   const [othersOpen, setOthersOpen] = useState(true);
+  const [upgradeVisible, setUpgradeVisible] = useState(false);
+  const { status: planStatus } = useSubscription();
+  const nutrientsUnlocked = hasFeature('extendedNutrientBalance', planStatus);
 
   const scale = useMemo(() => {
     if (!food) return 1;
@@ -150,6 +156,31 @@ export function FoodDetailModal({
   ) => {
     const rows = defs.filter((d) => food[d.key] != null);
     if (rows.length === 0) return null;
+    if (!nutrientsUnlocked) {
+      return (
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.sectionHeader}
+            onPress={() => setUpgradeVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              {title}
+            </Text>
+            <View style={styles.lockedBadge}>
+              <Text style={[styles.lockedBadgeText, { color: colors.primary }]}>
+                Plus で解放
+              </Text>
+              <Ionicons
+                name="lock-closed"
+                size={14}
+                color={colors.primary}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+      );
+    }
     return (
       <View style={styles.section}>
         <TouchableOpacity
@@ -383,6 +414,15 @@ export function FoodDetailModal({
             </TouchableOpacity>
           </View>
         )}
+
+        <UpgradePromptModal
+          visible={upgradeVisible}
+          onClose={() => setUpgradeVisible(false)}
+          featureName="全24項目の栄養素表示"
+          featureDescription="Plus プランでミネラル・ビタミンを含む全栄養素を詳細に確認できます。"
+          requiredPlan="plus"
+          benefits={['ビタミン9項目', 'ミネラル6項目', '飽和脂肪酸・コレステロール']}
+        />
       </View>
     </RNModal>
   );
@@ -542,5 +582,14 @@ const styles = StyleSheet.create({
     ...typography.labelLarge,
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  lockedBadgeText: {
+    ...typography.labelSmall,
+    fontWeight: '600',
   },
 });

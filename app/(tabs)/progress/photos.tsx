@@ -20,6 +20,13 @@ import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { Button, Card, BottomSheet, SegmentedControl } from '../../../src/components/ui';
 import { canUse } from '../../../src/infra/services/subscriptionService';
+import { useSubscription } from '../../../src/hooks/useSubscription';
+import {
+  historyWindowDaysFor,
+  canAddProgressPhoto,
+  FREE_PROGRESS_PHOTO_LIMIT,
+} from '../../../src/domain/subscription/gates';
+import { UpgradePromptModal } from '../../../src/components/subscription/UpgradePromptModal';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { ProgressPhoto, PoseType } from '../../../src/types/progressPhoto';
 import {
@@ -29,6 +36,7 @@ import {
   pickPhoto,
   takePhoto,
   persistPhoto,
+  PhotoLimitExceededError,
 } from '../../../src/infra/repositories/progressPhotoRepository';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -60,18 +68,22 @@ export default function PhotosScreen() {
   const [selectedPhotos, setSelectedPhotos] = useState<ProgressPhoto[]>([]);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerPhoto, setViewerPhoto] = useState<ProgressPhoto | null>(null);
+  const [upgradeVisible, setUpgradeVisible] = useState(false);
+
+  const { status: planStatus } = useSubscription();
+  const historyWindowDays = historyWindowDaysFor(planStatus);
 
   const loadPhotos = useCallback(async () => {
     if (!profile?.id) return;
     try {
-      const data = await getAllPhotos(profile.id);
+      const data = await getAllPhotos(profile.id, 200, historyWindowDays);
       setPhotos(data);
     } catch {
       // ignore
     } finally {
       setLoading(false);
     }
-  }, [profile?.id]);
+  }, [profile?.id, historyWindowDays]);
 
   useEffect(() => {
     loadPhotos();
@@ -80,25 +92,46 @@ export default function PhotosScreen() {
   const handlePickImage = useCallback(
     async (source: 'library' | 'camera') => {
       if (!profile?.id) return;
+      if (!canAddProgressPhoto(planStatus, photos.length)) {
+        setAddSheetVisible(false);
+        setUpgradeVisible(true);
+        return;
+      }
       const uri = source === 'library' ? await pickPhoto() : await takePhoto();
       if (!uri) return;
 
       try {
         const savedUri = await persistPhoto(uri);
-        await addProgressPhoto({
-          profileId: profile.id,
-          date: format(new Date(), 'yyyy-MM-dd'),
-          photoUri: savedUri,
-          poseType,
-        });
+        await addProgressPhoto(
+          {
+            profileId: profile.id,
+            date: format(new Date(), 'yyyy-MM-dd'),
+            photoUri: savedUri,
+            poseType,
+          },
+          planStatus,
+        );
         setAddSheetVisible(false);
         loadPhotos();
-      } catch {
+      } catch (e) {
+        if (e instanceof PhotoLimitExceededError) {
+          setAddSheetVisible(false);
+          setUpgradeVisible(true);
+          return;
+        }
         Alert.alert('エラー', '写真の保存に失敗しました。');
       }
     },
-    [profile?.id, poseType, loadPhotos],
+    [profile?.id, poseType, loadPhotos, planStatus, photos.length],
   );
+
+  const handleAddTap = useCallback(() => {
+    if (!canAddProgressPhoto(planStatus, photos.length)) {
+      setUpgradeVisible(true);
+      return;
+    }
+    setAddSheetVisible(true);
+  }, [planStatus, photos.length]);
 
   const handleDelete = useCallback(
     (photo: ProgressPhoto) => {
@@ -261,7 +294,7 @@ export default function PhotosScreen() {
           </Text>
           <Button
             title="写真を追加"
-            onPress={() => setAddSheetVisible(true)}
+            onPress={handleAddTap}
             variant="primary"
           />
         </View>
@@ -311,7 +344,7 @@ export default function PhotosScreen() {
       {!compareMode && (
         <TouchableOpacity
           style={[styles.fab, { backgroundColor: colors.primary }]}
-          onPress={() => setAddSheetVisible(true)}
+          onPress={handleAddTap}
           activeOpacity={0.8}
         >
           <Ionicons name="add" size={28} color="#fff" />
@@ -397,6 +430,15 @@ export default function PhotosScreen() {
           </SafeAreaView>
         </View>
       </RNModal>
+
+      <UpgradePromptModal
+        visible={upgradeVisible}
+        onClose={() => setUpgradeVisible(false)}
+        featureName="進捗写真の無制限保存"
+        featureDescription={`Free プランでは ${FREE_PROGRESS_PHOTO_LIMIT} 枚までの保存に制限されています。Plus で無制限に記録できます。`}
+        requiredPlan="plus"
+        benefits={['無制限の進捗写真', 'ビフォーアフター比較', '月別アルバム']}
+      />
     </SafeAreaView>
   );
 }

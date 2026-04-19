@@ -22,7 +22,9 @@ import { calculateMacros } from '../../src/domain/macros';
 import {
   createProfile,
   updateProfile as updateProfileRepo,
+  startTrial,
 } from '../../src/infra/repositories/profileRepository';
+import { scheduleTrialNotifications } from '../../src/infra/services/notificationService';
 
 function ProgressDots({
   current,
@@ -128,14 +130,24 @@ export default function CompleteScreen() {
         onboardingCompleted: true,
       });
 
-      setProfile({
+      // Grant the 7-day Plus trial on first onboarding completion.
+      const trialStartedAt = new Date().toISOString();
+      await startTrial(profile.id, trialStartedAt);
+
+      const hydratedProfile = {
         ...profile,
         targetCalories,
         targetProteinG: macros.proteinG,
         targetFatG: macros.fatG,
         targetCarbG: macros.carbG,
         onboardingCompleted: true,
-      });
+        trialStartedAt,
+      };
+      setProfile(hydratedProfile);
+
+      // Fire-and-forget — notification scheduling should never block the
+      // user from entering the app.
+      void scheduleTrialNotifications(hydratedProfile);
 
       onboarding.reset();
       router.replace('/(tabs)');

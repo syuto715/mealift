@@ -27,11 +27,40 @@ import {
   MEAL_RATIO,
 } from '../../../src/domain/nutrientBalance';
 import { NutrientBar } from '../../../src/components/charts/NutrientBar';
-import {
-  canUse,
-  getFeatureFlags,
-} from '../../../src/infra/services/subscriptionService';
+import { getFeatureFlags } from '../../../src/infra/services/subscriptionService';
 import { APP_CONFIG } from '../../../src/constants/config';
+import { UpgradePromptModal } from '../../../src/components/subscription/UpgradePromptModal';
+
+type UpgradeTarget = 'plus-meal' | 'plus-extended' | 'pro-ai';
+
+const UPGRADE_CONTENT: Record<
+  UpgradeTarget,
+  {
+    featureName: string;
+    requiredPlan: 'plus' | 'pro';
+    description?: string;
+    benefits: string[];
+  }
+> = {
+  'plus-meal': {
+    featureName: '食事別の栄養バランス',
+    requiredPlan: 'plus',
+    description: 'Plus プランで朝・昼・夕・間食ごとの栄養バランスを確認できます。',
+    benefits: ['食事ごとのPFC・栄養素', '食事タイミング別の比率', '全24項目の栄養素表示'],
+  },
+  'plus-extended': {
+    featureName: '全24項目の栄養素表示',
+    requiredPlan: 'plus',
+    description: 'Plus プランでビタミン・ミネラルを含む全栄養素を詳細に確認できます。',
+    benefits: ['ビタミン9項目', 'ミネラル6項目', '飽和脂肪酸・コレステロール'],
+  },
+  'pro-ai': {
+    featureName: 'AI 食事アドバイス',
+    requiredPlan: 'pro',
+    description: 'Pro プランで AI があなたの食事内容に合わせたアドバイスを提案します。',
+    benefits: ['パーソナライズされた改善提案', '目標別の食品推薦', '食事ごとに何度でも相談'],
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -99,6 +128,8 @@ export default function BalanceScreen() {
   const canViewMeal = flags.mealNutrientBalance;
   const canViewAI = flags.aiNutrientAdvice;
 
+  const [upgradeTarget, setUpgradeTarget] = useState<UpgradeTarget | null>(null);
+
   const dateFormatted = formatDate(date, 'M月d日 (E)');
 
   const targets = useMemo(
@@ -137,7 +168,7 @@ export default function BalanceScreen() {
   const handleTabPress = useCallback(
     (key: TabKey) => {
       if (key !== 'daily' && !canViewMeal) {
-        router.push('/(tabs)/settings/subscription');
+        setUpgradeTarget('plus-meal');
         return;
       }
       setActiveTab(key);
@@ -461,7 +492,7 @@ ${nutrientList}
                   >
                     <TouchableOpacity
                       style={styles.lockContent}
-                      onPress={() => router.push('/(tabs)/settings/subscription')}
+                      onPress={() => setUpgradeTarget('plus-extended')}
                       activeOpacity={0.7}
                     >
                       <Ionicons
@@ -563,7 +594,7 @@ ${nutrientList}
             ) : (
               <TouchableOpacity
                 style={[styles.tableLockRow, { borderTopColor: colors.border }]}
-                onPress={() => router.push('/(tabs)/settings/subscription')}
+                onPress={() => setUpgradeTarget('plus-extended')}
                 activeOpacity={0.7}
               >
                 <Ionicons
@@ -593,7 +624,7 @@ ${nutrientList}
           {!canViewAI ? (
             <TouchableOpacity
               style={[styles.aiLockCard, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.md }]}
-              onPress={() => router.push('/(tabs)/settings/subscription')}
+              onPress={() => setUpgradeTarget('pro-ai')}
               activeOpacity={0.7}
             >
               <Ionicons name="lock-closed" size={20} color={colors.textTertiary} />
@@ -695,6 +726,23 @@ ${nutrientList}
         {/* Bottom spacer */}
         <View style={{ height: spacing.xxxxl }} />
       </ScrollView>
+
+      <UpgradePromptModal
+        visible={upgradeTarget !== null}
+        onClose={() => setUpgradeTarget(null)}
+        featureName={
+          upgradeTarget ? UPGRADE_CONTENT[upgradeTarget].featureName : ''
+        }
+        featureDescription={
+          upgradeTarget ? UPGRADE_CONTENT[upgradeTarget].description : undefined
+        }
+        requiredPlan={
+          upgradeTarget ? UPGRADE_CONTENT[upgradeTarget].requiredPlan : 'plus'
+        }
+        benefits={
+          upgradeTarget ? UPGRADE_CONTENT[upgradeTarget].benefits : undefined
+        }
+      />
     </SafeAreaView>
   );
 }
