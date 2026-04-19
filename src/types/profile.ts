@@ -1,5 +1,7 @@
 import { UUID, ISODateTimeString, ISODateString, GoalType, ActivityLevel, Gender, Equipment } from './common';
 
+export type AdaptiveGoalSensitivity = 'conservative' | 'standard' | 'aggressive';
+
 export interface Profile {
   id: UUID;
   supabaseUid: string | null;
@@ -20,6 +22,11 @@ export interface Profile {
   targetFatG: number | null;
   targetCarbG: number | null;
   onboardingCompleted: boolean;
+  adaptiveGoalEnabled: boolean;
+  adaptiveGoalSensitivity: AdaptiveGoalSensitivity;
+  adaptiveGoalLastShownAt: ISODateTimeString | null;
+  dailyWaterTargetMl: number;
+  onboardingVersion: number;
   createdAt: ISODateTimeString;
   updatedAt: ISODateTimeString;
 }

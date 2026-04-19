@@ -18,6 +18,9 @@ export interface FoodDefinition {
   vitaminAUg?: number | null;
   vitaminB1Mg?: number | null;
   vitaminB2Mg?: number | null;
+  vitaminB6Mg?: number | null;
+  vitaminB12Ug?: number | null;
+  folateUg?: number | null;
   vitaminCMg?: number | null;
   vitaminDUg?: number | null;
   vitaminEMg?: number | null;

@@ -15,10 +15,7 @@ import {
 } from '../src/infra/supabase/auth';
 import { Toast } from '../src/components/ui';
 import { useUIStore } from '../src/stores/uiStore';
-import {
-  initializeNotifications,
-  rescheduleNotifications,
-} from '../src/infra/services/notificationService';
+import { bootstrapNotifications } from '../src/infra/services/notificationService';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -73,10 +70,9 @@ export default function RootLayout() {
           // Continue without DB — app can still show login screen
         }
 
-        // Initialize notifications
+        // Initialize notifications (single-shot across re-mounts)
         try {
-          await initializeNotifications();
-          await rescheduleNotifications();
+          await bootstrapNotifications();
         } catch (notifError) {
         }
 

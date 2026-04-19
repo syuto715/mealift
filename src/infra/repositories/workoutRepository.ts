@@ -103,6 +103,24 @@ export async function searchExercises(query: string): Promise<Exercise[]> {
   return rows.map(rowToExercise);
 }
 
+export async function getExerciseById(exerciseId: string): Promise<Exercise | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<Record<string, unknown>>(
+    'SELECT * FROM exercises WHERE id = ?',
+    [exerciseId]
+  );
+  return row ? rowToExercise(row) : null;
+}
+
+export async function getExerciseDefaultRestSeconds(exerciseId: string): Promise<number | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ default_rest_seconds: number | null }>(
+    'SELECT default_rest_seconds FROM exercises WHERE id = ?',
+    [exerciseId]
+  );
+  return row?.default_rest_seconds ?? null;
+}
+
 export async function createCustomExercise(
   nameJa: string,
   muscleGroup: MuscleGroup,

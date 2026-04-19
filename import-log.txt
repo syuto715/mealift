@@ -1,0 +1,15 @@
+
+> bodyforge@1.0.0 import-mext
+> tsx scripts/import-mext-foods/run.ts
+
+MEXT food composition import
+============================
+
+[1/4] Downloading MEXT workbook...
+  Using cached file: /home/iniad/bodyforge/scripts/import-mext-foods/downloaded/mext-food-composition-2023.xlsx
+
+[2/4] Parsing Excel...
+  Sheet: 表全体 (2551 rows incl. headers)
+
+Import failed:
+Could not locate required columns (食品番号 / 食品名 / エネルギー) — header layout may have changed

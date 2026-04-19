@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getColors } from '../../src/theme/tokens';
 import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
-import { Card, ProgressRing, ProgressBar, Button, Badge, DateNavigator } from '../../src/components/ui';
+import { Card, ProgressRing, ProgressBar, Button, Badge, DateNavigator, Toast } from '../../src/components/ui';
 import { PredictionChart } from '../../src/components/progress/PredictionChart';
 import { getGreeting, getISODate, formatDate } from '../../src/utils/format';
 import { getRecordedNutritionDates } from '../../src/infra/repositories/nutritionRepository';
@@ -26,6 +26,12 @@ import { useNutrition } from '../../src/hooks/useNutrition';
 import { useBodyLogs } from '../../src/hooks/useBodyLogs';
 import { useFeedback } from '../../src/hooks/useFeedback';
 import { usePrediction } from '../../src/hooks/usePrediction';
+import { useGoalPrediction } from '../../src/hooks/useGoalPrediction';
+import { useAdaptiveGoal } from '../../src/hooks/useAdaptiveGoal';
+import { GoalPredictionCard } from '../../src/components/home/GoalPredictionCard';
+import { AdaptiveGoalCard } from '../../src/components/home/AdaptiveGoalCard';
+import { WaterTrackerCard } from '../../src/components/home/WaterTrackerCard';
+import { useWaterTracker } from '../../src/hooks/useWaterTracker';
 import { getDailyCalories, getWeeklyCalories } from '../../src/infra/repositories/nutritionRepository';
 import {
   getRecentSessionCount,
@@ -101,6 +107,16 @@ export default function HomeScreen() {
 
   // Prediction (real data via hook)
   const { prediction, hasEnoughData: hasEnoughPredictionData, daysNeeded: predictionDaysNeeded } = usePrediction();
+
+  // New goal arrival prediction (Feature B)
+  const { prediction: goalPrediction } = useGoalPrediction();
+
+  // Adaptive goal (Feature A)
+  const adaptive = useAdaptiveGoal();
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  // Water tracker (Feature I)
+  const water = useWaterTracker(selectedDate);
 
   // Local state for async loaded data
   const [todayCalories, setTodayCalories] = useState(0);
@@ -744,70 +760,25 @@ export default function HomeScreen() {
           </View>
         </Card>
 
-        {/* Goal Prediction Card */}
-        <Card>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>目標到達予測</Text>
-          {prediction !== null ? (
-            <>
-              <View style={styles.predictionContent}>
-                <Text style={[styles.predictionDays, { color: colors.primary }]}>
-                  あと {prediction.standard.days} 日
-                </Text>
-                <Text style={[styles.predictionSub, { color: colors.textSecondary }]}>
-                  標準ペース（楽観: {prediction.optimistic.days}日 / 慎重:{' '}
-                  {prediction.conservative.days}日）
-                </Text>
-              </View>
-              <Badge
-                label={PACE_LABELS[prediction.paceLabel] ?? '標準'}
-                color={
-                  prediction.paceLabel === 'on_track'
-                    ? colors.success + '20'
-                    : prediction.paceLabel === 'slow' || prediction.paceLabel === 'fast'
-                      ? colors.warning + '20'
-                      : colors.error + '20'
-                }
-                textColor={
-                  prediction.paceLabel === 'on_track'
-                    ? colors.success
-                    : prediction.paceLabel === 'slow' || prediction.paceLabel === 'fast'
-                      ? colors.warning
-                      : colors.error
-                }
-                size="md"
-              />
-              {/* Mini prediction chart */}
-              {avg7d !== null && profile?.targetWeightKg != null && recentWeightsForPrediction.length > 0 && (
-                <View style={styles.miniChartContainer}>
-                  <PredictionChart
-                    currentWeight={avg7d}
-                    targetWeight={profile.targetWeightKg}
-                    prediction={prediction}
-                    recentWeights={recentWeightsForPrediction}
-                    width={miniChartWidth}
-                    height={160}
-                  />
-                </View>
-              )}
-            </>
-          ) : (
-            <View style={styles.predictionContent}>
-              {!hasEnoughPredictionData ? (
-                <Text style={[styles.predictionSub, { color: colors.textSecondary }]}>
-                  あと{predictionDaysNeeded}日分のデータが必要です
-                </Text>
-              ) : profile?.targetWeightKg == null ? (
-                <Text style={[styles.predictionSub, { color: colors.textSecondary }]}>
-                  目標体重を設定してください
-                </Text>
-              ) : (
-                <Text style={[styles.predictionSub, { color: colors.textSecondary }]}>
-                  データ不足のため予測できません
-                </Text>
-              )}
-            </View>
-          )}
-        </Card>
+        {/* Goal Prediction Card (Feature B) */}
+        <GoalPredictionCard prediction={goalPrediction} />
+
+        {/* Adaptive Goal Card (Feature A) */}
+        {adaptive.suggestion && (
+          <AdaptiveGoalCard
+            suggestion={adaptive.suggestion}
+            bodyLogs={bodyLogs}
+            onApprove={async () => {
+              await adaptive.approve();
+              updateProfile({ targetCalories: adaptive.suggestion?.suggestedCalorieTarget });
+              setToast({ message: '目標を更新しました', type: 'success' });
+            }}
+            onDismiss={async () => {
+              await adaptive.dismiss();
+              setToast({ message: '次回も提案を表示します', type: 'info' });
+            }}
+          />
+        )}
 
         {/* Weekly Report */}
         {weeklyReport && canUse('weeklyReport') && (
@@ -839,8 +810,23 @@ export default function HomeScreen() {
           </View>
         </Card>
 
+        {/* Water tracker (Feature I) */}
+        <WaterTrackerCard
+          totalMl={water.totalMl}
+          targetMl={water.targetMl}
+          onAdd={water.addWater}
+          onPress={() => router.push('/(tabs)/progress')}
+        />
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      <Toast
+        message={toast?.message ?? ''}
+        type={toast?.type ?? 'info'}
+        visible={toast !== null}
+        onHide={() => setToast(null)}
+      />
     </SafeAreaView>
   );
 }

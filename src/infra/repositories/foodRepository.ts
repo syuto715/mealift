@@ -23,6 +23,9 @@ function rowToFood(row: Record<string, unknown>): Food {
     vitaminAUg: (row.vitamin_a_ug as number) ?? null,
     vitaminB1Mg: (row.vitamin_b1_mg as number) ?? null,
     vitaminB2Mg: (row.vitamin_b2_mg as number) ?? null,
+    vitaminB6Mg: (row.vitamin_b6_mg as number) ?? null,
+    vitaminB12Ug: (row.vitamin_b12_ug as number) ?? null,
+    folateUg: (row.folate_ug as number) ?? null,
     vitaminCMg: (row.vitamin_c_mg as number) ?? null,
     vitaminDUg: (row.vitamin_d_ug as number) ?? null,
     vitaminEMg: (row.vitamin_e_mg as number) ?? null,
@@ -48,14 +51,58 @@ export async function searchFoods(
 ): Promise<Food[]> {
   try {
     const db = await getDatabase();
-    const pattern = `%${query}%`;
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+    const exact = trimmed;
+    const prefix = `${trimmed}%`;
+    const contains = `%${trimmed}%`;
+    // Rank: exact match (0), alias exact (1), prefix (2), alias prefix (3), contains (4), alias contains (5).
+    // Within the same rank, rows flagged is_common=1 come first (so 白米 beats
+    // 10+ variant preparations). After that, sort by actual usage count
+    // (meal_log_items appearances), then by historical use_count, then by name.
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      `SELECT * FROM foods WHERE name_ja LIKE ? OR name_en LIKE ? ORDER BY use_count DESC, name_ja LIMIT ?`,
-      [pattern, pattern, limit]
+      `SELECT f.*, (
+         SELECT COUNT(*) FROM meal_log_items mli WHERE mli.food_id = f.id
+       ) AS usage_count,
+       MIN(
+         CASE WHEN f.name_ja = ? THEN 0 ELSE NULL END,
+         CASE WHEN fa.alias_name = ? THEN 1 ELSE NULL END,
+         CASE WHEN f.name_ja LIKE ? THEN 2 ELSE NULL END,
+         CASE WHEN fa.alias_name LIKE ? THEN 3 ELSE NULL END,
+         CASE WHEN f.name_ja LIKE ? THEN 4 ELSE NULL END,
+         CASE WHEN fa.alias_name LIKE ? THEN 5 ELSE NULL END
+       ) AS match_rank
+       FROM foods f
+       LEFT JOIN food_aliases fa ON fa.food_id = f.id
+       WHERE f.name_ja = ?
+          OR fa.alias_name = ?
+          OR f.name_ja LIKE ?
+          OR fa.alias_name LIKE ?
+          OR f.name_ja LIKE ?
+          OR fa.alias_name LIKE ?
+       GROUP BY f.id
+       ORDER BY match_rank ASC, f.is_common DESC, usage_count DESC, f.use_count DESC, f.name_ja
+       LIMIT ?`,
+      [
+        exact, exact, prefix, prefix, contains, contains,
+        exact, exact, prefix, prefix, contains, contains,
+        limit,
+      ]
     );
     return rows.map(rowToFood);
-  } catch (error) {
-    return [];
+  } catch {
+    // Fallback to simple search if alias table doesn't exist yet.
+    try {
+      const db = await getDatabase();
+      const pattern = `%${query}%`;
+      const rows = await db.getAllAsync<Record<string, unknown>>(
+        `SELECT * FROM foods WHERE name_ja LIKE ? OR name_en LIKE ? ORDER BY use_count DESC, name_ja LIMIT ?`,
+        [pattern, pattern, limit]
+      );
+      return rows.map(rowToFood);
+    } catch {
+      return [];
+    }
   }
 }
 

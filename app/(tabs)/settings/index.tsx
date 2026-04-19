@@ -189,6 +189,12 @@ export default function SettingsScreen() {
             onPress={() => router.push('/(tabs)/settings/goals')}
             colors={colors}
           />
+          <SettingsRow
+            icon="trending-up-outline"
+            label="適応型目標調整"
+            onPress={() => router.push('/(tabs)/settings/adaptive-goal')}
+            colors={colors}
+          />
         </Card>
 
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>通知</Text>
@@ -207,6 +213,18 @@ export default function SettingsScreen() {
             icon="barbell-outline"
             label="カスタム種目一覧"
             onPress={() => router.push('/(tabs)/settings/custom-exercises')}
+            colors={colors}
+          />
+          <SettingsRow
+            icon="timer-outline"
+            label="休憩タイマー"
+            onPress={() => router.push('/(tabs)/settings/rest-timer')}
+            colors={colors}
+          />
+          <SettingsRow
+            icon="trophy-outline"
+            label="自己ベスト履歴"
+            onPress={() => router.push('/(tabs)/progress/pr-history')}
             colors={colors}
           />
         </Card>
@@ -342,6 +360,45 @@ export default function SettingsScreen() {
               <Ionicons name="mail-outline" size={16} color={colors.primary} />
             </TouchableOpacity>
           </View>
+          <View
+            style={[
+              styles.aboutAttribution,
+              { borderTopColor: colors.border },
+            ]}
+          >
+            <Text
+              style={[
+                styles.aboutAttributionTitle,
+                { color: colors.textSecondary },
+              ]}
+            >
+              データ出典
+            </Text>
+            <Text
+              style={[
+                styles.aboutAttributionText,
+                { color: colors.textTertiary },
+              ]}
+            >
+              食品成分データは、文部科学省「日本食品標準成分表（八訂）増補2023年」に基づいています。
+            </Text>
+            <TouchableOpacity
+              onPress={() =>
+                Linking.openURL(
+                  'https://www.mext.go.jp/a_menu/syokuhinseibun/mext_01110.html',
+                )
+              }
+            >
+              <Text
+                style={[
+                  styles.aboutAttributionLink,
+                  { color: colors.primary },
+                ]}
+              >
+                文部科学省 食品成分データベース
+              </Text>
+            </TouchableOpacity>
+          </View>
           <Text style={[styles.aboutCopyright, { color: colors.textTertiary }]}>
             {LEGAL.copyright}
           </Text>
@@ -396,6 +453,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   aboutLinkText: { ...typography.bodyMedium },
+  aboutAttribution: {
+    width: '100%',
+    marginTop: spacing.sm,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: spacing.xs,
+  },
+  aboutAttributionTitle: {
+    ...typography.labelSmall,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  aboutAttributionText: {
+    ...typography.bodySmall,
+    lineHeight: 18,
+  },
+  aboutAttributionLink: {
+    ...typography.bodySmall,
+    textDecorationLine: 'underline',
+    marginTop: spacing.xs,
+  },
   aboutCopyright: { ...typography.bodySmall, marginTop: spacing.sm },
   aiDescription: { ...typography.bodyMedium },
 });

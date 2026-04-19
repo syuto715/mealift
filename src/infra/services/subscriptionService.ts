@@ -5,6 +5,8 @@ export interface FeatureFlags {
   barcodeScanner: boolean;
   photoMealLog: boolean;
   goalPrediction: boolean;
+  goalPredictionDetailed: boolean;
+  adaptiveGoal: boolean;
   adaptiveCalories: boolean;
   weeklyReport: boolean;
   progressPhotos: boolean;
@@ -19,6 +21,9 @@ export interface FeatureFlags {
   extendedNutrientBalance: boolean;
   mealNutrientBalance: boolean;
   aiNutrientAdvice: boolean;
+  prAllTypes: boolean;
+  restTimerPerExercise: boolean;
+  shareImages: boolean;
 }
 
 const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
@@ -26,7 +31,9 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     maxRoutines: 3,
     barcodeScanner: false,
     photoMealLog: false,
-    goalPrediction: false,
+    goalPrediction: true,
+    goalPredictionDetailed: false,
+    adaptiveGoal: false,
     adaptiveCalories: false,
     weeklyReport: false,
     progressPhotos: false,
@@ -41,12 +48,17 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     extendedNutrientBalance: false,
     mealNutrientBalance: false,
     aiNutrientAdvice: false,
+    prAllTypes: false,
+    restTimerPerExercise: false,
+    shareImages: false,
   },
   plus: {
     maxRoutines: Infinity,
     barcodeScanner: true,
     photoMealLog: false,
     goalPrediction: true,
+    goalPredictionDetailed: true,
+    adaptiveGoal: true,
     adaptiveCalories: false,
     weeklyReport: true,
     progressPhotos: true,
@@ -61,12 +73,17 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     extendedNutrientBalance: true,
     mealNutrientBalance: true,
     aiNutrientAdvice: false,
+    prAllTypes: true,
+    restTimerPerExercise: true,
+    shareImages: true,
   },
   pro: {
     maxRoutines: Infinity,
     barcodeScanner: true,
     photoMealLog: true,
     goalPrediction: true,
+    goalPredictionDetailed: true,
+    adaptiveGoal: true,
     adaptiveCalories: true,
     weeklyReport: true,
     progressPhotos: true,
@@ -81,6 +98,9 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     extendedNutrientBalance: true,
     mealNutrientBalance: true,
     aiNutrientAdvice: true,
+    prAllTypes: true,
+    restTimerPerExercise: true,
+    shareImages: true,
   },
 };
 

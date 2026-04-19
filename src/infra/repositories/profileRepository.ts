@@ -1,5 +1,5 @@
 import { getDatabase } from '../database/connection';
-import { Profile, ProfileInput } from '../../types/profile';
+import { Profile, ProfileInput, AdaptiveGoalSensitivity } from '../../types/profile';
 import { generateId } from '../../utils/id';
 
 function rowToProfile(row: Record<string, unknown>): Profile {
@@ -23,6 +23,11 @@ function rowToProfile(row: Record<string, unknown>): Profile {
     targetFatG: row.target_fat_g as number | null,
     targetCarbG: row.target_carb_g as number | null,
     onboardingCompleted: Boolean(row.onboarding_completed),
+    adaptiveGoalEnabled: row.adaptive_goal_enabled == null ? true : Boolean(row.adaptive_goal_enabled),
+    adaptiveGoalSensitivity: ((row.adaptive_goal_sensitivity as string) ?? 'standard') as AdaptiveGoalSensitivity,
+    adaptiveGoalLastShownAt: (row.adaptive_goal_last_shown_at as string | null) ?? null,
+    dailyWaterTargetMl: (row.daily_water_target_ml as number | null) ?? 2500,
+    onboardingVersion: (row.onboarding_version as number | null) ?? 1,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -72,13 +77,19 @@ export async function updateProfile(id: string, updates: Partial<Profile>): Prom
     targetFatG: 'target_fat_g',
     targetCarbG: 'target_carb_g',
     onboardingCompleted: 'onboarding_completed',
+    adaptiveGoalEnabled: 'adaptive_goal_enabled',
+    adaptiveGoalSensitivity: 'adaptive_goal_sensitivity',
+    adaptiveGoalLastShownAt: 'adaptive_goal_last_shown_at',
+    dailyWaterTargetMl: 'daily_water_target_ml',
+    onboardingVersion: 'onboarding_version',
   };
 
+  const BOOL_KEYS = new Set(['onboardingCompleted', 'adaptiveGoalEnabled']);
   for (const [key, column] of Object.entries(fieldMap)) {
     if (key in updates) {
       fields.push(`${column} = ?`);
       const val = (updates as Record<string, unknown>)[key];
-      values.push(key === 'onboardingCompleted' ? (val ? 1 : 0) : (val as string | number | null));
+      values.push(BOOL_KEYS.has(key) ? (val ? 1 : 0) : (val as string | number | null));
     }
   }
 

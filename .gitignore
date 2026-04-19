@@ -40,3 +40,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# MEXT food composition table — raw download cache (not tracked; re-run importer to fetch)
+scripts/import-mext-foods/downloaded/

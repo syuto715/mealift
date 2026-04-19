@@ -27,7 +27,11 @@ import {
 } from '../../../src/components/ui';
 import { useNutrition } from '../../../src/hooks/useNutrition';
 import { useProfileStore } from '../../../src/stores/profileStore';
-import { Food } from '../../../src/types/food';
+import {
+  Food,
+  ExtendedNutrients,
+  EXTENDED_NUTRIENT_KEYS,
+} from '../../../src/types/food';
 import { MealType } from '../../../src/types/common';
 import { MealTemplate } from '../../../src/types/nutrition';
 import { Dish, DishWithIngredients } from '../../../src/types/dish';
@@ -62,6 +66,7 @@ import {
 } from '../../../src/infra/services/aiNutritionService';
 import { canUse } from '../../../src/infra/services/subscriptionService';
 import { DishDetailModal } from '../../../src/components/nutrition/DishDetailModal';
+import { FoodDetailModal } from '../../../src/components/nutrition/FoodDetailModal';
 import { formatServingHint } from '../../../src/constants/servingUnits';
 
 const TAB_SEGMENTS = [
@@ -102,6 +107,10 @@ export default function AddFoodScreen() {
   const [dishResults, setDishResults] = useState<Dish[]>([]);
   const [selectedDish, setSelectedDish] = useState<DishWithIngredients | null>(null);
   const [dishModalVisible, setDishModalVisible] = useState(false);
+
+  // Food detail modal state
+  const [foodDetailVisible, setFoodDetailVisible] = useState(false);
+  const [foodDetailTarget, setFoodDetailTarget] = useState<Food | null>(null);
 
   // Template state
   const [templates, setTemplates] = useState<MealTemplate[]>([]);
@@ -200,6 +209,17 @@ export default function AddFoodScreen() {
     setServingModalVisible(true);
   };
 
+  const openFoodDetailModal = (food: Food) => {
+    setFoodDetailTarget(food);
+    setFoodDetailVisible(true);
+  };
+
+  const handleDetailAdd = (food: Food) => {
+    setFoodDetailVisible(false);
+    setFoodDetailTarget(null);
+    openQuantityModal(food);
+  };
+
   const handleServingConfirm = async (result: ServingQuantityResult) => {
     if (!servingModalItem || servingModalItem.type !== 'food') return;
     const food = servingModalItem.food;
@@ -212,6 +232,7 @@ export default function AddFoodScreen() {
       proteinG: result.proteinG,
       fatG: result.fatG,
       carbG: result.carbG,
+      ...result.extended,
     });
     setServingModalVisible(false);
     setServingModalItem(null);
@@ -236,6 +257,16 @@ export default function AddFoodScreen() {
       ? dish.servingDescription
       : `${multiplier}人前`;
 
+    // Scale extended nutrients by serving multiplier. Dish already stores the
+    // per-1-serving values as part of ExtendedNutrients (v9 schema).
+    // Use a narrowed Record type (value = number, never null) so the spread
+    // below lines up with MealLogItemInput's `number | undefined` shape.
+    const extended: Partial<Record<keyof ExtendedNutrients, number>> = {};
+    for (const key of EXTENDED_NUTRIENT_KEYS) {
+      const v = dish[key];
+      if (v != null) extended[key] = Math.round(v * multiplier * 100) / 100;
+    }
+
     await addFood(mealType, {
       foodName: `${dish.nameJa}（${label}）`,
       servingAmount: multiplier,
@@ -244,6 +275,7 @@ export default function AddFoodScreen() {
       proteinG: p,
       fatG: f,
       carbG: c,
+      ...extended,
     });
 
     await incrementDishUseCount(dish.id);
@@ -440,16 +472,12 @@ export default function AddFoodScreen() {
 
   const handleApplyTemplate = async (template: MealTemplate) => {
     for (const item of template.items) {
+      // Forward the whole item (MealLogItemInput already carries extended
+      // nutrients). Spread over PFC so optional fields like fiber, vitamins,
+      // minerals that were captured when the template was saved propagate.
       await addFood(mealType, {
+        ...item,
         foodId: item.foodId ?? undefined,
-        foodName: item.foodName,
-        servingAmount: item.servingAmount,
-        servingUnit: item.servingUnit,
-        calories: item.calories,
-        proteinG: item.proteinG,
-        fatG: item.fatG,
-        carbG: item.carbG,
-        note: item.note,
       });
     }
     await incrementTemplateUseCount(template.id);
@@ -583,6 +611,16 @@ export default function AddFoodScreen() {
         {food.isFavorite && (
           <Ionicons name="heart" size={16} color={colors.calorie} style={{ marginRight: spacing.xs }} />
         )}
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation();
+            openFoodDetailModal(food);
+          }}
+          hitSlop={8}
+          style={{ marginRight: spacing.sm }}
+        >
+          <Ionicons name="information-circle-outline" size={22} color={colors.textSecondary} />
+        </TouchableOpacity>
         <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
       </TouchableOpacity>
     );
@@ -608,6 +646,16 @@ export default function AddFoodScreen() {
           P {item.proteinG}g F {item.fatG}g C {item.carbG}g
         </Text>
       </View>
+      <TouchableOpacity
+        onPress={(e) => {
+          e.stopPropagation();
+          openFoodDetailModal(item);
+        }}
+        hitSlop={8}
+        style={{ marginRight: spacing.sm }}
+      >
+        <Ionicons name="information-circle-outline" size={22} color={colors.textSecondary} />
+      </TouchableOpacity>
       <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
     </TouchableOpacity>
   );
@@ -1058,6 +1106,16 @@ export default function AddFoodScreen() {
         onAddDish={handleAddDish}
         onAddAiEstimate={handleAddAiEstimate}
         onSaveAndAddAiEstimate={handleSaveAndAddAiEstimate}
+      />
+      <FoodDetailModal
+        visible={foodDetailVisible}
+        onClose={() => {
+          setFoodDetailVisible(false);
+          setFoodDetailTarget(null);
+        }}
+        food={foodDetailTarget}
+        gender={profile?.gender ?? 'male'}
+        onAdd={handleDetailAdd}
       />
     </SafeAreaView>
   );

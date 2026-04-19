@@ -31,6 +31,14 @@ import * as workoutRepo from '../../../src/infra/repositories/workoutRepository'
 import { createNote } from '../../../src/infra/repositories/noteRepository';
 import { calculateWorkoutCalories } from '../../../src/domain/calories';
 import { estimateOneRepMax } from '../../../src/domain/oneRepMax';
+import { checkAndRecordPRs, checkSessionVolumePR } from '../../../src/domain/personalRecord';
+import { restTimerService, loadRestTimerSettings } from '../../../src/infra/services/restTimerService';
+import { RestTimerOverlay } from '../../../src/components/training/RestTimerOverlay';
+import { PRCelebrationToast } from '../../../src/components/training/PRCelebrationToast';
+import { PlateCalculatorModal } from '../../../src/components/training/PlateCalculatorModal';
+import { PRInfo } from '../../../src/types/personalRecord';
+import { RestTimerSettings, DEFAULT_REST_TIMER_SETTINGS } from '../../../src/types/restTimer';
+import { canUse } from '../../../src/infra/services/subscriptionService';
 
 export default function SessionScreen() {
   const scheme = useColorScheme() ?? 'light';
@@ -53,6 +61,20 @@ export default function SessionScreen() {
 
   const restTimer = useRestTimer();
   const prevTimerRunning = useRef(restTimer.isRunning);
+
+  // Rest timer overlay state (Feature D)
+  const [restTimerSettings, setRestTimerSettings] = useState<RestTimerSettings>(DEFAULT_REST_TIMER_SETTINGS);
+  const [restOverlayVisible, setRestOverlayVisible] = useState(false);
+
+  useEffect(() => {
+    loadRestTimerSettings().then(setRestTimerSettings).catch(() => {});
+  }, []);
+
+  // PR celebration state (Feature E)
+  const [prToasts, setPrToasts] = useState<PRInfo[]>([]);
+
+  // Plate calculator state (Feature G)
+  const [plateCalcFor, setPlateCalcFor] = useState<{ exerciseId: string; setId: string; initial: number } | null>(null);
 
   // Elapsed time
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -213,7 +235,42 @@ export default function SessionScreen() {
     // Haptic feedback on set completion
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Start rest timer
+    // Check for PRs (Feature E)
+    if (profile && set.weightKg != null && set.reps != null && set.weightKg > 0 && set.reps > 0) {
+      try {
+        const prs = await checkAndRecordPRs(
+          profile.id,
+          exerciseId,
+          set.weightKg,
+          set.reps,
+          params.sessionId
+        );
+        const filtered = canUse('prAllTypes')
+          ? prs
+          : prs.filter((p) => p.recordType === 'estimated_1rm');
+        if (filtered.length > 0) {
+          setPrToasts(filtered);
+        }
+      } catch {
+        // PR tracking failure should not block the set save
+      }
+    }
+
+    // Rest timer (Feature D)
+    if (restTimerSettings.enabled && restTimerSettings.autoStart) {
+      let secs = restTimerSettings.defaultSeconds;
+      if (restTimerSettings.perExerciseOverride && canUse('restTimerPerExercise')) {
+        const overrideSecs = await workoutRepo.getExerciseDefaultRestSeconds(exerciseId);
+        if (overrideSecs != null && overrideSecs > 0) {
+          secs = overrideSecs;
+        }
+      }
+      const ex = exercises.find((e) => e.exerciseId === exerciseId);
+      await restTimerService.start(secs, ex?.exerciseName);
+      setRestOverlayVisible(true);
+    }
+
+    // Legacy timer store
     restTimer.start();
   };
 
@@ -319,6 +376,17 @@ export default function SessionScreen() {
         sessionNote || undefined,
         estimatedCal,
       );
+
+      // Check session volume PRs (Feature E)
+      if (profile) {
+        try {
+          const volumePRs = await checkSessionVolumePR(profile.id, params.sessionId);
+          const filtered = canUse('prAllTypes') ? volumePRs : [];
+          if (filtered.length > 0) setPrToasts(filtered);
+        } catch {
+          // non-fatal
+        }
+      }
 
       // Calculate summary
       const totalVolume = exercises.reduce((total, ex) => {
@@ -1054,6 +1122,34 @@ export default function SessionScreen() {
           </View>
         )}
       </Modal>
+
+      {/* Rest Timer Overlay (Feature D) */}
+      <RestTimerOverlay
+        visible={restOverlayVisible}
+        onClose={() => setRestOverlayVisible(false)}
+        settings={{
+          soundEnabled: restTimerSettings.soundEnabled,
+          vibrationEnabled: restTimerSettings.vibrationEnabled,
+        }}
+      />
+
+      {/* PR Celebration Toast (Feature E) */}
+      {prToasts.length > 0 && (
+        <PRCelebrationToast prs={prToasts} onHide={() => setPrToasts([])} />
+      )}
+
+      {/* Plate Calculator Modal (Feature G) */}
+      {plateCalcFor && (
+        <PlateCalculatorModal
+          visible={plateCalcFor !== null}
+          initialWeight={plateCalcFor.initial}
+          onClose={() => setPlateCalcFor(null)}
+          onApply={(weight) => {
+            updateSet(plateCalcFor.exerciseId, plateCalcFor.setId, { weightKg: weight });
+            setPlateCalcFor(null);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }

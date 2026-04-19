@@ -15,11 +15,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
-import { Card, ProgressBar, Modal, Button, DateNavigator } from '../../../src/components/ui';
+import { Card, ProgressBar, Modal, Button, DateNavigator, Toast } from '../../../src/components/ui';
 import {
   ServingQuantityModal,
   ServingQuantityResult,
 } from '../../../src/components/nutrition/ServingQuantityModal';
+import { CopyMealModal } from '../../../src/components/nutrition/CopyMealModal';
 import { useNutrition } from '../../../src/hooks/useNutrition';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { MealType } from '../../../src/types/common';
@@ -86,6 +87,7 @@ export default function NutritionScreen() {
     getMealItems,
     updateFood,
     removeFood,
+    refreshSummary,
   } = useNutrition(selectedDate);
 
   // Extended nutrients & collapsible
@@ -101,6 +103,10 @@ export default function NutritionScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<MealLogItem | null>(null);
   const [editingFood, setEditingFood] = useState<Food | null>(null);
+
+  // Copy meal modal (Feature C)
+  const [copyMealType, setCopyMealType] = useState<MealType | null>(null);
+  const [copyToast, setCopyToast] = useState<string | null>(null);
 
   // Load recorded dates for the month around selectedDate
   useEffect(() => {
@@ -181,6 +187,10 @@ export default function NutritionScreen() {
     const meal = getMealItems(templateMealType);
     if (!meal || meal.items.length === 0) return;
 
+    // Preserve every nutrient the source MealLogItem stored — templates are
+    // plain MealLogItemInput[] (JSON-encoded in meal_templates.items), so
+    // copying the full row keeps fiber / vitamins / minerals alive through
+    // the save → load → apply round trip.
     const items = meal.items.map((item) => ({
       foodId: item.foodId,
       foodName: item.foodName,
@@ -190,6 +200,26 @@ export default function NutritionScreen() {
       proteinG: item.proteinG,
       fatG: item.fatG,
       carbG: item.carbG,
+      fiberG: item.fiberG,
+      sodiumMg: item.sodiumMg,
+      calciumMg: item.calciumMg,
+      ironMg: item.ironMg,
+      vitaminAUg: item.vitaminAUg,
+      vitaminB1Mg: item.vitaminB1Mg,
+      vitaminB2Mg: item.vitaminB2Mg,
+      vitaminB6Mg: item.vitaminB6Mg,
+      vitaminB12Ug: item.vitaminB12Ug,
+      folateUg: item.folateUg,
+      vitaminCMg: item.vitaminCMg,
+      vitaminDUg: item.vitaminDUg,
+      vitaminEMg: item.vitaminEMg,
+      potassiumMg: item.potassiumMg,
+      magnesiumMg: item.magnesiumMg,
+      zincMg: item.zincMg,
+      cholesterolMg: item.cholesterolMg,
+      saturatedFatG: item.saturatedFatG,
+      sugarG: item.sugarG,
+      saltG: item.saltG,
       note: item.note,
     }));
 
@@ -440,6 +470,14 @@ export default function NutritionScreen() {
                   </Text>
                 </View>
                 <View style={styles.mealHeaderRight}>
+                  <TouchableOpacity
+                    onPress={() => setCopyMealType(mealType)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={styles.templateButton}
+                    accessibilityLabel="過去の食事をコピー"
+                  >
+                    <Ionicons name="copy-outline" size={16} color={colors.primary} />
+                  </TouchableOpacity>
                   {items.length > 0 && (
                     <TouchableOpacity
                       onPress={() => handleSaveAsTemplate(mealType)}
@@ -623,6 +661,27 @@ export default function NutritionScreen() {
         editMode
         initialAmount={editingItem?.servingAmount}
         initialUnit={editingItem?.servingUnit}
+      />
+
+      {copyMealType && profile?.id && (
+        <CopyMealModal
+          visible={copyMealType !== null}
+          profileId={profile.id}
+          toDate={selectedDate}
+          mealType={copyMealType}
+          onClose={() => setCopyMealType(null)}
+          onCopied={(count) => {
+            setCopyToast(`${count}件の食品をコピーしました`);
+            refreshSummary();
+          }}
+        />
+      )}
+
+      <Toast
+        message={copyToast ?? ''}
+        type="success"
+        visible={copyToast !== null}
+        onHide={() => setCopyToast(null)}
       />
     </SafeAreaView>
   );

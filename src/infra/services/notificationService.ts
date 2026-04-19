@@ -85,6 +85,33 @@ function toExpoWeekday(day: number): number {
 }
 
 // ---------------------------------------------------------------------------
+// Known notification IDs
+// ---------------------------------------------------------------------------
+//
+// All reminders this service owns are scheduled with fixed identifiers so we
+// can cancel them precisely instead of blasting every schedule on the device
+// (which used to wipe widgetService.bf-daily-summary and rest-timer pings).
+
+const ID_WEIGHT = 'bf-weight';
+const ID_MEAL_BREAKFAST = 'bf-meal-breakfast';
+const ID_MEAL_LUNCH = 'bf-meal-lunch';
+const ID_MEAL_DINNER = 'bf-meal-dinner';
+const ID_WEEKLY_REPORT = 'bf-weekly-report';
+const ID_TRAINING_PREFIX = 'bf-training-';
+
+/** Every static ID owned by scheduleAllNotifications. Rebuilt on each schedule. */
+const STATIC_IDS = [
+  ID_WEIGHT,
+  ID_MEAL_BREAKFAST,
+  ID_MEAL_LUNCH,
+  ID_MEAL_DINNER,
+  ID_WEEKLY_REPORT,
+] as const;
+
+/** Training IDs are weekday-indexed, so we cancel all 7 slots every time. */
+const TRAINING_IDS = [0, 1, 2, 3, 4, 5, 6].map((d) => `${ID_TRAINING_PREFIX}${d}`);
+
+// ---------------------------------------------------------------------------
 // Permissions
 // ---------------------------------------------------------------------------
 
@@ -97,10 +124,15 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
-// Initialize
+// Initialize (idempotent across re-mounts / Fast Refresh)
 // ---------------------------------------------------------------------------
 
+let initialized = false;
+
 export async function initializeNotifications(): Promise<void> {
+  if (initialized) return;
+  initialized = true;
+
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -112,12 +144,16 @@ export async function initializeNotifications(): Promise<void> {
   });
 
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('reminders', {
-      name: 'リマインダー',
-      importance: Notifications.AndroidImportance.HIGH,
-      sound: 'default',
-      vibrationPattern: [0, 250, 250, 250],
-    });
+    try {
+      await Notifications.setNotificationChannelAsync('reminders', {
+        name: 'リマインダー',
+        importance: Notifications.AndroidImportance.HIGH,
+        sound: 'default',
+        vibrationPattern: [0, 250, 250, 250],
+      });
+    } catch {
+      // Non-fatal — channel creation is idempotent at the OS level.
+    }
   }
 }
 
@@ -164,14 +200,31 @@ export async function loadNotificationSettings(): Promise<NotificationSettings> 
   }
 }
 
-export async function saveNotificationSettings(
+/**
+ * Persist settings only. Does NOT reschedule notifications — the caller is
+ * responsible for calling `scheduleAllNotifications` when the user has
+ * finished editing (typically on screen blur). This separation prevents a
+ * rapid sequence of toggles from firing cancel+schedule on every change.
+ */
+export async function persistNotificationSettings(
   settings: NotificationSettings,
 ): Promise<void> {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    await scheduleAllNotifications(settings);
-  } catch (error) {
+  } catch {
+    // Non-fatal
   }
+}
+
+/**
+ * Persist settings AND immediately reschedule. Prefer `persistNotificationSettings`
+ * for per-keystroke writes and schedule once at blur.
+ */
+export async function saveNotificationSettings(
+  settings: NotificationSettings,
+): Promise<void> {
+  await persistNotificationSettings(settings);
+  await scheduleAllNotifications(settings);
 }
 
 // ---------------------------------------------------------------------------
@@ -226,71 +279,129 @@ async function scheduleWeekly(
   });
 }
 
+/**
+ * Cancel only the IDs this service owns. Unlike
+ * `cancelAllScheduledNotificationsAsync`, this does not wipe unrelated
+ * schedules (widget daily summary, rest-timer pings, etc.), so calling it on
+ * every settings change stays side-effect free.
+ */
+async function cancelOwnedNotifications(): Promise<void> {
+  const all = [...STATIC_IDS, ...TRAINING_IDS];
+  await Promise.all(
+    all.map((id) =>
+      Notifications.cancelScheduledNotificationAsync(id).catch(() => {
+        // The ID might not exist yet (first run, or toggle was off) — expo
+        // throws in that case. Swallow since the outcome we want is "not
+        // scheduled afterwards" and that's already true.
+      }),
+    ),
+  );
+}
+
+// Serialize concurrent scheduleAllNotifications() calls. Before this guard, a
+// rapid sequence of toggles in the settings screen could interleave two
+// cancel+schedule passes and leave duplicates on iOS (the OS side-effects
+// between the two awaits aren't atomic across expo's JSI bridge).
+let schedulingInFlight: Promise<void> | null = null;
+let lastScheduleStartedAt = 0;
+const SCHEDULE_DEBOUNCE_MS = 3000;
+
 export async function scheduleAllNotifications(
   settings: NotificationSettings,
 ): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  // Debounce: drop repeated calls within 3s. The settings screen used to
+  // invoke this on every toggle/time-picker confirm; a user flipping three
+  // switches fast would trigger three independent cancel+schedule passes.
+  const now = Date.now();
+  if (now - lastScheduleStartedAt < SCHEDULE_DEBOUNCE_MS) {
+    return;
+  }
+  lastScheduleStartedAt = now;
 
-  const hasPermission = await requestNotificationPermissions();
-  if (!hasPermission) return;
-
-  try {
-    // Weight reminder (daily)
-    if (settings.weightReminder.enabled) {
-      await scheduleDaily(
-        'bf-weight',
-        '体重を記録しましょう',
-        '今日の体重を記録して、目標への進捗を確認しましょう',
-        settings.weightReminder.time,
-      );
+  // Chain behind any in-flight run so we always observe its final state
+  // before we start our own cancel+schedule sequence.
+  while (schedulingInFlight) {
+    try {
+      await schedulingInFlight;
+    } catch {
+      // previous run threw — we still want to try fresh
     }
+  }
 
-    // Meal reminders (3x daily)
-    if (settings.mealReminder.enabled) {
-      await scheduleDaily(
-        'bf-meal-breakfast',
-        '朝食を記録しましょう',
-        '朝食の内容を記録して、栄養バランスを管理しましょう',
-        settings.mealReminder.breakfastTime,
-      );
-      await scheduleDaily(
-        'bf-meal-lunch',
-        '昼食を記録しましょう',
-        '昼食の内容を記録しましょう',
-        settings.mealReminder.lunchTime,
-      );
-      await scheduleDaily(
-        'bf-meal-dinner',
-        '夕食を記録しましょう',
-        '夕食の内容を記録して、1日の栄養摂取量を確認しましょう',
-        settings.mealReminder.dinnerTime,
-      );
-    }
+  const run = (async () => {
+    await cancelOwnedNotifications();
 
-    // Training reminders (weekly per selected day)
-    if (settings.trainingReminder.enabled) {
-      for (const day of settings.trainingReminder.days) {
-        await scheduleWeekly(
-          `bf-training-${day}`,
-          'トレーニングの日です',
-          '今日はトレーニング日です。頑張りましょう',
-          toExpoWeekday(day),
-          settings.trainingReminder.time,
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) return;
+
+    try {
+      // Weight reminder (daily)
+      if (settings.weightReminder.enabled) {
+        await scheduleDaily(
+          ID_WEIGHT,
+          '体重を記録しましょう',
+          '今日の体重を記録して、目標への進捗を確認しましょう',
+          settings.weightReminder.time,
         );
       }
-    }
 
-    // Weekly report
-    if (settings.weeklyReport.enabled) {
-      await scheduleWeekly(
-        'bf-weekly-report',
-        '週次レポート',
-        '今週の記録をまとめました。確認してみましょう',
-        toExpoWeekday(settings.weeklyReport.dayOfWeek),
-        settings.weeklyReport.time,
-      );
+      // Meal reminders (3x daily)
+      if (settings.mealReminder.enabled) {
+        await scheduleDaily(
+          ID_MEAL_BREAKFAST,
+          '朝食を記録しましょう',
+          '朝食の内容を記録して、栄養バランスを管理しましょう',
+          settings.mealReminder.breakfastTime,
+        );
+        await scheduleDaily(
+          ID_MEAL_LUNCH,
+          '昼食を記録しましょう',
+          '昼食の内容を記録しましょう',
+          settings.mealReminder.lunchTime,
+        );
+        await scheduleDaily(
+          ID_MEAL_DINNER,
+          '夕食を記録しましょう',
+          '夕食の内容を記録して、1日の栄養摂取量を確認しましょう',
+          settings.mealReminder.dinnerTime,
+        );
+      }
+
+      // Training reminders (weekly per selected day)
+      if (settings.trainingReminder.enabled) {
+        for (const day of settings.trainingReminder.days) {
+          await scheduleWeekly(
+            `${ID_TRAINING_PREFIX}${day}`,
+            'トレーニングの日です',
+            '今日はトレーニング日です。頑張りましょう',
+            toExpoWeekday(day),
+            settings.trainingReminder.time,
+          );
+        }
+      }
+
+      // Weekly report
+      if (settings.weeklyReport.enabled) {
+        await scheduleWeekly(
+          ID_WEEKLY_REPORT,
+          '週次レポート',
+          '今週の記録をまとめました。確認してみましょう',
+          toExpoWeekday(settings.weeklyReport.dayOfWeek),
+          settings.weeklyReport.time,
+        );
+      }
+    } catch (error) {
+      // Scheduling failures per-notification are non-fatal — one bad
+      // notification shouldn't block the rest or poison the guard.
+      void error;
     }
-  } catch (error) {
+  })();
+
+  schedulingInFlight = run;
+  try {
+    await run;
+  } finally {
+    if (schedulingInFlight === run) schedulingInFlight = null;
   }
 }
 
@@ -298,4 +409,41 @@ export async function scheduleAllNotifications(
 export async function rescheduleNotifications(): Promise<void> {
   const settings = await loadNotificationSettings();
   await scheduleAllNotifications(settings);
+}
+
+// Single-shot boot flag. _layout.tsx's useEffect can fire repeatedly during
+// Fast Refresh / deep-link remounts; the guard below makes bootstrapNotifications
+// a no-op on the second and subsequent calls within the same JS runtime.
+let bootstrapped = false;
+
+// Bump this when a previous release scheduled notifications that the current
+// ID-based cancel can't reach (e.g. stale schedules from builds without fixed
+// identifiers). Each device runs the device-wide sweep exactly once per
+// version bump, then persists the marker so subsequent launches are cheap.
+const LEGACY_SWEEP_VERSION = '2026-04-v1';
+const LEGACY_SWEEP_KEY = 'notifications_legacy_sweep_version';
+
+async function sweepLegacyNotificationsOnce(): Promise<void> {
+  try {
+    const marker = await AsyncStorage.getItem(LEGACY_SWEEP_KEY);
+    if (marker === LEGACY_SWEEP_VERSION) return;
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    await AsyncStorage.setItem(LEGACY_SWEEP_KEY, LEGACY_SWEEP_VERSION);
+  } catch {
+    // Non-fatal — if AsyncStorage is unavailable we just skip. A later launch
+    // can still run the sweep.
+  }
+}
+
+/**
+ * App-startup entry point. Initialises the Expo notification handler exactly
+ * once, then performs the initial reschedule from persisted settings. Safe to
+ * call from multiple useEffect invocations — only the first does real work.
+ */
+export async function bootstrapNotifications(): Promise<void> {
+  if (bootstrapped) return;
+  bootstrapped = true;
+  await initializeNotifications();
+  await sweepLegacyNotificationsOnce();
+  await rescheduleNotifications();
 }

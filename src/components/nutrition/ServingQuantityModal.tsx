@@ -26,6 +26,13 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
+/** Narrowed form of `Partial<ExtendedNutrients>` that omits the `null` branch
+ * — we only populate entries from non-null source values, and MealLogItemInput
+ * doesn't accept `null`. */
+export type ScaledExtendedNutrients = {
+  [K in keyof ExtendedNutrients]?: number;
+};
+
 export interface ServingQuantityResult {
   /** Quantity in the current mode (servings or grams) */
   amount: number;
@@ -36,6 +43,9 @@ export interface ServingQuantityResult {
   proteinG: number;
   fatG: number;
   carbG: number;
+  /** Extended nutrients scaled by the chosen amount. Only keys with non-null
+   * source values are populated (so the caller can safely spread). */
+  extended: ScaledExtendedNutrients;
 }
 
 interface FoodInput {
@@ -157,11 +167,11 @@ export function ServingQuantityModal({
 
   const nutrition = useMemo(() => {
     if (!item || numericValue <= 0)
-      return { calories: 0, proteinG: 0, fatG: 0, carbG: 0, extended: {} as Partial<ExtendedNutrients> };
+      return { calories: 0, proteinG: 0, fatG: 0, carbG: 0, extended: {} as ScaledExtendedNutrients };
 
     if (item.type === 'dish') {
       const m = numericValue; // always serving multiplier
-      const ext: Partial<ExtendedNutrients> = {};
+      const ext: ScaledExtendedNutrients = {};
       for (const key of EXTENDED_NUTRIENT_KEYS) {
         const v = item.dish[key];
         if (v != null) ext[key] = Math.round(v * m * 100) / 100;
@@ -183,7 +193,7 @@ export function ServingQuantityModal({
       ratio = numericValue;
     }
 
-    const ext: Partial<ExtendedNutrients> = {};
+    const ext: ScaledExtendedNutrients = {};
     for (const key of EXTENDED_NUTRIENT_KEYS) {
       const v = food[key];
       if (v != null) ext[key] = Math.round(v * ratio * 100) / 100;

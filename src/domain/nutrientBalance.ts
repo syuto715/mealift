@@ -74,6 +74,9 @@ const BALANCE_NUTRIENTS: BalanceNutrientDef[] = [
   { key: 'vitaminDUg', label: 'ビタミンD', unit: 'μg', isUpperLimit: false, extKey: 'vitaminDUg', targetKey: 'vitaminDUg' },
   { key: 'vitaminB1Mg', label: 'ビタミンB1', unit: 'mg', isUpperLimit: false, extKey: 'vitaminB1Mg', targetKey: 'vitaminB1Mg' },
   { key: 'vitaminB2Mg', label: 'ビタミンB2', unit: 'mg', isUpperLimit: false, extKey: 'vitaminB2Mg', targetKey: 'vitaminB2Mg' },
+  { key: 'vitaminB6Mg', label: 'ビタミンB6', unit: 'mg', isUpperLimit: false, extKey: 'vitaminB6Mg', targetKey: 'vitaminB6Mg' },
+  { key: 'vitaminB12Ug', label: 'ビタミンB12', unit: 'μg', isUpperLimit: false, extKey: 'vitaminB12Ug', targetKey: 'vitaminB12Ug' },
+  { key: 'folateUg', label: '葉酸', unit: 'μg', isUpperLimit: false, extKey: 'folateUg', targetKey: 'folateUg' },
   { key: 'vitaminCMg', label: 'ビタミンC', unit: 'mg', isUpperLimit: false, extKey: 'vitaminCMg', targetKey: 'vitaminCMg' },
   { key: 'fiberG', label: '食物繊維', unit: 'g', isUpperLimit: false, extKey: 'fiberG', targetKey: 'fiberG' },
   { key: 'saturatedFatG', label: '飽和脂肪酸', unit: 'g', isUpperLimit: true, extKey: 'saturatedFatG', targetKey: null },
@@ -121,6 +124,9 @@ function sumMealNutrients(
     ext.vitaminAUg = (ext.vitaminAUg ?? 0) + item.vitaminAUg;
     ext.vitaminB1Mg = (ext.vitaminB1Mg ?? 0) + item.vitaminB1Mg;
     ext.vitaminB2Mg = (ext.vitaminB2Mg ?? 0) + item.vitaminB2Mg;
+    ext.vitaminB6Mg = (ext.vitaminB6Mg ?? 0) + item.vitaminB6Mg;
+    ext.vitaminB12Ug = (ext.vitaminB12Ug ?? 0) + item.vitaminB12Ug;
+    ext.folateUg = (ext.folateUg ?? 0) + item.folateUg;
     ext.vitaminCMg = (ext.vitaminCMg ?? 0) + item.vitaminCMg;
     ext.vitaminDUg = (ext.vitaminDUg ?? 0) + item.vitaminDUg;
     ext.vitaminEMg = (ext.vitaminEMg ?? 0) + item.vitaminEMg;

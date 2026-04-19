@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ScrollView,
   View,
@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
@@ -23,7 +23,8 @@ import {
   DAY_LABELS,
   formatTime,
   loadNotificationSettings,
-  saveNotificationSettings,
+  persistNotificationSettings,
+  scheduleAllNotifications,
   requestNotificationPermissions,
 } from '../../../src/infra/services/notificationService';
 
@@ -290,12 +291,32 @@ export default function NotificationSettingsScreen() {
     })();
   }, []);
 
+  // Persist on every keystroke/toggle so settings are durable if the user
+  // force-kills the app. The actual reschedule is deferred to screen blur
+  // (see useFocusEffect below) so a burst of toggles doesn't produce a
+  // cancel+schedule storm that can leave duplicates in the OS queue.
   const save = useCallback(
     async (updated: NotificationSettings) => {
       setSettings(updated);
-      await saveNotificationSettings(updated);
+      await persistNotificationSettings(updated);
     },
     [],
+  );
+
+  // Reschedule once when the screen loses focus. We capture the latest
+  // settings via a ref to avoid re-registering the focus effect on every edit.
+  const settingsRef = useRef(settings);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        // onBlur — schedule once with the latest settings
+        void scheduleAllNotifications(settingsRef.current);
+      };
+    }, []),
   );
 
   const openTimePicker = useCallback(

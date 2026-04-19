@@ -28,6 +28,9 @@ export interface MealLogItem {
   vitaminAUg: number;
   vitaminB1Mg: number;
   vitaminB2Mg: number;
+  vitaminB6Mg: number;
+  vitaminB12Ug: number;
+  folateUg: number;
   vitaminCMg: number;
   vitaminDUg: number;
   vitaminEMg: number;
@@ -58,6 +61,9 @@ export interface MealLogItemInput {
   vitaminAUg?: number;
   vitaminB1Mg?: number;
   vitaminB2Mg?: number;
+  vitaminB6Mg?: number;
+  vitaminB12Ug?: number;
+  folateUg?: number;
   vitaminCMg?: number;
   vitaminDUg?: number;
   vitaminEMg?: number;
@@ -83,6 +89,9 @@ export interface DailyExtendedNutrients {
   vitaminAUg: number;
   vitaminB1Mg: number;
   vitaminB2Mg: number;
+  vitaminB6Mg: number;
+  vitaminB12Ug: number;
+  folateUg: number;
   vitaminCMg: number;
   vitaminDUg: number;
   vitaminEMg: number;

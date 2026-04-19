@@ -14,7 +14,12 @@ import { getColors } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { Input, Card, Modal, NumberInput, Button } from '../../../src/components/ui';
-import { Food, FoodCategory } from '../../../src/types/food';
+import {
+  Food,
+  FoodCategory,
+  ExtendedNutrients,
+  EXTENDED_NUTRIENT_KEYS,
+} from '../../../src/types/food';
 import { MealType } from '../../../src/types/common';
 import { FOOD_CATEGORIES } from '../../../src/constants/foods';
 import {
@@ -90,11 +95,19 @@ export default function SearchFoodScreen() {
 
   const calculateNutrition = (food: Food, amount: number) => {
     const ratio = amount / food.servingSizeG;
+    // Narrow the value type to `number` (not `number | null`) so the spread
+    // below lines up with MealLogItemInput's `number | undefined` shape.
+    const extended: Partial<Record<keyof ExtendedNutrients, number>> = {};
+    for (const key of EXTENDED_NUTRIENT_KEYS) {
+      const v = food[key];
+      if (v != null) extended[key] = Math.round(v * ratio * 100) / 100;
+    }
     return {
       calories: Math.round(food.caloriesPerServing * ratio),
       proteinG: Math.round(food.proteinG * ratio * 10) / 10,
       fatG: Math.round(food.fatG * ratio * 10) / 10,
       carbG: Math.round(food.carbG * ratio * 10) / 10,
+      extended,
     };
   };
 
@@ -110,6 +123,7 @@ export default function SearchFoodScreen() {
       proteinG: nutrition.proteinG,
       fatG: nutrition.fatG,
       carbG: nutrition.carbG,
+      ...nutrition.extended,
     });
     setModalVisible(false);
     setSelectedFood(null);

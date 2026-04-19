@@ -1,0 +1,492 @@
+[
+  {
+    "foodNumber": "01088",
+    "aliases": ["白米", "ご飯", "ごはん", "お米", "ライス", "はくまい", "しろごめ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "01085",
+    "aliases": ["玄米", "ブラウンライス", "げんまい"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "01080",
+    "aliases": ["もち米", "餅米", "もちごめ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "01026",
+    "aliases": ["食パン", "パン", "トースト", "ブレッド"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "01038",
+    "aliases": ["うどん", "ウドン"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "01128",
+    "aliases": ["そば", "ソバ", "蕎麦"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "01064",
+    "aliases": ["パスタ", "スパゲッティ", "スパゲティ", "マカロニ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "01117",
+    "aliases": ["もち", "餅", "モチ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "01004",
+    "aliases": ["オートミール", "オーツ", "oats"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "01148",
+    "aliases": ["ベーグル", "bagel"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "01037",
+    "aliases": ["ロールパン", "バターロール"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "11220",
+    "aliases": ["鶏むね", "鶏胸", "とりむね", "むね肉", "チキン胸", "胸肉"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "11221",
+    "aliases": ["鶏むね皮なし", "皮なし鶏むね", "皮なしむね"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "11230",
+    "aliases": ["鶏もも", "とりもも", "もも肉", "チキンもも"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "11234",
+    "aliases": ["ささみ", "ササミ", "笹身"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "11130",
+    "aliases": ["豚ロース", "ロース"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "11036",
+    "aliases": ["牛もも", "和牛もも", "牛肉もも"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "11164",
+    "aliases": ["豚バラ", "ばら肉", "豚バラ肉"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "11186",
+    "aliases": ["ひき肉", "挽肉", "合いびき", "ミンチ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "11208",
+    "aliases": ["鶏ひき肉", "鳥ひき肉", "鶏挽肉"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "12004",
+    "aliases": ["卵", "たまご", "玉子", "エッグ", "鶏卵"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "12005",
+    "aliases": ["卵白", "白身", "らんぱく"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "12010",
+    "aliases": ["卵黄", "黄身", "らんおう"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "13003",
+    "aliases": ["牛乳", "ミルク", "ぎゅうにゅう"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "13005",
+    "aliases": ["低脂肪乳", "低脂肪牛乳"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "13025",
+    "aliases": ["ヨーグルト", "プレーンヨーグルト", "yogurt"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "13026",
+    "aliases": ["ヨーグルト加糖", "加糖ヨーグルト"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "13055",
+    "aliases": ["モッツァレラ", "モッツァレラチーズ", "mozzarella"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "13040",
+    "aliases": ["チーズ", "プロセスチーズ", "cheese"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "04032",
+    "aliases": ["豆腐", "木綿豆腐", "もめん豆腐", "木綿"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "04033",
+    "aliases": ["絹ごし豆腐", "絹豆腐", "きぬ豆腐", "絹ごし"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "04046",
+    "aliases": ["納豆", "なっとう"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "04034",
+    "aliases": ["焼き豆腐", "焼豆腐"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "04040",
+    "aliases": ["厚揚げ", "生揚げ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "04042",
+    "aliases": ["油揚げ", "あぶらあげ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06061",
+    "aliases": ["キャベツ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06267",
+    "aliases": ["ほうれん草", "ほうれんそう", "ホウレンソウ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06264",
+    "aliases": ["ブロッコリー", "broccoli"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06153",
+    "aliases": ["玉ねぎ", "たまねぎ", "玉葱", "オニオン", "onion"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06245",
+    "aliases": ["ピーマン", "ピ-マン"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06065",
+    "aliases": ["きゅうり", "キュウリ", "胡瓜"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06214",
+    "aliases": ["にんじん", "人参", "キャロット", "carrot"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06182",
+    "aliases": ["トマト", "tomato"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06183",
+    "aliases": ["ミニトマト", "プチトマト"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06086",
+    "aliases": ["ごぼう", "ゴボウ", "牛蒡"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06212",
+    "aliases": ["大根", "だいこん", "ダイコン"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06134",
+    "aliases": ["しょうが", "生姜", "ショウガ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06115",
+    "aliases": ["さつまいも", "薩摩芋", "サツマイモ", "スイートポテト"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "02006",
+    "aliases": ["じゃがいも", "ジャガイモ", "馬鈴薯", "potato"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "02010",
+    "aliases": ["さといも", "里芋", "サトイモ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "06103",
+    "aliases": ["ごぼう", "ゴボウ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "07107",
+    "aliases": ["バナナ", "banana"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "07148",
+    "aliases": ["りんご", "リンゴ", "林檎", "アップル", "apple"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "07027",
+    "aliases": ["みかん", "ミカン", "蜜柑", "オレンジ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "07053",
+    "aliases": ["グレープフルーツ", "grapefruit"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "07179",
+    "aliases": ["レモン", "lemon"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "07116",
+    "aliases": ["いちご", "イチゴ", "苺", "ストロベリー", "strawberry"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "07135",
+    "aliases": ["ぶどう", "ブドウ", "葡萄", "grape"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "07136",
+    "aliases": ["キウイ", "kiwi"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "10253",
+    "aliases": ["まぐろ", "マグロ", "鮪", "ツナ", "tuna"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "10134",
+    "aliases": ["さけ", "サケ", "鮭", "サーモン", "salmon"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "10154",
+    "aliases": ["さば", "サバ", "鯖", "mackerel"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "10087",
+    "aliases": ["アジ", "あじ", "鯵"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "10047",
+    "aliases": ["いわし", "イワシ", "鰯"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "10215",
+    "aliases": ["ぶり", "ブリ", "鰤"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "10376",
+    "aliases": ["ツナ缶", "ツナ水煮", "ツナオイル"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "10397",
+    "aliases": ["鮭フレーク", "さけフレーク"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "10292",
+    "aliases": ["えび", "エビ", "海老", "シュリンプ", "shrimp"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "10319",
+    "aliases": ["いか", "イカ", "烏賊"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "10325",
+    "aliases": ["たこ", "タコ", "蛸"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "17012",
+    "aliases": ["味噌", "みそ", "ミソ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "17007",
+    "aliases": ["醤油", "しょうゆ", "ショウユ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "17015",
+    "aliases": ["酢", "す"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "14006",
+    "aliases": ["オリーブオイル", "オリーブ油", "olive oil"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "14008",
+    "aliases": ["ごま油", "胡麻油"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "14017",
+    "aliases": ["バター"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "14020",
+    "aliases": ["マーガリン"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "17093",
+    "aliases": ["マヨネーズ", "mayo"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "03003",
+    "aliases": ["砂糖", "さとう", "上白糖", "グラニュー糖"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "03022",
+    "aliases": ["はちみつ", "ハチミツ", "蜂蜜"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "08001",
+    "aliases": ["えのき", "エノキ", "えのきだけ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "08014",
+    "aliases": ["しめじ", "シメジ", "ぶなしめじ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "08039",
+    "aliases": ["しいたけ", "シイタケ", "椎茸"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "08031",
+    "aliases": ["マッシュルーム", "mushroom"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "09050",
+    "aliases": ["わかめ", "ワカメ", "若布"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "09017",
+    "aliases": ["のり", "ノリ", "海苔", "焼き海苔"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "16001",
+    "aliases": ["日本酒", "清酒", "さけ"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "16006",
+    "aliases": ["ビール", "beer"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "16011",
+    "aliases": ["ワイン", "wine", "赤ワイン", "白ワイン"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "16055",
+    "aliases": ["コーヒー", "coffee"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "16037",
+    "aliases": ["緑茶", "お茶", "煎茶"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "05001",
+    "aliases": ["アーモンド", "almond"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "05014",
+    "aliases": ["くるみ", "クルミ", "walnut"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "05017",
+    "aliases": ["ごま", "ゴマ", "胡麻"],
+    "aliasType": "common"
+  },
+  {
+    "foodNumber": "05024",
+    "aliases": ["ピーナッツ", "落花生", "peanut"],
+    "aliasType": "common"
+  },
+  {
+    "nameContains": "プロテイン",
+    "aliases": ["protein", "プロテインパウダー"],
+    "aliasType": "common"
+  },
+  {
+    "nameContains": "バナナ",
+    "aliases": ["banana"],
+    "aliasType": "common"
+  },
+  {
+    "nameContains": "鶏むね",
+    "aliases": ["chicken breast"],
+    "aliasType": "common"
+  }
+]

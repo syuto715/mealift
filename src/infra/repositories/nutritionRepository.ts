@@ -39,6 +39,9 @@ function rowToMealLogItem(row: Record<string, unknown>): MealLogItem {
     vitaminAUg: (row.vitamin_a_ug as number) ?? 0,
     vitaminB1Mg: (row.vitamin_b1_mg as number) ?? 0,
     vitaminB2Mg: (row.vitamin_b2_mg as number) ?? 0,
+    vitaminB6Mg: (row.vitamin_b6_mg as number) ?? 0,
+    vitaminB12Ug: (row.vitamin_b12_ug as number) ?? 0,
+    folateUg: (row.folate_ug as number) ?? 0,
     vitaminCMg: (row.vitamin_c_mg as number) ?? 0,
     vitaminDUg: (row.vitamin_d_ug as number) ?? 0,
     vitaminEMg: (row.vitamin_e_mg as number) ?? 0,
@@ -90,11 +93,12 @@ export async function addMealLogItem(
       id, meal_log_id, food_id, food_name, serving_amount, serving_unit,
       calories, protein_g, fat_g, carb_g,
       fiber_g, sodium_mg, calcium_mg, iron_mg,
-      vitamin_a_ug, vitamin_b1_mg, vitamin_b2_mg, vitamin_c_mg,
+      vitamin_a_ug, vitamin_b1_mg, vitamin_b2_mg, vitamin_b6_mg,
+      vitamin_b12_ug, folate_ug, vitamin_c_mg,
       vitamin_d_ug, vitamin_e_mg, potassium_mg, magnesium_mg,
       zinc_mg, cholesterol_mg, saturated_fat_g, sugar_g, salt_g,
       note
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       mealLogId,
@@ -113,6 +117,9 @@ export async function addMealLogItem(
       input.vitaminAUg ?? 0,
       input.vitaminB1Mg ?? 0,
       input.vitaminB2Mg ?? 0,
+      input.vitaminB6Mg ?? 0,
+      input.vitaminB12Ug ?? 0,
+      input.folateUg ?? 0,
       input.vitaminCMg ?? 0,
       input.vitaminDUg ?? 0,
       input.vitaminEMg ?? 0,
@@ -184,9 +191,11 @@ export async function getDailyNutritionSummary(
   let totalCarbG = 0;
   const ext = {
     fiberG: 0, saltG: 0, calciumMg: 0, ironMg: 0,
-    vitaminAUg: 0, vitaminB1Mg: 0, vitaminB2Mg: 0, vitaminCMg: 0,
-    vitaminDUg: 0, vitaminEMg: 0, potassiumMg: 0, magnesiumMg: 0,
-    zincMg: 0, cholesterolMg: 0, saturatedFatG: 0, sugarG: 0, sodiumMg: 0,
+    vitaminAUg: 0, vitaminB1Mg: 0, vitaminB2Mg: 0,
+    vitaminB6Mg: 0, vitaminB12Ug: 0, folateUg: 0,
+    vitaminCMg: 0, vitaminDUg: 0, vitaminEMg: 0,
+    potassiumMg: 0, magnesiumMg: 0, zincMg: 0,
+    cholesterolMg: 0, saturatedFatG: 0, sugarG: 0, sodiumMg: 0,
   };
 
   for (const mealRow of mealRows) {
@@ -209,6 +218,9 @@ export async function getDailyNutritionSummary(
       ext.vitaminAUg += item.vitaminAUg;
       ext.vitaminB1Mg += item.vitaminB1Mg;
       ext.vitaminB2Mg += item.vitaminB2Mg;
+      ext.vitaminB6Mg += item.vitaminB6Mg;
+      ext.vitaminB12Ug += item.vitaminB12Ug;
+      ext.folateUg += item.folateUg;
       ext.vitaminCMg += item.vitaminCMg;
       ext.vitaminDUg += item.vitaminDUg;
       ext.vitaminEMg += item.vitaminEMg;
@@ -238,6 +250,9 @@ export async function getDailyNutritionSummary(
       vitaminAUg: Math.round(ext.vitaminAUg),
       vitaminB1Mg: Math.round(ext.vitaminB1Mg * 100) / 100,
       vitaminB2Mg: Math.round(ext.vitaminB2Mg * 100) / 100,
+      vitaminB6Mg: Math.round(ext.vitaminB6Mg * 100) / 100,
+      vitaminB12Ug: Math.round(ext.vitaminB12Ug * 10) / 10,
+      folateUg: Math.round(ext.folateUg),
       vitaminCMg: Math.round(ext.vitaminCMg),
       vitaminDUg: Math.round(ext.vitaminDUg * 10) / 10,
       vitaminEMg: Math.round(ext.vitaminEMg * 10) / 10,
@@ -280,6 +295,146 @@ export async function getRecordedNutritionDates(
     [profileId, monthPrefix]
   );
   return rows.map((r) => r.date);
+}
+
+const MEAL_TIME_OFFSETS: Record<string, string> = {
+  breakfast: '08:00:00',
+  lunch: '12:30:00',
+  dinner: '19:00:00',
+  snack: '15:00:00',
+};
+
+export async function copyMealFromDate(
+  profileId: string,
+  fromDate: string,
+  toDate: string,
+  mealType: MealType | 'all'
+): Promise<number> {
+  const db = await getDatabase();
+
+  const mealFilter = mealType === 'all' ? '' : 'AND ml.meal_type = ?';
+  const params: (string | number)[] = [profileId, fromDate];
+  if (mealType !== 'all') params.push(mealType);
+
+  const sourceItems = await db.getAllAsync<Record<string, unknown>>(
+    `SELECT mli.*, ml.meal_type AS _meal_type
+     FROM meal_log_items mli
+     JOIN meal_logs ml ON mli.meal_log_id = ml.id
+     WHERE ml.profile_id = ? AND ml.date = ? ${mealFilter}
+     ORDER BY mli.created_at`,
+    params
+  );
+
+  if (sourceItems.length === 0) return 0;
+
+  let copied = 0;
+  for (const item of sourceItems) {
+    const mt = item._meal_type as MealType;
+    const targetLog = await getOrCreateMealLog(profileId, toDate, mt);
+    const newId = generateId();
+    const timeOffset = MEAL_TIME_OFFSETS[mt] ?? '12:00:00';
+    const consumedAt = `${toDate}T${timeOffset}`;
+    await db.runAsync(
+      `INSERT INTO meal_log_items (
+        id, meal_log_id, food_id, food_name, serving_amount, serving_unit,
+        calories, protein_g, fat_g, carb_g,
+        fiber_g, sodium_mg, calcium_mg, iron_mg,
+        vitamin_a_ug, vitamin_b1_mg, vitamin_b2_mg, vitamin_b6_mg,
+        vitamin_b12_ug, folate_ug, vitamin_c_mg,
+        vitamin_d_ug, vitamin_e_mg, potassium_mg, magnesium_mg,
+        zinc_mg, cholesterol_mg, saturated_fat_g, sugar_g, salt_g,
+        note, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        newId,
+        targetLog.id,
+        (item.food_id as string) ?? null,
+        item.food_name as string,
+        item.serving_amount as number,
+        item.serving_unit as string,
+        item.calories as number,
+        item.protein_g as number,
+        item.fat_g as number,
+        item.carb_g as number,
+        (item.fiber_g as number) ?? 0,
+        (item.sodium_mg as number) ?? 0,
+        (item.calcium_mg as number) ?? 0,
+        (item.iron_mg as number) ?? 0,
+        (item.vitamin_a_ug as number) ?? 0,
+        (item.vitamin_b1_mg as number) ?? 0,
+        (item.vitamin_b2_mg as number) ?? 0,
+        (item.vitamin_b6_mg as number) ?? 0,
+        (item.vitamin_b12_ug as number) ?? 0,
+        (item.folate_ug as number) ?? 0,
+        (item.vitamin_c_mg as number) ?? 0,
+        (item.vitamin_d_ug as number) ?? 0,
+        (item.vitamin_e_mg as number) ?? 0,
+        (item.potassium_mg as number) ?? 0,
+        (item.magnesium_mg as number) ?? 0,
+        (item.zinc_mg as number) ?? 0,
+        (item.cholesterol_mg as number) ?? 0,
+        (item.saturated_fat_g as number) ?? 0,
+        (item.sugar_g as number) ?? 0,
+        (item.salt_g as number) ?? 0,
+        (item.note as string) ?? null,
+        consumedAt,
+      ]
+    );
+    copied++;
+  }
+  return copied;
+}
+
+export interface PreviousMealSummary {
+  date: string;
+  mealType: MealType;
+  itemCount: number;
+  totalCalories: number;
+  itemsPreview: string[];
+}
+
+export async function getPreviousMealsSummary(
+  profileId: string,
+  mealType: MealType,
+  limit: number = 7
+): Promise<PreviousMealSummary[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{
+    date: string;
+    item_count: number;
+    total_calories: number;
+  }>(
+    `SELECT ml.date, COUNT(mli.id) AS item_count, COALESCE(SUM(mli.calories), 0) AS total_calories
+     FROM meal_logs ml
+     LEFT JOIN meal_log_items mli ON mli.meal_log_id = ml.id
+     WHERE ml.profile_id = ? AND ml.meal_type = ?
+     GROUP BY ml.date
+     HAVING item_count > 0
+     ORDER BY ml.date DESC
+     LIMIT ?`,
+    [profileId, mealType, limit]
+  );
+
+  const out: PreviousMealSummary[] = [];
+  for (const r of rows) {
+    const previewRows = await db.getAllAsync<{ food_name: string }>(
+      `SELECT mli.food_name
+       FROM meal_log_items mli
+       JOIN meal_logs ml ON mli.meal_log_id = ml.id
+       WHERE ml.profile_id = ? AND ml.date = ? AND ml.meal_type = ?
+       ORDER BY mli.created_at
+       LIMIT 3`,
+      [profileId, r.date, mealType]
+    );
+    out.push({
+      date: r.date,
+      mealType,
+      itemCount: r.item_count,
+      totalCalories: Math.round(r.total_calories),
+      itemsPreview: previewRows.map((p) => p.food_name),
+    });
+  }
+  return out;
 }
 
 export async function getWeeklyCalories(

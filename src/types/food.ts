@@ -8,6 +8,9 @@ export interface ExtendedNutrients {
   vitaminAUg: number | null;
   vitaminB1Mg: number | null;
   vitaminB2Mg: number | null;
+  vitaminB6Mg: number | null;
+  vitaminB12Ug: number | null;
+  folateUg: number | null;
   vitaminCMg: number | null;
   vitaminDUg: number | null;
   vitaminEMg: number | null;
@@ -23,9 +26,11 @@ export interface ExtendedNutrients {
 /** Keys of ExtendedNutrients for iteration */
 export const EXTENDED_NUTRIENT_KEYS: (keyof ExtendedNutrients)[] = [
   'fiberG', 'sodiumMg', 'calciumMg', 'ironMg',
-  'vitaminAUg', 'vitaminB1Mg', 'vitaminB2Mg', 'vitaminCMg',
-  'vitaminDUg', 'vitaminEMg', 'potassiumMg', 'magnesiumMg',
-  'zincMg', 'cholesterolMg', 'saturatedFatG', 'sugarG', 'saltG',
+  'vitaminAUg', 'vitaminB1Mg', 'vitaminB2Mg',
+  'vitaminB6Mg', 'vitaminB12Ug', 'folateUg',
+  'vitaminCMg', 'vitaminDUg', 'vitaminEMg',
+  'potassiumMg', 'magnesiumMg', 'zincMg',
+  'cholesterolMg', 'saturatedFatG', 'sugarG', 'saltG',
 ];
 
 /** Map camelCase key → snake_case DB column */
@@ -37,6 +42,9 @@ export const EXTENDED_NUTRIENT_DB_COLUMNS: Record<keyof ExtendedNutrients, strin
   vitaminAUg: 'vitamin_a_ug',
   vitaminB1Mg: 'vitamin_b1_mg',
   vitaminB2Mg: 'vitamin_b2_mg',
+  vitaminB6Mg: 'vitamin_b6_mg',
+  vitaminB12Ug: 'vitamin_b12_ug',
+  folateUg: 'folate_ug',
   vitaminCMg: 'vitamin_c_mg',
   vitaminDUg: 'vitamin_d_ug',
   vitaminEMg: 'vitamin_e_mg',
@@ -87,6 +95,9 @@ export interface FoodInput {
   vitaminAUg?: number | null;
   vitaminB1Mg?: number | null;
   vitaminB2Mg?: number | null;
+  vitaminB6Mg?: number | null;
+  vitaminB12Ug?: number | null;
+  folateUg?: number | null;
   vitaminCMg?: number | null;
   vitaminDUg?: number | null;
   vitaminEMg?: number | null;
