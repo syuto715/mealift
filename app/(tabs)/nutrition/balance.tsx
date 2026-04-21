@@ -28,7 +28,10 @@ import {
 } from '../../../src/domain/nutrientBalance';
 import { NutrientBar } from '../../../src/components/charts/NutrientBar';
 import { getFeatureFlags } from '../../../src/infra/services/subscriptionService';
-import { APP_CONFIG } from '../../../src/constants/config';
+import {
+  fetchNutritionAdvice,
+  AIError,
+} from '../../../src/infra/services/aiNutritionService';
 import { UpgradePromptModal } from '../../../src/components/subscription/UpgradePromptModal';
 
 type UpgradeTarget = 'plus-meal' | 'plus-extended' | 'pro-ai';
@@ -219,26 +222,27 @@ ${nutrientList}
 「〜してみてください」「〜がおすすめです」のような提案型で。`;
 
     try {
-      const res = await fetch(
-        `${APP_CONFIG.SUPABASE_URL}/functions/v1/nutrition-advice`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${APP_CONFIG.SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({ prompt }),
-        },
-      );
-
-      if (!res.ok) throw new Error(`API error ${res.status}`);
-
-      const data = await res.json();
-      const text = data?.advice ?? null;
-      if (!text) throw new Error('Empty response');
+      const text = await fetchNutritionAdvice(prompt);
       setAiAdvice(text);
-    } catch {
-      setAiError('アドバイスを取得できませんでした');
+    } catch (e) {
+      if (e instanceof AIError) {
+        switch (e.code) {
+          case 'pro_required':
+            setUpgradeTarget('pro-ai');
+            break;
+          case 'quota_exceeded':
+            setAiError(e.message);
+            break;
+          case 'unauthorized':
+          case 'invalid_token':
+            setAiError('ログインが必要です');
+            break;
+          default:
+            setAiError('アドバイスを取得できませんでした');
+        }
+      } else {
+        setAiError('アドバイスを取得できませんでした');
+      }
     } finally {
       setAiLoading(false);
     }

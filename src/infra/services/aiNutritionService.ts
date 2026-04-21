@@ -1,7 +1,38 @@
 import { Food } from '../../types/food';
 import { APP_CONFIG } from '../../constants/config';
+import { supabase } from '../supabase/client';
 
 // === 型定義 ===
+
+export type AIErrorCode =
+  | 'unauthorized'
+  | 'invalid_token'
+  | 'pro_required'
+  | 'quota_exceeded'
+  | 'invalid_request'
+  | 'gemini_error'
+  | 'internal_error'
+  | 'network_error'
+  | 'not_configured';
+
+export class AIError extends Error {
+  code: AIErrorCode;
+  status: number;
+  details?: Record<string, unknown>;
+
+  constructor(
+    code: AIErrorCode,
+    message: string,
+    status: number,
+    details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = 'AIError';
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+}
 
 export interface RecipeDecomposition {
   dishName: string;
@@ -33,37 +64,101 @@ export interface EstimatedNutrition {
   confidence: 'high' | 'medium' | 'low';
 }
 
-// === Step 1: Supabase Edge Function で料理を材料に分解 ===
+// === Edge function call helper ===
 
-export async function decomposeRecipe(
-  dishName: string,
-): Promise<RecipeDecomposition | null> {
+async function getAccessToken(): Promise<string> {
+  if (!supabase) {
+    throw new AIError(
+      'not_configured',
+      'サーバー接続が設定されていません',
+      0,
+    );
+  }
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) {
+    throw new AIError(
+      'unauthorized',
+      'ログインが必要です',
+      401,
+    );
+  }
+  return token;
+}
+
+async function callEdgeFunction<TReq, TRes>(
+  path: string,
+  body: TReq,
+): Promise<TRes> {
+  const token = await getAccessToken();
+
+  let response: Response;
   try {
-    const response = await fetch(
-      `${APP_CONFIG.SUPABASE_URL}/functions/v1/estimate-nutrition`,
+    response = await fetch(
+      `${APP_CONFIG.SUPABASE_URL}/functions/v1/${path}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${APP_CONFIG.SUPABASE_ANON_KEY}`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ dishName }),
+        body: JSON.stringify(body),
       },
     );
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    const parsed = data as RecipeDecomposition;
-
-    // Basic validation
-    if (!parsed.dishName || !Array.isArray(parsed.ingredients)) return null;
-
-    return parsed;
-  } catch (error) {
-    console.error('[AI] decomposeRecipe error:', error);
-    return null;
+  } catch (e) {
+    throw new AIError(
+      'network_error',
+      'ネットワーク接続を確認してください',
+      0,
+      { cause: e instanceof Error ? e.message : String(e) },
+    );
   }
+
+  // Try to parse the body regardless of status so we can surface structured
+  // error codes from the edge function.
+  const raw = await response.text();
+  let parsed: unknown = null;
+  try {
+    parsed = raw ? JSON.parse(raw) : null;
+  } catch {
+    parsed = null;
+  }
+
+  if (!response.ok) {
+    const errObj =
+      parsed && typeof parsed === 'object'
+        ? (parsed as {
+            error?: string;
+            message?: string;
+            details?: Record<string, unknown>;
+          })
+        : {};
+    const code = (errObj.error as AIErrorCode) ?? 'internal_error';
+    const message = errObj.message ?? 'エラーが発生しました';
+    throw new AIError(code, message, response.status, errObj.details);
+  }
+
+  return parsed as TRes;
+}
+
+// === Step 1: Supabase Edge Function で料理を材料に分解 ===
+
+export async function decomposeRecipe(
+  dishName: string,
+): Promise<RecipeDecomposition> {
+  const parsed = await callEdgeFunction<
+    { dishName: string },
+    RecipeDecomposition
+  >('estimate-nutrition', { dishName });
+
+  if (!parsed || !parsed.dishName || !Array.isArray(parsed.ingredients)) {
+    throw new AIError(
+      'gemini_error',
+      'AI応答の形式が不正です',
+      502,
+    );
+  }
+  return parsed;
 }
 
 // === Step 2: ローカル DB から栄養計算 ===
@@ -144,13 +239,25 @@ export async function estimateDishNutrition(
   dishName: string,
   findByExactName: (name: string) => Promise<Food | null>,
   searchFoodsFn: (query: string) => Promise<Food[]>,
-): Promise<EstimatedNutrition | null> {
+): Promise<EstimatedNutrition> {
   const decomposition = await decomposeRecipe(dishName);
-  if (!decomposition) return null;
 
   return calculateNutritionFromDecomposition(
     decomposition,
     findByExactName,
     searchFoodsFn,
   );
+}
+
+// === Advice call (used by balance screen) ===
+
+export async function fetchNutritionAdvice(prompt: string): Promise<string> {
+  const res = await callEdgeFunction<{ prompt: string }, { advice?: string }>(
+    'nutrition-advice',
+    { prompt },
+  );
+  if (!res || typeof res.advice !== 'string' || !res.advice) {
+    throw new AIError('gemini_error', 'AIから応答がありませんでした', 502);
+  }
+  return res.advice;
 }

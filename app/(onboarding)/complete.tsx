@@ -108,14 +108,9 @@ export default function CompleteScreen() {
     : 'ユーザー';
 
   const handleStart = async () => {
-    if (saving) {
-      console.log('[ONBOARDING] handleStart: already saving, ignoring tap');
-      return;
-    }
-    console.log('[ONBOARDING] handleStart called');
+    if (saving) return;
     setSaving(true);
     try {
-      console.log('[ONBOARDING] step 1: creating profile');
       const profile = await createProfile({
         displayName,
         gender: onboarding.gender,
@@ -130,9 +125,7 @@ export default function CompleteScreen() {
         targetDate: onboarding.targetDate,
         equipment: onboarding.equipment,
       });
-      console.log('[ONBOARDING] step 1 done, profile.id =', profile.id);
 
-      console.log('[ONBOARDING] step 2: updating profile targets');
       await updateProfileRepo(profile.id, {
         targetCalories,
         targetProteinG: macros.proteinG,
@@ -140,7 +133,6 @@ export default function CompleteScreen() {
         targetCarbG: macros.carbG,
         onboardingCompleted: true,
       });
-      console.log('[ONBOARDING] step 2 done');
 
       // NOTE: No auto-grant of Plus trial here. Trials are now user-initiated
       // via the "7日間無料トライアルで試す" button on the subscription screen.
@@ -155,33 +147,24 @@ export default function CompleteScreen() {
         targetCarbG: macros.carbG,
         onboardingCompleted: true,
       };
-      console.log('[ONBOARDING] step 3: setting profile in store');
       setProfile(hydratedProfile);
-      console.log('[ONBOARDING] step 3 done');
 
       // Fire-and-forget — notification scheduling should never block the
       // user from entering the app.
       void (async () => {
         try {
-          console.log('[ONBOARDING] (bg) syncing notifications');
           const settings = await loadNotificationSettings();
           await syncNotifications({ settings, profile: hydratedProfile });
-          console.log('[ONBOARDING] (bg) notifications synced');
         } catch (notifErr) {
-          console.warn(
-            '[ONBOARDING] notification sync failed (non-fatal):',
-            notifErr,
-          );
+          console.warn('Notification sync failed (non-fatal):', notifErr);
         }
       })();
 
-      console.log('[ONBOARDING] step 4: navigating to /(tabs)');
       onboarding.reset();
       router.replace('/(tabs)');
-      console.log('[ONBOARDING] step 4 done');
     } catch (e) {
-      console.error('[ONBOARDING] ERROR:', e);
-      console.error('[ONBOARDING] stack:', (e as Error)?.stack);
+      console.error('Onboarding start failed:', e);
+      console.error('Stack:', (e as Error)?.stack);
       Alert.alert(
         'セットアップに失敗しました',
         e instanceof Error ? e.message : String(e),

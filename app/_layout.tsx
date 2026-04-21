@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, useColorScheme } from 'react-native';
+import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
@@ -16,7 +16,6 @@ import {
 import { Toast } from '../src/components/ui';
 import { useUIStore } from '../src/stores/uiStore';
 import { bootstrapNotifications } from '../src/infra/services/notificationService';
-import * as Notifications from 'expo-notifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -76,24 +75,6 @@ export default function RootLayout() {
         // hydrated profile once it's loaded from the DB.
         try {
           await bootstrapNotifications(null);
-          try {
-            const all = await Notifications.getAllScheduledNotificationsAsync();
-            console.log(
-              `[NOTIFY] ========== ${all.length} notifications scheduled ==========`,
-            );
-            const byId: Record<string, number> = {};
-            all.forEach((n) => {
-              const id = n.identifier || '(no-id)';
-              byId[id] = (byId[id] || 0) + 1;
-            });
-            Object.entries(byId).forEach(([id, count]) => {
-              console.log(
-                `[NOTIFY]   ${id}: ${count}${count > 1 ? ' ⚠️ DUPLICATE' : ''}`,
-              );
-            });
-          } catch (dumpError) {
-            console.log(`[NOTIFY] dump failed: ${String(dumpError)}`);
-          }
         } catch (notifError) {
         }
 

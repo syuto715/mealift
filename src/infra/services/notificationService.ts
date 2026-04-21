@@ -326,13 +326,6 @@ let _schedulingInFlight: Promise<void> | null = null;
 
 export async function syncNotifications(state: NotificationState): Promise<void> {
   const myVersion = ++_currentStateVersion;
-  const callTime = new Date().toISOString();
-  const stack =
-    new Error().stack?.split('\n').slice(2, 6).join(' | ') ?? 'unknown';
-  console.log(
-    `[NOTIFY] syncNotifications v${myVersion} called at ${callTime}`,
-  );
-  console.log(`[NOTIFY] caller: ${stack}`);
 
   // Wait for any in-flight run to finish so we see a stable OS state.
   while (_schedulingInFlight) {
@@ -344,22 +337,12 @@ export async function syncNotifications(state: NotificationState): Promise<void>
   }
 
   // If a newer call arrived during the wait, let it handle the final state.
-  if (myVersion < _currentStateVersion) {
-    console.log(
-      `[NOTIFY] syncNotifications v${myVersion} superseded (current=${_currentStateVersion}), skipping`,
-    );
-    return;
-  }
+  if (myVersion < _currentStateVersion) return;
 
   // If we already applied this exact version (no new call since), skip.
-  if (myVersion <= _appliedStateVersion) {
-    console.log(
-      `[NOTIFY] syncNotifications v${myVersion} already applied, skipping`,
-    );
-    return;
-  }
+  if (myVersion <= _appliedStateVersion) return;
 
-  const run = _doSyncNotifications(state, myVersion);
+  const run = _doSyncNotifications(state);
   _schedulingInFlight = run;
   try {
     await run;
@@ -371,9 +354,7 @@ export async function syncNotifications(state: NotificationState): Promise<void>
 
 async function _doSyncNotifications(
   state: NotificationState,
-  version: number,
 ): Promise<void> {
-  console.log(`[NOTIFY] _doSyncNotifications v${version} starting`);
   // Step A — clean slate for every ID we own.
   await cancelAllOwnedNotifications();
 
@@ -442,8 +423,6 @@ async function _doSyncNotifications(
 
   // Step C — trial schedules from Profile.
   await _scheduleTrial(profile);
-
-  console.log(`[NOTIFY] _doSyncNotifications v${version} completed`);
 }
 
 async function _scheduleTrial(profile: Profile | null): Promise<void> {
@@ -485,9 +464,6 @@ async function _scheduleTrial(profile: Profile | null): Promise<void> {
  * widget daily summary schedules.
  */
 async function cancelAllOwnedNotifications(): Promise<void> {
-  console.log(
-    `[NOTIFY] cancelAllOwnedNotifications called (${SYNC_NOTIFICATION_IDS.length} IDs)`,
-  );
   await Promise.all(
     SYNC_NOTIFICATION_IDS.map((id) =>
       Notifications.cancelScheduledNotificationAsync(id).catch(() => {
@@ -515,21 +491,12 @@ const LEGACY_SWEEP_KEY = 'notifications_legacy_sweep_version';
 async function sweepLegacyNotificationsOnce(): Promise<void> {
   try {
     const marker = await AsyncStorage.getItem(LEGACY_SWEEP_KEY);
-    console.log(
-      `[NOTIFY] sweep: stored=${marker ?? '(none)'}, current=${LEGACY_SWEEP_VERSION}`,
-    );
-    if (marker === LEGACY_SWEEP_VERSION) {
-      console.log('[NOTIFY] sweep: already applied, skipping');
-      return;
-    }
-    console.log('[NOTIFY] sweep: running cancelAllScheduledNotificationsAsync');
+    if (marker === LEGACY_SWEEP_VERSION) return;
     await Notifications.cancelAllScheduledNotificationsAsync();
     await AsyncStorage.setItem(LEGACY_SWEEP_KEY, LEGACY_SWEEP_VERSION);
-    console.log('[NOTIFY] sweep: completed, marker persisted');
-  } catch (e) {
+  } catch {
     // Non-fatal — if AsyncStorage is unavailable we just skip. A later launch
     // can still run the sweep.
-    console.log(`[NOTIFY] sweep: failed with ${String(e)}`);
   }
 }
 

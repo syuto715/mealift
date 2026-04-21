@@ -43,7 +43,6 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
       'PRAGMA user_version;',
     );
     const currentVersion = result?.user_version ?? 0;
-    console.log(`[DB] Before migrations, user_version = ${currentVersion}`);
 
     // NOTE: Seeds are intentionally NOT called inside per-version gates here.
     // Seeds reference columns that later migrations add (e.g. seedExercises
@@ -107,14 +106,8 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
       await db.execAsync('PRAGMA user_version = 14;');
     }
 
-    const finalResult = await db.getFirstAsync<{ user_version: number }>(
-      'PRAGMA user_version;',
-    );
-    console.log(
-      `[DB] After migrations, user_version = ${finalResult?.user_version ?? 'unknown'}`,
-    );
   } catch (error) {
-    console.error('[DB] Migration failed:', error);
+    console.error('Migration failed:', error);
     throw error;
   }
 

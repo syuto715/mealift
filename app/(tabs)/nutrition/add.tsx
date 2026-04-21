@@ -66,10 +66,12 @@ import {
 import {
   estimateDishNutrition,
   EstimatedNutrition,
+  AIError,
 } from '../../../src/infra/services/aiNutritionService';
 import { canUse } from '../../../src/infra/services/subscriptionService';
 import { DishDetailModal } from '../../../src/components/nutrition/DishDetailModal';
 import { FoodDetailModal } from '../../../src/components/nutrition/FoodDetailModal';
+import { UpgradePromptModal } from '../../../src/components/subscription/UpgradePromptModal';
 import { formatServingHint } from '../../../src/constants/servingUnits';
 
 const TAB_SEGMENTS = [
@@ -129,6 +131,7 @@ export default function AddFoodScreen() {
   // AI estimation state
   const [aiLoading, setAiLoading] = useState(false);
   const [aiEstimateResult, setAiEstimateResult] = useState<EstimatedNutrition | null>(null);
+  const [aiUpgradeVisible, setAiUpgradeVisible] = useState(false);
 
   // Manual entry state
   const [manualName, setManualName] = useState('');
@@ -311,17 +314,34 @@ export default function AddFoodScreen() {
         findByExactName,
         (q) => searchFoods(q, 5),
       );
-      if (!estimate) {
-        Alert.alert('推定失敗', 'AI栄養推定に失敗しました。もう一度お試しください。');
-        setActiveTab('manual');
-        return;
-      }
       setAiEstimateResult(estimate);
       setSelectedDish(null);
       setDishModalVisible(true);
     } catch (error) {
+      if (error instanceof AIError) {
+        switch (error.code) {
+          case 'pro_required':
+            setAiUpgradeVisible(true);
+            return;
+          case 'quota_exceeded':
+            Alert.alert('本日の利用上限', error.message);
+            return;
+          case 'unauthorized':
+          case 'invalid_token':
+            Alert.alert(
+              'ログインが必要です',
+              'AI推定を利用するにはログインしてください。',
+            );
+            return;
+          case 'invalid_request':
+            Alert.alert('入力エラー', error.message);
+            return;
+          default:
+            Alert.alert('エラー', error.message);
+            return;
+        }
+      }
       Alert.alert('エラー', 'AI栄養推定でエラーが発生しました。');
-      setActiveTab('manual');
     } finally {
       setAiLoading(false);
     }
@@ -1275,6 +1295,18 @@ export default function AddFoodScreen() {
         food={foodDetailTarget}
         gender={profile?.gender ?? 'male'}
         onAdd={handleDetailAdd}
+      />
+      <UpgradePromptModal
+        visible={aiUpgradeVisible}
+        onClose={() => setAiUpgradeVisible(false)}
+        featureName="AI栄養推定"
+        featureDescription="料理名を入力するだけでAIが材料と分量を推定します"
+        requiredPlan="pro"
+        benefits={[
+          '自炊料理の栄養素を自動推定',
+          '材料の分量から栄養を自動計算',
+          '1日50回までご利用可能',
+        ]}
       />
     </SafeAreaView>
   );
