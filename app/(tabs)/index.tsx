@@ -53,6 +53,7 @@ import { WorkoutSuggestion } from '../../src/types/workoutSuggestion';
 import { getWorkoutSuggestion } from '../../src/domain/workoutSuggestion';
 import { canUse } from '../../src/infra/services/subscriptionService';
 import { updateWidgetData } from '../../src/infra/services/widgetService';
+import { TrialBadge } from '../../src/components/subscription/TrialBadge';
 import { subDays, subWeeks, startOfWeek, endOfWeek, addDays, format, isToday, isMonday } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
@@ -467,6 +468,7 @@ export default function HomeScreen() {
               {getGreeting()}
             </Text>
           </View>
+          <TrialBadge />
         </View>
 
         {/* Date Navigator */}

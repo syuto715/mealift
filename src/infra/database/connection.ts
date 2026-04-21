@@ -11,6 +11,9 @@ import { migrateV8 } from './migrations/v8';
 import { migrateV9 } from './migrations/v9';
 import { migrateV10 } from './migrations/v10';
 import { migrateV11 } from './migrations/v11';
+import { migrateV12 } from './migrations/v12';
+import { migrateV13 } from './migrations/v13';
+import { migrateV14 } from './migrations/v14';
 import { seedFoods, seedExercises } from './seed/foods';
 import { seedDishes } from './seed/dishes';
 import { seedBarcodeProducts } from './seed/barcodeProducts';
@@ -89,6 +92,18 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
       await migrateV11(db);
       await db.execAsync('PRAGMA user_version = 11;');
     }
+    if (currentVersion < 12) {
+      await migrateV12(db);
+      await db.execAsync('PRAGMA user_version = 12;');
+    }
+    if (currentVersion < 13) {
+      await migrateV13(db);
+      await db.execAsync('PRAGMA user_version = 13;');
+    }
+    if (currentVersion < 14) {
+      await migrateV14(db);
+      await db.execAsync('PRAGMA user_version = 14;');
+    }
   } catch (error) {
     throw error;
   }
@@ -96,6 +111,14 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   // Always run seedFoods to pick up newly added items (uses INSERT OR IGNORE)
   try {
     await seedFoods(db);
+  } catch (error) {
+  }
+
+  // Re-seed exercises on every boot so new cardio / sports entries appear on
+  // existing installs. INSERT OR IGNORE skips rows already present, so this is
+  // cheap after the first run.
+  try {
+    await seedExercises(db);
   } catch (error) {
   }
 

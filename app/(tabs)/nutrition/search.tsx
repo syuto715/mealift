@@ -6,6 +6,8 @@ import {
   FlatList,
   useColorScheme,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -188,6 +190,10 @@ export default function SearchFoodScreen() {
       style={[styles.safe, { backgroundColor: colors.background }]}
       edges={['top']}
     >
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => {
@@ -239,6 +245,7 @@ export default function SearchFoodScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderFoodItem}
           contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
               このカテゴリーに食品がありません
@@ -251,6 +258,7 @@ export default function SearchFoodScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderCategoryItem}
           contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
         />
       )}
 
@@ -382,6 +390,7 @@ export default function SearchFoodScreen() {
           </View>
         )}
       </Modal>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

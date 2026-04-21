@@ -11,7 +11,10 @@ import { useAuthStore } from '../src/stores/authStore';
 import { useProfileStore } from '../src/stores/profileStore';
 import { getProfile } from '../src/infra/repositories/profileRepository';
 import { applyRetroactiveTrialGrantOnce } from '../src/infra/services/planMigrationService';
-import { scheduleTrialNotifications } from '../src/infra/services/notificationService';
+import {
+  syncNotifications,
+  loadNotificationSettings,
+} from '../src/infra/services/notificationService';
 
 const ROUTING_TIMEOUT_MS = 8000;
 
@@ -60,7 +63,11 @@ export default function IndexScreen() {
             (await applyRetroactiveTrialGrantOnce(profile)) ?? profile;
           setProfile(hydrated);
           setOnboardingCompleted(hydrated.onboardingCompleted);
-          void scheduleTrialNotifications(hydrated);
+          // Re-sync notifications now that we have a profile. The version-
+          // gated guard in syncNotifications linearises this with any other
+          // concurrent caller so last-write-wins is deterministic.
+          const settings = await loadNotificationSettings();
+          void syncNotifications({ settings, profile: hydrated });
         }
       } catch (error) {
         // Profile load failed — treat as no profile, proceed to onboarding

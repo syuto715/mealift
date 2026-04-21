@@ -54,6 +54,9 @@ import {
   getFavoriteDishes,
   toggleDishFavorite,
   saveDishFromAI,
+  getMyDishes,
+  softDeleteMyDish,
+  duplicateMyDish,
 } from '../../../src/infra/repositories/dishRepository';
 import {
   getTemplates,
@@ -71,6 +74,7 @@ import { formatServingHint } from '../../../src/constants/servingUnits';
 
 const TAB_SEGMENTS = [
   { label: '検索', value: 'search' },
+  { label: 'マイ料理', value: 'myDish' },
   { label: 'よく使う', value: 'frequent' },
   { label: 'お気に入り', value: 'favorite' },
   { label: '手入力', value: 'manual' },
@@ -118,6 +122,9 @@ export default function AddFoodScreen() {
   // Favorites state
   const [favoriteFoods, setFavoriteFoods] = useState<Food[]>([]);
   const [favoriteDishes, setFavoriteDishes] = useState<Dish[]>([]);
+
+  // My Dish state
+  const [myDishes, setMyDishes] = useState<Dish[]>([]);
 
   // AI estimation state
   const [aiLoading, setAiLoading] = useState(false);
@@ -168,6 +175,14 @@ export default function AddFoodScreen() {
     setTemplates(list);
   }, [profile?.id]);
 
+  const loadMyDishes = useCallback(async () => {
+    try {
+      const list = await getMyDishes(100);
+      setMyDishes(list);
+    } catch {
+    }
+  }, []);
+
   useEffect(() => {
     loadFrequentFoods();
   }, [loadFrequentFoods]);
@@ -179,7 +194,10 @@ export default function AddFoodScreen() {
     if (activeTab === 'favorite') {
       loadFavorites();
     }
-  }, [activeTab, loadTemplates, loadFavorites]);
+    if (activeTab === 'myDish') {
+      loadMyDishes();
+    }
+  }, [activeTab, loadTemplates, loadFavorites, loadMyDishes]);
 
   useEffect(() => {
     if (searchQuery.length < 1) {
@@ -383,6 +401,52 @@ export default function AddFoodScreen() {
     if (activeTab === 'favorite') {
       await loadFavorites();
     }
+    if (activeTab === 'myDish') {
+      await loadMyDishes();
+    }
+  };
+
+  const handleMyDishLongPress = (dish: Dish) => {
+    Alert.alert(
+      dish.nameJa,
+      '操作を選択してください',
+      [
+        {
+          text: '編集',
+          onPress: () =>
+            router.push({ pathname: '/(tabs)/nutrition/my-dish', params: { dishId: dish.id } }),
+        },
+        {
+          text: '複製',
+          onPress: async () => {
+            await duplicateMyDish(dish.id);
+            await loadMyDishes();
+          },
+        },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              '削除確認',
+              `「${dish.nameJa}」を削除しますか？`,
+              [
+                { text: 'キャンセル', style: 'cancel' },
+                {
+                  text: '削除',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await softDeleteMyDish(dish.id);
+                    await loadMyDishes();
+                  },
+                },
+              ],
+            );
+          },
+        },
+        { text: 'キャンセル', style: 'cancel' },
+      ],
+    );
   };
 
   const handleManualAdd = async () => {
@@ -587,6 +651,12 @@ export default function AddFoodScreen() {
     }
     // type === 'food'
     const food = item.data;
+    const sourceLabel =
+      food.source === 'open_food_facts'
+        ? 'Open Food Facts'
+        : food.isUserAdded
+          ? 'あなたが追加'
+          : null;
     return (
       <TouchableOpacity
         style={[styles.foodRow, { borderBottomColor: colors.border }]}
@@ -595,12 +665,27 @@ export default function AddFoodScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.foodRowInfo}>
-          <Text
-            style={[styles.foodRowName, { color: colors.textPrimary }]}
-            numberOfLines={1}
-          >
-            {food.nameJa}
-          </Text>
+          <View style={styles.foodNameRow}>
+            <Text
+              style={[styles.foodRowName, { color: colors.textPrimary }]}
+              numberOfLines={1}
+            >
+              {food.nameJa}
+            </Text>
+            {sourceLabel && (
+              <Text
+                style={[
+                  styles.sourceBadge,
+                  {
+                    color: colors.primary,
+                    backgroundColor: colors.primary + '18',
+                  },
+                ]}
+              >
+                {sourceLabel}
+              </Text>
+            )}
+          </View>
           <Text style={[styles.foodRowMeta, { color: colors.textSecondary }]}>
             {formatServingHint(food.servingUnit, food.servingSizeG, Math.round(food.caloriesPerServing))}
           </Text>
@@ -657,6 +742,36 @@ export default function AddFoodScreen() {
         <Ionicons name="information-circle-outline" size={22} color={colors.textSecondary} />
       </TouchableOpacity>
       <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+    </TouchableOpacity>
+  );
+
+  const renderMyDishItem = ({ item }: { item: Dish }) => (
+    <TouchableOpacity
+      style={[styles.foodRow, { borderBottomColor: colors.border }]}
+      onPress={() => handleDishTap(item)}
+      onLongPress={() => handleMyDishLongPress(item)}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.dishIcon}>🍱</Text>
+      <View style={styles.foodRowInfo}>
+        <Text
+          style={[styles.foodRowName, { color: colors.textPrimary }]}
+          numberOfLines={1}
+        >
+          {item.nameJa}
+        </Text>
+        <Text style={[styles.foodRowMeta, { color: colors.textSecondary }]}>
+          {Math.round(item.totalCalories)} kcal / {item.servingDescription}
+          {item.useCount > 0 ? ` ・ ${item.useCount}回` : ''}
+        </Text>
+        <Text style={[styles.foodRowPfc, { color: colors.textTertiary }]}>
+          P {item.totalProteinG}g F {item.totalFatG}g C {item.totalCarbG}g
+        </Text>
+      </View>
+      {item.isFavorite && (
+        <Ionicons name="heart" size={16} color={colors.calorie} style={{ marginRight: spacing.xs }} />
+      )}
+      <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
     </TouchableOpacity>
   );
 
@@ -804,6 +919,17 @@ export default function AddFoodScreen() {
                         AI栄養推定（Proプラン）
                       </Text>
                     )}
+                    <Button
+                      title="+ この食品を追加"
+                      onPress={() =>
+                        router.push({
+                          pathname: '/(tabs)/nutrition/food-submit',
+                          params: { initialName: searchQuery },
+                        })
+                      }
+                      variant="outline"
+                      size="sm"
+                    />
                   </View>
                 )}
                 <Text style={[styles.emptySubHint, { color: colors.textTertiary }]}>
@@ -828,6 +954,39 @@ export default function AddFoodScreen() {
               >
                 よく使う食品がありません
               </Text>
+            }
+          />
+        </View>
+      )}
+
+      {activeTab === 'myDish' && (
+        <View style={styles.tabContent}>
+          <View style={styles.myDishActionRow}>
+            <Button
+              title="新規作成"
+              onPress={() =>
+                router.push({ pathname: '/(tabs)/nutrition/my-dish' })
+              }
+              variant="primary"
+              size="sm"
+              icon={<Ionicons name="add" size={16} color="#fff" />}
+            />
+          </View>
+          <FlatList
+            data={myDishes}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMyDishItem}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="restaurant-outline" size={48} color={colors.textTertiary} />
+                <Text style={[styles.emptyHint, { color: colors.textTertiary }]}>
+                  マイ料理がまだありません
+                </Text>
+                <Text style={[styles.emptySubHint, { color: colors.textTertiary }]}>
+                  よく食べる組み合わせを保存して、素早く記録できます
+                </Text>
+              </View>
             }
           />
         </View>
@@ -1230,5 +1389,24 @@ const styles = StyleSheet.create({
   },
   aiLoadingText: {
     ...typography.bodySmall,
+  },
+  myDishActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  foodNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  sourceBadge: {
+    ...typography.labelSmall,
+    fontSize: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    overflow: 'hidden',
   },
 });

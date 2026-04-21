@@ -22,6 +22,9 @@ export interface Dish extends ExtendedNutrients {
   totalCarbG: number;
   isCustom: boolean;
   isFavorite: boolean;
+  isMyDish: boolean;
+  userNote: string | null;
+  lastUsedAt: ISODateTimeString | null;
   useCount: number;
   createdAt: ISODateTimeString;
 }

@@ -1,6 +1,7 @@
 import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
 import { Dish, DishIngredient, DishWithIngredients, DishCategory } from '../../types/dish';
+import { ExtendedNutrients, EXTENDED_NUTRIENT_KEYS, EXTENDED_NUTRIENT_DB_COLUMNS } from '../../types/food';
 
 /** Generic input type for saving AI-estimated dishes */
 export interface SaveDishInput {
@@ -58,6 +59,9 @@ function rowToDish(row: Record<string, unknown>): Dish {
     saltG: (row.salt_g as number) ?? null,
     isCustom: (row.is_custom as number) === 1,
     isFavorite: (row.is_favorite as number) === 1,
+    isMyDish: (row.is_my_dish as number) === 1,
+    userNote: (row.user_note as string) ?? null,
+    lastUsedAt: (row.last_used_at as string) ?? null,
     useCount: (row.use_count as number) ?? 0,
     createdAt: row.created_at as string,
   };
@@ -108,7 +112,9 @@ export async function searchDishes(
   const db = await getDatabase();
   try {
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      'SELECT * FROM dishes WHERE name_ja LIKE ? ORDER BY use_count DESC, name_ja LIMIT ?',
+      `SELECT * FROM dishes
+       WHERE name_ja LIKE ? AND deleted_at IS NULL
+       ORDER BY use_count DESC, name_ja LIMIT ?`,
       [`%${query}%`, limit],
     );
     return rows.map(rowToDish);
@@ -146,7 +152,9 @@ export async function getFrequentDishes(
 ): Promise<Dish[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM dishes WHERE use_count > 0 ORDER BY use_count DESC LIMIT ?',
+    `SELECT * FROM dishes
+     WHERE use_count > 0 AND deleted_at IS NULL
+     ORDER BY use_count DESC LIMIT ?`,
     [limit],
   );
   return rows.map(rowToDish);
@@ -179,9 +187,10 @@ export async function getDishesByCategory(
 
 export async function incrementDishUseCount(dishId: string): Promise<void> {
   const db = await getDatabase();
+  const now = new Date().toISOString();
   await db.runAsync(
-    'UPDATE dishes SET use_count = use_count + 1 WHERE id = ?',
-    [dishId],
+    'UPDATE dishes SET use_count = use_count + 1, last_used_at = ? WHERE id = ?',
+    [now, dishId],
   );
 }
 
@@ -189,7 +198,9 @@ export async function getFavoriteDishes(limit: number = 50): Promise<Dish[]> {
   try {
     const db = await getDatabase();
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      'SELECT * FROM dishes WHERE is_favorite = 1 ORDER BY name_ja LIMIT ?',
+      `SELECT * FROM dishes
+       WHERE is_favorite = 1 AND deleted_at IS NULL
+       ORDER BY name_ja LIMIT ?`,
       [limit],
     );
     return rows.map(rowToDish);
@@ -278,4 +289,234 @@ export async function saveDishFromAI(
     ...rowToDish(dishRow!),
     ingredients,
   };
+}
+
+// ---------------------------------------------------------------------------
+// My Dish (mai-ryouri): user-composed dishes from the food database.
+// ---------------------------------------------------------------------------
+
+export interface MyDishIngredientInput {
+  foodName: string;
+  amountG: number;
+  calories: number;
+  proteinG: number;
+  fatG: number;
+  carbG: number;
+  extended?: Partial<ExtendedNutrients>;
+}
+
+export interface SaveMyDishInput {
+  id?: string;
+  nameJa: string;
+  userNote: string | null;
+  servingDescription?: string;
+  ingredients: MyDishIngredientInput[];
+}
+
+function sumNutrients(
+  ingredients: MyDishIngredientInput[],
+): {
+  calories: number;
+  proteinG: number;
+  fatG: number;
+  carbG: number;
+  extended: Partial<Record<keyof ExtendedNutrients, number>>;
+} {
+  let calories = 0;
+  let proteinG = 0;
+  let fatG = 0;
+  let carbG = 0;
+  const extended: Partial<Record<keyof ExtendedNutrients, number>> = {};
+
+  for (const ing of ingredients) {
+    calories += ing.calories;
+    proteinG += ing.proteinG;
+    fatG += ing.fatG;
+    carbG += ing.carbG;
+    if (ing.extended) {
+      for (const key of EXTENDED_NUTRIENT_KEYS) {
+        const v = ing.extended[key];
+        if (v != null) {
+          extended[key] = (extended[key] ?? 0) + v;
+        }
+      }
+    }
+  }
+
+  return { calories, proteinG, fatG, carbG, extended };
+}
+
+export async function saveMyDish(
+  input: SaveMyDishInput,
+): Promise<DishWithIngredients> {
+  const db = await getDatabase();
+  const dishId = input.id ?? generateId();
+  const isUpdate = !!input.id;
+  const totals = sumNutrients(input.ingredients);
+  const serving = input.servingDescription ?? '1人前';
+
+  // Build column list + values for extended nutrients dynamically so we don't
+  // have to hardcode 20 columns in each statement.
+  const extCols = EXTENDED_NUTRIENT_KEYS.map((k) => EXTENDED_NUTRIENT_DB_COLUMNS[k]);
+  const extVals = EXTENDED_NUTRIENT_KEYS.map((k) => totals.extended[k] ?? null);
+
+  if (isUpdate) {
+    const setClauses = [
+      'name_ja = ?',
+      'serving_description = ?',
+      'total_calories = ?',
+      'total_protein_g = ?',
+      'total_fat_g = ?',
+      'total_carb_g = ?',
+      'user_note = ?',
+      ...extCols.map((c) => `${c} = ?`),
+    ].join(', ');
+    await db.runAsync(
+      `UPDATE dishes SET ${setClauses} WHERE id = ? AND is_my_dish = 1`,
+      [
+        input.nameJa,
+        serving,
+        Math.round(totals.calories),
+        Math.round(totals.proteinG * 10) / 10,
+        Math.round(totals.fatG * 10) / 10,
+        Math.round(totals.carbG * 10) / 10,
+        input.userNote,
+        ...extVals,
+        dishId,
+      ],
+    );
+
+    // Replace ingredients atomically.
+    await db.runAsync('DELETE FROM dish_ingredients WHERE dish_id = ?', [dishId]);
+  } else {
+    const insertCols = [
+      'id', 'name_ja', 'name_en', 'category', 'serving_description',
+      'total_calories', 'total_protein_g', 'total_fat_g', 'total_carb_g',
+      'is_custom', 'is_my_dish', 'user_note', 'use_count',
+      ...extCols,
+    ].join(', ');
+    const placeholders = new Array(
+      9 /* id + 8 core fields */ + 4 /* is_custom, is_my_dish, user_note, use_count */ + extCols.length,
+    )
+      .fill('?')
+      .join(', ');
+    await db.runAsync(
+      `INSERT INTO dishes (${insertCols}) VALUES (${placeholders})`,
+      [
+        dishId,
+        input.nameJa,
+        null,
+        'other',
+        serving,
+        Math.round(totals.calories),
+        Math.round(totals.proteinG * 10) / 10,
+        Math.round(totals.fatG * 10) / 10,
+        Math.round(totals.carbG * 10) / 10,
+        0,
+        1,
+        input.userNote,
+        0,
+        ...extVals,
+      ],
+    );
+  }
+
+  const ingExtCols = EXTENDED_NUTRIENT_KEYS.map((k) => EXTENDED_NUTRIENT_DB_COLUMNS[k]);
+  for (let i = 0; i < input.ingredients.length; i++) {
+    const ing = input.ingredients[i];
+    const ingId = generateId();
+    const ingExtVals = EXTENDED_NUTRIENT_KEYS.map((k) => ing.extended?.[k] ?? null);
+    const cols = [
+      'id', 'dish_id', 'food_name', 'amount_g', 'calories',
+      'protein_g', 'fat_g', 'carb_g', 'sort_order',
+      ...ingExtCols,
+    ].join(', ');
+    const placeholders = new Array(9 + ingExtCols.length).fill('?').join(', ');
+    await db.runAsync(
+      `INSERT INTO dish_ingredients (${cols}) VALUES (${placeholders})`,
+      [
+        ingId,
+        dishId,
+        ing.foodName,
+        ing.amountG,
+        Math.round(ing.calories),
+        Math.round(ing.proteinG * 10) / 10,
+        Math.round(ing.fatG * 10) / 10,
+        Math.round(ing.carbG * 10) / 10,
+        i,
+        ...ingExtVals,
+      ],
+    );
+  }
+
+  const full = await getDishById(dishId);
+  if (!full) throw new Error('saveMyDish: dish not found after insert');
+  return full;
+}
+
+export async function getMyDishes(limit: number = 100): Promise<Dish[]> {
+  const db = await getDatabase();
+  try {
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      `SELECT * FROM dishes
+       WHERE is_my_dish = 1 AND deleted_at IS NULL
+       ORDER BY last_used_at DESC, created_at DESC
+       LIMIT ?`,
+      [limit],
+    );
+    return rows.map(rowToDish);
+  } catch {
+    return [];
+  }
+}
+
+export async function softDeleteMyDish(dishId: string): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  await db.runAsync(
+    'UPDATE dishes SET deleted_at = ? WHERE id = ? AND is_my_dish = 1',
+    [now, dishId],
+  );
+}
+
+export async function duplicateMyDish(
+  dishId: string,
+): Promise<DishWithIngredients | null> {
+  const source = await getDishById(dishId);
+  if (!source) return null;
+  return saveMyDish({
+    nameJa: `${source.nameJa} (コピー)`,
+    userNote: source.userNote,
+    servingDescription: source.servingDescription,
+    ingredients: source.ingredients.map((ing) => ({
+      foodName: ing.foodName,
+      amountG: ing.amountG,
+      calories: ing.calories,
+      proteinG: ing.proteinG,
+      fatG: ing.fatG,
+      carbG: ing.carbG,
+      extended: {
+        fiberG: ing.fiberG,
+        sodiumMg: ing.sodiumMg,
+        calciumMg: ing.calciumMg,
+        ironMg: ing.ironMg,
+        vitaminAUg: ing.vitaminAUg,
+        vitaminB1Mg: ing.vitaminB1Mg,
+        vitaminB2Mg: ing.vitaminB2Mg,
+        vitaminB6Mg: ing.vitaminB6Mg,
+        vitaminB12Ug: ing.vitaminB12Ug,
+        folateUg: ing.folateUg,
+        vitaminCMg: ing.vitaminCMg,
+        vitaminDUg: ing.vitaminDUg,
+        vitaminEMg: ing.vitaminEMg,
+        potassiumMg: ing.potassiumMg,
+        magnesiumMg: ing.magnesiumMg,
+        zincMg: ing.zincMg,
+        cholesterolMg: ing.cholesterolMg,
+        saturatedFatG: ing.saturatedFatG,
+        sugarG: ing.sugarG,
+        saltG: ing.saltG,
+      },
+    })),
+  });
 }

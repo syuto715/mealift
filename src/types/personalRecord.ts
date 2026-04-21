@@ -4,7 +4,10 @@ export type PRRecordType =
   | 'estimated_1rm'
   | 'max_weight'
   | 'max_volume_session'
-  | 'max_reps_at_weight';
+  | 'max_reps_at_weight'
+  | 'max_duration'
+  | 'max_distance'
+  | 'max_calories';
 
 export interface PersonalRecord {
   id: UUID;
@@ -35,4 +38,7 @@ export const PR_TYPE_LABELS: Record<PRRecordType, string> = {
   max_weight: '最大重量',
   max_volume_session: '最大ボリューム',
   max_reps_at_weight: '最多レップ数',
+  max_duration: '最長時間',
+  max_distance: '最長距離',
+  max_calories: '最大kcal',
 };

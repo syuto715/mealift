@@ -3,6 +3,7 @@ import { generateId } from '../../utils/id';
 import { MuscleGroup } from '../../types/common';
 import {
   Exercise,
+  ExerciseType,
   WorkoutRoutine,
   WorkoutRoutineItem,
   WorkoutRoutineWithItems,
@@ -28,6 +29,8 @@ function rowToExercise(row: Record<string, unknown>): Exercise {
     equipment: (row.equipment as string) ?? null,
     isCustom: (row.is_custom as number) === 1,
     sortOrder: (row.sort_order as number) ?? 0,
+    exerciseType: ((row.exercise_type as string) ?? 'strength') as ExerciseType,
+    metValue: (row.met_value as number) ?? null,
     createdAt: row.created_at as string,
   };
 }
@@ -71,6 +74,10 @@ function rowToSet(row: Record<string, unknown>): WorkoutSet {
     rir: (row.rir as number) ?? null,
     isWarmup: (row.is_warmup as number) === 1,
     note: (row.note as string) ?? null,
+    durationMinutes: (row.duration_minutes as number) ?? null,
+    distanceKm: (row.distance_km as number) ?? null,
+    caloriesBurned: (row.calories_burned as number) ?? null,
+    perceivedIntensity: (row.perceived_intensity as number) ?? null,
     createdAt: row.created_at as string,
   };
 }
@@ -125,15 +132,19 @@ export async function createCustomExercise(
   nameJa: string,
   muscleGroup: MuscleGroup,
   equipment: string | null,
+  exerciseType: ExerciseType = 'strength',
+  metValue: number | null = null,
 ): Promise<Exercise> {
   const db = await getDatabase();
   const id = generateId();
   const now = new Date().toISOString();
 
   await db.runAsync(
-    `INSERT INTO exercises (id, name_ja, name_en, muscle_group, secondary_muscles, equipment, is_custom, sort_order, created_at)
-     VALUES (?, ?, NULL, ?, NULL, ?, 1, 999, ?)`,
-    [id, nameJa, muscleGroup, equipment, now],
+    `INSERT INTO exercises
+       (id, name_ja, name_en, muscle_group, secondary_muscles, equipment,
+        is_custom, sort_order, exercise_type, met_value, created_at)
+     VALUES (?, ?, NULL, ?, NULL, ?, 1, 999, ?, ?, ?)`,
+    [id, nameJa, muscleGroup, equipment, exerciseType, metValue, now],
   );
 
   return {
@@ -145,6 +156,8 @@ export async function createCustomExercise(
     equipment,
     isCustom: true,
     sortOrder: 999,
+    exerciseType,
+    metValue,
     createdAt: now,
   };
 }
@@ -162,12 +175,21 @@ export async function updateCustomExercise(
   nameJa: string,
   muscleGroup: MuscleGroup,
   equipment: string | null,
+  exerciseType?: ExerciseType,
+  metValue?: number | null,
 ): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync(
-    'UPDATE exercises SET name_ja = ?, muscle_group = ?, equipment = ? WHERE id = ? AND is_custom = 1',
-    [nameJa, muscleGroup, equipment, id],
-  );
+  if (exerciseType !== undefined) {
+    await db.runAsync(
+      'UPDATE exercises SET name_ja = ?, muscle_group = ?, equipment = ?, exercise_type = ?, met_value = ? WHERE id = ? AND is_custom = 1',
+      [nameJa, muscleGroup, equipment, exerciseType, metValue ?? null, id],
+    );
+  } else {
+    await db.runAsync(
+      'UPDATE exercises SET name_ja = ?, muscle_group = ?, equipment = ? WHERE id = ? AND is_custom = 1',
+      [nameJa, muscleGroup, equipment, id],
+    );
+  }
 }
 
 export async function deleteCustomExercise(id: string): Promise<void> {
@@ -197,7 +219,8 @@ export async function getRoutines(profileId: string): Promise<WorkoutRoutineWith
               e.id AS e_id, e.name_ja AS e_name_ja, e.name_en AS e_name_en,
               e.muscle_group AS e_muscle_group, e.secondary_muscles AS e_secondary_muscles,
               e.equipment AS e_equipment, e.is_custom AS e_is_custom,
-              e.sort_order AS e_sort_order, e.created_at AS e_created_at
+              e.sort_order AS e_sort_order, e.exercise_type AS e_exercise_type,
+              e.met_value AS e_met_value, e.created_at AS e_created_at
        FROM workout_routine_items ri
        JOIN exercises e ON ri.exercise_id = e.id
        WHERE ri.routine_id = ?
@@ -223,6 +246,8 @@ export async function getRoutines(profileId: string): Promise<WorkoutRoutineWith
         equipment: (ir.e_equipment as string) ?? null,
         isCustom: (ir.e_is_custom as number) === 1,
         sortOrder: (ir.e_sort_order as number) ?? 0,
+        exerciseType: ((ir.e_exercise_type as string) ?? 'strength') as ExerciseType,
+        metValue: (ir.e_met_value as number) ?? null,
         createdAt: ir.e_created_at as string,
       } as Exercise,
     }));
@@ -423,8 +448,11 @@ export async function addSet(
   const now = new Date().toISOString();
 
   await db.runAsync(
-    `INSERT INTO workout_sets (id, session_id, exercise_id, set_number, weight_kg, reps, rpe, rir, is_warmup, note, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO workout_sets
+       (id, session_id, exercise_id, set_number, weight_kg, reps, rpe, rir,
+        is_warmup, note, duration_minutes, distance_km, calories_burned,
+        perceived_intensity, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       sessionId,
@@ -436,6 +464,10 @@ export async function addSet(
       input.rir ?? null,
       input.isWarmup ? 1 : 0,
       input.note ?? null,
+      input.durationMinutes ?? null,
+      input.distanceKm ?? null,
+      input.caloriesBurned ?? null,
+      input.perceivedIntensity ?? null,
       now,
     ],
   );
@@ -451,6 +483,10 @@ export async function addSet(
     rir: input.rir ?? null,
     isWarmup: input.isWarmup ?? false,
     note: input.note ?? null,
+    durationMinutes: input.durationMinutes ?? null,
+    distanceKm: input.distanceKm ?? null,
+    caloriesBurned: input.caloriesBurned ?? null,
+    perceivedIntensity: input.perceivedIntensity ?? null,
     createdAt: now,
   };
 }
@@ -490,6 +526,22 @@ export async function updateSet(
   if (updates.setNumber !== undefined) {
     fields.push('set_number = ?');
     values.push(updates.setNumber);
+  }
+  if (updates.durationMinutes !== undefined) {
+    fields.push('duration_minutes = ?');
+    values.push(updates.durationMinutes);
+  }
+  if (updates.distanceKm !== undefined) {
+    fields.push('distance_km = ?');
+    values.push(updates.distanceKm);
+  }
+  if (updates.caloriesBurned !== undefined) {
+    fields.push('calories_burned = ?');
+    values.push(updates.caloriesBurned);
+  }
+  if (updates.perceivedIntensity !== undefined) {
+    fields.push('perceived_intensity = ?');
+    values.push(updates.perceivedIntensity);
   }
 
   if (fields.length === 0) return;

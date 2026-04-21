@@ -243,16 +243,15 @@ async function seedMextAliases(db: SQLite.SQLiteDatabase): Promise<void> {
 }
 
 export async function seedExercises(db: SQLite.SQLiteDatabase): Promise<void> {
-  const existingCount = await db.getFirstAsync<{ count: number }>(
-    'SELECT COUNT(*) as count FROM exercises WHERE is_custom = 0'
-  );
-
-  if (existingCount && existingCount.count > 0) return;
-
+  // INSERT OR IGNORE makes this safe to run on every boot: existing rows are
+  // skipped, new cardio / sports / other seeds are inserted on installs that
+  // shipped before they existed. Re-seeding on every boot is cheap.
   for (const exercise of EXERCISES) {
     await db.runAsync(
-      `INSERT OR IGNORE INTO exercises (id, name_ja, name_en, muscle_group, secondary_muscles, equipment, is_custom, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
+      `INSERT OR IGNORE INTO exercises
+         (id, name_ja, name_en, muscle_group, secondary_muscles, equipment,
+          is_custom, sort_order, exercise_type, met_value)
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
       [
         exercise.id,
         exercise.nameJa,
@@ -261,6 +260,8 @@ export async function seedExercises(db: SQLite.SQLiteDatabase): Promise<void> {
         exercise.secondaryMuscles ? JSON.stringify(exercise.secondaryMuscles) : null,
         exercise.equipment,
         exercise.sortOrder,
+        exercise.exerciseType ?? 'strength',
+        exercise.metValue ?? null,
       ]
     );
   }

@@ -16,6 +16,7 @@ import {
 import { Toast } from '../src/components/ui';
 import { useUIStore } from '../src/stores/uiStore';
 import { bootstrapNotifications } from '../src/infra/services/notificationService';
+import * as Notifications from 'expo-notifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -70,9 +71,29 @@ export default function RootLayout() {
           // Continue without DB — app can still show login screen
         }
 
-        // Initialize notifications (single-shot across re-mounts)
+        // Initialize notifications (single-shot across re-mounts). Passes
+        // null profile; app/index.tsx re-runs syncNotifications with the
+        // hydrated profile once it's loaded from the DB.
         try {
-          await bootstrapNotifications();
+          await bootstrapNotifications(null);
+          try {
+            const all = await Notifications.getAllScheduledNotificationsAsync();
+            console.log(
+              `[NOTIFY] ========== ${all.length} notifications scheduled ==========`,
+            );
+            const byId: Record<string, number> = {};
+            all.forEach((n) => {
+              const id = n.identifier || '(no-id)';
+              byId[id] = (byId[id] || 0) + 1;
+            });
+            Object.entries(byId).forEach(([id, count]) => {
+              console.log(
+                `[NOTIFY]   ${id}: ${count}${count > 1 ? ' ⚠️ DUPLICATE' : ''}`,
+              );
+            });
+          } catch (dumpError) {
+            console.log(`[NOTIFY] dump failed: ${String(dumpError)}`);
+          }
         } catch (notifError) {
         }
 

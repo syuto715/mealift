@@ -80,7 +80,7 @@ export async function lookupBarcode(
       `${API_BASE}/product/${barcode}.json?fields=product_name,product_name_ja,brands,serving_size,serving_quantity,nutriments,image_front_url,image_front_small_url`,
       {
         headers: {
-          'User-Agent': 'Mealift/1.0 (https://github.com/mealift)',
+          'User-Agent': 'Mealift/1.0 (mealift.support@gmail.com)',
         },
       },
     );

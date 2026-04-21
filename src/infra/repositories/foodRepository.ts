@@ -37,8 +37,12 @@ function rowToFood(row: Record<string, unknown>): Food {
     sugarG: (row.sugar_g as number) ?? null,
     saltG: (row.salt_g as number) ?? null,
     source: row.source as Food['source'],
+    externalId: (row.external_id as string) ?? null,
     isCustom: Boolean(row.is_custom),
     isFavorite: Boolean(row.is_favorite),
+    isUserAdded: Boolean(row.is_user_added),
+    verified: row.verified == null ? true : Boolean(row.verified),
+    addedAt: (row.added_at as string) ?? null,
     useCount: row.use_count as number,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
@@ -74,12 +78,13 @@ export async function searchFoods(
        ) AS match_rank
        FROM foods f
        LEFT JOIN food_aliases fa ON fa.food_id = f.id
-       WHERE f.name_ja = ?
-          OR fa.alias_name = ?
-          OR f.name_ja LIKE ?
-          OR fa.alias_name LIKE ?
-          OR f.name_ja LIKE ?
-          OR fa.alias_name LIKE ?
+       WHERE f.deleted_at IS NULL
+         AND (f.name_ja = ?
+           OR fa.alias_name = ?
+           OR f.name_ja LIKE ?
+           OR fa.alias_name LIKE ?
+           OR f.name_ja LIKE ?
+           OR fa.alias_name LIKE ?)
        GROUP BY f.id
        ORDER BY match_rank ASC, f.is_common DESC, usage_count DESC, f.use_count DESC, f.name_ja
        LIMIT ?`,
@@ -96,7 +101,9 @@ export async function searchFoods(
       const db = await getDatabase();
       const pattern = `%${query}%`;
       const rows = await db.getAllAsync<Record<string, unknown>>(
-        `SELECT * FROM foods WHERE name_ja LIKE ? OR name_en LIKE ? ORDER BY use_count DESC, name_ja LIMIT ?`,
+        `SELECT * FROM foods
+         WHERE (name_ja LIKE ? OR name_en LIKE ?) AND deleted_at IS NULL
+         ORDER BY use_count DESC, name_ja LIMIT ?`,
         [pattern, pattern, limit]
       );
       return rows.map(rowToFood);
@@ -110,7 +117,9 @@ export async function getFrequentFoods(limit: number = 20): Promise<Food[]> {
   try {
     const db = await getDatabase();
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      'SELECT * FROM foods ORDER BY use_count DESC, name_ja LIMIT ?',
+      `SELECT * FROM foods
+       WHERE deleted_at IS NULL
+       ORDER BY use_count DESC, name_ja LIMIT ?`,
       [limit]
     );
     return rows.map(rowToFood);
@@ -194,7 +203,9 @@ export async function getFavoriteFoods(limit: number = 50): Promise<Food[]> {
   try {
     const db = await getDatabase();
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      'SELECT * FROM foods WHERE is_favorite = 1 ORDER BY name_ja LIMIT ?',
+      `SELECT * FROM foods
+       WHERE is_favorite = 1 AND deleted_at IS NULL
+       ORDER BY name_ja LIMIT ?`,
       [limit]
     );
     return rows.map(rowToFood);
@@ -230,11 +241,238 @@ export async function findByExactName(nameJa: string): Promise<Food | null> {
   try {
     const db = await getDatabase();
     const row = await db.getFirstAsync<Record<string, unknown>>(
-      'SELECT * FROM foods WHERE name_ja = ? LIMIT 1',
+      'SELECT * FROM foods WHERE name_ja = ? AND deleted_at IS NULL LIMIT 1',
       [nameJa]
     );
     return row ? rowToFood(row) : null;
   } catch (error) {
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Barcode + user-added food helpers
+// ---------------------------------------------------------------------------
+
+export async function getFoodByBarcode(barcode: string): Promise<Food | null> {
+  try {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<Record<string, unknown>>(
+      `SELECT * FROM foods
+       WHERE barcode = ? AND deleted_at IS NULL
+       ORDER BY verified DESC, updated_at DESC
+       LIMIT 1`,
+      [barcode],
+    );
+    return row ? rowToFood(row) : null;
+  } catch {
+    return null;
+  }
+}
+
+const EXT_COLS_WITH_VALUES = [
+  'fiber_g', 'sodium_mg', 'calcium_mg', 'iron_mg',
+  'vitamin_a_ug', 'vitamin_b1_mg', 'vitamin_b2_mg',
+  'vitamin_b6_mg', 'vitamin_b12_ug', 'folate_ug',
+  'vitamin_c_mg', 'vitamin_d_ug', 'vitamin_e_mg',
+  'potassium_mg', 'magnesium_mg', 'zinc_mg',
+  'cholesterol_mg', 'saturated_fat_g', 'sugar_g', 'salt_g',
+] as const;
+
+const EXT_INPUT_KEYS: ReadonlyArray<keyof FoodInput> = [
+  'fiberG', 'sodiumMg', 'calciumMg', 'ironMg',
+  'vitaminAUg', 'vitaminB1Mg', 'vitaminB2Mg',
+  'vitaminB6Mg', 'vitaminB12Ug', 'folateUg',
+  'vitaminCMg', 'vitaminDUg', 'vitaminEMg',
+  'potassiumMg', 'magnesiumMg', 'zincMg',
+  'cholesterolMg', 'saturatedFatG', 'sugarG', 'saltG',
+];
+
+export interface SaveUserFoodOptions {
+  source?: FoodInput['source'];
+  externalId?: string | null;
+  isUserAdded?: boolean;
+  verified?: boolean;
+}
+
+/**
+ * Full-fidelity food insert (or upsert-by-barcode) that writes every extended
+ * nutrient. Used for both OFF-imported rows (`isUserAdded=false, verified=true`)
+ * and user-submitted rows (`isUserAdded=true, verified=false`).
+ */
+export async function saveFood(
+  input: FoodInput,
+  opts: SaveUserFoodOptions = {},
+): Promise<Food> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+
+  // Upsert by barcode when provided so repeat OFF lookups replace the cached row.
+  if (input.barcode) {
+    const existing = await db.getFirstAsync<{ id: string }>(
+      'SELECT id FROM foods WHERE barcode = ? AND deleted_at IS NULL LIMIT 1',
+      [input.barcode],
+    );
+    if (existing) {
+      const setClauses = [
+        'name_ja = ?',
+        'name_en = ?',
+        'brand = ?',
+        'serving_size_g = ?',
+        'serving_unit = ?',
+        'calories_per_serving = ?',
+        'protein_g = ?',
+        'fat_g = ?',
+        'carb_g = ?',
+        'source = ?',
+        'external_id = ?',
+        'verified = ?',
+        "updated_at = datetime('now')",
+        ...EXT_COLS_WITH_VALUES.map((c) => `${c} = ?`),
+      ].join(', ');
+      const extVals = EXT_INPUT_KEYS.map((k) => (input[k] as number | null | undefined) ?? null);
+      await db.runAsync(
+        `UPDATE foods SET ${setClauses} WHERE id = ?`,
+        [
+          input.nameJa,
+          input.nameEn ?? null,
+          input.brand ?? null,
+          input.servingSizeG,
+          input.servingUnit,
+          input.caloriesPerServing,
+          input.proteinG,
+          input.fatG,
+          input.carbG,
+          opts.source ?? input.source ?? 'manual',
+          opts.externalId ?? input.barcode,
+          opts.verified === false ? 0 : 1,
+          ...extVals,
+          existing.id,
+        ],
+      );
+      const row = await db.getFirstAsync<Record<string, unknown>>(
+        'SELECT * FROM foods WHERE id = ?',
+        [existing.id],
+      );
+      return rowToFood(row!);
+    }
+  }
+
+  const id = generateId();
+  const source = opts.source ?? input.source ?? 'manual';
+  const isUserAdded = opts.isUserAdded ? 1 : 0;
+  const verified = opts.verified === false ? 0 : 1;
+  const addedAt = opts.isUserAdded ? now : null;
+
+  const cols = [
+    'id', 'name_ja', 'name_en', 'brand', 'barcode',
+    'serving_size_g', 'serving_unit',
+    'calories_per_serving', 'protein_g', 'fat_g', 'carb_g',
+    'source', 'external_id', 'is_custom', 'is_user_added',
+    'verified', 'added_at', 'use_count',
+    ...EXT_COLS_WITH_VALUES,
+  ].join(', ');
+  const placeholders = new Array(18 + EXT_COLS_WITH_VALUES.length).fill('?').join(', ');
+  const extVals = EXT_INPUT_KEYS.map((k) => (input[k] as number | null | undefined) ?? null);
+
+  await db.runAsync(
+    `INSERT INTO foods (${cols}) VALUES (${placeholders})`,
+    [
+      id,
+      input.nameJa,
+      input.nameEn ?? null,
+      input.brand ?? null,
+      input.barcode ?? null,
+      input.servingSizeG,
+      input.servingUnit,
+      input.caloriesPerServing,
+      input.proteinG,
+      input.fatG,
+      input.carbG,
+      source,
+      opts.externalId ?? null,
+      isUserAdded, // is_custom — user-added rows are also "custom" in the legacy sense
+      isUserAdded,
+      verified,
+      addedAt,
+      0,
+      ...extVals,
+    ],
+  );
+
+  const row = await db.getFirstAsync<Record<string, unknown>>(
+    'SELECT * FROM foods WHERE id = ?',
+    [id],
+  );
+  return rowToFood(row!);
+}
+
+export async function getUserAddedFoods(limit: number = 200): Promise<Food[]> {
+  try {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      `SELECT * FROM foods
+       WHERE is_user_added = 1 AND deleted_at IS NULL
+       ORDER BY added_at DESC, created_at DESC
+       LIMIT ?`,
+      [limit],
+    );
+    return rows.map(rowToFood);
+  } catch {
+    return [];
+  }
+}
+
+export async function updateUserFood(
+  foodId: string,
+  input: FoodInput,
+): Promise<Food | null> {
+  const db = await getDatabase();
+  const setClauses = [
+    'name_ja = ?',
+    'name_en = ?',
+    'brand = ?',
+    'barcode = ?',
+    'serving_size_g = ?',
+    'serving_unit = ?',
+    'calories_per_serving = ?',
+    'protein_g = ?',
+    'fat_g = ?',
+    'carb_g = ?',
+    "updated_at = datetime('now')",
+    ...EXT_COLS_WITH_VALUES.map((c) => `${c} = ?`),
+  ].join(', ');
+  const extVals = EXT_INPUT_KEYS.map((k) => (input[k] as number | null | undefined) ?? null);
+  await db.runAsync(
+    `UPDATE foods SET ${setClauses} WHERE id = ? AND is_user_added = 1`,
+    [
+      input.nameJa,
+      input.nameEn ?? null,
+      input.brand ?? null,
+      input.barcode ?? null,
+      input.servingSizeG,
+      input.servingUnit,
+      input.caloriesPerServing,
+      input.proteinG,
+      input.fatG,
+      input.carbG,
+      ...extVals,
+      foodId,
+    ],
+  );
+  const row = await db.getFirstAsync<Record<string, unknown>>(
+    'SELECT * FROM foods WHERE id = ?',
+    [foodId],
+  );
+  return row ? rowToFood(row) : null;
+}
+
+export async function softDeleteUserFood(foodId: string): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+  await db.runAsync(
+    `UPDATE foods SET deleted_at = ?, updated_at = datetime('now')
+     WHERE id = ? AND is_user_added = 1`,
+    [now, foodId],
+  );
 }

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { MuscleGroup } from '../types/common';
-import { WorkoutSet } from '../types/workout';
+import { ExerciseType, WorkoutSet } from '../types/workout';
 import { generateId } from '../utils/id';
 
 export interface SetInSession {
@@ -9,6 +9,10 @@ export interface SetInSession {
   weightKg: number | null;
   reps: number | null;
   rpe: number | null;
+  durationMinutes: number | null;
+  distanceKm: number | null;
+  caloriesBurned: number | null;
+  perceivedIntensity: number | null;
   completed: boolean;
 }
 
@@ -16,6 +20,8 @@ export interface ExerciseInSession {
   exerciseId: string;
   exerciseName: string;
   muscleGroup: MuscleGroup;
+  exerciseType: ExerciseType;
+  metValue: number | null;
   sets: SetInSession[];
   previousSets: WorkoutSet[];
 }
@@ -34,7 +40,18 @@ interface WorkoutState {
   updateSet: (
     exerciseId: string,
     setId: string,
-    updates: Partial<Pick<SetInSession, 'weightKg' | 'reps' | 'rpe'>>,
+    updates: Partial<
+      Pick<
+        SetInSession,
+        | 'weightKg'
+        | 'reps'
+        | 'rpe'
+        | 'durationMinutes'
+        | 'distanceKm'
+        | 'caloriesBurned'
+        | 'perceivedIntensity'
+      >
+    >,
   ) => void;
   completeSet: (exerciseId: string, setId: string) => void;
   copyPreviousSets: (exerciseId: string) => void;
@@ -84,6 +101,10 @@ export const useWorkoutStore = create<WorkoutState>((set) => ({
           weightKg: lastSet?.weightKg ?? null,
           reps: lastSet?.reps ?? null,
           rpe: null,
+          durationMinutes: lastSet?.durationMinutes ?? null,
+          distanceKm: lastSet?.distanceKm ?? null,
+          caloriesBurned: null,
+          perceivedIntensity: lastSet?.perceivedIntensity ?? null,
           completed: false,
         };
         return { ...ex, sets: [...ex.sets, newSet] };
@@ -137,6 +158,10 @@ export const useWorkoutStore = create<WorkoutState>((set) => ({
           weightKg: prev.weightKg,
           reps: prev.reps,
           rpe: null,
+          durationMinutes: prev.durationMinutes ?? null,
+          distanceKm: prev.distanceKm ?? null,
+          caloriesBurned: null,
+          perceivedIntensity: prev.perceivedIntensity ?? null,
           completed: false,
         }));
 

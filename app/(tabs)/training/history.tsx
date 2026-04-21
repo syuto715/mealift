@@ -186,6 +186,7 @@ export default function HistoryScreen() {
   };
 
   const [exerciseNames, setExerciseNames] = useState<Record<string, string>>({});
+  const [exerciseTypes, setExerciseTypes] = useState<Record<string, string>>({});
 
   // Load exercise names for expanded sessions
   const loadExerciseNames = useCallback(
@@ -201,17 +202,20 @@ export default function HistoryScreen() {
       try {
         const allExercises = await workoutRepo.getExercises();
         const nameMap: Record<string, string> = { ...exerciseNames };
+        const typeMap: Record<string, string> = { ...exerciseTypes };
         for (const ex of allExercises) {
           if (unknownIds.has(ex.id)) {
             nameMap[ex.id] = ex.nameJa;
+            typeMap[ex.id] = ex.exerciseType;
           }
         }
         setExerciseNames(nameMap);
+        setExerciseTypes(typeMap);
       } catch {
         // silently fail
       }
     },
-    [exerciseNames],
+    [exerciseNames, exerciseTypes],
   );
 
   const handleToggleExpand = (sessionDisplay: SessionDisplay) => {
@@ -298,6 +302,8 @@ export default function HistoryScreen() {
                   {groupSetsByExercise(item.sets).map((group) => {
                     const sessionBest1RM = getBestOneRM(group.sets);
                     const selfBest = exerciseBests[group.exerciseId];
+                    const exType = exerciseTypes[group.exerciseId] ?? 'strength';
+                    const isStrength = exType === 'strength';
 
                     return (
                       <View key={group.exerciseId} style={styles.exerciseGroup}>
@@ -305,13 +311,13 @@ export default function HistoryScreen() {
                           <Text style={[styles.exerciseGroupName, { color: colors.textPrimary }]}>
                             {exerciseNames[group.exerciseId] ?? '...'}
                           </Text>
-                          {sessionBest1RM !== null && (
+                          {isStrength && sessionBest1RM !== null && (
                             <Text style={[styles.oneRMText, { color: colors.primary }]}>
                               推定1RM: {sessionBest1RM.toFixed(1)} kg
                             </Text>
                           )}
                         </View>
-                        {selfBest && (
+                        {isStrength && selfBest && (
                           <Text style={[styles.selfBestText, { color: colors.success }]}>
                             自己ベスト: {selfBest.oneRepMax.toFixed(1)} kg ({formatShortDate(selfBest.date)})
                           </Text>
@@ -324,9 +330,24 @@ export default function HistoryScreen() {
                               {s.setNumber}
                             </Text>
                             <Text style={[styles.historySetDetail, { color: colors.textSecondary }]}>
-                              {s.weightKg ?? 0}kg x {s.reps ?? 0}回
-                              {s.rpe != null ? ` @ RPE${s.rpe}` : ''}
-                              {s.isWarmup ? ' (W)' : ''}
+                              {isStrength
+                                ? `${s.weightKg ?? 0}kg x ${s.reps ?? 0}回${
+                                    s.rpe != null ? ` @ RPE${s.rpe}` : ''
+                                  }${s.isWarmup ? ' (W)' : ''}`
+                                : [
+                                    s.durationMinutes != null
+                                      ? `${s.durationMinutes}分`
+                                      : null,
+                                    s.distanceKm != null ? `${s.distanceKm}km` : null,
+                                    s.caloriesBurned != null
+                                      ? `${Math.round(s.caloriesBurned)}kcal`
+                                      : null,
+                                    s.perceivedIntensity != null
+                                      ? `強度${s.perceivedIntensity}`
+                                      : null,
+                                  ]
+                                    .filter((x) => x !== null)
+                                    .join(' / ')}
                             </Text>
                           </View>
                         ))}

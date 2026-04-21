@@ -11,9 +11,10 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1A73E8"
+      "backgroundColor": "#1164C0"
     },
     "ios": {
+      "icon": "./assets/icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.mealift.app",
       "buildNumber": "1",
@@ -28,7 +29,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1A73E8"
+        "backgroundColor": "#1164C0"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.mealift.app",

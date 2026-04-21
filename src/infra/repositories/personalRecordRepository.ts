@@ -76,12 +76,18 @@ export async function getExercisePRs(
     'max_weight',
     'max_volume_session',
     'max_reps_at_weight',
+    'max_duration',
+    'max_distance',
+    'max_calories',
   ];
   const out: Record<PRRecordType, PersonalRecord | null> = {
     estimated_1rm: null,
     max_weight: null,
     max_volume_session: null,
     max_reps_at_weight: null,
+    max_duration: null,
+    max_distance: null,
+    max_calories: null,
   };
   for (const t of types) {
     out[t] = await getBestPR(exerciseId, t);

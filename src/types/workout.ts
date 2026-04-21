@@ -1,5 +1,7 @@
 import { UUID, ISODateTimeString, MuscleGroup } from './common';
 
+export type ExerciseType = 'strength' | 'cardio' | 'sports' | 'other';
+
 export interface Exercise {
   id: UUID;
   nameJa: string;
@@ -9,6 +11,8 @@ export interface Exercise {
   equipment: string | null;
   isCustom: boolean;
   sortOrder: number;
+  exerciseType: ExerciseType;
+  metValue: number | null;
   createdAt: ISODateTimeString;
 }
 
@@ -55,6 +59,10 @@ export interface WorkoutSet {
   rir: number | null;
   isWarmup: boolean;
   note: string | null;
+  durationMinutes: number | null;
+  distanceKm: number | null;
+  caloriesBurned: number | null;
+  perceivedIntensity: number | null;
   createdAt: ISODateTimeString;
 }
 
@@ -67,6 +75,10 @@ export interface WorkoutSetInput {
   rir?: number | null;
   isWarmup?: boolean;
   note?: string | null;
+  durationMinutes?: number | null;
+  distanceKm?: number | null;
+  caloriesBurned?: number | null;
+  perceivedIntensity?: number | null;
 }
 
 export interface WorkoutRoutineWithItems extends WorkoutRoutine {

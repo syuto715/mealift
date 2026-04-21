@@ -283,6 +283,12 @@ export default function SettingsScreen() {
             colors={colors}
           />
           <SettingsRow
+            icon="restaurant-outline"
+            label="自分が追加した食品"
+            onPress={() => router.push('/(tabs)/settings/user-foods')}
+            colors={colors}
+          />
+          <SettingsRow
             icon="download-outline"
             label="データエクスポート"
             onPress={handleExportData}
@@ -354,6 +360,13 @@ export default function SettingsScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.aboutLinkRow, { borderBottomColor: colors.border }]}
+              onPress={() => Linking.openURL(LEGAL.commercialTransactionsUrl)}
+            >
+              <Text style={[styles.aboutLinkText, { color: colors.primary }]}>特定商取引法に基づく表記</Text>
+              <Ionicons name="open-outline" size={16} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.aboutLinkRow, { borderBottomColor: colors.border }]}
               onPress={() => Linking.openURL(`mailto:${LEGAL.supportEmail}`)}
             >
               <Text style={[styles.aboutLinkText, { color: colors.primary }]}>お問い合わせ</Text>
@@ -396,6 +409,40 @@ export default function SettingsScreen() {
                 ]}
               >
                 文部科学省 食品成分データベース
+              </Text>
+            </TouchableOpacity>
+            <Text
+              style={[
+                styles.aboutAttributionText,
+                { color: colors.textTertiary, marginTop: spacing.sm },
+              ]}
+            >
+              バーコード商品データは Open Food Facts (ODbL License) を利用しています。
+            </Text>
+            <TouchableOpacity
+              onPress={() => Linking.openURL('https://world.openfoodfacts.org')}
+            >
+              <Text
+                style={[
+                  styles.aboutAttributionLink,
+                  { color: colors.primary },
+                ]}
+              >
+                Open Food Facts
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                Linking.openURL('https://opendatacommons.org/licenses/odbl/1-0/')
+              }
+            >
+              <Text
+                style={[
+                  styles.aboutAttributionLink,
+                  { color: colors.primary },
+                ]}
+              >
+                ODbL (Open Database License)
               </Text>
             </TouchableOpacity>
           </View>

@@ -10,6 +10,8 @@ import {
   FlatList,
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -24,14 +26,15 @@ import { useProfileStore } from '../../../src/stores/profileStore';
 import { useRestTimer } from '../../../src/hooks/useRestTimer';
 import { MUSCLE_GROUPS, MUSCLE_GROUP_MAP } from '../../../src/constants/muscleGroups';
 import { MuscleGroup } from '../../../src/types/common';
-import { Exercise, WorkoutSet } from '../../../src/types/workout';
+import { Exercise, ExerciseType, WorkoutSet } from '../../../src/types/workout';
 import { generateId } from '../../../src/utils/id';
 import { getISODate } from '../../../src/utils/format';
 import * as workoutRepo from '../../../src/infra/repositories/workoutRepository';
 import { createNote } from '../../../src/infra/repositories/noteRepository';
 import { calculateWorkoutCalories } from '../../../src/domain/calories';
+import { calculateCaloriesBurned } from '../../../src/domain/cardioCalories';
 import { estimateOneRepMax } from '../../../src/domain/oneRepMax';
-import { checkAndRecordPRs, checkSessionVolumePR } from '../../../src/domain/personalRecord';
+import { checkAndRecordCardioPRs, checkAndRecordPRs, checkSessionVolumePR } from '../../../src/domain/personalRecord';
 import { restTimerService, loadRestTimerSettings } from '../../../src/infra/services/restTimerService';
 import { RestTimerOverlay } from '../../../src/components/training/RestTimerOverlay';
 import { PRCelebrationToast } from '../../../src/components/training/PRCelebrationToast';
@@ -39,6 +42,13 @@ import { PlateCalculatorModal } from '../../../src/components/training/PlateCalc
 import { PRInfo } from '../../../src/types/personalRecord';
 import { RestTimerSettings, DEFAULT_REST_TIMER_SETTINGS } from '../../../src/types/restTimer';
 import { canUse } from '../../../src/infra/services/subscriptionService';
+
+const EXERCISE_TYPE_TABS: { label: string; value: ExerciseType }[] = [
+  { label: '筋トレ', value: 'strength' },
+  { label: '有酸素', value: 'cardio' },
+  { label: 'スポーツ', value: 'sports' },
+  { label: 'その他', value: 'other' },
+];
 
 export default function SessionScreen() {
   const scheme = useColorScheme() ?? 'light';
@@ -84,6 +94,7 @@ export default function SessionScreen() {
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [exerciseFilter, setExerciseFilter] = useState<string>('all');
+  const [exerciseTypeFilter, setExerciseTypeFilter] = useState<ExerciseType>('strength');
   const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
 
   // Expandable detail rows: key = `${exerciseId}_${setId}`
@@ -98,6 +109,7 @@ export default function SessionScreen() {
   // Finish confirmation
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [sessionNote, setSessionNote] = useState('');
+  const [isFinishing, setIsFinishing] = useState(false);
 
   // Summary
   const [showSummary, setShowSummary] = useState(false);
@@ -139,6 +151,10 @@ export default function SessionScreen() {
                   weightKg: previousSets[i]?.weightKg ?? null,
                   reps: previousSets[i]?.reps ?? null,
                   rpe: null,
+                  durationMinutes: previousSets[i]?.durationMinutes ?? null,
+                  distanceKm: previousSets[i]?.distanceKm ?? null,
+                  caloriesBurned: null,
+                  perceivedIntensity: previousSets[i]?.perceivedIntensity ?? null,
                   completed: false,
                 });
               }
@@ -147,6 +163,8 @@ export default function SessionScreen() {
                 exerciseId: item.exerciseId,
                 exerciseName: item.exercise.nameJa,
                 muscleGroup: item.exercise.muscleGroup,
+                exerciseType: item.exercise.exerciseType,
+                metValue: item.exercise.metValue,
                 sets: initialSets,
                 previousSets,
               };
@@ -190,16 +208,17 @@ export default function SessionScreen() {
       let data: Exercise[];
       if (exerciseSearch.trim()) {
         data = await workoutRepo.searchExercises(exerciseSearch.trim());
-      } else if (exerciseFilter !== 'all') {
+      } else if (exerciseTypeFilter === 'strength' && exerciseFilter !== 'all') {
         data = await workoutRepo.getExercises(exerciseFilter as MuscleGroup);
       } else {
         data = await workoutRepo.getExercises();
       }
+      data = data.filter((ex) => ex.exerciseType === exerciseTypeFilter);
       setAvailableExercises(data);
     } catch {
       // silently fail
     }
-  }, [exerciseSearch, exerciseFilter]);
+  }, [exerciseSearch, exerciseFilter, exerciseTypeFilter]);
 
   useEffect(() => {
     if (showAddExercise) {
@@ -216,6 +235,21 @@ export default function SessionScreen() {
   const handleCompleteSet = async (exerciseId: string, set: SetInSession) => {
     if (set.completed || !params.sessionId) return;
 
+    const ex = exercises.find((e) => e.exerciseId === exerciseId);
+    const isStrength = !ex || ex.exerciseType === 'strength';
+
+    // For cardio/sports/other: auto-compute kcal from MET when user hasn't
+    // overridden it. Falls back to null when MET or weight is unknown.
+    const kcalToSave =
+      !isStrength
+        ? set.caloriesBurned ??
+          calculateCaloriesBurned(
+            ex?.metValue ?? null,
+            profile?.currentWeightKg ?? null,
+            set.durationMinutes,
+          )
+        : null;
+
     // Save to DB
     try {
       await workoutRepo.addSet(params.sessionId, {
@@ -224,6 +258,10 @@ export default function SessionScreen() {
         weightKg: set.weightKg,
         reps: set.reps,
         rpe: set.rpe,
+        durationMinutes: set.durationMinutes,
+        distanceKm: set.distanceKm,
+        caloriesBurned: kcalToSave,
+        perceivedIntensity: set.perceivedIntensity,
       });
     } catch {
       Alert.alert('エラー', 'セットの保存に失敗しました');
@@ -235,8 +273,16 @@ export default function SessionScreen() {
     // Haptic feedback on set completion
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Check for PRs (Feature E)
-    if (profile && set.weightKg != null && set.reps != null && set.weightKg > 0 && set.reps > 0) {
+    // Check for PRs (Feature E). Strength tracks 1RM/weight/reps-at-weight;
+    // cardio/sports/other tracks duration/distance/kcal.
+    if (
+      isStrength &&
+      profile &&
+      set.weightKg != null &&
+      set.reps != null &&
+      set.weightKg > 0 &&
+      set.reps > 0
+    ) {
       try {
         const prs = await checkAndRecordPRs(
           profile.id,
@@ -253,6 +299,23 @@ export default function SessionScreen() {
         }
       } catch {
         // PR tracking failure should not block the set save
+      }
+    } else if (!isStrength && profile) {
+      try {
+        const prs = await checkAndRecordCardioPRs(
+          profile.id,
+          exerciseId,
+          set.durationMinutes,
+          set.distanceKm,
+          kcalToSave,
+          params.sessionId,
+        );
+        const filtered = canUse('prAllTypes')
+          ? prs
+          : prs.filter((p) => p.recordType === 'max_calories');
+        if (filtered.length > 0) setPrToasts(filtered);
+      } catch {
+        // non-fatal
       }
     }
 
@@ -282,37 +345,30 @@ export default function SessionScreen() {
 
     const previousSets = await workoutRepo.getPreviousSets(profile.id, exercise.id);
 
-    const initialSets: SetInSession[] = [
-      {
+    const isCardio = exercise.exerciseType !== 'strength';
+    const setCount = isCardio ? 1 : 3;
+    const initialSets: SetInSession[] = [];
+    for (let i = 0; i < setCount; i++) {
+      initialSets.push({
         id: generateId(),
-        setNumber: 1,
-        weightKg: previousSets[0]?.weightKg ?? null,
-        reps: previousSets[0]?.reps ?? null,
+        setNumber: i + 1,
+        weightKg: previousSets[i]?.weightKg ?? null,
+        reps: previousSets[i]?.reps ?? null,
         rpe: null,
+        durationMinutes: previousSets[i]?.durationMinutes ?? null,
+        distanceKm: previousSets[i]?.distanceKm ?? null,
+        caloriesBurned: null,
+        perceivedIntensity: previousSets[i]?.perceivedIntensity ?? null,
         completed: false,
-      },
-      {
-        id: generateId(),
-        setNumber: 2,
-        weightKg: previousSets[1]?.weightKg ?? null,
-        reps: previousSets[1]?.reps ?? null,
-        rpe: null,
-        completed: false,
-      },
-      {
-        id: generateId(),
-        setNumber: 3,
-        weightKg: previousSets[2]?.weightKg ?? null,
-        reps: previousSets[2]?.reps ?? null,
-        rpe: null,
-        completed: false,
-      },
-    ];
+      });
+    }
 
     addExercise({
       exerciseId: exercise.id,
       exerciseName: exercise.nameJa,
       muscleGroup: exercise.muscleGroup,
+      exerciseType: exercise.exerciseType,
+      metValue: exercise.metValue,
       sets: initialSets,
       previousSets,
     });
@@ -362,33 +418,41 @@ export default function SessionScreen() {
     }
   };
 
-  const handleFinishSession = async () => {
-    Keyboard.dismiss();
+  const handleFinishSession = useCallback(async () => {
+    if (isFinishing) return;
     if (!params.sessionId) return;
+    setIsFinishing(true);
+    Keyboard.dismiss();
     try {
-      // Calculate estimated calories burned
+      // Calculate estimated calories burned. For strength we use the
+      // session-level estimate; for cardio/sports/other we sum the per-set
+      // kcal (either user-entered or MET-derived).
       const bodyWeight = profile?.currentWeightKg ?? 70;
       const durationMin = Math.round(elapsedSeconds / 60);
-      const estimatedCal = calculateWorkoutCalories(bodyWeight, durationMin, 'moderate');
+      const strengthMinutes = exercises
+        .filter((ex) => ex.exerciseType === 'strength')
+        .length > 0
+          ? durationMin
+          : 0;
+      const strengthCal = strengthMinutes > 0
+        ? calculateWorkoutCalories(bodyWeight, strengthMinutes, 'moderate')
+        : 0;
+      const cardioCal = exercises
+        .filter((ex) => ex.exerciseType !== 'strength')
+        .reduce((sum, ex) => {
+          return (
+            sum +
+            ex.sets.reduce((sSum, s) => {
+              if (!s.completed) return sSum;
+              if (s.caloriesBurned != null) return sSum + s.caloriesBurned;
+              const k = calculateCaloriesBurned(ex.metValue, bodyWeight, s.durationMinutes);
+              return sSum + (k ?? 0);
+            }, 0)
+          );
+        }, 0);
+      const estimatedCal = Math.round(strengthCal + cardioCal);
 
-      await workoutRepo.finishSession(
-        params.sessionId,
-        sessionNote || undefined,
-        estimatedCal,
-      );
-
-      // Check session volume PRs (Feature E)
-      if (profile) {
-        try {
-          const volumePRs = await checkSessionVolumePR(profile.id, params.sessionId);
-          const filtered = canUse('prAllTypes') ? volumePRs : [];
-          if (filtered.length > 0) setPrToasts(filtered);
-        } catch {
-          // non-fatal
-        }
-      }
-
-      // Calculate summary
+      // Compute summary synchronously from in-memory state (no DB hit).
       const totalVolume = exercises.reduce((total, ex) => {
         return (
           total +
@@ -397,10 +461,17 @@ export default function SessionScreen() {
             .reduce((sum, s) => sum + (s.weightKg ?? 0) * (s.reps ?? 0), 0)
         );
       }, 0);
-
       const completedSetCount = exercises.reduce(
         (total, ex) => total + ex.sets.filter((s) => s.completed).length,
         0,
+      );
+
+      // Critical write: mark session finished so the DB is consistent before
+      // we transition screens. The volume PR scan runs in the background.
+      await workoutRepo.finishSession(
+        params.sessionId,
+        sessionNote || undefined,
+        estimatedCal,
       );
 
       setSummaryData({
@@ -410,16 +481,30 @@ export default function SessionScreen() {
         setCount: completedSetCount,
         estimatedCalories: estimatedCal,
       });
-
-      // Pre-fill summary memo with the session note if already entered
       setSummaryMemo(sessionNote);
-
       setShowFinishModal(false);
       setShowSummary(true);
+
+      // Fire-and-forget: volume PR scan is O(exercises × 2 DB calls) which
+      // previously blocked screen transition. Toasts appear when ready.
+      if (profile) {
+        const sid = params.sessionId;
+        void (async () => {
+          try {
+            const volumePRs = await checkSessionVolumePR(profile.id, sid);
+            const filtered = canUse('prAllTypes') ? volumePRs : [];
+            if (filtered.length > 0) setPrToasts(filtered);
+          } catch {
+            // non-fatal
+          }
+        })();
+      }
     } catch {
       Alert.alert('エラー', 'セッションの終了に失敗しました');
+    } finally {
+      setIsFinishing(false);
     }
-  };
+  }, [isFinishing, params.sessionId, profile, sessionNote, elapsedSeconds, exercises]);
 
   const handleDismissSummary = async () => {
     // Save summary memo as a training note if provided
@@ -544,7 +629,14 @@ export default function SessionScreen() {
                   {exercise.exerciseName}
                 </Text>
                 <Badge
-                  label={MUSCLE_GROUP_MAP[exercise.muscleGroup]?.nameJa ?? exercise.muscleGroup}
+                  label={
+                    exercise.exerciseType === 'strength'
+                      ? MUSCLE_GROUP_MAP[exercise.muscleGroup]?.nameJa ?? exercise.muscleGroup
+                      : exercise.metValue != null
+                        ? `MET ${exercise.metValue}`
+                        : EXERCISE_TYPE_TABS.find((t) => t.value === exercise.exerciseType)
+                            ?.label ?? ''
+                  }
                   size="sm"
                 />
               </View>
@@ -568,6 +660,207 @@ export default function SessionScreen() {
             )}
 
             {/* Set table */}
+            {exercise.exerciseType !== 'strength' ? (
+              <View style={styles.setTable}>
+                {exercise.sets.map((set) => {
+                  const canComplete = (set.durationMinutes ?? 0) > 0;
+                  const autoKcal = calculateCaloriesBurned(
+                    exercise.metValue,
+                    profile?.currentWeightKg ?? null,
+                    set.durationMinutes,
+                  );
+                  const displayKcal = set.caloriesBurned ?? autoKcal;
+                  return (
+                    <View
+                      key={set.id}
+                      style={[
+                        styles.cardioSetRow,
+                        { borderBottomColor: colors.border },
+                        set.completed && { backgroundColor: colors.success + '10' },
+                      ]}
+                    >
+                      <View style={styles.cardioRowHeader}>
+                        <Text style={[styles.setNum, { color: colors.textSecondary }]}>
+                          セット{set.setNumber}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => handleCompleteSet(exercise.exerciseId, set)}
+                          disabled={set.completed || !canComplete}
+                        >
+                          <View
+                            style={[
+                              styles.checkCircle,
+                              {
+                                borderColor: set.completed
+                                  ? colors.success
+                                  : canComplete
+                                    ? colors.primary
+                                    : colors.border,
+                                backgroundColor: set.completed
+                                  ? colors.success
+                                  : 'transparent',
+                              },
+                            ]}
+                          >
+                            {set.completed && (
+                              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={styles.cardioInputGrid}>
+                        <View style={styles.cardioInputGroup}>
+                          <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                            時間 (分) *
+                          </Text>
+                          <TextInput
+                            style={[
+                              styles.setTextInput,
+                              {
+                                color: colors.textPrimary,
+                                backgroundColor: colors.surfaceSecondary,
+                                borderColor: colors.border,
+                                borderRadius: radius.sm,
+                              },
+                            ]}
+                            value={set.durationMinutes != null ? String(set.durationMinutes) : ''}
+                            onChangeText={(text) => {
+                              const parsed = parseFloat(text);
+                              updateSet(exercise.exerciseId, set.id, {
+                                durationMinutes:
+                                  text === ''
+                                    ? null
+                                    : isNaN(parsed)
+                                      ? set.durationMinutes
+                                      : parsed,
+                              });
+                            }}
+                            keyboardType="decimal-pad"
+                            placeholder="0"
+                            placeholderTextColor={colors.textTertiary}
+                            selectTextOnFocus
+                            editable={!set.completed}
+                          />
+                        </View>
+
+                        <View style={styles.cardioInputGroup}>
+                          <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                            距離 (km)
+                          </Text>
+                          <TextInput
+                            style={[
+                              styles.setTextInput,
+                              {
+                                color: colors.textPrimary,
+                                backgroundColor: colors.surfaceSecondary,
+                                borderColor: colors.border,
+                                borderRadius: radius.sm,
+                              },
+                            ]}
+                            value={set.distanceKm != null ? String(set.distanceKm) : ''}
+                            onChangeText={(text) => {
+                              const parsed = parseFloat(text);
+                              updateSet(exercise.exerciseId, set.id, {
+                                distanceKm:
+                                  text === ''
+                                    ? null
+                                    : isNaN(parsed)
+                                      ? set.distanceKm
+                                      : parsed,
+                              });
+                            }}
+                            keyboardType="decimal-pad"
+                            placeholder="-"
+                            placeholderTextColor={colors.textTertiary}
+                            selectTextOnFocus
+                            editable={!set.completed}
+                          />
+                        </View>
+
+                        <View style={styles.cardioInputGroup}>
+                          <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                            強度 (1-10)
+                          </Text>
+                          <TextInput
+                            style={[
+                              styles.setTextInput,
+                              {
+                                color: colors.textPrimary,
+                                backgroundColor: colors.surfaceSecondary,
+                                borderColor: colors.border,
+                                borderRadius: radius.sm,
+                              },
+                            ]}
+                            value={
+                              set.perceivedIntensity != null
+                                ? String(set.perceivedIntensity)
+                                : ''
+                            }
+                            onChangeText={(text) => {
+                              const parsed = parseInt(text, 10);
+                              updateSet(exercise.exerciseId, set.id, {
+                                perceivedIntensity:
+                                  text === ''
+                                    ? null
+                                    : isNaN(parsed)
+                                      ? set.perceivedIntensity
+                                      : Math.max(1, Math.min(10, parsed)),
+                              });
+                            }}
+                            keyboardType="number-pad"
+                            placeholder="-"
+                            placeholderTextColor={colors.textTertiary}
+                            selectTextOnFocus
+                            editable={!set.completed}
+                          />
+                        </View>
+
+                        <View style={styles.cardioInputGroup}>
+                          <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>
+                            kcal
+                          </Text>
+                          <TextInput
+                            style={[
+                              styles.setTextInput,
+                              {
+                                color: colors.textPrimary,
+                                backgroundColor: colors.surfaceSecondary,
+                                borderColor: colors.border,
+                                borderRadius: radius.sm,
+                              },
+                            ]}
+                            value={
+                              set.caloriesBurned != null
+                                ? String(set.caloriesBurned)
+                                : displayKcal != null
+                                  ? String(Math.round(displayKcal))
+                                  : ''
+                            }
+                            onChangeText={(text) => {
+                              const parsed = parseFloat(text);
+                              updateSet(exercise.exerciseId, set.id, {
+                                caloriesBurned:
+                                  text === ''
+                                    ? null
+                                    : isNaN(parsed)
+                                      ? set.caloriesBurned
+                                      : parsed,
+                              });
+                            }}
+                            keyboardType="decimal-pad"
+                            placeholder={autoKcal != null ? String(Math.round(autoKcal)) : '-'}
+                            placeholderTextColor={colors.textTertiary}
+                            selectTextOnFocus
+                            editable={!set.completed}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
             <View style={styles.setTable}>
               <View style={[styles.setHeader, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.sm }]}>
                 <Text style={[styles.setHeaderText, styles.setNumCol, { color: colors.textTertiary }]}>
@@ -776,6 +1069,7 @@ export default function SessionScreen() {
                 );
               })}
             </View>
+            )}
 
             <Button
               title="+ セット追加"
@@ -817,7 +1111,10 @@ export default function SessionScreen() {
         onClose={() => setShowAddExercise(false)}
         title="種目を追加"
       >
-        <View style={styles.exercisePickerContent}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.exercisePickerContent}
+        >
           {/* Custom exercise creation button */}
           <TouchableOpacity
             style={[
@@ -836,50 +1133,96 @@ export default function SessionScreen() {
             </Text>
           </TouchableOpacity>
 
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScroll}
+            keyboardShouldPersistTaps="handled"
+          >
+            {EXERCISE_TYPE_TABS.map((tab) => (
+              <TouchableOpacity
+                key={tab.value}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor:
+                      exerciseTypeFilter === tab.value ? colors.primary : colors.surfaceSecondary,
+                    borderRadius: radius.full,
+                  },
+                ]}
+                onPress={() => {
+                  setExerciseTypeFilter(tab.value);
+                  setExerciseFilter('all');
+                }}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    {
+                      color: exerciseTypeFilter === tab.value ? '#FFFFFF' : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
           <Input
             placeholder="種目を検索..."
             value={exerciseSearch}
             onChangeText={setExerciseSearch}
           />
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterScroll}
-          >
-            {muscleFilterSegments.map((seg) => (
-              <TouchableOpacity
-                key={seg.value}
-                style={[
-                  styles.filterChip,
-                  {
-                    backgroundColor:
-                      exerciseFilter === seg.value ? colors.primary : colors.surfaceSecondary,
-                    borderRadius: radius.full,
-                  },
-                ]}
-                onPress={() => setExerciseFilter(seg.value)}
-              >
-                <Text
+          {exerciseTypeFilter === 'strength' && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              {muscleFilterSegments.map((seg) => (
+                <TouchableOpacity
+                  key={seg.value}
                   style={[
-                    styles.filterChipText,
+                    styles.filterChip,
                     {
-                      color: exerciseFilter === seg.value ? '#FFFFFF' : colors.textSecondary,
+                      backgroundColor:
+                        exerciseFilter === seg.value ? colors.primary : colors.surfaceSecondary,
+                      borderRadius: radius.full,
                     },
                   ]}
+                  onPress={() => setExerciseFilter(seg.value)}
                 >
-                  {seg.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      {
+                        color: exerciseFilter === seg.value ? '#FFFFFF' : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {seg.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
 
           <FlatList
             data={availableExercises}
             keyExtractor={(item) => item.id}
             style={styles.exerciseList}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => {
               const alreadyInSession = exercises.some((e) => e.exerciseId === item.id);
+              const badgeLabel =
+                item.exerciseType === 'strength'
+                  ? MUSCLE_GROUP_MAP[item.muscleGroup]?.nameJa ?? item.muscleGroup
+                  : item.metValue != null
+                    ? `MET ${item.metValue}`
+                    : EXERCISE_TYPE_TABS.find((t) => t.value === item.exerciseType)?.label ?? '';
               return (
                 <TouchableOpacity
                   style={[styles.exerciseListItem, { borderBottomColor: colors.border }]}
@@ -896,10 +1239,7 @@ export default function SessionScreen() {
                     >
                       {item.nameJa}
                     </Text>
-                    <Badge
-                      label={MUSCLE_GROUP_MAP[item.muscleGroup]?.nameJa ?? item.muscleGroup}
-                      size="sm"
-                    />
+                    {badgeLabel !== '' && <Badge label={badgeLabel} size="sm" />}
                     {item.isCustom && (
                       <Badge label="カスタム" size="sm" />
                     )}
@@ -916,7 +1256,7 @@ export default function SessionScreen() {
               </Text>
             }
           />
-        </View>
+        </KeyboardAvoidingView>
       </BottomSheet>
 
       {/* Custom Exercise Creation Modal */}
@@ -1014,12 +1354,15 @@ export default function SessionScreen() {
               onPress={() => setShowFinishModal(false)}
               variant="ghost"
               size="lg"
+              disabled={isFinishing}
             />
             <Button
               title="終了する"
               onPress={handleFinishSession}
               variant="primary"
               size="lg"
+              loading={isFinishing}
+              disabled={isFinishing}
             />
           </View>
         </View>
@@ -1319,6 +1662,26 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  cardioSetRow: {
+    borderBottomWidth: 1,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  cardioRowHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardioInputGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  cardioInputGroup: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    gap: 4,
   },
   // Add exercise
   addExerciseButton: {

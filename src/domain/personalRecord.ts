@@ -111,6 +111,58 @@ export async function checkAndRecordPRs(
   return updates;
 }
 
+// For cardio / sports / other: check longest time, longest distance, max kcal.
+// Called after each completed set, symmetric with checkAndRecordPRs for strength.
+export async function checkAndRecordCardioPRs(
+  userId: string,
+  exerciseId: string,
+  durationMinutes: number | null,
+  distanceKm: number | null,
+  caloriesBurned: number | null,
+  sessionId: string,
+): Promise<PRInfo[]> {
+  const exercise = await getExerciseById(exerciseId);
+  const exerciseName = exercise?.nameJa ?? '種目';
+  const updates: PRInfo[] = [];
+
+  const check = async (
+    type: 'max_duration' | 'max_distance' | 'max_calories',
+    value: number | null,
+  ) => {
+    if (value == null || value <= 0) return;
+    const best = await getBestPR(exerciseId, type);
+    if (!best || value > best.value + 0.01) {
+      await insertPR({
+        userId,
+        exerciseId,
+        recordType: type,
+        value,
+        weightKg: 0,
+        reps: 0,
+        sessionId,
+      });
+      if (best) {
+        updates.push({
+          exerciseId,
+          exerciseName,
+          recordType: type,
+          newValue: value,
+          previousValue: best.value,
+          improvement: Number((value - best.value).toFixed(2)),
+          weight: 0,
+          reps: 0,
+        });
+      }
+    }
+  };
+
+  await check('max_duration', durationMinutes);
+  await check('max_distance', distanceKm);
+  await check('max_calories', caloriesBurned);
+
+  return updates;
+}
+
 // Called on session finish: compute total session volume and record if new PR.
 export async function checkSessionVolumePR(
   userId: string,

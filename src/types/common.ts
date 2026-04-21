@@ -9,7 +9,14 @@ export type Equipment = 'gym' | 'dumbbell' | 'bodyweight';
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 export type NoteCategory = 'training' | 'nutrition' | 'condition' | 'general';
 export type SyncOperation = 'INSERT' | 'UPDATE' | 'DELETE';
-export type FoodSource = 'mext' | 'usda' | 'manual' | 'barcode';
+export type FoodSource =
+  | 'mext'
+  | 'usda'
+  | 'manual'
+  | 'barcode'
+  | 'open_food_facts'
+  | 'user'
+  | 'curated';
 export type PaceLabel = 'too_fast' | 'fast' | 'on_track' | 'slow' | 'too_slow';
 
 export type MuscleGroup =

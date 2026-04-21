@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
@@ -22,7 +24,7 @@ import { useProfileStore } from '../../../src/stores/profileStore';
 import { MUSCLE_GROUPS, MUSCLE_GROUP_MAP } from '../../../src/constants/muscleGroups';
 import { DEFAULT_TARGET_SETS, DEFAULT_TARGET_REPS } from '../../../src/constants/defaults';
 import { MuscleGroup } from '../../../src/types/common';
-import { Exercise, WorkoutRoutineWithItems, WorkoutSession, WorkoutSet } from '../../../src/types/workout';
+import { Exercise, ExerciseType, WorkoutRoutineWithItems, WorkoutSession, WorkoutSet } from '../../../src/types/workout';
 import { calculateSessionVolume, calculateWorkingSets } from '../../../src/domain/volume';
 import * as workoutRepo from '../../../src/infra/repositories/workoutRepository';
 import { startOfWeek, endOfWeek, subWeeks, format } from 'date-fns';
@@ -32,6 +34,13 @@ interface RoutineItemDraft {
   targetSets: number;
   targetReps: string;
 }
+
+const EXERCISE_TYPE_TABS: { label: string; value: ExerciseType }[] = [
+  { label: '筋トレ', value: 'strength' },
+  { label: '有酸素', value: 'cardio' },
+  { label: 'スポーツ', value: 'sports' },
+  { label: 'その他', value: 'other' },
+];
 
 function createEmptyVolumeRecord(): Record<MuscleGroup, number> {
   return {
@@ -60,6 +69,7 @@ export default function TrainingScreen() {
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [exerciseFilter, setExerciseFilter] = useState<string>('all');
+  const [exerciseTypeFilter, setExerciseTypeFilter] = useState<ExerciseType>('strength');
   const [exercises, setExercises] = useState<Exercise[]>([]);
 
   // Volume analysis state
@@ -167,16 +177,19 @@ export default function TrainingScreen() {
       let data: Exercise[];
       if (exerciseSearch.trim()) {
         data = await workoutRepo.searchExercises(exerciseSearch.trim());
-      } else if (exerciseFilter !== 'all') {
+      } else if (exerciseTypeFilter === 'strength' && exerciseFilter !== 'all') {
         data = await workoutRepo.getExercises(exerciseFilter as MuscleGroup);
       } else {
         data = await workoutRepo.getExercises();
       }
+      // muscleGroup filter only applies to strength; cardio/sports/other are
+      // all tagged as full_body, so we filter by exerciseType at the JS layer.
+      data = data.filter((ex) => ex.exerciseType === exerciseTypeFilter);
       setExercises(data);
     } catch {
       // silently fail
     }
-  }, [exerciseSearch, exerciseFilter]);
+  }, [exerciseSearch, exerciseFilter, exerciseTypeFilter]);
 
   useEffect(() => {
     if (showExercisePicker) {
@@ -485,51 +498,99 @@ export default function TrainingScreen() {
         onClose={() => setShowExercisePicker(false)}
         title="種目を選択"
       >
-        <View style={styles.exercisePickerContent}>
+        <KeyboardAvoidingView
+          style={styles.exercisePickerContent}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+        >
+          {/* Exercise type selector (strength / cardio / sports / other) */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScroll}
+            keyboardShouldPersistTaps="handled"
+          >
+            {EXERCISE_TYPE_TABS.map((tab) => (
+              <TouchableOpacity
+                key={tab.value}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor:
+                      exerciseTypeFilter === tab.value ? colors.primary : colors.surfaceSecondary,
+                    borderRadius: radius.full,
+                  },
+                ]}
+                onPress={() => {
+                  setExerciseTypeFilter(tab.value);
+                  // Reset muscle-group filter when switching to a non-strength
+                  // type — it only applies to strength.
+                  if (tab.value !== 'strength') setExerciseFilter('all');
+                }}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    {
+                      color: exerciseTypeFilter === tab.value ? '#FFFFFF' : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
           <Input
             placeholder="種目を検索..."
             value={exerciseSearch}
             onChangeText={setExerciseSearch}
           />
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterScroll}
-          >
-            {muscleFilterSegments.map((seg) => (
-              <TouchableOpacity
-                key={seg.value}
-                style={[
-                  styles.filterChip,
-                  {
-                    backgroundColor:
-                      exerciseFilter === seg.value ? colors.primary : colors.surfaceSecondary,
-                    borderRadius: radius.full,
-                  },
-                ]}
-                onPress={() => setExerciseFilter(seg.value)}
-              >
-                <Text
+          {exerciseTypeFilter === 'strength' && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              {muscleFilterSegments.map((seg) => (
+                <TouchableOpacity
+                  key={seg.value}
                   style={[
-                    styles.filterChipText,
+                    styles.filterChip,
                     {
-                      color: exerciseFilter === seg.value ? '#FFFFFF' : colors.textSecondary,
+                      backgroundColor:
+                        exerciseFilter === seg.value ? colors.primary : colors.surfaceSecondary,
+                      borderRadius: radius.full,
                     },
                   ]}
+                  onPress={() => setExerciseFilter(seg.value)}
                 >
-                  {seg.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      {
+                        color: exerciseFilter === seg.value ? '#FFFFFF' : colors.textSecondary,
+                      },
+                    ]}
+                  >
+                    {seg.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
 
           <FlatList
             data={exercises}
             keyExtractor={(item) => item.id}
             style={styles.exerciseList}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => {
               const alreadyAdded = draftItems.some((d) => d.exercise.id === item.id);
+              const showMuscleBadge = item.exerciseType === 'strength';
               return (
                 <TouchableOpacity
                   style={[styles.exerciseListItem, { borderBottomColor: colors.border }]}
@@ -546,10 +607,14 @@ export default function TrainingScreen() {
                     >
                       {item.nameJa}
                     </Text>
-                    <Badge
-                      label={MUSCLE_GROUP_MAP[item.muscleGroup]?.nameJa ?? item.muscleGroup}
-                      size="sm"
-                    />
+                    {showMuscleBadge ? (
+                      <Badge
+                        label={MUSCLE_GROUP_MAP[item.muscleGroup]?.nameJa ?? item.muscleGroup}
+                        size="sm"
+                      />
+                    ) : item.metValue != null ? (
+                      <Badge label={`${item.metValue} MET`} size="sm" />
+                    ) : null}
                   </View>
                   {alreadyAdded && (
                     <Ionicons name="checkmark-circle" size={20} color={colors.success} />
@@ -563,7 +628,7 @@ export default function TrainingScreen() {
               </Text>
             }
           />
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

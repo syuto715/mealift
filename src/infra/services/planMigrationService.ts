@@ -4,7 +4,6 @@ import {
   getProfile,
   startTrial,
 } from '../repositories/profileRepository';
-import { scheduleTrialNotifications } from './notificationService';
 
 // One-shot retroactive migration that grants the 7-day Plus trial to any
 // user who already completed onboarding before the billing system launched.
@@ -49,14 +48,15 @@ export async function applyRetroactiveTrialGrantOnce(
     }
 
     // Refresh from DB so the caller has authoritative state for the store.
+    // Notification rescheduling is the caller's responsibility — they already
+    // invoke syncNotifications after hydrating the profile, so firing another
+    // schedule here would be redundant and reintroduce the duplication bug.
     let refreshed: Profile | null = profile;
     try {
       refreshed = (await getProfile()) ?? profile;
     } catch {
       refreshed = { ...profile, trialStartedAt };
     }
-
-    void scheduleTrialNotifications(refreshed);
 
     try {
       await AsyncStorage.setItem(MIGRATION_KEY, MIGRATION_VERSION);

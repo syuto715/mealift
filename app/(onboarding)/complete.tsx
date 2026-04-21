@@ -6,6 +6,7 @@ import {
   useColorScheme,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -24,7 +25,10 @@ import {
   updateProfile as updateProfileRepo,
   startTrial,
 } from '../../src/infra/repositories/profileRepository';
-import { scheduleTrialNotifications } from '../../src/infra/services/notificationService';
+import {
+  syncNotifications,
+  loadNotificationSettings,
+} from '../../src/infra/services/notificationService';
 
 function ProgressDots({
   current,
@@ -105,8 +109,14 @@ export default function CompleteScreen() {
     : 'ユーザー';
 
   const handleStart = async () => {
+    if (saving) {
+      console.log('[ONBOARDING] handleStart: already saving, ignoring tap');
+      return;
+    }
+    console.log('[ONBOARDING] handleStart called');
     setSaving(true);
     try {
+      console.log('[ONBOARDING] step 1: creating profile');
       const profile = await createProfile({
         displayName,
         gender: onboarding.gender,
@@ -121,7 +131,9 @@ export default function CompleteScreen() {
         targetDate: onboarding.targetDate,
         equipment: onboarding.equipment,
       });
+      console.log('[ONBOARDING] step 1 done, profile.id =', profile.id);
 
+      console.log('[ONBOARDING] step 2: updating profile targets');
       await updateProfileRepo(profile.id, {
         targetCalories,
         targetProteinG: macros.proteinG,
@@ -129,10 +141,12 @@ export default function CompleteScreen() {
         targetCarbG: macros.carbG,
         onboardingCompleted: true,
       });
+      console.log('[ONBOARDING] step 2 done');
 
-      // Grant the 7-day Plus trial on first onboarding completion.
+      console.log('[ONBOARDING] step 3: starting trial');
       const trialStartedAt = new Date().toISOString();
       await startTrial(profile.id, trialStartedAt);
+      console.log('[ONBOARDING] step 3 done');
 
       const hydratedProfile = {
         ...profile,
@@ -143,15 +157,38 @@ export default function CompleteScreen() {
         onboardingCompleted: true,
         trialStartedAt,
       };
+      console.log('[ONBOARDING] step 4: setting profile in store');
       setProfile(hydratedProfile);
+      console.log('[ONBOARDING] step 4 done');
 
       // Fire-and-forget — notification scheduling should never block the
       // user from entering the app.
-      void scheduleTrialNotifications(hydratedProfile);
+      void (async () => {
+        try {
+          console.log('[ONBOARDING] (bg) syncing notifications');
+          const settings = await loadNotificationSettings();
+          await syncNotifications({ settings, profile: hydratedProfile });
+          console.log('[ONBOARDING] (bg) notifications synced');
+        } catch (notifErr) {
+          console.warn(
+            '[ONBOARDING] notification sync failed (non-fatal):',
+            notifErr,
+          );
+        }
+      })();
 
+      console.log('[ONBOARDING] step 5: navigating to /(tabs)');
       onboarding.reset();
       router.replace('/(tabs)');
+      console.log('[ONBOARDING] step 5 done');
     } catch (e) {
+      console.error('[ONBOARDING] ERROR:', e);
+      console.error('[ONBOARDING] stack:', (e as Error)?.stack);
+      Alert.alert(
+        'セットアップに失敗しました',
+        e instanceof Error ? e.message : String(e),
+        [{ text: 'OK' }],
+      );
     } finally {
       setSaving(false);
     }

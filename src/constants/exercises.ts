@@ -1,4 +1,5 @@
 import { MuscleGroup } from '../types/common';
+import type { ExerciseType } from '../types/workout';
 
 export interface ExerciseDefinition {
   id: string;
@@ -8,6 +9,13 @@ export interface ExerciseDefinition {
   secondaryMuscles: MuscleGroup[] | null;
   equipment: string | null;
   sortOrder: number;
+  // Defaults to 'strength' at the DB column level when omitted (see migration
+  // v12). Explicit in seeds for non-strength rows so the seeder writes the
+  // right value on existing installs.
+  exerciseType?: ExerciseType;
+  // Metabolic Equivalent of Task. Used only for cardio / sports / other to
+  // compute kcal = MET × weight_kg × hours. Null for strength.
+  metValue?: number | null;
 }
 
 export const EXERCISES: ExerciseDefinition[] = [
@@ -67,4 +75,55 @@ export const EXERCISES: ExerciseDefinition[] = [
   { id: 'ex_061', nameJa: 'スナッチ', nameEn: 'Snatch', muscleGroup: 'full_body', secondaryMuscles: ['legs', 'back', 'shoulders'], equipment: 'barbell', sortOrder: 61 },
   { id: 'ex_062', nameJa: 'バーピー', nameEn: 'Burpee', muscleGroup: 'full_body', secondaryMuscles: ['chest', 'legs', 'core'], equipment: null, sortOrder: 62 },
   { id: 'ex_063', nameJa: 'ケトルベルスイング', nameEn: 'Kettlebell Swing', muscleGroup: 'full_body', secondaryMuscles: ['legs', 'back', 'core'], equipment: 'kettlebell', sortOrder: 63 },
+
+  // === 有酸素 (Cardio) ===
+  // muscleGroup is set to 'full_body' as a pragmatic default — the UI filters
+  // by exerciseType instead of muscleGroup for cardio/sports. MET values from
+  // the 2011 Compendium of Physical Activities.
+  { id: 'ex_c001', nameJa: 'ランニング（遅め 8km/h）', nameEn: 'Running (slow, 8 km/h)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 100, exerciseType: 'cardio', metValue: 8.0 },
+  { id: 'ex_c002', nameJa: 'ランニング（速め 12km/h）', nameEn: 'Running (fast, 12 km/h)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 101, exerciseType: 'cardio', metValue: 11.5 },
+  { id: 'ex_c003', nameJa: 'ジョギング', nameEn: 'Jogging', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 102, exerciseType: 'cardio', metValue: 7.0 },
+  { id: 'ex_c004', nameJa: 'ウォーキング（普通 5km/h）', nameEn: 'Walking (5 km/h)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 103, exerciseType: 'cardio', metValue: 3.5 },
+  { id: 'ex_c005', nameJa: 'ウォーキング（速歩 6.5km/h）', nameEn: 'Brisk Walking (6.5 km/h)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 104, exerciseType: 'cardio', metValue: 5.0 },
+  { id: 'ex_c006', nameJa: 'サイクリング（普通）', nameEn: 'Cycling (moderate)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 105, exerciseType: 'cardio', metValue: 6.0 },
+  { id: 'ex_c007', nameJa: 'サイクリング（速め）', nameEn: 'Cycling (vigorous)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 106, exerciseType: 'cardio', metValue: 10.0 },
+  { id: 'ex_c008', nameJa: '水泳（クロール 中）', nameEn: 'Swimming (freestyle, moderate)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 107, exerciseType: 'cardio', metValue: 8.0 },
+  { id: 'ex_c009', nameJa: '水泳（平泳ぎ）', nameEn: 'Swimming (breaststroke)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 108, exerciseType: 'cardio', metValue: 5.3 },
+  { id: 'ex_c010', nameJa: '縄跳び', nameEn: 'Jump Rope', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 109, exerciseType: 'cardio', metValue: 11.0 },
+  { id: 'ex_c011', nameJa: 'エアロビクス', nameEn: 'Aerobics', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 110, exerciseType: 'cardio', metValue: 6.5 },
+  { id: 'ex_c012', nameJa: 'ヨガ（ハタ）', nameEn: 'Yoga (Hatha)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 111, exerciseType: 'cardio', metValue: 2.5 },
+  { id: 'ex_c013', nameJa: 'ヨガ（パワー）', nameEn: 'Yoga (Power)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 112, exerciseType: 'cardio', metValue: 4.0 },
+  { id: 'ex_c014', nameJa: 'ピラティス', nameEn: 'Pilates', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 113, exerciseType: 'cardio', metValue: 3.0 },
+  { id: 'ex_c015', nameJa: '階段昇降', nameEn: 'Stair Climbing', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 114, exerciseType: 'cardio', metValue: 8.0 },
+  { id: 'ex_c016', nameJa: 'エリプティカル（中）', nameEn: 'Elliptical (moderate)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: 'machine', sortOrder: 115, exerciseType: 'cardio', metValue: 5.0 },
+  { id: 'ex_c017', nameJa: 'ローイング（中）', nameEn: 'Rowing (moderate)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: 'machine', sortOrder: 116, exerciseType: 'cardio', metValue: 7.0 },
+  { id: 'ex_c018', nameJa: 'トレッドミル（傾斜あり）', nameEn: 'Treadmill (incline)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: 'machine', sortOrder: 117, exerciseType: 'cardio', metValue: 6.0 },
+
+  // === スポーツ (Sports) ===
+  { id: 'ex_s001', nameJa: 'バスケットボール（試合）', nameEn: 'Basketball (game)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 200, exerciseType: 'sports', metValue: 8.0 },
+  { id: 'ex_s002', nameJa: 'バスケットボール（シュート練習）', nameEn: 'Basketball (shooting)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 201, exerciseType: 'sports', metValue: 4.5 },
+  { id: 'ex_s003', nameJa: 'サッカー（試合）', nameEn: 'Soccer (game)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 202, exerciseType: 'sports', metValue: 10.0 },
+  { id: 'ex_s004', nameJa: 'サッカー（練習）', nameEn: 'Soccer (practice)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 203, exerciseType: 'sports', metValue: 7.0 },
+  { id: 'ex_s005', nameJa: 'テニス（シングルス）', nameEn: 'Tennis (singles)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 204, exerciseType: 'sports', metValue: 7.3 },
+  { id: 'ex_s006', nameJa: 'テニス（ダブルス）', nameEn: 'Tennis (doubles)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 205, exerciseType: 'sports', metValue: 6.0 },
+  { id: 'ex_s007', nameJa: 'バドミントン（試合）', nameEn: 'Badminton (game)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 206, exerciseType: 'sports', metValue: 7.0 },
+  { id: 'ex_s008', nameJa: '卓球', nameEn: 'Table Tennis', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 207, exerciseType: 'sports', metValue: 4.0 },
+  { id: 'ex_s009', nameJa: '野球', nameEn: 'Baseball', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 208, exerciseType: 'sports', metValue: 5.0 },
+  { id: 'ex_s010', nameJa: 'バレーボール（一般）', nameEn: 'Volleyball (casual)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 209, exerciseType: 'sports', metValue: 4.0 },
+  { id: 'ex_s011', nameJa: 'バレーボール（競技）', nameEn: 'Volleyball (competitive)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 210, exerciseType: 'sports', metValue: 8.0 },
+  { id: 'ex_s012', nameJa: 'ゴルフ（歩き）', nameEn: 'Golf (walking)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 211, exerciseType: 'sports', metValue: 4.8 },
+  { id: 'ex_s013', nameJa: 'スキー（中程度）', nameEn: 'Skiing (moderate)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 212, exerciseType: 'sports', metValue: 5.3 },
+  { id: 'ex_s014', nameJa: 'スノーボード', nameEn: 'Snowboarding', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 213, exerciseType: 'sports', metValue: 5.3 },
+  { id: 'ex_s015', nameJa: 'ボクシング（練習）', nameEn: 'Boxing (training)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 214, exerciseType: 'sports', metValue: 7.8 },
+  { id: 'ex_s016', nameJa: '空手・武道', nameEn: 'Martial Arts', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 215, exerciseType: 'sports', metValue: 10.0 },
+  { id: 'ex_s017', nameJa: 'ダンス（一般）', nameEn: 'Dance (general)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 216, exerciseType: 'sports', metValue: 4.8 },
+  { id: 'ex_s018', nameJa: 'ダンス（激しい）', nameEn: 'Dance (vigorous)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 217, exerciseType: 'sports', metValue: 7.8 },
+  { id: 'ex_s019', nameJa: 'クライミング', nameEn: 'Rock Climbing', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 218, exerciseType: 'sports', metValue: 8.0 },
+
+  // === その他 (Other) ===
+  { id: 'ex_o001', nameJa: 'ストレッチ', nameEn: 'Stretching', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 300, exerciseType: 'other', metValue: 2.3 },
+  { id: 'ex_o002', nameJa: '家事（掃除機）', nameEn: 'Vacuuming', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 301, exerciseType: 'other', metValue: 3.3 },
+  { id: 'ex_o003', nameJa: '家事（床拭き）', nameEn: 'Mopping', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 302, exerciseType: 'other', metValue: 3.5 },
+  { id: 'ex_o004', nameJa: 'ガーデニング', nameEn: 'Gardening', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 303, exerciseType: 'other', metValue: 3.8 },
+  { id: 'ex_o005', nameJa: '通勤・買い物（歩き）', nameEn: 'Walking (commute / errands)', muscleGroup: 'full_body', secondaryMuscles: null, equipment: null, sortOrder: 304, exerciseType: 'other', metValue: 3.5 },
 ];

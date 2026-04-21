@@ -70,8 +70,12 @@ export interface Food extends ExtendedNutrients {
   fatG: number;
   carbG: number;
   source: FoodSource;
+  externalId: string | null;
   isCustom: boolean;
   isFavorite: boolean;
+  isUserAdded: boolean;
+  verified: boolean;
+  addedAt: ISODateTimeString | null;
   useCount: number;
   createdAt: ISODateTimeString;
   updatedAt: ISODateTimeString;

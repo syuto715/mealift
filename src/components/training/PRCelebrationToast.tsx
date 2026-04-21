@@ -98,12 +98,26 @@ export function PRCelebrationToast({ prs, onHide }: Props) {
                 ? `${pr.newValue}kg × ${pr.reps}`
                 : pr.recordType === 'max_volume_session'
                   ? `総ボリューム: ${Math.round(pr.newValue).toLocaleString()}kg`
-                  : `${pr.weight}kg × ${pr.newValue}回`}
+                  : pr.recordType === 'max_duration'
+                    ? `${pr.newValue}分`
+                    : pr.recordType === 'max_distance'
+                      ? `${pr.newValue}km`
+                      : pr.recordType === 'max_calories'
+                        ? `${Math.round(pr.newValue)}kcal`
+                        : `${pr.weight}kg × ${pr.newValue}回`}
           </Text>
           {pr.previousValue != null && (
             <Text style={[styles.improvement, { color: colors.success }]}>
               +{pr.improvement.toFixed(1)}
-              {pr.recordType === 'max_reps_at_weight' ? '回' : 'kg'}
+              {pr.recordType === 'max_reps_at_weight'
+                ? '回'
+                : pr.recordType === 'max_duration'
+                  ? '分'
+                  : pr.recordType === 'max_distance'
+                    ? 'km'
+                    : pr.recordType === 'max_calories'
+                      ? 'kcal'
+                      : 'kg'}
             </Text>
           )}
         </View>

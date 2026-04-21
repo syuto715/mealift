@@ -24,9 +24,10 @@ import {
   formatTime,
   loadNotificationSettings,
   persistNotificationSettings,
-  scheduleAllNotifications,
+  syncNotifications,
   requestNotificationPermissions,
 } from '../../../src/infra/services/notificationService';
+import { useProfileStore } from '../../../src/stores/profileStore';
 
 // ---------------------------------------------------------------------------
 // Time Picker Modal
@@ -313,8 +314,10 @@ export default function NotificationSettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       return () => {
-        // onBlur — schedule once with the latest settings
-        void scheduleAllNotifications(settingsRef.current);
+        // onBlur — sync once with the latest settings snapshot. Profile is
+        // read from the store so trial schedules stay aligned.
+        const profile = useProfileStore.getState().profile;
+        void syncNotifications({ settings: settingsRef.current, profile });
       };
     }, []),
   );

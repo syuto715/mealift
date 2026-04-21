@@ -27,7 +27,42 @@ import {
   findByBarcode,
   saveBarcodeFood,
 } from '../../../src/infra/repositories/barcodeFoodRepository';
+import { saveFood } from '../../../src/infra/repositories/foodRepository';
 import { lookupBarcode } from '../../../src/infra/services/openFoodFactsService';
+import { BarcodeFoodInput } from '../../../src/types/barcodeFood';
+import { FoodInput } from '../../../src/types/food';
+
+function barcodeInputToFoodInput(b: BarcodeFoodInput): FoodInput {
+  const name = b.brand ? `${b.brand} ${b.nameJa}` : b.nameJa;
+  return {
+    nameJa: name,
+    brand: b.brand ?? null,
+    barcode: b.barcode,
+    servingSizeG: b.servingSizeG,
+    servingUnit: b.servingUnit ?? 'g',
+    caloriesPerServing: b.caloriesPerServing,
+    proteinG: b.proteinG,
+    fatG: b.fatG,
+    carbG: b.carbG,
+    fiberG: b.fiberG ?? null,
+    sodiumMg: b.sodiumMg ?? null,
+    calciumMg: b.calciumMg ?? null,
+    ironMg: b.ironMg ?? null,
+    vitaminAUg: b.vitaminAUg ?? null,
+    vitaminB1Mg: b.vitaminB1Mg ?? null,
+    vitaminB2Mg: b.vitaminB2Mg ?? null,
+    vitaminCMg: b.vitaminCMg ?? null,
+    vitaminDUg: b.vitaminDUg ?? null,
+    vitaminEMg: b.vitaminEMg ?? null,
+    potassiumMg: b.potassiumMg ?? null,
+    magnesiumMg: b.magnesiumMg ?? null,
+    zincMg: b.zincMg ?? null,
+    cholesterolMg: b.cholesterolMg ?? null,
+    saturatedFatG: b.saturatedFatG ?? null,
+    sugarG: b.sugarG ?? null,
+    saltG: b.saltG ?? null,
+  };
+}
 
 const UNIT_OPTIONS = ['g', 'ml', '個', '本', '枚', 'パック'] as const;
 
@@ -128,6 +163,17 @@ export default function BarcodeScanScreen() {
           const offResult = await lookupBarcode(barcode);
           if (offResult) {
             food = await saveBarcodeFood(offResult);
+            // Mirror into foods table so text search picks it up too.
+            try {
+              await saveFood(barcodeInputToFoodInput(offResult), {
+                source: 'open_food_facts',
+                externalId: barcode,
+                isUserAdded: false,
+                verified: true,
+              });
+            } catch {
+              // Non-fatal — barcode_foods entry still exists.
+            }
           }
         }
 
@@ -235,6 +281,17 @@ export default function BarcodeScanScreen() {
     try {
       const input = buildBarcodeInput();
       const saved = await saveBarcodeFood(input);
+      // Also write to foods table as a user-added row so it appears in search.
+      try {
+        await saveFood(barcodeInputToFoodInput(input), {
+          source: 'user',
+          externalId: input.barcode,
+          isUserAdded: true,
+          verified: false,
+        });
+      } catch {
+        // Non-fatal.
+      }
 
       // Also add to meal log
       await addFood(mealType, {
@@ -278,7 +335,18 @@ export default function BarcodeScanScreen() {
     }
     setRegSaving(true);
     try {
-      await saveBarcodeFood(buildBarcodeInput());
+      const input = buildBarcodeInput();
+      await saveBarcodeFood(input);
+      try {
+        await saveFood(barcodeInputToFoodInput(input), {
+          source: 'user',
+          externalId: input.barcode,
+          isUserAdded: true,
+          verified: false,
+        });
+      } catch {
+        // Non-fatal.
+      }
       handleRescan();
     } catch (error) {
       Alert.alert('エラー', '登録に失敗しました');
