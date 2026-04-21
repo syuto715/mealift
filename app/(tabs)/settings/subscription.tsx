@@ -18,6 +18,12 @@ import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { Card, Badge, Button, SegmentedControl } from '../../../src/components/ui';
 import { useSubscription } from '../../../src/hooks/useSubscription';
+import { useProfileStore } from '../../../src/stores/profileStore';
+import { startTrial } from '../../../src/infra/repositories/profileRepository';
+import {
+  syncNotifications,
+  loadNotificationSettings,
+} from '../../../src/infra/services/notificationService';
 import {
   PRICING,
   TRIAL_DURATION_DAYS,
@@ -161,8 +167,16 @@ export default function SubscriptionScreen() {
   const colors = getColors(scheme);
 
   const sub = useSubscription();
+  const profile = useProfileStore((s) => s.profile);
+  const setProfile = useProfileStore((s) => s.setProfile);
   const [cycle, setCycle] = useState<BillingCycle>('annual');
   const [compareOpen, setCompareOpen] = useState(false);
+  const [startingTrial, setStartingTrial] = useState(false);
+
+  // Users who have never started a trial can opt into the 7-day free trial.
+  // After trialStartedAt is set (even if trial has since expired), this branch
+  // no longer applies — the single-use trial is spent.
+  const canStartTrial = !!profile && !profile.trialStartedAt && !sub.isPaid;
 
   // Status sub-line beneath screen title
   const statusLine = useMemo(() => {
@@ -189,6 +203,54 @@ export default function SubscriptionScreen() {
       `${tierLabel} ${CYCLE_LABEL[cycle]}プラン`,
       `¥${price.toLocaleString()} での購入フローは近日公開です。`,
       [{ text: 'OK' }],
+    );
+  };
+
+  const handleStartTrial = async () => {
+    if (!profile || startingTrial) return;
+    Alert.alert(
+      `${TRIAL_DURATION_DAYS}日間無料トライアルを開始`,
+      `Plusの全機能を${TRIAL_DURATION_DAYS}日間無料でお試しいただけます。期間終了後は自動的にFreeプランに戻ります（自動課金はされません）。`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '開始する',
+          style: 'default',
+          onPress: async () => {
+            setStartingTrial(true);
+            try {
+              const trialStartedAt = new Date().toISOString();
+              await startTrial(profile.id, trialStartedAt);
+              const hydrated = { ...profile, trialStartedAt };
+              setProfile(hydrated);
+              // Schedule trial-end reminders via the standard notification
+              // pipeline. Version-gated inside syncNotifications, so safe to
+              // fire-and-forget.
+              void (async () => {
+                try {
+                  const settings = await loadNotificationSettings();
+                  await syncNotifications({ settings, profile: hydrated });
+                } catch {
+                  // Non-fatal — trial state is already persisted in DB.
+                }
+              })();
+              Alert.alert(
+                'トライアル開始',
+                `Plusの全機能が${TRIAL_DURATION_DAYS}日間ご利用いただけます。`,
+                [{ text: 'OK' }],
+              );
+            } catch (e) {
+              Alert.alert(
+                'トライアル開始に失敗しました',
+                e instanceof Error ? e.message : String(e),
+                [{ text: 'OK' }],
+              );
+            } finally {
+              setStartingTrial(false);
+            }
+          },
+        },
+      ],
     );
   };
 
@@ -269,9 +331,16 @@ export default function SubscriptionScreen() {
                 ? 'Plus にダウングレード不可'
                 : sub.isTrial
                   ? `Plus を継続（${CYCLE_LABEL[cycle]}）`
-                  : `${TRIAL_DURATION_DAYS}日間無料で試す`
+                  : `Plus ${CYCLE_LABEL[cycle]}プランを購入`
           }
           onPress={() => handlePurchase('plus')}
+          trialCtaLabel={
+            canStartTrial
+              ? `${TRIAL_DURATION_DAYS}日間無料トライアルで試す`
+              : null
+          }
+          onTrialPress={canStartTrial ? handleStartTrial : undefined}
+          trialLoading={startingTrial}
         />
 
         {/* Pro card */}
@@ -462,6 +531,11 @@ interface PlanCardProps {
   badgeText: string | null;
   ctaLabel?: string;
   onPress?: () => void;
+  // Optional free-trial opt-in button shown above the primary CTA. Rendered
+  // only when a trial is available to this user (never started before).
+  trialCtaLabel?: string | null;
+  onTrialPress?: () => void;
+  trialLoading?: boolean;
 }
 
 function PlanCard({
@@ -478,6 +552,9 @@ function PlanCard({
   badgeText,
   ctaLabel,
   onPress,
+  trialCtaLabel,
+  onTrialPress,
+  trialLoading = false,
 }: PlanCardProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
@@ -551,15 +628,33 @@ function PlanCard({
         ))}
       </View>
 
-      {/* CTA */}
-      {tier !== 'free' && ctaLabel && (
-        <Button
-          title={ctaLabel}
-          onPress={onPress ?? (() => {})}
-          variant={current || disabledUpgrade ? 'outline' : 'primary'}
-          fullWidth
-          disabled={current || disabledUpgrade}
-        />
+      {/* CTAs */}
+      {tier !== 'free' && (
+        <View style={styles.ctaStack}>
+          {trialCtaLabel && onTrialPress && (
+            <Button
+              title={trialCtaLabel}
+              onPress={onTrialPress}
+              variant="primary"
+              fullWidth
+              loading={trialLoading}
+              disabled={trialLoading}
+            />
+          )}
+          {ctaLabel && (
+            <Button
+              title={ctaLabel}
+              onPress={onPress ?? (() => {})}
+              variant={
+                current || disabledUpgrade || !!trialCtaLabel
+                  ? 'outline'
+                  : 'primary'
+              }
+              fullWidth
+              disabled={current || disabledUpgrade}
+            />
+          )}
+        </View>
       )}
     </View>
   );
@@ -703,6 +798,9 @@ const styles = StyleSheet.create({
   featureText: {
     ...typography.bodyMedium,
     flex: 1,
+  },
+  ctaStack: {
+    gap: spacing.sm,
   },
 
   // Compare button

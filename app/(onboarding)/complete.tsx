@@ -23,7 +23,6 @@ import { calculateMacros } from '../../src/domain/macros';
 import {
   createProfile,
   updateProfile as updateProfileRepo,
-  startTrial,
 } from '../../src/infra/repositories/profileRepository';
 import {
   syncNotifications,
@@ -143,11 +142,11 @@ export default function CompleteScreen() {
       });
       console.log('[ONBOARDING] step 2 done');
 
-      console.log('[ONBOARDING] step 3: starting trial');
-      const trialStartedAt = new Date().toISOString();
-      await startTrial(profile.id, trialStartedAt);
-      console.log('[ONBOARDING] step 3 done');
-
+      // NOTE: No auto-grant of Plus trial here. Trials are now user-initiated
+      // via the "7日間無料トライアルで試す" button on the subscription screen.
+      // This aligns with Apple subscription guidelines and retention patterns
+      // where an explicit opt-in drives higher conversion than an automatic
+      // countdown the user didn't choose.
       const hydratedProfile = {
         ...profile,
         targetCalories,
@@ -155,11 +154,10 @@ export default function CompleteScreen() {
         targetFatG: macros.fatG,
         targetCarbG: macros.carbG,
         onboardingCompleted: true,
-        trialStartedAt,
       };
-      console.log('[ONBOARDING] step 4: setting profile in store');
+      console.log('[ONBOARDING] step 3: setting profile in store');
       setProfile(hydratedProfile);
-      console.log('[ONBOARDING] step 4 done');
+      console.log('[ONBOARDING] step 3 done');
 
       // Fire-and-forget — notification scheduling should never block the
       // user from entering the app.
@@ -177,10 +175,10 @@ export default function CompleteScreen() {
         }
       })();
 
-      console.log('[ONBOARDING] step 5: navigating to /(tabs)');
+      console.log('[ONBOARDING] step 4: navigating to /(tabs)');
       onboarding.reset();
       router.replace('/(tabs)');
-      console.log('[ONBOARDING] step 5 done');
+      console.log('[ONBOARDING] step 4 done');
     } catch (e) {
       console.error('[ONBOARDING] ERROR:', e);
       console.error('[ONBOARDING] stack:', (e as Error)?.stack);

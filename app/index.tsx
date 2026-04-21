@@ -10,7 +10,6 @@ import { getColors } from '../src/theme/tokens';
 import { useAuthStore } from '../src/stores/authStore';
 import { useProfileStore } from '../src/stores/profileStore';
 import { getProfile } from '../src/infra/repositories/profileRepository';
-import { applyRetroactiveTrialGrantOnce } from '../src/infra/services/planMigrationService';
 import {
   syncNotifications,
   loadNotificationSettings,
@@ -57,17 +56,13 @@ export default function IndexScreen() {
       try {
         const profile = await getProfile();
         if (profile) {
-          // Retroactive trial grant: users who onboarded before the billing
-          // system shipped get a fresh 7-day Plus trial on next launch.
-          const hydrated =
-            (await applyRetroactiveTrialGrantOnce(profile)) ?? profile;
-          setProfile(hydrated);
-          setOnboardingCompleted(hydrated.onboardingCompleted);
+          setProfile(profile);
+          setOnboardingCompleted(profile.onboardingCompleted);
           // Re-sync notifications now that we have a profile. The version-
           // gated guard in syncNotifications linearises this with any other
           // concurrent caller so last-write-wins is deterministic.
           const settings = await loadNotificationSettings();
-          void syncNotifications({ settings, profile: hydrated });
+          void syncNotifications({ settings, profile });
         }
       } catch (error) {
         // Profile load failed — treat as no profile, proceed to onboarding

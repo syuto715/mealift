@@ -6,6 +6,9 @@ import { Modal, Button } from '../ui';
 import { getColors } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import { useProfileStore } from '../../stores/profileStore';
+import { useSubscription } from '../../hooks/useSubscription';
+import { TRIAL_DURATION_DAYS } from '../../constants/pricing';
 
 type RequiredPlan = 'plus' | 'pro';
 
@@ -36,6 +39,17 @@ export function UpgradePromptModal({
 }: UpgradePromptModalProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
+
+  const profile = useProfileStore((s) => s.profile);
+  const sub = useSubscription();
+  // Trial CTA applies when the user has never started a trial, isn't already
+  // paid, and the gated feature is unlocked by Plus (not Pro-only). Pro
+  // features don't get a free-trial path.
+  const canStartTrial =
+    requiredPlan === 'plus' &&
+    !!profile &&
+    !profile.trialStartedAt &&
+    !sub.isPaid;
 
   const handleUpgrade = () => {
     onClose();
@@ -97,7 +111,11 @@ export function UpgradePromptModal({
 
       <View style={styles.actions}>
         <Button
-          title={`${planLabel} にアップグレード`}
+          title={
+            canStartTrial
+              ? `${TRIAL_DURATION_DAYS}日間無料トライアルで試す`
+              : `${planLabel} にアップグレード`
+          }
           onPress={handleUpgrade}
           variant="primary"
           fullWidth
