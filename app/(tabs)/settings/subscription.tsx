@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   ScrollView,
   View,
@@ -13,10 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import type { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import { getColors, radius, shadow } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
-import { Card, Badge, Button, SegmentedControl } from '../../../src/components/ui';
+import { Badge, Button, SegmentedControl } from '../../../src/components/ui';
 import { useSubscription } from '../../../src/hooks/useSubscription';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { startTrial } from '../../../src/infra/repositories/profileRepository';
@@ -32,6 +33,15 @@ import {
   type BillingCycle,
   type PaidTier,
 } from '../../../src/constants/pricing';
+import {
+  getCurrentOffering,
+  findPackage,
+  purchasePackage,
+  restorePurchases,
+  applyCustomerInfoToProfile,
+  isRevenueCatConfigured,
+  RevenueCatError,
+} from '../../../src/infra/services/revenueCatService';
 
 // ---------------------------------------------------------------------------
 // Billing cycle config
@@ -172,6 +182,39 @@ export default function SubscriptionScreen() {
   const [cycle, setCycle] = useState<BillingCycle>('annual');
   const [compareOpen, setCompareOpen] = useState(false);
   const [startingTrial, setStartingTrial] = useState(false);
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [purchasing, setPurchasing] = useState<PaidTier | null>(null);
+  const [restoring, setRestoring] = useState(false);
+
+  // Load the Default Offering once on mount. We don't block the UI — fallback
+  // pricing from src/constants/pricing.ts is shown until RC responds.
+  useEffect(() => {
+    if (!isRevenueCatConfigured()) return;
+    let cancelled = false;
+    void (async () => {
+      const current = await getCurrentOffering();
+      if (!cancelled) setOffering(current);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Prefer RevenueCat's localized price string (handles currency + IAP
+  // localization). Falls back to the JPY constants when RC hasn't loaded or
+  // the package is missing.
+  const displayPrice = useCallback(
+    (tier: PaidTier, forCycle: BillingCycle): string => {
+      const pkg = findPackage(
+        offering,
+        tier,
+        forCycle === 'biannual' ? 'biannual' : forCycle,
+      );
+      if (pkg?.product?.priceString) return pkg.product.priceString;
+      return `¥${priceFor(tier, forCycle).toLocaleString()}`;
+    },
+    [offering],
+  );
 
   // Users who have never started a trial can opt into the 7-day free trial.
   // After trialStartedAt is set (even if trial has since expired), this branch
@@ -196,14 +239,75 @@ export default function SubscriptionScreen() {
     return null;
   }, [sub]);
 
-  const handlePurchase = (tier: PaidTier) => {
+  const handlePurchase = async (tier: PaidTier) => {
     const tierLabel = tier === 'plus' ? 'Plus' : 'Pro';
-    const price = priceFor(tier, cycle);
-    Alert.alert(
-      `${tierLabel} ${CYCLE_LABEL[cycle]}プラン`,
-      `¥${price.toLocaleString()} での購入フローは近日公開です。`,
-      [{ text: 'OK' }],
-    );
+
+    if (!isRevenueCatConfigured()) {
+      Alert.alert(
+        '購入できません',
+        'アプリ内課金の初期化が完了していません。アプリを再起動してもう一度お試しください。',
+      );
+      return;
+    }
+
+    const pkg: PurchasesPackage | null = findPackage(offering, tier, cycle);
+    if (!pkg) {
+      Alert.alert(
+        '商品が取得できません',
+        'ストアから商品情報を取得できませんでした。しばらく経ってから再度お試しください。',
+      );
+      return;
+    }
+
+    setPurchasing(tier);
+    try {
+      const { customerInfo, userCancelled } = await purchasePackage(pkg);
+      if (userCancelled) return;
+      await applyCustomerInfoToProfile(customerInfo);
+      Alert.alert(
+        `${tierLabel} プランを開始しました`,
+        `ご購入ありがとうございます。${tierLabel} の全機能がご利用いただけます。`,
+      );
+    } catch (e) {
+      if (e instanceof RevenueCatError) {
+        Alert.alert('購入エラー', e.message);
+      } else {
+        Alert.alert('購入エラー', '購入処理中にエラーが発生しました。');
+      }
+    } finally {
+      setPurchasing(null);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!isRevenueCatConfigured()) {
+      Alert.alert(
+        '復元できません',
+        'アプリ内課金の初期化が完了していません。',
+      );
+      return;
+    }
+    setRestoring(true);
+    try {
+      const info = await restorePurchases();
+      await applyCustomerInfoToProfile(info);
+      const hasActive =
+        !!info.entitlements.active.pro || !!info.entitlements.active.plus;
+      Alert.alert(
+        hasActive ? '購入を復元しました' : '復元できる購入がありません',
+        hasActive
+          ? '以前の購入が適用されました。'
+          : 'このApple IDで購入済みのサブスクリプションは見つかりませんでした。',
+      );
+    } catch (e) {
+      if (e instanceof RevenueCatError) {
+        Alert.alert('復元エラー', e.message);
+      } else {
+        Alert.alert('復元エラー', '購入の復元に失敗しました。');
+      }
+    } finally {
+      setRestoring(false);
+    }
   };
 
   const handleStartTrial = async () => {
@@ -314,7 +418,7 @@ export default function SubscriptionScreen() {
           disabledUpgrade={sub.isPro}
           title="Plus"
           subtitle="全ての記録機能とレポート"
-          priceText={`¥${priceFor('plus', cycle).toLocaleString()}`}
+          priceText={displayPrice('plus', cycle)}
           periodText={CYCLE_PERIOD[cycle]}
           monthlyEquivText={
             cycle !== 'monthly'
@@ -334,6 +438,7 @@ export default function SubscriptionScreen() {
                   : `Plus ${CYCLE_LABEL[cycle]}プランを購入`
           }
           onPress={() => handlePurchase('plus')}
+          purchasing={purchasing === 'plus'}
           trialCtaLabel={
             canStartTrial
               ? `${TRIAL_DURATION_DAYS}日間無料トライアルで試す`
@@ -349,7 +454,7 @@ export default function SubscriptionScreen() {
           current={sub.isPro}
           title="Pro"
           subtitle="AI と外部連携を追加"
-          priceText={`¥${priceFor('pro', cycle).toLocaleString()}`}
+          priceText={displayPrice('pro', cycle)}
           periodText={CYCLE_PERIOD[cycle]}
           monthlyEquivText={
             cycle !== 'monthly'
@@ -361,6 +466,7 @@ export default function SubscriptionScreen() {
           badgeText={null}
           ctaLabel={sub.isPro ? '現在のプラン' : 'Pro にアップグレード'}
           onPress={() => handlePurchase('pro')}
+          purchasing={purchasing === 'pro'}
         />
 
         {/* Comparison opener */}
@@ -382,6 +488,23 @@ export default function SubscriptionScreen() {
             size={16}
             color={colors.textTertiary}
           />
+        </TouchableOpacity>
+
+        {/* Restore purchases */}
+        <TouchableOpacity
+          style={styles.restoreRow}
+          onPress={handleRestore}
+          disabled={restoring}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[
+              styles.restoreText,
+              { color: restoring ? colors.textTertiary : colors.primary },
+            ]}
+          >
+            {restoring ? '復元中...' : '購入を復元'}
+          </Text>
         </TouchableOpacity>
 
         {/* Legal / note */}
@@ -531,6 +654,7 @@ interface PlanCardProps {
   badgeText: string | null;
   ctaLabel?: string;
   onPress?: () => void;
+  purchasing?: boolean;
   // Optional free-trial opt-in button shown above the primary CTA. Rendered
   // only when a trial is available to this user (never started before).
   trialCtaLabel?: string | null;
@@ -552,6 +676,7 @@ function PlanCard({
   badgeText,
   ctaLabel,
   onPress,
+  purchasing = false,
   trialCtaLabel,
   onTrialPress,
   trialLoading = false,
@@ -651,7 +776,8 @@ function PlanCard({
                   : 'primary'
               }
               fullWidth
-              disabled={current || disabledUpgrade}
+              loading={purchasing}
+              disabled={current || disabledUpgrade || purchasing}
             />
           )}
         </View>
@@ -815,6 +941,16 @@ const styles = StyleSheet.create({
   },
   compareButtonText: {
     ...typography.labelLarge,
+  },
+
+  // Restore purchases
+  restoreRow: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  restoreText: {
+    ...typography.labelMedium,
+    fontWeight: '600',
   },
 
   // Legal

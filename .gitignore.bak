@@ -2,11 +2,13 @@
 
 # dependencies
 node_modules/
+
 # Expo
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+
 # Native
 .kotlin/
 *.orig.*
@@ -15,23 +17,31 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+
 # Metro
 .metro-health-check*
+
 # debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+
 # macOS
 .DS_Store
 *.pem
+
 # local env files
 .env
 .env*.local
+
 # typescript
 *.tsbuildinfo
+
 # generated native folders
 /ios
 /android
+
 # MEXT food composition table — raw download cache (not tracked; re-run importer to fetch)
 scripts/import-mext-foods/downloaded/
+.env.save
 .env.save

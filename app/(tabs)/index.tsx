@@ -32,6 +32,7 @@ import { GoalPredictionCard } from '../../src/components/home/GoalPredictionCard
 import { AdaptiveGoalCard } from '../../src/components/home/AdaptiveGoalCard';
 import { WaterTrackerCard } from '../../src/components/home/WaterTrackerCard';
 import { useWaterTracker } from '../../src/hooks/useWaterTracker';
+import { useHealthKitCalories } from '../../src/hooks/useHealthKitCalories';
 import { getDailyCalories, getWeeklyCalories } from '../../src/infra/repositories/nutritionRepository';
 import {
   getRecentSessionCount,
@@ -311,7 +312,12 @@ export default function HomeScreen() {
   const remaining = Math.max(0, targetCalories - consumedCalories);
   const progress = targetCalories > 0 ? consumedCalories / targetCalories : 0;
 
-  // Calculate daily burn (TDEE + workout)
+  // HealthKit activeEnergyBurned for the selected date (0 when opted out).
+  const { calories: healthKitCalories, isActive: healthKitActive } =
+    useHealthKitCalories(selectedDate);
+
+  // Calculate daily burn (TDEE + workout, or HealthKit + manual workout
+  // when HealthKit is active — calculateDailyBurn handles the branching).
   const dailyBurn = useMemo(() => {
     if (!profile) return 0;
     const { tdee } = calculateAllCalories(
@@ -322,8 +328,12 @@ export default function HomeScreen() {
       profile.activityLevel,
       profile.goalType,
     );
-    return calculateDailyBurn(tdee, todayWorkoutCalories);
-  }, [profile, todayWorkoutCalories]);
+    return calculateDailyBurn(
+      tdee,
+      todayWorkoutCalories,
+      healthKitActive ? healthKitCalories : undefined,
+    );
+  }, [profile, todayWorkoutCalories, healthKitActive, healthKitCalories]);
 
   const calorieBalance = consumedCalories - dailyBurn;
 
@@ -614,6 +624,23 @@ export default function HomeScreen() {
                   {dailyBurn}
                 </Text>
               </View>
+              {healthKitActive && healthKitCalories > 0 && (
+                <View style={styles.calorieAttributionRow}>
+                  <Ionicons
+                    name="heart"
+                    size={11}
+                    color={colors.textTertiary}
+                  />
+                  <Text
+                    style={[
+                      styles.calorieAttributionText,
+                      { color: colors.textTertiary },
+                    ]}
+                  >
+                    Appleヘルスケアから取得
+                  </Text>
+                </View>
+              )}
               <View style={[styles.calorieRow, styles.balanceRow, { borderTopColor: colors.border }]}>
                 <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>差引</Text>
                 <Text style={[styles.calorieValue, { color: balanceColor }]}>
@@ -858,6 +885,17 @@ const styles = StyleSheet.create({
   balanceRow: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.xs, marginTop: spacing.xs },
   calorieLabel: { ...typography.bodyMedium },
   calorieValue: { ...typography.numberMedium },
+  calorieAttributionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: -4,
+  },
+  calorieAttributionText: {
+    ...typography.labelSmall,
+    fontSize: 10,
+  },
   pfcContainer: { gap: spacing.lg },
   balanceLink: {
     flexDirection: 'row',

@@ -21,9 +21,10 @@ import { useOnboardingStore } from '../../src/stores/onboardingStore';
 import { Gender, ActivityLevel } from '../../src/types/common';
 
 function ProgressDots({ current, colors }: { current: number; colors: ReturnType<typeof getColors> }) {
+  const dots = Platform.OS === 'ios' ? [0, 1, 2, 3] : [0, 1, 2];
   return (
     <View style={dotStyles.container}>
-      {[0, 1, 2].map((i) => (
+      {dots.map((i) => (
         <View
           key={i}
           style={[
@@ -129,7 +130,13 @@ export default function BodyAndTrainingScreen() {
       equipment: 'gym',
       targetDate: null,
     });
-    router.push('/(onboarding)/complete');
+    // iOS: offer the HealthKit opt-in as a mid-flow step before summary.
+    // Android: skip straight to summary since HealthKit isn't available.
+    router.push(
+      Platform.OS === 'ios'
+        ? '/(onboarding)/healthkit'
+        : '/(onboarding)/complete',
+    );
   };
 
   const currentYear = new Date().getFullYear();
@@ -140,7 +147,9 @@ export default function BodyAndTrainingScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
           <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>ステップ 2/3</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+          {Platform.OS === 'ios' ? 'ステップ 2/4' : 'ステップ 2/3'}
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 

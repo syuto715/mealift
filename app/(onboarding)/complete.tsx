@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -182,7 +183,7 @@ export default function CompleteScreen() {
           <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          ステップ 5/5
+          {Platform.OS === 'ios' ? 'ステップ 4/4' : 'ステップ 3/3'}
         </Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -324,7 +325,11 @@ export default function CompleteScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <ProgressDots current={4} total={5} colors={colors} />
+        <ProgressDots
+          current={Platform.OS === 'ios' ? 3 : 2}
+          total={Platform.OS === 'ios' ? 4 : 3}
+          colors={colors}
+        />
         <View style={styles.buttonRow}>
           <Button
             title="戻る"

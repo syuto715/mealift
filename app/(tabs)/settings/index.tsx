@@ -8,6 +8,7 @@ import {
   useColorScheme,
   Alert,
   Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -19,6 +20,7 @@ import { spacing } from '../../../src/theme/spacing';
 import { Card, SegmentedControl, Modal, Button } from '../../../src/components/ui';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useProfileStore } from '../../../src/stores/profileStore';
+import { useHealthKitStore } from '../../../src/stores/healthKitStore';
 import { APP_CONFIG } from '../../../src/constants/config';
 import { canUse } from '../../../src/infra/services/subscriptionService';
 import { exportCsv, ExportType, TYPE_LABELS } from '../../../src/infra/services/csvExportService';
@@ -71,6 +73,8 @@ export default function SettingsScreen() {
   const colors = getColors(scheme);
   const { isLocalOnly, logout } = useAuthStore();
   const profile = useProfileStore((s) => s.profile);
+  const healthKitEnabled = useHealthKitStore((s) => s.enabled);
+  const healthKitPermission = useHealthKitStore((s) => s.permissionStatus);
 
   const [restTimer, setRestTimer] = useState('90');
   const [themePref, setThemePref] = useState('system');
@@ -239,15 +243,49 @@ export default function SettingsScreen() {
           />
         </Card>
 
-        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>ヘルスケア連携</Text>
-        <Card padding="none">
-          <SettingsRow
-            icon="heart-outline"
-            label="Apple Health / Health Connect"
-            onPress={() => router.push('/(tabs)/settings/health-sync')}
-            colors={colors}
-          />
-        </Card>
+        {Platform.OS === 'ios' && (
+          <>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+              Appleヘルスケア連携
+            </Text>
+            <Card padding="none">
+              <SettingsRow
+                icon="heart-outline"
+                label="Appleヘルスケア"
+                onPress={() => router.push('/(tabs)/settings/health-sync')}
+                colors={colors}
+                rightElement={
+                  <View style={styles.healthKitStatusRow}>
+                    <Text
+                      style={[
+                        styles.healthKitStatusText,
+                        {
+                          color:
+                            healthKitEnabled && healthKitPermission === 'granted'
+                              ? colors.success
+                              : healthKitPermission === 'denied'
+                                ? colors.error
+                                : colors.textTertiary,
+                        },
+                      ]}
+                    >
+                      {healthKitEnabled && healthKitPermission === 'granted'
+                        ? '連携済み'
+                        : healthKitPermission === 'denied'
+                          ? 'アクセス拒否'
+                          : '未連携'}
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color={colors.textTertiary}
+                    />
+                  </View>
+                }
+              />
+            </Card>
+          </>
+        )}
 
         {canUse('aiNutritionEstimate') && (
           <>
@@ -477,6 +515,15 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   rowLabel: { ...typography.bodyLarge, flex: 1 },
+  healthKitStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  healthKitStatusText: {
+    ...typography.bodySmall,
+    fontWeight: '600',
+  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -19,12 +19,12 @@ export const PRICING: Record<PaidTier, TierPricing> = {
   plus: {
     monthly: 480,
     biannual: 1900,
-    annual: 3600,
+    annual: 3000,
   },
   pro: {
     monthly: 980,
     biannual: 4800,
-    annual: 8800,
+    annual: 6000,
   },
 };
 

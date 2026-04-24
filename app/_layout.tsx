@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getColors } from '../src/theme/tokens';
 import { getDatabase } from '../src/infra/database/connection';
 import { useAuthStore } from '../src/stores/authStore';
@@ -16,8 +17,29 @@ import {
 import { Toast } from '../src/components/ui';
 import { useUIStore } from '../src/stores/uiStore';
 import { bootstrapNotifications } from '../src/infra/services/notificationService';
+import {
+  initialize as initializeRevenueCat,
+  identifyUser as identifyRevenueCatUser,
+  logOut as logOutRevenueCat,
+  addCustomerInfoListener,
+  applyCustomerInfoToProfile,
+  getCustomerInfo as getRevenueCatCustomerInfo,
+} from '../src/infra/services/revenueCatService';
 
 SplashScreen.preventAutoHideAsync();
+
+// Single shared QueryClient for the app. HealthKit reads are the first
+// consumer — modest staleTime keeps today's calories fresh without over-
+// fetching when the user navigates between tabs.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const SPLASH_TIMEOUT_MS = 5000;
 
@@ -60,6 +82,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     let authUnsubscribe: (() => void) | undefined;
+    let rcUnsubscribe: (() => void) | undefined;
 
     async function initialize() {
       try {
@@ -68,6 +91,17 @@ export default function RootLayout() {
           await getDatabase();
         } catch (dbError) {
           // Continue without DB — app can still show login screen
+        }
+
+        // Initialize RevenueCat (iOS-only, no-op on Android/missing API key).
+        // Safe before login: anonymous appUserID is upgraded on identifyUser().
+        try {
+          initializeRevenueCat();
+          rcUnsubscribe = addCustomerInfoListener((info) => {
+            void applyCustomerInfoToProfile(info);
+          });
+        } catch {
+          // RC failures must not block app boot.
         }
 
         // Initialize notifications (single-shot across re-mounts). Passes
@@ -87,6 +121,17 @@ export default function RootLayout() {
                 data.session.user.id,
                 data.session.user.email ?? undefined,
               );
+              // Tie RevenueCat appUserID to the Supabase user so purchases
+              // follow the account across devices.
+              void (async () => {
+                try {
+                  await identifyRevenueCatUser(data.session!.user.id);
+                  const info = await getRevenueCatCustomerInfo();
+                  await applyCustomerInfoToProfile(info);
+                } catch {
+                  // Non-fatal — plan state falls back to local defaults.
+                }
+              })();
             } else if (!isAuthenticated) {
               setUnauthenticated();
             }
@@ -111,8 +156,13 @@ export default function RootLayout() {
                 session as { user: { id: string; email?: string } }
               ).user;
               setAuthenticated(user.id, user.email ?? undefined);
+              void identifyRevenueCatUser(user.id).then(async () => {
+                const info = await getRevenueCatCustomerInfo();
+                await applyCustomerInfoToProfile(info);
+              });
             } else if (!useAuthStore.getState().isLocalOnly) {
               setUnauthenticated();
+              void logOutRevenueCat();
             }
           });
           authUnsubscribe = data.subscription.unsubscribe;
@@ -130,6 +180,7 @@ export default function RootLayout() {
 
     return () => {
       authUnsubscribe?.();
+      rcUnsubscribe?.();
     };
   }, []);
 
@@ -153,31 +204,33 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutReady}>
-      <SafeAreaProvider>
-        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            headerBackTitle: '戻る',
-            contentStyle: { backgroundColor: colors.background },
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(onboarding)" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-        {toastMessage && toastType && (
-          <Toast
-            message={toastMessage}
-            type={toastType}
-            visible={true}
-            onHide={hideToast}
-          />
-        )}
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <QueryClientProvider client={queryClient}>
+      <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutReady}>
+        <SafeAreaProvider>
+          <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              headerBackTitle: '戻る',
+              contentStyle: { backgroundColor: colors.background },
+              animation: 'slide_from_right',
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(onboarding)" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+          {toastMessage && toastType && (
+            <Toast
+              message={toastMessage}
+              type={toastType}
+              visible={true}
+              onHide={hideToast}
+            />
+          )}
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </QueryClientProvider>
   );
 }

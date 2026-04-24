@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   useColorScheme,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -36,9 +37,10 @@ const FEATURES: { icon: React.ComponentProps<typeof Ionicons>['name']; label: st
 ];
 
 function ProgressDots({ current, colors }: { current: number; colors: ReturnType<typeof getColors> }) {
+  const dots = Platform.OS === 'ios' ? [0, 1, 2, 3] : [0, 1, 2];
   return (
     <View style={dotStyles.container}>
-      {[0, 1, 2].map((i) => (
+      {dots.map((i) => (
         <View
           key={i}
           style={[
