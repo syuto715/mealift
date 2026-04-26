@@ -2,6 +2,8 @@ import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
 import { Dish, DishIngredient, DishWithIngredients, DishCategory } from '../../types/dish';
 import { ExtendedNutrients, EXTENDED_NUTRIENT_KEYS, EXTENDED_NUTRIENT_DB_COLUMNS } from '../../types/food';
+import { buildRecipeFromFoodMap, type RecipeIngredientInput } from '../../domain/recipeBuilder';
+import { getFoodsByIds } from './foodRepository';
 
 /** Generic input type for saving AI-estimated dishes */
 export interface SaveDishInput {
@@ -71,6 +73,7 @@ function rowToIngredient(row: Record<string, unknown>): DishIngredient {
   return {
     id: row.id as string,
     dishId: row.dish_id as string,
+    foodId: (row.food_id as string) ?? null,
     foodName: row.food_name as string,
     amountG: row.amount_g as number,
     calories: row.calories as number,
@@ -264,6 +267,7 @@ export async function saveDishFromAI(
     ingredients.push({
       id: ingId,
       dishId,
+      foodId: null,
       foodName: ing.name,
       amountG: ing.amountG,
       calories: ing.calories,
@@ -296,6 +300,10 @@ export async function saveDishFromAI(
 // ---------------------------------------------------------------------------
 
 export interface MyDishIngredientInput {
+  // Optional canonical food link. Set when the ingredient was picked from
+  // the food database (via the recipe calculator); null/undefined for
+  // free-text or AI-estimated ingredients.
+  foodId?: string | null;
   foodName: string;
   amountG: number;
   calories: number;
@@ -427,16 +435,17 @@ export async function saveMyDish(
     const ingId = generateId();
     const ingExtVals = EXTENDED_NUTRIENT_KEYS.map((k) => ing.extended?.[k] ?? null);
     const cols = [
-      'id', 'dish_id', 'food_name', 'amount_g', 'calories',
+      'id', 'dish_id', 'food_id', 'food_name', 'amount_g', 'calories',
       'protein_g', 'fat_g', 'carb_g', 'sort_order',
       ...ingExtCols,
     ].join(', ');
-    const placeholders = new Array(9 + ingExtCols.length).fill('?').join(', ');
+    const placeholders = new Array(10 + ingExtCols.length).fill('?').join(', ');
     await db.runAsync(
       `INSERT INTO dish_ingredients (${cols}) VALUES (${placeholders})`,
       [
         ingId,
         dishId,
+        ing.foodId ?? null,
         ing.foodName,
         ing.amountG,
         Math.round(ing.calories),
@@ -489,6 +498,7 @@ export async function duplicateMyDish(
     userNote: source.userNote,
     servingDescription: source.servingDescription,
     ingredients: source.ingredients.map((ing) => ({
+      foodId: ing.foodId,
       foodName: ing.foodName,
       amountG: ing.amountG,
       calories: ing.calories,
@@ -518,5 +528,82 @@ export async function duplicateMyDish(
         saltG: ing.saltG,
       },
     })),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// My Dish from food-id list — recipe calculator entry point.
+// ---------------------------------------------------------------------------
+//
+// Resolves foodIds to canonical Food rows, runs the pure recipe calculator,
+// and persists the result as a my-dish with food_id linkage on each
+// ingredient. Throws if any foodId can't be resolved — partial recipes
+// would silently lose nutrition and we'd rather fail loudly.
+
+export interface SaveMyDishFromFoodIdsInput {
+  id?: string;
+  nameJa: string;
+  userNote: string | null;
+  servingDescription?: string;
+  ingredients: RecipeIngredientInput[];
+  // partialSums: when true, extended-nutrient totals skip null values
+  // instead of voiding the whole sum. See computeRecipeTotals docs.
+  partialSums?: boolean;
+}
+
+export class MissingFoodIdsError extends Error {
+  constructor(public missingFoodIds: string[]) {
+    super(
+      `saveMyDishFromFoodIds: ${missingFoodIds.length} foodId(s) not in DB: ${missingFoodIds.join(', ')}`,
+    );
+    this.name = 'MissingFoodIdsError';
+  }
+}
+
+export async function saveMyDishFromFoodIds(
+  input: SaveMyDishFromFoodIdsInput,
+): Promise<DishWithIngredients> {
+  if (input.ingredients.length === 0) {
+    throw new Error('saveMyDishFromFoodIds: ingredients[] must be non-empty');
+  }
+
+  const ids = input.ingredients.map((i) => i.foodId);
+  const foods = await getFoodsByIds(ids);
+  const built = buildRecipeFromFoodMap(foods, input.ingredients, {
+    partialSums: !!input.partialSums,
+  });
+  if (built.missingFoodIds.length > 0) {
+    throw new MissingFoodIdsError(built.missingFoodIds);
+  }
+
+  // Map calculator output → MyDishIngredientInput shape so we go through
+  // the existing saveMyDish persistence path. The calculator already
+  // preserved nulls on extended nutrients; we forward them via `extended`.
+  const myDishIngredients: MyDishIngredientInput[] = built.ingredients.map((ing) => {
+    const extended: Partial<ExtendedNutrients> = {};
+    for (const key of EXTENDED_NUTRIENT_KEYS) {
+      // Pass through both numeric values and explicit nulls — saveMyDish's
+      // dynamic extVals build coerces undefined to null too, but being
+      // explicit keeps null preservation visible at this boundary.
+      extended[key] = ing[key] as never;
+    }
+    return {
+      foodId: ing.foodId,
+      foodName: ing.foodName,
+      amountG: ing.amountG,
+      calories: ing.calories,
+      proteinG: ing.proteinG,
+      fatG: ing.fatG,
+      carbG: ing.carbG,
+      extended,
+    };
+  });
+
+  return saveMyDish({
+    id: input.id,
+    nameJa: input.nameJa,
+    userNote: input.userNote,
+    servingDescription: input.servingDescription,
+    ingredients: myDishIngredients,
   });
 }

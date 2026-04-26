@@ -13,6 +13,7 @@ export type FoodSource =
   | 'mext'
   | 'usda'
   | 'manual'
+  | 'manual_seed'
   | 'barcode'
   | 'open_food_facts'
   | 'user'

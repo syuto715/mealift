@@ -17,8 +17,10 @@ import { migrateV14 } from './migrations/v14';
 import { migrateV15 } from './migrations/v15';
 import { migrateV16 } from './migrations/v16';
 import { migrateV17 } from './migrations/v17';
+import { migrateV18 } from './migrations/v18';
 import { seedFoods, seedExercises } from './seed/foods';
 import { seedDishes } from './seed/dishes';
+import { seedFitnessDishes } from './seed/fitnessDishes';
 import { seedBarcodeProducts } from './seed/barcodeProducts';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
@@ -120,6 +122,10 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
       await migrateV17(db);
       await db.execAsync('PRAGMA user_version = 17;');
     }
+    if (currentVersion < 18) {
+      await migrateV18(db);
+      await db.execAsync('PRAGMA user_version = 18;');
+    }
 
   } catch (error) {
     console.error('Migration failed:', error);
@@ -148,6 +154,14 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     if (!dishCount || dishCount.count === 0) {
       await seedDishes(db);
     }
+  } catch (error) {
+  }
+
+  // Seed fitness dishes (recipe-calculator-grounded). Internally gated on
+  // `id LIKE 'fitness_%'` count > 0, so first run inserts and subsequent
+  // boots are no-ops. Runs after seedFoods so the foodId resolutions hit.
+  try {
+    await seedFitnessDishes(db);
   } catch (error) {
   }
 

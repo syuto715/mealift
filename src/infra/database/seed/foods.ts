@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { FOODS } from '../../../constants/foods';
+import { GENERIC_FOODS } from '../../../constants/genericFoods';
 import { EXERCISES } from '../../../constants/exercises';
 import { getAllAliasSeeds } from '../../../constants/foodAliases';
 import { generateId } from '../../../utils/id';
@@ -154,6 +155,63 @@ export async function seedFoods(db: SQLite.SQLiteDatabase): Promise<void> {
   // Safe no-op when the JSON is empty (initial state before running the importer).
   await seedMextFoods(db);
   await seedMextAliases(db);
+
+  // Seed brand-agnostic generic foods (protein bars, ready-meal portions,
+  // supplement scoops). Inserted with source='manual_seed' so they can be
+  // distinguished from MEXT entries in queries / future migrations.
+  await seedGenericFoods(db);
+}
+
+async function seedGenericFoods(db: SQLite.SQLiteDatabase): Promise<void> {
+  for (const food of GENERIC_FOODS) {
+    try {
+      await db.runAsync(
+        `INSERT OR IGNORE INTO foods (
+           id, name_ja, name_en, brand, serving_size_g, serving_unit,
+           calories_per_serving, protein_g, fat_g, carb_g, fiber_g,
+           sodium_mg, calcium_mg, iron_mg, vitamin_a_ug, vitamin_b1_mg,
+           vitamin_b2_mg, vitamin_b6_mg, vitamin_b12_ug, folate_ug,
+           vitamin_c_mg, vitamin_d_ug, vitamin_e_mg,
+           potassium_mg, magnesium_mg, zinc_mg, cholesterol_mg,
+           saturated_fat_g, sugar_g, salt_g, source, is_custom, is_common
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual_seed', 0, 0)`,
+        [
+          food.id,
+          food.nameJa,
+          food.nameEn,
+          food.brand,
+          food.servingSizeG,
+          food.servingUnit,
+          food.caloriesPerServing,
+          food.proteinG,
+          food.fatG,
+          food.carbG,
+          food.fiberG ?? null,
+          food.sodiumMg ?? null,
+          food.calciumMg ?? null,
+          food.ironMg ?? null,
+          food.vitaminAUg ?? null,
+          food.vitaminB1Mg ?? null,
+          food.vitaminB2Mg ?? null,
+          food.vitaminB6Mg ?? null,
+          food.vitaminB12Ug ?? null,
+          food.folateUg ?? null,
+          food.vitaminCMg ?? null,
+          food.vitaminDUg ?? null,
+          food.vitaminEMg ?? null,
+          food.potassiumMg ?? null,
+          food.magnesiumMg ?? null,
+          food.zincMg ?? null,
+          food.cholesterolMg ?? null,
+          food.saturatedFatG ?? null,
+          food.sugarG ?? null,
+          food.saltG ?? null,
+        ],
+      );
+    } catch {
+      // Ignore individual row failures — a bad row shouldn't fail the boot.
+    }
+  }
 }
 
 async function seedMextFoods(db: SQLite.SQLiteDatabase): Promise<void> {

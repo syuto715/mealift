@@ -199,6 +199,30 @@ export async function getFoodById(foodId: string): Promise<Food | null> {
   return rowToFood(row);
 }
 
+// Batch lookup that returns a Map keyed by foodId. Missing IDs are simply
+// absent from the map — callers decide whether that's an error (recipe
+// builder) or fine (search-result hydration).
+export async function getFoodsByIds(
+  ids: readonly string[],
+): Promise<Map<string, Food>> {
+  const out = new Map<string, Food>();
+  if (ids.length === 0) return out;
+  const db = await getDatabase();
+  // De-dupe to keep the placeholder list small; a recipe with the same
+  // food appearing twice (e.g. soy sauce in two steps) is normal.
+  const unique = Array.from(new Set(ids));
+  const placeholders = unique.map(() => '?').join(',');
+  const rows = await db.getAllAsync<Record<string, unknown>>(
+    `SELECT * FROM foods WHERE id IN (${placeholders})`,
+    unique,
+  );
+  for (const row of rows) {
+    const food = rowToFood(row);
+    out.set(food.id, food);
+  }
+  return out;
+}
+
 export async function getFavoriteFoods(limit: number = 50): Promise<Food[]> {
   try {
     const db = await getDatabase();
