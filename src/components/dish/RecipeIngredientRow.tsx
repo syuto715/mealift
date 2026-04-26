@@ -145,7 +145,7 @@ export function RecipeIngredientRow({
       <TouchableOpacity
         onPress={() => onRemove(localId)}
         hitSlop={8}
-        testID={`remove-ingredient-${localId}`}
+        testID={`ingredient-delete-${localId}`}
       >
         <Ionicons name="trash-outline" size={22} color={colors.error} />
       </TouchableOpacity>

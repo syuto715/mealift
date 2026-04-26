@@ -22,6 +22,7 @@ interface ButtonProps {
   loading?: boolean;
   fullWidth?: boolean;
   icon?: React.ReactNode;
+  testID?: string;
 }
 
 export function Button({
@@ -33,6 +34,7 @@ export function Button({
   loading = false,
   fullWidth = false,
   icon,
+  testID,
 }: ButtonProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
@@ -57,6 +59,7 @@ export function Button({
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.7}
+      testID={testID}
     >
       {loading ? (
         <ActivityIndicator

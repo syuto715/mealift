@@ -27,8 +27,11 @@ import {
 import {
   getDishById,
   saveMyDish,
+  saveMyDishFromFoodIds,
+  MissingFoodIdsError,
   MyDishIngredientInput,
 } from '../../../src/infra/repositories/dishRepository';
+import { getFoodsByIds } from '../../../src/infra/repositories/foodRepository';
 import { DAILY_NUTRIENT_TARGETS } from '../../../src/constants/dailyNutrientTargets';
 import {
   computeIngredientFromFood,
@@ -39,13 +42,16 @@ import {
 import type { DishIngredient } from '../../../src/types/dish';
 
 // Recipe-builder state. Two modes coexist:
-//   - 'live':   the user picked the food in this session, so we hold the
-//               canonical Food row and recompute from (food, amountG) on
-//               every commit. The amount input is editable.
-//   - 'loaded': the row was rehydrated from a persisted dish during edit.
-//               We don't have the Food row here (commit 3 will add the
-//               getFoodsByIds hop), so we render a static IngredientNutrition
-//               and the amount is read-only.
+//   - 'live':   we hold the canonical Food row and recompute from
+//               (food, amountG) on every commit. The amount input is
+//               editable. Set on user pick, and on edit-load when the
+//               persisted foodId still resolves in the foods table.
+//   - 'static': the row's foodId either wasn't set (free-text /
+//               AI-estimated dish) or no longer resolves (food deleted).
+//               We render the cached IngredientNutrition and lock the
+//               amount because we can't recompute without the Food.
+//               `missing` distinguishes the two sub-cases at render
+//               time so deleted-food rows can show "(削除された食材)".
 type IngredientRow =
   | {
       kind: 'live';
@@ -54,13 +60,17 @@ type IngredientRow =
       amountG: number;
     }
   | {
-      kind: 'loaded';
+      kind: 'static';
       localId: string;
       cached: IngredientNutrition;
       // Original foodId from the persisted dish, preserved separately
       // because IngredientNutrition.foodId is `string` not `string | null`
-      // and we don't want to fabricate one. Survives a re-save.
+      // and we don't want to fabricate one. Survives a re-save so the
+      // food_id linkage isn't destroyed if the food row reappears later.
       originalFoodId: string | null;
+      // True when originalFoodId was set but the food row could not be
+      // resolved at edit-load — the food was deleted out from under us.
+      missing: boolean;
     };
 
 const EXTENDED_LABEL_MAP: Record<string, string> = {
@@ -71,6 +81,34 @@ const EXTENDED_LABEL_MAP: Record<string, string> = {
 
 function makeLocalId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// Build the MyDishIngredientInput[] payload for the cached/static save path.
+// Live rows use their canonical food.id; static rows preserve their
+// originalFoodId so the food_id column survives a re-save (the food row
+// might come back later, and we want the linkage intact).
+function buildCachedIngredientsForSave(
+  rows: IngredientRow[],
+  computed: IngredientNutrition[],
+): MyDishIngredientInput[] {
+  return rows.map((row, idx) => {
+    const c = computed[idx];
+    const extended: Partial<ExtendedNutrients> = {};
+    for (const key of EXTENDED_NUTRIENT_KEYS) {
+      const v = c[key];
+      if (v != null) extended[key] = v;
+    }
+    return {
+      foodId: row.kind === 'live' ? row.food.id : row.originalFoodId,
+      foodName: c.foodName,
+      amountG: c.amountG,
+      calories: c.calories,
+      proteinG: c.proteinG,
+      fatG: c.fatG,
+      carbG: c.carbG,
+      extended,
+    };
+  });
 }
 
 // DishIngredient already extends ExtendedNutrients, so we only need to
@@ -99,11 +137,17 @@ export default function MyDishScreen() {
   const editingId = params.dishId ?? null;
 
   const [name, setName] = useState('');
+  const [nameError, setNameError] = useState<string | undefined>(undefined);
   const [userNote, setUserNote] = useState('');
   const [ingredients, setIngredients] = useState<IngredientRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [showExtended, setShowExtended] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
+
+  const handleNameChange = useCallback((next: string) => {
+    setName(next);
+    if (next.trim()) setNameError(undefined);
+  }, []);
 
   // Memoize per-row computeIngredientFromFood by (foodId, amountG) so
   // editing one row's amount doesn't recompute the others. The cache
@@ -113,7 +157,11 @@ export default function MyDishScreen() {
     new Map(),
   );
 
-  // Load existing dish when editing.
+  // Load existing dish when editing. Resolves persisted foodIds to canonical
+  // Food rows in one batch hop so editable amounts are restored on every
+  // ingredient whose food row still exists. Rows with null foodId
+  // (free-text / AI-estimated) and rows whose foodId was orphaned by a
+  // food-row deletion fall back to the static variant.
   useEffect(() => {
     if (!editingId) return;
     (async () => {
@@ -121,23 +169,41 @@ export default function MyDishScreen() {
       if (!dish) return;
       setName(dish.nameJa);
       setUserNote(dish.userNote ?? '');
+
+      const foodIds = dish.ingredients
+        .map((ing) => ing.foodId)
+        .filter((id): id is string => !!id);
+      const foodMap = foodIds.length > 0 ? await getFoodsByIds(foodIds) : new Map<string, Food>();
+
       setIngredients(
-        dish.ingredients.map((ing) => ({
-          kind: 'loaded' as const,
-          localId: ing.id,
-          cached: dishIngredientToCached(ing),
-          originalFoodId: ing.foodId,
-        })),
+        dish.ingredients.map((ing) => {
+          const food = ing.foodId ? foodMap.get(ing.foodId) : undefined;
+          if (food) {
+            return {
+              kind: 'live' as const,
+              localId: ing.id,
+              food,
+              amountG: ing.amountG,
+            };
+          }
+          return {
+            kind: 'static' as const,
+            localId: ing.id,
+            cached: dishIngredientToCached(ing),
+            originalFoodId: ing.foodId,
+            missing: !!ing.foodId,
+          };
+        }),
       );
     })();
   }, [editingId]);
 
-  // Per-row computed nutrition. Loaded rows pass through their cached
+  // Per-row computed nutrition. Static rows pass through their cached
   // values; live rows hit the (foodId, amountG) cache.
   const perRowComputed = useMemo<IngredientNutrition[]>(() => {
     const cache = computeCacheRef.current;
     return ingredients.map((row) => {
-      if (row.kind === 'loaded') return row.cached;
+      if (row.kind === 'static') return row.cached;
       const key = `${row.food.id}:${row.amountG}`;
       let result = cache.get(key);
       if (!result) {
@@ -149,10 +215,11 @@ export default function MyDishScreen() {
   }, [ingredients]);
 
   // Per-row validation against the committed amountG. Drives save-disable.
-  // Loaded rows are always valid (they came out of the DB).
+  // Static rows are always valid (they came out of the DB and are
+  // read-only here — there's no input to invalidate).
   const rowValidation = useMemo(() => {
     return ingredients.map((row) => {
-      if (row.kind === 'loaded') return { ok: true } as const;
+      if (row.kind === 'static') return { ok: true } as const;
       return validateRecipeIngredient(row.food, row.amountG);
     });
   }, [ingredients]);
@@ -221,7 +288,7 @@ export default function MyDishScreen() {
   const handleSave = useCallback(async () => {
     if (saving) return;
     if (!name.trim()) {
-      Alert.alert('入力エラー', '料理名を入力してください');
+      setNameError('料理名を入力してください');
       return;
     }
     if (ingredients.length === 0) {
@@ -232,35 +299,59 @@ export default function MyDishScreen() {
       Alert.alert('入力エラー', '量が不正な食材があります');
       return;
     }
+
+    const trimmedName = name.trim();
+    const trimmedNote = userNote.trim() ? userNote.trim() : null;
+
+    // All-live fast path: every row has a resolvable foodId, so we can go
+    // through saveMyDishFromFoodIds → buildRecipeFromFoodMap and let the
+    // domain layer recompute nutrition from canonical Food rows. This is
+    // the path the recipe builder is designed around — the static-row
+    // fallback below only fires when an edit-load encountered a deleted
+    // food (or when free-text/AI-estimated rows are mixed in).
+    const allLive = ingredients.every((row) => row.kind === 'live');
+
     setSaving(true);
     try {
-      const ingredientsForSave: MyDishIngredientInput[] = ingredients.map(
-        (row, idx) => {
-          const computed = perRowComputed[idx];
-          const extended: Partial<ExtendedNutrients> = {};
-          for (const key of EXTENDED_NUTRIENT_KEYS) {
-            const v = computed[key];
-            if (v != null) extended[key] = v;
+      if (allLive) {
+        try {
+          await saveMyDishFromFoodIds({
+            id: editingId ?? undefined,
+            nameJa: trimmedName,
+            userNote: trimmedNote,
+            ingredients: ingredients.map((row) => {
+              // TS: narrowed by allLive, but the type guard doesn't carry
+              // through .map — assert by branching.
+              if (row.kind !== 'live') throw new Error('unreachable');
+              return { foodId: row.food.id, amountG: row.amountG };
+            }),
+          });
+        } catch (error) {
+          // If a food was deleted between picker-pick and save-press
+          // (extremely narrow race), fall through to the cached-values
+          // path so the user doesn't lose their work.
+          if (error instanceof MissingFoodIdsError) {
+            await saveMyDish({
+              id: editingId ?? undefined,
+              nameJa: trimmedName,
+              userNote: trimmedNote,
+              ingredients: buildCachedIngredientsForSave(ingredients, perRowComputed),
+            });
+          } else {
+            throw error;
           }
-          return {
-            foodId:
-              row.kind === 'live' ? row.food.id : row.originalFoodId,
-            foodName: computed.foodName,
-            amountG: computed.amountG,
-            calories: computed.calories,
-            proteinG: computed.proteinG,
-            fatG: computed.fatG,
-            carbG: computed.carbG,
-            extended,
-          };
-        },
-      );
-      await saveMyDish({
-        id: editingId ?? undefined,
-        nameJa: name.trim(),
-        userNote: userNote.trim() ? userNote.trim() : null,
-        ingredients: ingredientsForSave,
-      });
+        }
+      } else {
+        // Mixed-rows path: at least one static row (deleted-food or
+        // free-text). Persist via saveMyDish using cached/computed values
+        // so static rows don't lose their nutrition snapshot.
+        await saveMyDish({
+          id: editingId ?? undefined,
+          nameJa: trimmedName,
+          userNote: trimmedNote,
+          ingredients: buildCachedIngredientsForSave(ingredients, perRowComputed),
+        });
+      }
       router.back();
     } catch (error) {
       Alert.alert('エラー', 'マイ料理の保存に失敗しました');
@@ -418,7 +509,9 @@ export default function MyDishScreen() {
             label="料理名"
             placeholder="例: 鶏むねと野菜のサラダ"
             value={name}
-            onChangeText={setName}
+            onChangeText={handleNameChange}
+            error={nameError}
+            testID="recipe-name-input"
           />
           <Input
             label="メモ（任意）"
@@ -451,11 +544,15 @@ export default function MyDishScreen() {
             <View>
               {ingredients.map((row, idx) => {
                 const computed = perRowComputed[idx];
+                const isMissing =
+                  row.kind === 'static' && row.missing;
                 return (
                   <RecipeIngredientRow
                     key={row.localId}
                     localId={row.localId}
-                    foodName={computed.foodName}
+                    foodName={
+                      isMissing ? '(削除された食材)' : computed.foodName
+                    }
                     amountG={
                       row.kind === 'live' ? row.amountG : row.cached.amountG
                     }
@@ -483,12 +580,11 @@ export default function MyDishScreen() {
             variant="primary"
             fullWidth
             loading={saving}
-            disabled={
-              saving ||
-              !name.trim() ||
-              ingredients.length === 0 ||
-              anyInvalid
-            }
+            // We intentionally allow save with an empty name so the press
+            // surfaces the inline name error (set in handleSave). Other
+            // gates stay because they have no per-field error surface.
+            disabled={saving || ingredients.length === 0 || anyInvalid}
+            testID="recipe-save"
           />
         </ScrollView>
       </KeyboardAvoidingView>
