@@ -8,7 +8,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "import-mext": "tsx scripts/import-mext-foods/run.ts"
+    "import-mext": "tsx scripts/import-mext-foods/run.ts",
+    "import-usda": "tsx scripts/food-import/run-usda.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
