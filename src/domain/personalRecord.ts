@@ -5,13 +5,12 @@ import {
 } from '../infra/repositories/personalRecordRepository';
 import { getExerciseById } from '../infra/repositories/workoutRepository';
 import { getDatabase } from '../infra/database/connection';
+import { EPLEY_REPS_CAP, estimate1RM } from './oneRepMax';
 
-// Epley formula
-export function estimate1RM(weight: number, reps: number): number {
-  if (reps <= 0) return 0;
-  if (reps === 1) return weight;
-  return weight * (1 + reps / 30);
-}
+// Re-exported so existing call sites (and tests) can keep importing the
+// formula helpers from this module. The implementation lives in
+// ./oneRepMax.ts to keep it free of expo-sqlite imports for unit testing.
+export { EPLEY_REPS_CAP, estimate1RM };
 
 // Given a newly recorded set, check and record any PRs that were broken.
 export async function checkAndRecordPRs(
