@@ -6,12 +6,9 @@ import {
   useColorScheme,
   TouchableOpacity,
   ScrollView,
-  FlatList,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Modal as RNModal,
-  SafeAreaView as RNSafeAreaView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -24,15 +21,14 @@ import {
   ServingQuantityModal,
   ServingQuantityResult,
 } from '../../../src/components/nutrition/ServingQuantityModal';
+import { IngredientPicker } from '../../../src/components/dish/IngredientPicker';
 import { Food, ExtendedNutrients, EXTENDED_NUTRIENT_KEYS } from '../../../src/types/food';
-import { searchFoods } from '../../../src/infra/repositories/foodRepository';
 import {
   getDishById,
   saveMyDish,
   MyDishIngredientInput,
 } from '../../../src/infra/repositories/dishRepository';
 import { DAILY_NUTRIENT_TARGETS } from '../../../src/constants/dailyNutrientTargets';
-import { formatServingHint } from '../../../src/constants/servingUnits';
 
 interface IngredientRow extends MyDishIngredientInput {
   localId: string;
@@ -64,8 +60,6 @@ export default function MyDishScreen() {
 
   // Food picker state
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerQuery, setPickerQuery] = useState('');
-  const [pickerResults, setPickerResults] = useState<Food[]>([]);
   const [servingFood, setServingFood] = useState<Food | null>(null);
 
   // Load existing dish when editing
@@ -99,24 +93,6 @@ export default function MyDishScreen() {
       );
     })();
   }, [editingId]);
-
-  // Food search for picker
-  useEffect(() => {
-    if (!pickerVisible) return;
-    if (pickerQuery.length < 1) {
-      setPickerResults([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      try {
-        const foods = await searchFoods(pickerQuery, 30);
-        setPickerResults(foods);
-      } catch {
-        setPickerResults([]);
-      }
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [pickerQuery, pickerVisible]);
 
   const totals = useMemo(() => {
     let cal = 0;
@@ -157,8 +133,6 @@ export default function MyDishScreen() {
   }, [totals.extended]);
 
   const handleOpenPicker = useCallback(() => {
-    setPickerQuery('');
-    setPickerResults([]);
     setPickerVisible(true);
   }, []);
 
@@ -193,7 +167,6 @@ export default function MyDishScreen() {
     ]);
     setServingFood(null);
     setPickerVisible(false);
-    setPickerQuery('');
   }, [servingFood]);
 
   const handleRemoveIngredient = useCallback((localId: string) => {
@@ -257,27 +230,6 @@ export default function MyDishScreen() {
         <Ionicons name="trash-outline" size={22} color={colors.error} />
       </TouchableOpacity>
     </View>
-  );
-
-  const renderPickerItem = ({ item }: { item: Food }) => (
-    <TouchableOpacity
-      style={[styles.pickerRow, { borderBottomColor: colors.border }]}
-      onPress={() => handlePickFood(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.pickerInfo}>
-        <Text
-          style={[styles.pickerName, { color: colors.textPrimary }]}
-          numberOfLines={1}
-        >
-          {item.nameJa}
-        </Text>
-        <Text style={[styles.pickerMeta, { color: colors.textSecondary }]}>
-          {formatServingHint(item.servingUnit, item.servingSizeG, Math.round(item.caloriesPerServing))}
-        </Text>
-      </View>
-      <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
-    </TouchableOpacity>
   );
 
   return (
@@ -434,53 +386,11 @@ export default function MyDishScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Food picker modal */}
-      <RNModal
+      <IngredientPicker
         visible={pickerVisible && !servingFood}
-        animationType="slide"
-        onRequestClose={() => setPickerVisible(false)}
-      >
-        <RNSafeAreaView style={[styles.flex1, { backgroundColor: colors.background }]}>
-          <View style={styles.headerBar}>
-            <TouchableOpacity onPress={() => setPickerVisible(false)} hitSlop={8}>
-              <Ionicons name="close" size={24} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-              食材を検索
-            </Text>
-            <View style={{ width: 24 }} />
-          </View>
-          <View style={styles.searchBarWrap}>
-            <View
-              style={[
-                styles.searchInputWrapper,
-                { backgroundColor: colors.surfaceSecondary },
-              ]}
-            >
-              <Ionicons name="search" size={18} color={colors.textTertiary} />
-              <View style={styles.flex1}>
-                <Input
-                  placeholder="食品名で検索..."
-                  value={pickerQuery}
-                  onChangeText={setPickerQuery}
-                />
-              </View>
-            </View>
-          </View>
-          <FlatList
-            data={pickerResults}
-            keyExtractor={(item) => item.id}
-            renderItem={renderPickerItem}
-            contentContainerStyle={styles.pickerListContent}
-            keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={
-              <Text style={[styles.emptyHint, { color: colors.textTertiary }]}>
-                {pickerQuery.length > 0 ? '該当する食品が見つかりません' : '食品名を入力して検索'}
-              </Text>
-            }
-          />
-        </RNSafeAreaView>
-      </RNModal>
+        onClose={() => setPickerVisible(false)}
+        onSelectFood={handlePickFood}
+      />
 
       <ServingQuantityModal
         visible={!!servingFood}
@@ -563,33 +473,4 @@ const styles = StyleSheet.create({
   },
   extLabel: { ...typography.labelSmall },
   extValue: { ...typography.labelSmall, fontWeight: '600' },
-  searchBarWrap: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  searchInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    paddingLeft: spacing.sm,
-    gap: spacing.xs,
-  },
-  pickerListContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxxxl,
-  },
-  pickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  pickerInfo: { flex: 1, marginRight: spacing.md },
-  pickerName: { ...typography.bodyMedium },
-  pickerMeta: { ...typography.bodySmall, marginTop: 2 },
-  emptyHint: {
-    ...typography.bodyMedium,
-    textAlign: 'center',
-    marginTop: spacing.xxxxl,
-  },
 });
