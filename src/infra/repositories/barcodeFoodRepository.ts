@@ -59,6 +59,19 @@ export async function findByBarcode(
 export async function saveBarcodeFood(
   input: BarcodeFoodInput,
 ): Promise<BarcodeFood> {
+  // Audit trail: Open Food Facts data is licensed under ODbL, which is
+  // share-alike. Persisting it locally is the trigger that obligates us to
+  // (a) attribute OFF wherever the data appears and (b) keep any derived
+  // dataset we redistribute under ODbL too. We log every write so we can
+  // reconstruct what came from OFF if compliance is ever audited. See
+  // docs/data-sources.md for the full review.
+  if (input.source === 'openfoodfacts') {
+    console.warn(
+      `[ODbL audit] caching Open Food Facts row to local SQLite: barcode=${input.barcode} name="${input.nameJa}". ` +
+        'Ensure attribution + share-alike obligations are honored on any redistribution.',
+    );
+  }
+
   const db = await getDatabase();
   const id = generateId();
 
