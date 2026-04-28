@@ -17,6 +17,10 @@ npx expo start
 cp .env.example .env
 ```
 
+## Supabase ダッシュボード設定
+
+リリース前に Auth の Redirect URL とメールテンプレートを手動で設定する必要があります。手順は [`docs/supabase-setup.md`](./docs/supabase-setup.md) を参照してください。
+
 ## AI栄養推定のセットアップ
 
 AI栄養推定機能は Supabase Edge Function 経由で Gemini API を呼び出します。
