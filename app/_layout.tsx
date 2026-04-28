@@ -194,9 +194,14 @@ export default function RootLayout() {
   }, [appReady]);
 
   // Deep-link handler for the email-confirmation callback
-  // (`mealift://auth/callback?code=…`). Routes to /(auth)/callback which
-  // calls supabase.auth.exchangeCodeForSession. Handles both cold start
-  // (getInitialURL) and warm foreground (addEventListener).
+  // (`mealift://auth/callback?code=…`). Routes to /auth/callback which
+  // calls supabase.auth.exchangeCodeForSession. The route lives at
+  // app/auth/callback.tsx (NOT inside the (auth) group — parentheses
+  // segments strip from the URL, which would resolve to /callback and
+  // mismatch the deep link). Handles both cold start (getInitialURL)
+  // and warm foreground (addEventListener); also redundant with
+  // expo-router's auto-routing now that the path matches the file
+  // tree, but kept as a defense for cold-start edge cases.
   useEffect(() => {
     if (!appReady) return;
 
@@ -205,7 +210,7 @@ export default function RootLayout() {
       const { path, queryParams } = Linking.parse(url);
       if (path !== 'auth/callback') return;
       router.replace({
-        pathname: '/(auth)/callback',
+        pathname: '/auth/callback',
         params: (queryParams ?? {}) as Record<string, string>,
       });
     };
