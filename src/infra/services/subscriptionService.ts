@@ -53,7 +53,11 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     unlimitedFavorites: false,
     unlimitedTemplates: false,
     workoutSuggestion: false,
-    healthSync: false,
+    // Health integrations (Apple Health / Health Connect) are free for all
+    // users — DO NOT gate behind subscription. Read access to active-energy
+    // / step counts is required for accurate calorie tracking, which is the
+    // core value of the free tier. Confirm with product before changing.
+    healthSync: true,
     extendedNutrientBalance: false,
     mealNutrientBalance: false,
     aiNutrientAdvice: false,
