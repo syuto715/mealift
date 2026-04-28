@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getColors } from '../src/theme/tokens';
 import { getDatabase } from '../src/infra/database/connection';
@@ -190,6 +191,28 @@ export default function RootLayout() {
       splashHidden.current = true;
       hideSplash();
     }
+  }, [appReady]);
+
+  // Deep-link handler for the email-confirmation callback
+  // (`mealift://auth/callback?code=…`). Routes to /(auth)/callback which
+  // calls supabase.auth.exchangeCodeForSession. Handles both cold start
+  // (getInitialURL) and warm foreground (addEventListener).
+  useEffect(() => {
+    if (!appReady) return;
+
+    const route = (url: string | null) => {
+      if (!url) return;
+      const { path, queryParams } = Linking.parse(url);
+      if (path !== 'auth/callback') return;
+      router.replace({
+        pathname: '/(auth)/callback',
+        params: (queryParams ?? {}) as Record<string, string>,
+      });
+    };
+
+    Linking.getInitialURL().then(route).catch(() => {});
+    const sub = Linking.addEventListener('url', ({ url }) => route(url));
+    return () => sub.remove();
   }, [appReady]);
 
   const onLayoutReady = useCallback(() => {

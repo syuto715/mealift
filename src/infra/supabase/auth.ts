@@ -1,8 +1,35 @@
+import * as Linking from 'expo-linking';
 import { supabase, isSupabaseConfigured } from './client';
+
+// Where Supabase should send the user after they tap the email-confirmation
+// link. `Linking.createURL` resolves to the app's custom scheme in standalone
+// builds (`mealift://auth/callback`) and to the dev URL in Expo Go
+// (`exp://…/--/auth/callback`), so the same code path works in both.
+//
+// IMPORTANT: this URL must also be allow-listed under
+// Supabase → Authentication → URL Configuration → Redirect URLs.
+// See docs/supabase-setup.md.
+export function authRedirectUrl(): string {
+  return Linking.createURL('auth/callback');
+}
 
 export async function signUp(email: string, password: string) {
   if (!supabase) throw new Error('Supabase is not configured');
-  return supabase.auth.signUp({ email, password });
+  return supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: authRedirectUrl() },
+  });
+}
+
+// Called by the auth/callback route when the app is opened via the
+// confirmation link. Supabase JS handles both PKCE (`?code=…`) and the
+// legacy hash flow internally — we just hand it the URL.
+export async function exchangeAuthCallback(url: string) {
+  if (!supabase) throw new Error('Supabase is not configured');
+  const code = new URL(url).searchParams.get('code');
+  if (!code) throw new Error('Missing auth code in callback URL');
+  return supabase.auth.exchangeCodeForSession(code);
 }
 
 export async function signIn(email: string, password: string) {
