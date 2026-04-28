@@ -126,9 +126,11 @@ export const FREE_LIMITS = {
   maxTemplates: 3,
 } as const;
 
-// MVP: All features unlocked for development
-const DEV_MODE = true;
-
+// During development we open every gate so the team can poke around without
+// faking a paid plan. `__DEV__` is the React Native global — true under
+// `expo start`, false in any production-class build (preview, production,
+// release). Inlined at each call site (rather than captured as a constant)
+// so jest can override `global.__DEV__` per test.
 let currentTier: PlanTier = 'free';
 
 export function getCurrentTier(): PlanTier {
@@ -144,7 +146,7 @@ export function setTier(tier: PlanTier): void {
 }
 
 export function getFeatureFlags(): FeatureFlags {
-  if (DEV_MODE) return PLAN_FEATURES.pro;
+  if (__DEV__) return PLAN_FEATURES.pro;
   return PLAN_FEATURES[currentTier];
 }
 
@@ -207,7 +209,7 @@ export function hasFeature(
   feature: BooleanFeatureKey,
   status: PlanStatus,
 ): boolean {
-  if (DEV_MODE) return true;
+  if (__DEV__) return true;
   const required = FEATURE_MATRIX[feature];
   const effective = statusToEffectiveTier(status);
   return TIER_RANK[effective] >= TIER_RANK[required];
