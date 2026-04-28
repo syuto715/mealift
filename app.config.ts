@@ -12,6 +12,21 @@ const config: ExpoConfig = {
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
+  // OTA updates via EAS Update — a JS/asset bundle published to the
+  // `production` (or `preview`) channel ships to users on launch without an
+  // App Store re-review. Required for emergency hotfixes; native changes
+  // still need a new binary. `runtimeVersion: appVersion` ties the bundle
+  // to `version` above, so a 1.0.0 build only accepts 1.0.0 OTA payloads
+  // — bump `version` whenever native code or this config changes.
+  updates: {
+    url: 'https://u.expo.dev/22e7739f-d13b-4080-b8ec-d2943e71767d',
+    enabled: true,
+    checkAutomatically: 'ON_LOAD',
+    fallbackToCacheTimeout: 0,
+  },
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
   splash: {
     image: './assets/splash-icon.png',
     resizeMode: 'contain',

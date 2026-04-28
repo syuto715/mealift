@@ -21,6 +21,10 @@ cp .env.example .env
 
 リリース前に Auth の Redirect URL とメールテンプレートを手動で設定する必要があります。手順は [`docs/supabase-setup.md`](./docs/supabase-setup.md) を参照してください。
 
+## OTA hotfix（EAS Update）
+
+JS のみの修正は App Store 再審査なしで配信できます。手順は [`docs/ota-updates.md`](./docs/ota-updates.md) を参照してください。
+
 ## AI栄養推定のセットアップ
 
 AI栄養推定機能は Supabase Edge Function 経由で Gemini API を呼び出します。
