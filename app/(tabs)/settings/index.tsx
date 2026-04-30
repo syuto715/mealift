@@ -327,6 +327,12 @@ export default function SettingsScreen() {
             colors={colors}
           />
           <SettingsRow
+            icon="cloud-upload-outline"
+            label="投稿した食品"
+            onPress={() => router.push('/(tabs)/nutrition/my-submissions')}
+            colors={colors}
+          />
+          <SettingsRow
             icon="download-outline"
             label="データエクスポート"
             onPress={handleExportData}

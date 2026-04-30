@@ -367,7 +367,13 @@ export default function FoodSubmitPublicScreen() {
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
           食品をみんなに投稿
         </Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/nutrition/my-submissions')}
+          hitSlop={8}
+          testID="submission-form-history-button"
+        >
+          <Ionicons name="time-outline" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
