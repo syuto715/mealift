@@ -39,6 +39,7 @@ import { restTimerService, loadRestTimerSettings } from '../../../src/infra/serv
 import { RestTimerOverlay } from '../../../src/components/training/RestTimerOverlay';
 import { PRCelebrationToast } from '../../../src/components/training/PRCelebrationToast';
 import { PlateCalculatorModal } from '../../../src/components/training/PlateCalculatorModal';
+import { DecimalInput } from '../../../src/components/training/DecimalInput';
 import { PRInfo } from '../../../src/types/personalRecord';
 import { RestTimerSettings, DEFAULT_REST_TIMER_SETTINGS } from '../../../src/types/restTimer';
 import { canUse } from '../../../src/infra/services/subscriptionService';
@@ -714,7 +715,7 @@ export default function SessionScreen() {
                           <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>
                             時間 (分) *
                           </Text>
-                          <TextInput
+                          <DecimalInput
                             style={[
                               styles.setTextInput,
                               {
@@ -724,19 +725,12 @@ export default function SessionScreen() {
                                 borderRadius: radius.sm,
                               },
                             ]}
-                            value={set.durationMinutes != null ? String(set.durationMinutes) : ''}
-                            onChangeText={(text) => {
-                              const parsed = parseFloat(text);
+                            value={set.durationMinutes ?? null}
+                            onCommit={(v) =>
                               updateSet(exercise.exerciseId, set.id, {
-                                durationMinutes:
-                                  text === ''
-                                    ? null
-                                    : isNaN(parsed)
-                                      ? set.durationMinutes
-                                      : parsed,
-                              });
-                            }}
-                            keyboardType="decimal-pad"
+                                durationMinutes: v,
+                              })
+                            }
                             placeholder="0"
                             placeholderTextColor={colors.textTertiary}
                             selectTextOnFocus
@@ -748,7 +742,7 @@ export default function SessionScreen() {
                           <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>
                             距離 (km)
                           </Text>
-                          <TextInput
+                          <DecimalInput
                             style={[
                               styles.setTextInput,
                               {
@@ -758,19 +752,12 @@ export default function SessionScreen() {
                                 borderRadius: radius.sm,
                               },
                             ]}
-                            value={set.distanceKm != null ? String(set.distanceKm) : ''}
-                            onChangeText={(text) => {
-                              const parsed = parseFloat(text);
+                            value={set.distanceKm ?? null}
+                            onCommit={(v) =>
                               updateSet(exercise.exerciseId, set.id, {
-                                distanceKm:
-                                  text === ''
-                                    ? null
-                                    : isNaN(parsed)
-                                      ? set.distanceKm
-                                      : parsed,
-                              });
-                            }}
-                            keyboardType="decimal-pad"
+                                distanceKm: v,
+                              })
+                            }
                             placeholder="-"
                             placeholderTextColor={colors.textTertiary}
                             selectTextOnFocus
@@ -820,7 +807,7 @@ export default function SessionScreen() {
                           <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>
                             kcal
                           </Text>
-                          <TextInput
+                          <DecimalInput
                             style={[
                               styles.setTextInput,
                               {
@@ -831,24 +818,14 @@ export default function SessionScreen() {
                               },
                             ]}
                             value={
-                              set.caloriesBurned != null
-                                ? String(set.caloriesBurned)
-                                : displayKcal != null
-                                  ? String(Math.round(displayKcal))
-                                  : ''
+                              set.caloriesBurned ??
+                              (autoKcal != null ? Math.round(autoKcal) : null)
                             }
-                            onChangeText={(text) => {
-                              const parsed = parseFloat(text);
+                            onCommit={(v) =>
                               updateSet(exercise.exerciseId, set.id, {
-                                caloriesBurned:
-                                  text === ''
-                                    ? null
-                                    : isNaN(parsed)
-                                      ? set.caloriesBurned
-                                      : parsed,
-                              });
-                            }}
-                            keyboardType="decimal-pad"
+                                caloriesBurned: v,
+                              })
+                            }
                             placeholder={autoKcal != null ? String(Math.round(autoKcal)) : '-'}
                             placeholderTextColor={colors.textTertiary}
                             selectTextOnFocus
@@ -923,7 +900,7 @@ export default function SessionScreen() {
                         {set.setNumber}
                       </Text>
                       <View style={styles.setWeightCol}>
-                        <TextInput
+                        <DecimalInput
                           style={[
                             styles.setTextInput,
                             {
@@ -933,14 +910,12 @@ export default function SessionScreen() {
                               borderRadius: radius.sm,
                             },
                           ]}
-                          value={set.weightKg != null ? String(set.weightKg) : ''}
-                          onChangeText={(text) => {
-                            const parsed = parseFloat(text);
+                          value={set.weightKg ?? null}
+                          onCommit={(v) =>
                             updateSet(exercise.exerciseId, set.id, {
-                              weightKg: text === '' ? null : isNaN(parsed) ? set.weightKg : parsed,
-                            });
-                          }}
-                          keyboardType="decimal-pad"
+                              weightKg: v,
+                            })
+                          }
                           returnKeyType="next"
                           placeholder="0"
                           placeholderTextColor={colors.textTertiary}
@@ -1040,7 +1015,7 @@ export default function SessionScreen() {
                             <Text style={[styles.detailLabel, { color: colors.textTertiary }]}>
                               RPE
                             </Text>
-                            <TextInput
+                            <DecimalInput
                               style={[
                                 styles.detailInput,
                                 {
@@ -1049,14 +1024,12 @@ export default function SessionScreen() {
                                   borderRadius: radius.sm,
                                 },
                               ]}
-                              value={set.rpe != null ? String(set.rpe) : ''}
-                              onChangeText={(text) => {
-                                const parsed = parseFloat(text);
+                              value={set.rpe ?? null}
+                              onCommit={(v) =>
                                 updateSet(exercise.exerciseId, set.id, {
-                                  rpe: text === '' ? null : isNaN(parsed) ? set.rpe : parsed,
-                                });
-                              }}
-                              keyboardType="decimal-pad"
+                                  rpe: v,
+                                })
+                              }
                               placeholder="6-10"
                               placeholderTextColor={colors.textTertiary}
                               selectTextOnFocus
