@@ -1,6 +1,7 @@
 import { create } from 'zustand';
+import type { ParsedNutritionLabel } from '../domain/submission/nutritionLabelParser';
 
-// One-shot handoff store for the submission flow's barcode scanner.
+// One-shot handoff store for submission-flow capture screens.
 //
 // expo-router doesn't have a clean "return a value from a child screen"
 // primitive: `router.setParams` only updates the current route, and
@@ -9,8 +10,9 @@ import { create } from 'zustand';
 // value, navigates back, and the form picks it up via useEffect on
 // mount/focus, then clears it.
 //
-// Scoped to barcode capture only. If OCR or other capture flows need
-// the same pattern in the future, generalize then; not preempting now.
+// Two channels:
+//   - pendingBarcode    — the barcode scanner writes here
+//   - pendingOcrResult  — the OCR scanner writes here (Part 5)
 
 interface SubmissionScanState {
   pendingBarcode: string | null;
@@ -19,6 +21,10 @@ interface SubmissionScanState {
   // the form consumes the value exactly once even if the effect runs
   // twice (StrictMode, fast refresh).
   consumePendingBarcode: () => string | null;
+
+  pendingOcrResult: ParsedNutritionLabel | null;
+  setPendingOcrResult: (value: ParsedNutritionLabel) => void;
+  consumePendingOcrResult: () => ParsedNutritionLabel | null;
 }
 
 export const useSubmissionScanStore = create<SubmissionScanState>((set, get) => ({
@@ -27,6 +33,14 @@ export const useSubmissionScanStore = create<SubmissionScanState>((set, get) => 
   consumePendingBarcode: () => {
     const value = get().pendingBarcode;
     if (value !== null) set({ pendingBarcode: null });
+    return value;
+  },
+
+  pendingOcrResult: null,
+  setPendingOcrResult: (value) => set({ pendingOcrResult: value }),
+  consumePendingOcrResult: () => {
+    const value = get().pendingOcrResult;
+    if (value !== null) set({ pendingOcrResult: null });
     return value;
   },
 }));

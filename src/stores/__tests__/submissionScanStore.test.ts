@@ -8,7 +8,10 @@ import { useSubmissionScanStore } from '../submissionScanStore';
 
 beforeEach(() => {
   // Reset the store between tests so leftover state doesn't bleed.
-  useSubmissionScanStore.setState({ pendingBarcode: null });
+  useSubmissionScanStore.setState({
+    pendingBarcode: null,
+    pendingOcrResult: null,
+  });
 });
 
 describe('useSubmissionScanStore', () => {
@@ -50,5 +53,56 @@ describe('useSubmissionScanStore', () => {
     expect(useSubmissionScanStore.getState().pendingBarcode).toBe(
       '4901234567890',
     );
+  });
+
+  describe('OCR channel', () => {
+    const fakeOcr = {
+      perBasis: 'per_100g' as const,
+      perBasisRaw: '100gあたり',
+      calories: 180,
+      proteinG: 12,
+      fatG: 8,
+      carbG: 15,
+      saltG: 0.5,
+      sodiumMg: null,
+      fiberG: 3,
+      sugarG: 12,
+      saturatedFatG: 2.5,
+      cholesterolMg: null,
+      calciumMg: null,
+      ironMg: null,
+      warnings: [],
+    };
+
+    it('starts with no pending OCR result', () => {
+      expect(useSubmissionScanStore.getState().pendingOcrResult).toBeNull();
+    });
+
+    it('setPendingOcrResult stores the value', () => {
+      useSubmissionScanStore.getState().setPendingOcrResult(fakeOcr);
+      expect(useSubmissionScanStore.getState().pendingOcrResult).toEqual(
+        fakeOcr,
+      );
+    });
+
+    it('consumePendingOcrResult returns and clears atomically', () => {
+      useSubmissionScanStore.getState().setPendingOcrResult(fakeOcr);
+      const consumed = useSubmissionScanStore
+        .getState()
+        .consumePendingOcrResult();
+      expect(consumed).toEqual(fakeOcr);
+      expect(useSubmissionScanStore.getState().pendingOcrResult).toBeNull();
+    });
+
+    it('barcode and OCR channels are independent', () => {
+      useSubmissionScanStore.getState().setPendingBarcode('4901234567890');
+      useSubmissionScanStore.getState().setPendingOcrResult(fakeOcr);
+      // Consume one, the other stays.
+      useSubmissionScanStore.getState().consumePendingBarcode();
+      expect(useSubmissionScanStore.getState().pendingBarcode).toBeNull();
+      expect(useSubmissionScanStore.getState().pendingOcrResult).toEqual(
+        fakeOcr,
+      );
+    });
   });
 });

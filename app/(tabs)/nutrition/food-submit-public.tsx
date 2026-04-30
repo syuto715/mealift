@@ -162,6 +162,86 @@ export default function FoodSubmitPublicScreen() {
     }
   }, [pendingBarcode, consumePendingBarcode, markTouched]);
 
+  // Consume OCR result handoff. Prefills any fields the parser
+  // populated, marks them touched, and surfaces a guidance alert
+  // telling the user the per-basis context (100g vs 1食) so they
+  // can adjust serving size accordingly. Null fields stay untouched.
+  const pendingOcrResult = useSubmissionScanStore((s) => s.pendingOcrResult);
+  const consumePendingOcrResult = useSubmissionScanStore(
+    (s) => s.consumePendingOcrResult,
+  );
+  useEffect(() => {
+    if (!pendingOcrResult) return;
+    const r = pendingOcrResult;
+    const filled: string[] = [];
+    if (r.calories != null) {
+      setCalories(r.calories);
+      markTouched('caloriesPerServing');
+      filled.push('カロリー');
+    }
+    if (r.proteinG != null) {
+      setProtein(r.proteinG);
+      markTouched('proteinG');
+      filled.push('タンパク質');
+    }
+    if (r.fatG != null) {
+      setFat(r.fatG);
+      markTouched('fatG');
+      filled.push('脂質');
+    }
+    if (r.carbG != null) {
+      setCarb(r.carbG);
+      markTouched('carbG');
+      filled.push('炭水化物');
+    }
+    if (r.saltG != null) {
+      setSalt(r.saltG);
+      markTouched('saltG');
+    }
+    if (r.sodiumMg != null) {
+      setSodium(r.sodiumMg);
+      setSodiumTouched(true);
+      markTouched('sodiumMg');
+    }
+    if (r.fiberG != null) {
+      setFiber(r.fiberG);
+    }
+    if (r.sugarG != null) {
+      setSugar(r.sugarG);
+    }
+    if (r.saturatedFatG != null) {
+      setSatFat(r.saturatedFatG);
+    }
+    if (r.cholesterolMg != null) {
+      setCholesterol(r.cholesterolMg);
+    }
+    if (r.calciumMg != null) {
+      setCalcium(r.calciumMg);
+    }
+    if (r.ironMg != null) {
+      setIron(r.ironMg);
+    }
+    consumePendingOcrResult();
+
+    if (filled.length === 0) {
+      Alert.alert(
+        '読み取れませんでした',
+        '栄養成分の値を抽出できませんでした。手入力してください。',
+      );
+      return;
+    }
+    const basisHint =
+      r.perBasis === 'per_100g'
+        ? '「100gあたり」の値を入力しました。1食分の量を必要に応じて調整してください。'
+        : r.perBasis === 'per_serving'
+          ? '「1食分あたり」の値を入力しました。実際の1食分の量を確認してください。'
+          : '値を入力しました。1食分の基準を確認してください。';
+    Alert.alert(
+      '読み取り結果',
+      `${filled.join('・')} を自動入力しました。\n\n${basisHint}`,
+    );
+  }, [pendingOcrResult, consumePendingOcrResult, markTouched]);
+
   // When the user enters salt and hasn't manually edited sodium,
   // auto-fill sodium from the JP-standard 1:393.4 conversion. Once the
   // user types sodium themselves, sodiumTouched flips and we stop
@@ -523,6 +603,25 @@ export default function FoodSubmitPublicScreen() {
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
             栄養成分（1食分あたり）
           </Text>
+          <TouchableOpacity
+            style={[
+              styles.ocrCta,
+              {
+                backgroundColor: colors.primary + '14',
+                borderColor: colors.primary + '44',
+              },
+            ]}
+            onPress={() =>
+              router.push('/(tabs)/nutrition/submission-ocr-scan')
+            }
+            activeOpacity={0.6}
+            testID="submission-ocr-cta"
+          >
+            <Ionicons name="camera-outline" size={20} color={colors.primary} />
+            <Text style={[styles.ocrCtaText, { color: colors.primary }]}>
+              栄養成分表を撮影して自動入力
+            </Text>
+          </TouchableOpacity>
           <View>
             <NumberInput
               label="カロリー * (kcal)"
@@ -926,5 +1025,17 @@ const styles = StyleSheet.create({
   submitError: {
     ...typography.bodySmall,
     textAlign: 'center',
+  },
+  ocrCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+  },
+  ocrCtaText: {
+    ...typography.labelMedium,
   },
 });
