@@ -155,6 +155,37 @@ export default function HomeScreen() {
     }).catch(() => {});
   }, [profileId, selectedDate]);
 
+  // Sprint 5 phase 5-5: contribution feedback once-per-day check.
+  // If the user's submitted foods have been used by more people
+  // since the last check (>24h ago), surface an Alert thanking
+  // them. All failure modes silent — never block the home render.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getDatabase } = await import(
+          '../../src/infra/database/connection'
+        );
+        const { checkContributionDelta } = await import(
+          '../../src/infra/services/contributionFeedbackService'
+        );
+        const db = await getDatabase();
+        const delta = await checkContributionDelta(db);
+        if (cancelled || !delta) return;
+        Alert.alert(
+          'ありがとう! 🎉',
+          `あなたの投稿が ${delta.delta} 人に新しく利用されました。\n累計 ${delta.newTotal} 人 / 投稿 ${delta.approvedSubmissionCount} 件`,
+          [{ text: 'OK' }],
+        );
+      } catch {
+        // Non-fatal — the home screen has plenty else to render.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Load async data
   useEffect(() => {
     if (!profileId) {
