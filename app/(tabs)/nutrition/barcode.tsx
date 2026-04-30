@@ -569,6 +569,55 @@ export default function BarcodeScanScreen() {
               </Text>
             </Card>
 
+            {/* Sprint 5 phase 5-3: OCR-based public-submission CTA.
+                The user scanned a barcode that's not in any DB. Offer
+                to capture the nutrition label via OCR and contribute
+                the food to the public DB. Future scans of the same
+                barcode by anyone will then resolve. */}
+            <TouchableOpacity
+              style={[
+                styles.ocrSubmitCta,
+                {
+                  backgroundColor: colors.primary + '14',
+                  borderColor: colors.primary + '44',
+                },
+              ]}
+              onPress={() =>
+                router.push({
+                  pathname: '/(tabs)/nutrition/food-submit-public',
+                  params: { prefillBarcode: scannedBarcode },
+                })
+              }
+              activeOpacity={0.7}
+              testID="barcode-not-found-ocr-cta"
+            >
+              <Ionicons
+                name="camera-outline"
+                size={22}
+                color={colors.primary}
+              />
+              <View style={styles.ocrSubmitCtaTextWrap}>
+                <Text
+                  style={[styles.ocrSubmitCtaTitle, { color: colors.primary }]}
+                >
+                  栄養成分表を撮影して投稿
+                </Text>
+                <Text
+                  style={[
+                    styles.ocrSubmitCtaSubtitle,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  OCRで自動入力 → みんなのDBに登録
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={colors.primary}
+              />
+            </TouchableOpacity>
+
             {/* Registration form */}
             <Card>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>基本情報</Text>
@@ -839,4 +888,16 @@ const styles = StyleSheet.create({
   extendedToggleText: { ...typography.labelMedium },
   extendedSection: { marginTop: spacing.sm },
   regActions: { gap: spacing.md },
+  ocrSubmitCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: spacing.sm,
+  },
+  ocrSubmitCtaTextWrap: { flex: 1 },
+  ocrSubmitCtaTitle: { ...typography.titleSmall },
+  ocrSubmitCtaSubtitle: { ...typography.bodySmall, marginTop: 2 },
 });
