@@ -185,6 +185,141 @@ describe('validateSubmission — food category', () => {
   });
 });
 
+describe('validateSubmission — category-driven required fields', () => {
+  // Brand required-ness per category. The matrix asserts which
+  // categories raise 'brand_required_for_category' when brand is
+  // missing, and which don't.
+  describe('brand', () => {
+    it.each([
+      ['restaurant', true],
+      ['convenience_store', true],
+      ['packaged_food', true],
+      ['supplement', true],
+      ['home_cooking', false],
+      ['beverage', false],
+      ['other', false],
+    ] as const)(
+      '%s — brand missing → error=%s',
+      (foodCategory, expectError) => {
+        const r = validateSubmission(
+          baseInput({ foodCategory, brand: undefined }),
+        );
+        const fired = r.issues.some(
+          (i) => i.code === 'brand_required_for_category',
+        );
+        expect(fired).toBe(expectError);
+      },
+    );
+
+    it('whitespace-only brand counts as missing for required categories', () => {
+      const r = validateSubmission(
+        baseInput({ foodCategory: 'convenience_store', brand: '   ' }),
+      );
+      expect(
+        r.issues.some((i) => i.code === 'brand_required_for_category'),
+      ).toBe(true);
+    });
+
+    it('non-empty brand satisfies all categories', () => {
+      const r = validateSubmission(
+        baseInput({ foodCategory: 'restaurant', brand: '某ファミレス' }),
+      );
+      expect(
+        r.issues.some((i) => i.code === 'brand_required_for_category'),
+      ).toBe(false);
+    });
+
+    it('restaurant uses 店舗名 wording, others use ブランド', () => {
+      const restaurant = validateSubmission(
+        baseInput({ foodCategory: 'restaurant', brand: undefined }),
+      );
+      const restaurantMsg = restaurant.issues.find(
+        (i) => i.code === 'brand_required_for_category',
+      )?.message;
+      expect(restaurantMsg).toBe('店舗名は必須です');
+
+      const conveni = validateSubmission(
+        baseInput({ foodCategory: 'convenience_store', brand: undefined }),
+      );
+      const conveniMsg = conveni.issues.find(
+        (i) => i.code === 'brand_required_for_category',
+      )?.message;
+      expect(conveniMsg).toBe('ブランド名は必須です');
+    });
+  });
+
+  describe('barcode', () => {
+    it.each([
+      ['convenience_store', true],
+      ['packaged_food', true],
+      ['restaurant', false],
+      ['home_cooking', false],
+      ['beverage', false],
+      ['supplement', false],
+      ['other', false],
+    ] as const)(
+      '%s — barcode missing → error=%s',
+      (foodCategory, expectError) => {
+        const r = validateSubmission(
+          baseInput({
+            foodCategory,
+            // brand also satisfied so we isolate barcode behavior
+            brand: 'ブランド',
+            barcode: undefined,
+          }),
+        );
+        const fired = r.issues.some(
+          (i) => i.code === 'barcode_required_for_category',
+        );
+        expect(fired).toBe(expectError);
+      },
+    );
+
+    it('whitespace-only barcode counts as missing for required categories', () => {
+      const r = validateSubmission(
+        baseInput({
+          foodCategory: 'packaged_food',
+          brand: 'ブランド',
+          barcode: '   ',
+        }),
+      );
+      expect(
+        r.issues.some((i) => i.code === 'barcode_required_for_category'),
+      ).toBe(true);
+    });
+
+    it('non-empty barcode satisfies all categories', () => {
+      const r = validateSubmission(
+        baseInput({
+          foodCategory: 'convenience_store',
+          brand: 'セブンイレブン',
+          barcode: '4901234567890',
+        }),
+      );
+      expect(
+        r.issues.some((i) => i.code === 'barcode_required_for_category'),
+      ).toBe(false);
+    });
+  });
+
+  it('skips category-driven checks when category itself is invalid (no double-report)', () => {
+    const r = validateSubmission(
+      baseInput({
+        foodCategory: 'invalid' as never,
+        brand: undefined,
+        barcode: undefined,
+      }),
+    );
+    expect(r.issues.some((i) => i.code === 'food_category_invalid')).toBe(true);
+    expect(
+      r.issues.some((i) => i.code === 'brand_required_for_category'),
+    ).toBe(false);
+    expect(
+      r.issues.some((i) => i.code === 'barcode_required_for_category'),
+    ).toBe(false);
+  });
+});
+
 describe('validateSubmission — macros (hard checks)', () => {
   it('errors on negative calories', () => {
     const r = validateSubmission(baseInput({ caloriesPerServing: -1 }));

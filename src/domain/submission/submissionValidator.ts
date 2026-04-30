@@ -46,6 +46,9 @@ export type SubmissionIssueCode =
   // Source metadata
   | 'source_type_invalid'
   | 'food_category_invalid'
+  // Category-driven required fields (Part 2)
+  | 'brand_required_for_category'
+  | 'barcode_required_for_category'
   // Extended nutrients
   | 'nutrient_unrealistic';
 
@@ -145,6 +148,33 @@ const VALID_FOOD_CATEGORIES: ReadonlySet<FoodCategory> = new Set([
   'supplement',
   'other',
 ]);
+
+// Per-category required-field rules. The form mirrors these for
+// visibility (hidden fields are not rendered), but the validator is
+// the source of truth at submit time so that a hidden-but-pre-filled
+// value gets ignored cleanly when it doesn't apply.
+//
+// Rationale per category — see Part 2 design doc:
+//   home_cooking      — homemade food has neither brand nor barcode
+//   restaurant        — venue name is required; menu items have no SKU
+//   convenience_store — full SKU products: brand + barcode
+//   packaged_food     — same as conveni for retail packages
+//   beverage          — spans branded (Coca-Cola) and generic (麦茶)
+//   supplement        — brand-driven identity; some imports lack JP
+//                       barcodes, so barcode stays optional
+//   other             — catch-all, no constraints
+export const CATEGORY_RULES: Record<
+  FoodCategory,
+  { brandRequired: boolean; barcodeRequired: boolean }
+> = {
+  home_cooking:      { brandRequired: false, barcodeRequired: false },
+  restaurant:        { brandRequired: true,  barcodeRequired: false },
+  convenience_store: { brandRequired: true,  barcodeRequired: true  },
+  packaged_food:     { brandRequired: true,  barcodeRequired: true  },
+  beverage:          { brandRequired: false, barcodeRequired: false },
+  supplement:        { brandRequired: true,  barcodeRequired: false },
+  other:             { brandRequired: false, barcodeRequired: false },
+};
 
 // ---------------------------------------------------------------------------
 // Helpers — exposed for the auto-approval scorer in commit 2.
@@ -250,6 +280,32 @@ export function validateSubmission(
       field: 'foodCategory',
       message: `食品カテゴリが不正です: ${String(input.foodCategory)}`,
     });
+  } else {
+    // Category-driven required fields. Only enforced when the category
+    // itself is valid — an unknown category already fails above and
+    // we don't double-report.
+    const rules = CATEGORY_RULES[input.foodCategory];
+    const brand = (input.brand ?? '').trim();
+    if (rules.brandRequired && brand.length === 0) {
+      issues.push({
+        code: 'brand_required_for_category',
+        severity: 'error',
+        field: 'brand',
+        message:
+          input.foodCategory === 'restaurant'
+            ? '店舗名は必須です'
+            : 'ブランド名は必須です',
+      });
+    }
+    const barcode = (input.barcode ?? '').trim();
+    if (rules.barcodeRequired && barcode.length === 0) {
+      issues.push({
+        code: 'barcode_required_for_category',
+        severity: 'error',
+        field: 'barcode',
+        message: 'バーコードは必須です',
+      });
+    }
   }
 
   // Macros — hard checks ----------------------------------------------------

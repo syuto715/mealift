@@ -27,6 +27,7 @@ import { getDatabase } from '../../../src/infra/database/connection';
 import { submitFood } from '../../../src/domain/submission/submitFood';
 import {
   validateSubmission,
+  CATEGORY_RULES,
   type SubmissionIssue,
 } from '../../../src/domain/submission/submissionValidator';
 import { ConsentRequiredError } from '../../../src/domain/submission/errors';
@@ -243,13 +244,37 @@ export default function FoodSubmitPublicScreen() {
     [validation],
   );
 
+  // Field visibility derived from CATEGORY_RULES. Hidden fields keep
+  // their state on switch — switching home_cooking → conveni → home_cooking
+  // doesn't wipe a typed brand, so users can experiment with category
+  // before committing. The validator gates submit, so hidden values
+  // never leak into a commit when their rule doesn't apply.
+  const categoryRules = CATEGORY_RULES[foodCategory];
+  const showBrand = categoryRules.brandRequired || foodCategory !== 'home_cooking';
+  const showBarcode =
+    categoryRules.barcodeRequired ||
+    (foodCategory !== 'home_cooking' && foodCategory !== 'restaurant');
+  const brandLabel =
+    foodCategory === 'restaurant'
+      ? categoryRules.brandRequired
+        ? '店舗名 *'
+        : '店舗名（任意）'
+      : categoryRules.brandRequired
+        ? 'ブランド *'
+        : 'ブランド（任意）';
+  const barcodeLabel = categoryRules.barcodeRequired
+    ? 'バーコード *'
+    : 'バーコード（任意）';
+
   const requiredFilled =
     name.trim().length > 0 &&
     servingSize != null &&
     calories != null &&
     protein != null &&
     fat != null &&
-    carb != null;
+    carb != null &&
+    (!categoryRules.brandRequired || brand.trim().length > 0) &&
+    (!categoryRules.barcodeRequired || barcode.trim().length > 0);
 
   const canSubmit = requiredFilled && validation.ok && !submitting;
 
@@ -383,19 +408,35 @@ export default function FoodSubmitPublicScreen() {
             error={errorByField.get('nameJa')?.message}
             testID="submission-name-input"
           />
-          <Input
-            label="ブランド（任意）"
-            placeholder="例: セブンイレブン"
-            value={brand}
-            onChangeText={setBrand}
-          />
-          <Input
-            label="バーコード（任意）"
-            placeholder="例: 4901234567890"
-            value={barcode}
-            onChangeText={setBarcode}
-            keyboardType="number-pad"
-          />
+          {showBrand && (
+            <Input
+              label={brandLabel}
+              placeholder={
+                foodCategory === 'restaurant'
+                  ? '例: サイゼリヤ'
+                  : '例: セブンイレブン'
+              }
+              value={brand}
+              onChangeText={(text) => {
+                setBrand(text);
+                markTouched('brand');
+              }}
+              error={errorByField.get('brand')?.message}
+            />
+          )}
+          {showBarcode && (
+            <Input
+              label={barcodeLabel}
+              placeholder="例: 4901234567890"
+              value={barcode}
+              onChangeText={(text) => {
+                setBarcode(text);
+                markTouched('barcode');
+              }}
+              keyboardType="number-pad"
+              error={errorByField.get('barcode')?.message}
+            />
+          )}
 
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
             情報源 *
