@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { getColors, radius } from '../../../src/theme/tokens';
@@ -80,8 +80,12 @@ export default function FoodSubmitPublicScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
 
+  // Optional prefill from callers — e.g. the empty-search-result CTA
+  // passes the user's failed query as the starting product name.
+  const params = useLocalSearchParams<{ prefillName?: string }>();
+
   // Required core fields
-  const [name, setName] = useState('');
+  const [name, setName] = useState(params.prefillName ?? '');
   const [servingSize, setServingSize] = useState<number | null>(100);
   const [calories, setCalories] = useState<number | null>(null);
   const [protein, setProtein] = useState<number | null>(null);

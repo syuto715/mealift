@@ -234,9 +234,64 @@ export default function SearchFoodScreen() {
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
-            <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-              該当する食品が見つかりません
-            </Text>
+            <View style={styles.emptyCtaWrap}>
+              <Ionicons
+                name="search-outline"
+                size={48}
+                color={colors.textTertiary}
+              />
+              <Text
+                style={[styles.emptyText, { color: colors.textTertiary }]}
+              >
+                該当する食品が見つかりません
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.emptyCtaCard,
+                  {
+                    backgroundColor: colors.primary + '14',
+                    borderColor: colors.primary + '44',
+                  },
+                ]}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(tabs)/nutrition/food-submit-public',
+                    params: { prefillName: query },
+                  })
+                }
+                activeOpacity={0.7}
+                testID="search-empty-submit-cta"
+              >
+                <Ionicons
+                  name="add-circle-outline"
+                  size={22}
+                  color={colors.primary}
+                />
+                <View style={styles.emptyCtaTextWrap}>
+                  <Text
+                    style={[
+                      styles.emptyCtaTitle,
+                      { color: colors.primary },
+                    ]}
+                  >
+                    最初の投稿者になりませんか?
+                  </Text>
+                  <Text
+                    style={[
+                      styles.emptyCtaSubtitle,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    「{query}」をみんなの食品データベースに投稿
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+            </View>
           }
         />
       ) : isBrowsingCategory ? (
@@ -436,6 +491,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.xxxxl,
   },
+  emptyCtaWrap: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xxxxl,
+    gap: spacing.md,
+  },
+  emptyCtaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    width: '100%',
+    marginTop: spacing.md,
+  },
+  emptyCtaTextWrap: { flex: 1 },
+  emptyCtaTitle: { ...typography.titleSmall },
+  emptyCtaSubtitle: { ...typography.bodySmall, marginTop: 2 },
   modalBody: { gap: spacing.md },
   modalFoodName: { ...typography.titleSmall },
   modalServingHint: { ...typography.bodySmall },
