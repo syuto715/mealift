@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,7 @@ import {
   ConsentModal,
   FOOD_SUBMISSION_CONSENT_VERSION,
 } from '../../../src/components/submissions/ConsentModal';
+import { useSubmissionScanStore } from '../../../src/stores/submissionScanStore';
 import type {
   UserSubmittedFoodInput,
   FoodSourceType,
@@ -115,6 +116,14 @@ export default function FoodSubmitPublicScreen() {
   const [magnesium, setMagnesium] = useState<number | null>(null);
   const [zinc, setZinc] = useState<number | null>(null);
 
+  // Barcode handoff from the submission scanner. Watches the store
+  // and consumes any pending value on focus so the scanned barcode
+  // populates the form's barcode field after router.back().
+  const pendingBarcode = useSubmissionScanStore((s) => s.pendingBarcode);
+  const consumePendingBarcode = useSubmissionScanStore(
+    (s) => s.consumePendingBarcode,
+  );
+
   // UI state
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const [attempted, setAttempted] = useState(false);
@@ -141,6 +150,17 @@ export default function FoodSubmitPublicScreen() {
       return next;
     });
   }, []);
+
+  // Consume scanner handoff. Effect re-fires only when pendingBarcode
+  // transitions from null → non-null (consume sets it back to null
+  // synchronously, so the next render has nothing to do).
+  useEffect(() => {
+    if (pendingBarcode) {
+      setBarcode(pendingBarcode);
+      markTouched('barcode');
+      consumePendingBarcode();
+    }
+  }, [pendingBarcode, consumePendingBarcode, markTouched]);
 
   // When the user enters salt and hasn't manually edited sodium,
   // auto-fill sodium from the JP-standard 1:393.4 conversion. Once the
@@ -435,6 +455,21 @@ export default function FoodSubmitPublicScreen() {
               }}
               keyboardType="number-pad"
               error={errorByField.get('barcode')?.message}
+              rightIcon={
+                <TouchableOpacity
+                  onPress={() =>
+                    router.push('/(tabs)/nutrition/submission-barcode-scan')
+                  }
+                  hitSlop={8}
+                  testID="submission-barcode-scan-button"
+                >
+                  <Ionicons
+                    name="barcode-outline"
+                    size={22}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
+              }
             />
           )}
 
