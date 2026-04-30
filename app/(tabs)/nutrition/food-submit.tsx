@@ -151,6 +151,7 @@ export default function FoodSubmitScreen() {
     try {
       if (editingId) {
         await updateUserFood(editingId, input);
+        router.back();
       } else {
         await saveFood(input, {
           source: 'user',
@@ -158,8 +159,36 @@ export default function FoodSubmitScreen() {
           isUserAdded: true,
           verified: false,
         });
+        // Sprint 5 phase 5-2: after a fresh private save, suggest
+        // sharing the same food publicly. Editing an existing user
+        // food doesn't trigger this — the prompt only shows on first
+        // creation when the contribution opportunity is fresh.
+        Alert.alert(
+          '保存しました',
+          '他のユーザーにも共有しますか?\n投稿後、モデレーション審査を経て公開されます。',
+          [
+            { text: '保存だけで OK', style: 'cancel', onPress: () => router.back() },
+            {
+              text: '他のユーザーに共有する',
+              onPress: () => {
+                router.replace({
+                  pathname: '/(tabs)/nutrition/food-submit-public',
+                  params: {
+                    prefillName: input.nameJa,
+                    prefillBrand: input.brand ?? '',
+                    prefillBarcode: input.barcode ?? '',
+                    prefillServingSize: String(input.servingSizeG),
+                    prefillCalories: String(input.caloriesPerServing),
+                    prefillProtein: String(input.proteinG),
+                    prefillFat: String(input.fatG),
+                    prefillCarb: String(input.carbG),
+                  },
+                });
+              },
+            },
+          ],
+        );
       }
-      router.back();
     } catch (error) {
       Alert.alert('エラー', '食品の保存に失敗しました');
     } finally {

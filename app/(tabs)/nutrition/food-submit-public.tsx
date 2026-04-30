@@ -81,22 +81,48 @@ export default function FoodSubmitPublicScreen() {
   const colors = getColors(scheme);
 
   // Optional prefill from callers — e.g. the empty-search-result CTA
-  // passes the user's failed query as the starting product name.
-  const params = useLocalSearchParams<{ prefillName?: string }>();
+  // passes the user's failed query as the starting product name, and
+  // the private food editor (food-submit.tsx) propagates a saved
+  // user-food into a public submission via the share-suggestion CTA.
+  const params = useLocalSearchParams<{
+    prefillName?: string;
+    prefillBrand?: string;
+    prefillBarcode?: string;
+    prefillServingSize?: string;
+    prefillCalories?: string;
+    prefillProtein?: string;
+    prefillFat?: string;
+    prefillCarb?: string;
+  }>();
+  const parsePrefillNumber = (v: string | undefined): number | null => {
+    if (v == null) return null;
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+  };
 
   // Required core fields
   const [name, setName] = useState(params.prefillName ?? '');
-  const [servingSize, setServingSize] = useState<number | null>(100);
-  const [calories, setCalories] = useState<number | null>(null);
-  const [protein, setProtein] = useState<number | null>(null);
-  const [fat, setFat] = useState<number | null>(null);
-  const [carb, setCarb] = useState<number | null>(null);
+  const [servingSize, setServingSize] = useState<number | null>(
+    parsePrefillNumber(params.prefillServingSize) ?? 100,
+  );
+  const [calories, setCalories] = useState<number | null>(
+    parsePrefillNumber(params.prefillCalories),
+  );
+  const [protein, setProtein] = useState<number | null>(
+    parsePrefillNumber(params.prefillProtein),
+  );
+  const [fat, setFat] = useState<number | null>(
+    parsePrefillNumber(params.prefillFat),
+  );
+  const [carb, setCarb] = useState<number | null>(
+    parsePrefillNumber(params.prefillCarb),
+  );
   const [sourceType, setSourceType] = useState<FoodSourceType>('package_label');
   const [foodCategory, setFoodCategory] = useState<FoodCategory>('other');
 
   // Optional metadata
-  const [brand, setBrand] = useState('');
-  const [barcode, setBarcode] = useState('');
+  const [brand, setBrand] = useState(params.prefillBrand ?? '');
+  const [barcode, setBarcode] = useState(params.prefillBarcode ?? '');
   const [notes, setNotes] = useState('');
 
   // Extended nutrients
