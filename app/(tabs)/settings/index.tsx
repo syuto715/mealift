@@ -333,6 +333,12 @@ export default function SettingsScreen() {
             colors={colors}
           />
           <SettingsRow
+            icon="ribbon-outline"
+            label="獲得バッジ"
+            onPress={() => router.push('/(tabs)/settings/badges')}
+            colors={colors}
+          />
+          <SettingsRow
             icon="download-outline"
             label="データエクスポート"
             onPress={handleExportData}

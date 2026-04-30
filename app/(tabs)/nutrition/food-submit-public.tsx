@@ -36,6 +36,7 @@ import {
   FOOD_SUBMISSION_CONSENT_VERSION,
 } from '../../../src/components/submissions/ConsentModal';
 import { useSubmissionScanStore } from '../../../src/stores/submissionScanStore';
+import { evaluateAndAwardBadges } from '../../../src/infra/services/badgeService';
 import type {
   UserSubmittedFoodInput,
   FoodSourceType,
@@ -411,11 +412,25 @@ export default function FoodSubmitPublicScreen() {
   const persistSubmission = useCallback(
     async (database: SQLiteDatabase) => {
       await submitFood(database, formInput, FOOD_SUBMISSION_CONSENT_VERSION);
-      Alert.alert(
-        '投稿しました',
-        '承認後、他のユーザーも利用できるようになります',
-        [{ text: 'OK', onPress: () => router.back() }],
-      );
+      // Sprint 5 phase 5-4: badge eval after each successful submit.
+      // Failure to compute badges must not block the success UX —
+      // wrapped in try/catch and only surfaced if NEW badges were
+      // granted.
+      let newlyEarnedNames: string[] = [];
+      try {
+        const newlyEarned = await evaluateAndAwardBadges(database);
+        newlyEarnedNames = newlyEarned.map((b) => b.definition.nameJa);
+      } catch {
+        // Swallow — submission already succeeded, no need to alarm
+        // the user about a missing achievement notification.
+      }
+      const successBody =
+        newlyEarnedNames.length > 0
+          ? `承認後、他のユーザーも利用できるようになります。\n\n🎉 バッジ獲得: ${newlyEarnedNames.join('・')}`
+          : '承認後、他のユーザーも利用できるようになります';
+      Alert.alert('投稿しました', successBody, [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
     },
     [formInput],
   );
