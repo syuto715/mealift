@@ -32,6 +32,7 @@ export const SAMPLE_USER_SUBMITTED_FOODS: UserSubmittedFoodInput[] = [
     sourceType: 'package_label',
     sourcePhotoUri: 'file:///tmp/sample-protein-bar.jpg',
     notes: 'パッケージ裏面より転記',
+    foodCategory: 'packaged_food',
   },
   {
     nameJa: 'チキン南蛮定食',
@@ -44,6 +45,7 @@ export const SAMPLE_USER_SUBMITTED_FOODS: UserSubmittedFoodInput[] = [
     carbG: 95,
     sourceType: 'menu_board',
     notes: 'メニュー POP の栄養成分表示より',
+    foodCategory: 'restaurant',
   },
   {
     nameJa: '自家製グラノーラ',
@@ -56,6 +58,7 @@ export const SAMPLE_USER_SUBMITTED_FOODS: UserSubmittedFoodInput[] = [
     fiberG: 4.0,
     sourceType: 'estimation',
     notes: '材料を MEXT 八訂で逆引きして算出',
+    foodCategory: 'home_cooking',
   },
 ];
 
@@ -71,8 +74,9 @@ export async function insertSampleUserSubmittedFoods(
         serving_size_g, serving_unit, serving_description,
         calories_per_serving, protein_g, fat_g, carb_g,
         fiber_g, sugar_g, salt_g,
-        source_type, source_photo_uri, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        source_type, source_photo_uri, notes,
+        food_category
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         generateId(),
         f.nameJa,
@@ -91,6 +95,7 @@ export async function insertSampleUserSubmittedFoods(
         f.sourceType,
         f.sourcePhotoUri ?? null,
         f.notes ?? null,
+        f.foodCategory,
       ],
     );
     inserted++;

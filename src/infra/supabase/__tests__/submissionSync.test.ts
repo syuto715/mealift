@@ -177,6 +177,7 @@ function fakeSubmission(overrides: Partial<UserSubmittedFood> = {}): UserSubmitt
     sourceType: 'package_label',
     sourcePhotoUri: null,
     notes: null,
+    foodCategory: 'other',
     submissionStatus: 'pending_review',
     rejectionReason: null,
     remoteId: null,

@@ -133,6 +133,7 @@ function toPublicFoodRow(
     source_type: row.sourceType,
     source_photo_url: row.sourcePhotoUri,
     notes: row.notes,
+    food_category: row.foodCategory,
     status: 'pending_review',
     submitted_by: submittedBy,
     approval_score: approvalScore,

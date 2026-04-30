@@ -59,6 +59,7 @@ interface FakeRow {
   source_type: string;
   source_photo_uri: string | null;
   notes: string | null;
+  food_category: string;
   submission_status: string;
   rejection_reason: string | null;
   remote_id: string | null;
@@ -120,6 +121,7 @@ function makeFakeDb(): SQLiteDatabase {
           sourceType,
           sourcePhotoUri,
           notes,
+          foodCategory,
         ] = params as [
           string,
           string,
@@ -153,6 +155,7 @@ function makeFakeDb(): SQLiteDatabase {
           string,
           string | null,
           string | null,
+          string,
         ];
         const ts = now();
         rows.push({
@@ -188,6 +191,7 @@ function makeFakeDb(): SQLiteDatabase {
           source_type: sourceType,
           source_photo_uri: sourcePhotoUri,
           notes,
+          food_category: foodCategory,
           submission_status: 'local',
           rejection_reason: null,
           remote_id: null,
@@ -306,6 +310,7 @@ function baseInput(
     fatG: 5,
     carbG: 30,
     sourceType: 'package_label',
+    foodCategory: 'other',
     ...overrides,
   };
 }
@@ -350,6 +355,18 @@ describe('userSubmittedFoodRepository — createSubmission', () => {
     expect(result.sodiumMg).toBe(100);
     expect(result.barcode).toBeNull();
     expect(result.fiberG).toBeNull();
+  });
+
+  it('round-trips food_category through insert + read', async () => {
+    const db = makeFakeDb();
+    const result = await createSubmission(
+      db,
+      baseInput({ foodCategory: 'convenience_store' }),
+    );
+    expect(result.foodCategory).toBe('convenience_store');
+
+    const fetched = await getSubmissionById(db, result.id);
+    expect(fetched?.foodCategory).toBe('convenience_store');
   });
 });
 

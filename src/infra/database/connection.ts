@@ -20,6 +20,7 @@ import { migrateV17 } from './migrations/v17';
 import { migrateV18 } from './migrations/v18';
 import { migrateV19 } from './migrations/v19';
 import { migrateV20 } from './migrations/v20';
+import { migrateV21 } from './migrations/v21';
 import { seedFoods, seedExercises } from './seed/foods';
 import { seedDishes } from './seed/dishes';
 import { seedFitnessDishes } from './seed/fitnessDishes';
@@ -135,6 +136,10 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     if (currentVersion < 20) {
       await migrateV20(db);
       await db.execAsync('PRAGMA user_version = 20;');
+    }
+    if (currentVersion < 21) {
+      await migrateV21(db);
+      await db.execAsync('PRAGMA user_version = 21;');
     }
 
   } catch (error) {

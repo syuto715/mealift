@@ -1,6 +1,7 @@
 import type {
   UserSubmittedFoodInput,
   FoodSourceType,
+  FoodCategory,
 } from '../../types/userSubmittedFood';
 
 // submissionValidator — pure sanity checks for a UserSubmittedFoodInput
@@ -44,6 +45,7 @@ export type SubmissionIssueCode =
   | 'pfc_calorie_mismatch'
   // Source metadata
   | 'source_type_invalid'
+  | 'food_category_invalid'
   // Extended nutrients
   | 'nutrient_unrealistic';
 
@@ -131,6 +133,16 @@ const VALID_SOURCE_TYPES: ReadonlySet<FoodSourceType> = new Set([
   'menu_board',
   'official_site',
   'estimation',
+  'other',
+]);
+
+const VALID_FOOD_CATEGORIES: ReadonlySet<FoodCategory> = new Set([
+  'home_cooking',
+  'restaurant',
+  'convenience_store',
+  'packaged_food',
+  'beverage',
+  'supplement',
   'other',
 ]);
 
@@ -227,6 +239,16 @@ export function validateSubmission(
       severity: 'error',
       field: 'sourceType',
       message: `情報源が不正です: ${String(input.sourceType)}`,
+    });
+  }
+
+  // Food category -----------------------------------------------------------
+  if (!VALID_FOOD_CATEGORIES.has(input.foodCategory)) {
+    issues.push({
+      code: 'food_category_invalid',
+      severity: 'error',
+      field: 'foodCategory',
+      message: `食品カテゴリが不正です: ${String(input.foodCategory)}`,
     });
   }
 

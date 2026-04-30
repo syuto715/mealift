@@ -19,6 +19,7 @@ function baseInput(overrides: Partial<UserSubmittedFoodInput> = {}): UserSubmitt
     fatG: 5,
     carbG: 30,
     sourceType: 'package_label',
+    foodCategory: 'other',
     ...overrides,
   };
 }
@@ -150,6 +151,37 @@ describe('validateSubmission — source type', () => {
   ] as const)('accepts %s', (sourceType) => {
     const r = validateSubmission(baseInput({ sourceType }));
     expect(r.issues.some((i) => i.code === 'source_type_invalid')).toBe(false);
+  });
+});
+
+describe('validateSubmission — food category', () => {
+  it('errors on unknown food category', () => {
+    const r = validateSubmission(
+      baseInput({ foodCategory: 'invalid' as never }),
+    );
+    expect(r.ok).toBe(false);
+    expect(r.issues.some((i) => i.code === 'food_category_invalid')).toBe(true);
+  });
+
+  it('errors on empty-string food category', () => {
+    const r = validateSubmission(
+      baseInput({ foodCategory: '' as never }),
+    );
+    expect(r.ok).toBe(false);
+    expect(r.issues.some((i) => i.code === 'food_category_invalid')).toBe(true);
+  });
+
+  it.each([
+    'home_cooking',
+    'restaurant',
+    'convenience_store',
+    'packaged_food',
+    'beverage',
+    'supplement',
+    'other',
+  ] as const)('accepts %s', (foodCategory) => {
+    const r = validateSubmission(baseInput({ foodCategory }));
+    expect(r.issues.some((i) => i.code === 'food_category_invalid')).toBe(false);
   });
 });
 

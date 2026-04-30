@@ -37,6 +37,7 @@ import {
 import type {
   UserSubmittedFoodInput,
   FoodSourceType,
+  FoodCategory,
 } from '../../../src/types/userSubmittedFood';
 
 // food-submit-public — manual-entry submission flow for public_foods.
@@ -56,6 +57,19 @@ const SOURCE_TYPE_SEGMENTS: { label: string; value: FoodSourceType }[] = [
   { label: 'その他', value: 'other' },
 ];
 
+// Same SegmentedControl pattern as source_type so the UX is consistent.
+// Default lands on 'other' (matches the v21 / Supabase column default),
+// keeping pre-Part-2 behavior unchanged for users who don't pick.
+const FOOD_CATEGORY_SEGMENTS: { label: string; value: FoodCategory }[] = [
+  { label: '家庭料理', value: 'home_cooking' },
+  { label: '外食', value: 'restaurant' },
+  { label: 'コンビニ商品', value: 'convenience_store' },
+  { label: 'パッケージ商品', value: 'packaged_food' },
+  { label: '飲料', value: 'beverage' },
+  { label: 'サプリメント', value: 'supplement' },
+  { label: 'その他', value: 'other' },
+];
+
 // 1g salt ≈ 393.4 mg sodium. Used to auto-fill sodium when the user
 // types salt and hasn't entered sodium themselves.
 const SODIUM_MG_PER_G_SALT = 393.4;
@@ -72,6 +86,7 @@ export default function FoodSubmitPublicScreen() {
   const [fat, setFat] = useState<number | null>(null);
   const [carb, setCarb] = useState<number | null>(null);
   const [sourceType, setSourceType] = useState<FoodSourceType>('package_label');
+  const [foodCategory, setFoodCategory] = useState<FoodCategory>('other');
 
   // Optional metadata
   const [brand, setBrand] = useState('');
@@ -168,6 +183,7 @@ export default function FoodSubmitPublicScreen() {
       fatG: fat ?? Number.NaN,
       carbG: carb ?? Number.NaN,
       sourceType,
+      foodCategory,
       notes: notes.trim() || null,
       saltG: salt,
       sodiumMg: sodium,
@@ -189,9 +205,9 @@ export default function FoodSubmitPublicScreen() {
     }),
     [
       name, brand, barcode, servingSize, calories, protein, fat, carb,
-      sourceType, notes, salt, sodium, fiber, sugar, satFat, cholesterol,
-      calcium, iron, vitA, vitB1, vitB2, vitC, vitD, vitE, potassium,
-      magnesium, zinc,
+      sourceType, foodCategory, notes, salt, sodium, fiber, sugar, satFat,
+      cholesterol, calcium, iron, vitA, vitB1, vitB2, vitC, vitD, vitE,
+      potassium, magnesium, zinc,
     ],
   );
 
@@ -334,6 +350,26 @@ export default function FoodSubmitPublicScreen() {
             <Text style={[styles.noticeText, { color: colors.textSecondary }]}>
               投稿された食品はモデレーション後、他のユーザーも検索で利用できるようになります
             </Text>
+          </View>
+
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+            食品の種類 *
+          </Text>
+          <View testID="submission-food-category">
+            <SegmentedControl
+              segments={FOOD_CATEGORY_SEGMENTS}
+              selectedValue={foodCategory}
+              onValueChange={(v) => {
+                setFoodCategory(v as FoodCategory);
+                markTouched('foodCategory');
+              }}
+              scrollable
+            />
+            {errorByField.get('foodCategory') && (
+              <Text style={[styles.fieldError, { color: colors.error }]}>
+                {errorByField.get('foodCategory')?.message}
+              </Text>
+            )}
           </View>
 
           <Input

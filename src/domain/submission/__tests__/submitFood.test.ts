@@ -182,6 +182,7 @@ function baseSubmission(
     fatG: 5,
     carbG: 30,
     sourceType: 'package_label',
+    foodCategory: 'other',
     ...overrides,
   };
 }

@@ -5,6 +5,7 @@ import type {
   UserSubmittedFoodInput,
   SubmissionStatus,
   FoodSourceType,
+  FoodCategory,
 } from '../../types/userSubmittedFood';
 
 // userSubmittedFoodRepository — CRUD on user_submitted_foods (v16).
@@ -67,6 +68,8 @@ function rowToSubmission(row: Record<string, unknown>): UserSubmittedFood {
     sourcePhotoUri: (row.source_photo_uri as string) ?? null,
     notes: (row.notes as string) ?? null,
 
+    foodCategory: row.food_category as FoodCategory,
+
     submissionStatus: row.submission_status as SubmissionStatus,
     rejectionReason: (row.rejection_reason as string) ?? null,
     remoteId: (row.remote_id as string) ?? null,
@@ -99,8 +102,9 @@ export async function createSubmission(
       calcium_mg, iron_mg, vitamin_a_ug, vitamin_b1_mg, vitamin_b2_mg,
       vitamin_c_mg, vitamin_d_ug, vitamin_e_mg, potassium_mg, magnesium_mg, zinc_mg,
       source_type, source_photo_uri, notes,
-      submission_status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'local')`,
+      submission_status,
+      food_category
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'local', ?)`,
     [
       id,
       input.nameJa,
@@ -134,6 +138,7 @@ export async function createSubmission(
       input.sourceType,
       input.sourcePhotoUri ?? null,
       input.notes ?? null,
+      input.foodCategory,
     ],
   );
 

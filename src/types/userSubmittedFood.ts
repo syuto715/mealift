@@ -11,6 +11,19 @@ export type FoodSourceType =
   | 'estimation'     // ユーザー本人による見積もり（自炊レシピ等）
   | 'other';
 
+// Coarse "what kind of food" classification, orthogonal to source_type.
+// Mirrors the CHECK constraint in v21.ts and the Supabase migration.
+// Drives Part 2's category-driven UX (which fields show / are required)
+// and future search filters.
+export type FoodCategory =
+  | 'home_cooking'       // 家庭料理（自炊）
+  | 'restaurant'         // 外食チェーン（牛丼・ハンバーガー等）
+  | 'convenience_store'  // コンビニ商品（おにぎり・サラダチキン等）
+  | 'packaged_food'      // パッケージ商品（プロテインバー・冷凍食品等）
+  | 'beverage'           // 飲料
+  | 'supplement'         // サプリメント・プロテイン
+  | 'other';
+
 export type SubmissionStatus =
   | 'local'           // user's private library, not synced
   | 'pending_review'  // synced to public_foods, awaiting admin review
@@ -56,6 +69,8 @@ export interface UserSubmittedFood {
   sourceType: FoodSourceType;
   sourcePhotoUri: string | null;
   notes: string | null;
+
+  foodCategory: FoodCategory;
 
   submissionStatus: SubmissionStatus;
   rejectionReason: string | null;
@@ -103,6 +118,8 @@ export interface UserSubmittedFoodInput {
   sourceType: FoodSourceType;
   sourcePhotoUri?: string | null;
   notes?: string | null;
+
+  foodCategory: FoodCategory;
 }
 
 // ---------------------------------------------------------------------------
@@ -153,6 +170,8 @@ export interface PublicFood {
   sourceType: FoodSourceType;
   sourcePhotoUrl: string | null;
   notes: string | null;
+
+  foodCategory: FoodCategory;
 
   status: PublicFoodStatus;
   submittedBy: UUID;
