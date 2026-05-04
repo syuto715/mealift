@@ -122,7 +122,7 @@ export async function addProgressPhoto(
   );
 
   const row = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM progress_photos WHERE id = ?',
+    'SELECT * FROM progress_photos WHERE id = ? AND deleted_at IS NULL',
     [id],
   );
   return rowToPhoto(row!);
@@ -140,7 +140,7 @@ export async function getPhotosByDate(
   }
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM progress_photos WHERE profile_id = ? AND date = ? ORDER BY created_at',
+    'SELECT * FROM progress_photos WHERE profile_id = ? AND date = ? AND deleted_at IS NULL ORDER BY created_at',
     [profileId, date],
   );
   return rows.map(rowToPhoto);
@@ -157,7 +157,7 @@ export async function getPhotoDates(
       ? ` AND date >= date('now', '-${historyWindowDays} days')`
       : '';
   const rows = await db.getAllAsync<{ date: string }>(
-    `SELECT DISTINCT date FROM progress_photos WHERE profile_id = ?${clamp} ORDER BY date DESC LIMIT ?`,
+    `SELECT DISTINCT date FROM progress_photos WHERE profile_id = ? AND deleted_at IS NULL${clamp} ORDER BY date DESC LIMIT ?`,
     [profileId, limit],
   );
   return rows.map((r) => r.date);
@@ -174,7 +174,7 @@ export async function getAllPhotos(
       ? ` AND date >= date('now', '-${historyWindowDays} days')`
       : '';
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    `SELECT * FROM progress_photos WHERE profile_id = ?${clamp} ORDER BY date DESC, created_at DESC LIMIT ?`,
+    `SELECT * FROM progress_photos WHERE profile_id = ? AND deleted_at IS NULL${clamp} ORDER BY date DESC, created_at DESC LIMIT ?`,
     [profileId, limit],
   );
   return rows.map(rowToPhoto);
@@ -184,7 +184,7 @@ export async function deleteProgressPhoto(id: string): Promise<void> {
   const db = await getDatabase();
 
   const row = await db.getFirstAsync<{ photo_uri: string }>(
-    'SELECT photo_uri FROM progress_photos WHERE id = ?',
+    'SELECT photo_uri FROM progress_photos WHERE id = ? AND deleted_at IS NULL',
     [id],
   );
   if (row) {
@@ -197,7 +197,7 @@ export async function deleteProgressPhoto(id: string): Promise<void> {
 export async function getPhotoCount(profileId: string): Promise<number> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ count: number }>(
-    'SELECT COUNT(*) as count FROM progress_photos WHERE profile_id = ?',
+    'SELECT COUNT(*) as count FROM progress_photos WHERE profile_id = ? AND deleted_at IS NULL',
     [profileId],
   );
   return row?.count ?? 0;

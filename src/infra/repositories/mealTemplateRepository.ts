@@ -25,7 +25,7 @@ function rowToTemplate(row: Record<string, unknown>): MealTemplate {
 export async function getTemplates(profileId: string): Promise<MealTemplate[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM meal_templates WHERE profile_id = ? ORDER BY use_count DESC, updated_at DESC',
+    'SELECT * FROM meal_templates WHERE profile_id = ? AND deleted_at IS NULL ORDER BY use_count DESC, updated_at DESC',
     [profileId]
   );
   return rows.map(rowToTemplate);
@@ -76,7 +76,7 @@ export async function incrementTemplateUseCount(templateId: string): Promise<voi
 export async function getTemplateCount(profileId: string): Promise<number> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ count: number }>(
-    'SELECT COUNT(*) as count FROM meal_templates WHERE profile_id = ?',
+    'SELECT COUNT(*) as count FROM meal_templates WHERE profile_id = ? AND deleted_at IS NULL',
     [profileId]
   );
   return row?.count ?? 0;
@@ -85,7 +85,7 @@ export async function getTemplateCount(profileId: string): Promise<number> {
 export async function getTemplateById(templateId: string): Promise<MealTemplate | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM meal_templates WHERE id = ?',
+    'SELECT * FROM meal_templates WHERE id = ? AND deleted_at IS NULL',
     [templateId]
   );
   return row ? rowToTemplate(row) : null;
@@ -131,7 +131,7 @@ export async function applyTemplateToMeal(
   const db = await getDatabase();
   // Ensure meal_log exists
   let mealLog = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM meal_logs WHERE profile_id = ? AND date = ? AND meal_type = ?',
+    'SELECT * FROM meal_logs WHERE profile_id = ? AND date = ? AND meal_type = ? AND deleted_at IS NULL',
     [profileId, date, mealType]
   );
   let mealLogId: string;

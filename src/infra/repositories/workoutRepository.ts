@@ -90,13 +90,13 @@ export async function getExercises(muscleGroup?: MuscleGroup): Promise<Exercise[
   const db = await getDatabase();
   if (muscleGroup) {
     const rows = await db.getAllAsync<Record<string, unknown>>(
-      'SELECT * FROM exercises WHERE muscle_group = ? ORDER BY sort_order, name_ja',
+      'SELECT * FROM exercises WHERE muscle_group = ? AND deleted_at IS NULL ORDER BY sort_order, name_ja',
       [muscleGroup],
     );
     return rows.map(rowToExercise);
   }
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM exercises ORDER BY sort_order, name_ja',
+    'SELECT * FROM exercises WHERE deleted_at IS NULL ORDER BY sort_order, name_ja',
   );
   return rows.map(rowToExercise);
 }
@@ -104,7 +104,7 @@ export async function getExercises(muscleGroup?: MuscleGroup): Promise<Exercise[
 export async function searchExercises(query: string): Promise<Exercise[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM exercises WHERE name_ja LIKE ? ORDER BY sort_order, name_ja',
+    'SELECT * FROM exercises WHERE name_ja LIKE ? AND deleted_at IS NULL ORDER BY sort_order, name_ja',
     [`%${query}%`],
   );
   return rows.map(rowToExercise);
@@ -113,7 +113,7 @@ export async function searchExercises(query: string): Promise<Exercise[]> {
 export async function getExerciseById(exerciseId: string): Promise<Exercise | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM exercises WHERE id = ?',
+    'SELECT * FROM exercises WHERE id = ? AND deleted_at IS NULL',
     [exerciseId]
   );
   return row ? rowToExercise(row) : null;
@@ -122,7 +122,7 @@ export async function getExerciseById(exerciseId: string): Promise<Exercise | nu
 export async function getExerciseDefaultRestSeconds(exerciseId: string): Promise<number | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ default_rest_seconds: number | null }>(
-    'SELECT default_rest_seconds FROM exercises WHERE id = ?',
+    'SELECT default_rest_seconds FROM exercises WHERE id = ? AND deleted_at IS NULL',
     [exerciseId]
   );
   return row?.default_rest_seconds ?? null;
@@ -165,7 +165,7 @@ export async function createCustomExercise(
 export async function getCustomExercises(): Promise<Exercise[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM exercises WHERE is_custom = 1 ORDER BY created_at DESC',
+    'SELECT * FROM exercises WHERE is_custom = 1 AND deleted_at IS NULL ORDER BY created_at DESC',
   );
   return rows.map(rowToExercise);
 }
@@ -205,7 +205,7 @@ export async function getRoutines(profileId: string): Promise<WorkoutRoutineWith
   const db = await getDatabase();
 
   const routineRows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM workout_routines WHERE profile_id = ? ORDER BY sort_order, created_at DESC',
+    'SELECT * FROM workout_routines WHERE profile_id = ? AND deleted_at IS NULL ORDER BY sort_order, created_at DESC',
     [profileId],
   );
 
@@ -223,7 +223,7 @@ export async function getRoutines(profileId: string): Promise<WorkoutRoutineWith
               e.met_value AS e_met_value, e.created_at AS e_created_at
        FROM workout_routine_items ri
        JOIN exercises e ON ri.exercise_id = e.id
-       WHERE ri.routine_id = ?
+       WHERE ri.routine_id = ? AND ri.deleted_at IS NULL AND e.deleted_at IS NULL
        ORDER BY ri.sort_order`,
       [routine.id],
     );
@@ -338,7 +338,7 @@ export async function finishSession(
   const now = new Date().toISOString();
 
   const session = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT started_at FROM workout_sessions WHERE id = ?',
+    'SELECT started_at FROM workout_sessions WHERE id = ? AND deleted_at IS NULL',
     [sessionId],
   );
 
@@ -362,7 +362,7 @@ export async function getTodayWorkoutCalories(profileId: string, date?: string):
   const result = await db.getFirstAsync<{ total: number }>(
     `SELECT COALESCE(SUM(estimated_calories), 0) as total
      FROM workout_sessions
-     WHERE profile_id = ? AND date(started_at) = ? AND finished_at IS NOT NULL`,
+     WHERE profile_id = ? AND date(started_at) = ? AND finished_at IS NOT NULL AND deleted_at IS NULL`,
     [profileId, targetDate],
   );
   return result?.total ?? 0;
@@ -372,7 +372,7 @@ export async function getSession(sessionId: string): Promise<WorkoutSessionWithS
   const db = await getDatabase();
 
   const row = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM workout_sessions WHERE id = ?',
+    'SELECT * FROM workout_sessions WHERE id = ? AND deleted_at IS NULL',
     [sessionId],
   );
 
@@ -380,7 +380,7 @@ export async function getSession(sessionId: string): Promise<WorkoutSessionWithS
 
   const session = rowToSession(row);
   const setRows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM workout_sets WHERE session_id = ? ORDER BY exercise_id, set_number',
+    'SELECT * FROM workout_sets WHERE session_id = ? AND deleted_at IS NULL ORDER BY exercise_id, set_number',
     [sessionId],
   );
 
@@ -399,7 +399,7 @@ export async function getRecordedSessionDates(
       : '';
   const rows = await db.getAllAsync<{ d: string }>(
     `SELECT DISTINCT date(started_at) as d FROM workout_sessions
-     WHERE profile_id = ? AND date(started_at) LIKE ? || '%' AND finished_at IS NOT NULL${clamp}
+     WHERE profile_id = ? AND date(started_at) LIKE ? || '%' AND finished_at IS NOT NULL AND deleted_at IS NULL${clamp}
      ORDER BY d`,
     [profileId, monthPrefix],
   );
@@ -417,7 +417,7 @@ export async function getSessions(
       ? ` AND started_at >= datetime('now', '-${historyWindowDays} days')`
       : '';
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    `SELECT * FROM workout_sessions WHERE profile_id = ?${clamp} ORDER BY started_at DESC LIMIT ?`,
+    `SELECT * FROM workout_sessions WHERE profile_id = ? AND deleted_at IS NULL${clamp} ORDER BY started_at DESC LIMIT ?`,
     [profileId, limit],
   );
   return rows.map(rowToSession);
@@ -429,7 +429,7 @@ export async function getRecentSessionCount(
 ): Promise<number> {
   const db = await getDatabase();
   const result = await db.getFirstAsync<{ count: number }>(
-    `SELECT COUNT(*) as count FROM workout_sessions WHERE profile_id = ? AND started_at >= datetime('now', ?)`,
+    `SELECT COUNT(*) as count FROM workout_sessions WHERE profile_id = ? AND started_at >= datetime('now', ?) AND deleted_at IS NULL`,
     [profileId, `-${days} days`],
   );
   return result?.count ?? 0;
@@ -561,7 +561,7 @@ export async function removeSet(setId: string): Promise<void> {
 export async function getSetsForSession(sessionId: string): Promise<WorkoutSet[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM workout_sets WHERE session_id = ? ORDER BY exercise_id, set_number',
+    'SELECT * FROM workout_sets WHERE session_id = ? AND deleted_at IS NULL ORDER BY exercise_id, set_number',
     [sessionId],
   );
   return rows.map(rowToSet);
@@ -578,6 +578,7 @@ export async function getPreviousSets(
      FROM workout_sets ws
      JOIN workout_sessions s ON ws.session_id = s.id
      WHERE s.profile_id = ? AND ws.exercise_id = ? AND s.finished_at IS NOT NULL
+       AND ws.deleted_at IS NULL AND s.deleted_at IS NULL
      ORDER BY s.started_at DESC
      LIMIT 1`,
     [profileId, exerciseId],
@@ -586,7 +587,7 @@ export async function getPreviousSets(
   if (!lastSession) return [];
 
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM workout_sets WHERE session_id = ? AND exercise_id = ? ORDER BY set_number',
+    'SELECT * FROM workout_sets WHERE session_id = ? AND exercise_id = ? AND deleted_at IS NULL ORDER BY set_number',
     [lastSession.session_id as string, exerciseId],
   );
 
@@ -610,8 +611,8 @@ export async function getSessionWithRoutineName(
   const rows = await db.getAllAsync<Record<string, unknown>>(
     `SELECT s.*, r.name AS routine_name
      FROM workout_sessions s
-     LEFT JOIN workout_routines r ON s.routine_id = r.id
-     WHERE s.profile_id = ?${clamp}
+     LEFT JOIN workout_routines r ON s.routine_id = r.id AND r.deleted_at IS NULL
+     WHERE s.profile_id = ? AND s.deleted_at IS NULL${clamp}
      ORDER BY s.started_at DESC
      LIMIT ?`,
     [profileId, limit],
@@ -627,7 +628,7 @@ export async function getSessionTotalVolume(sessionId: string): Promise<number> 
   const db = await getDatabase();
   const result = await db.getFirstAsync<{ total: number }>(
     `SELECT COALESCE(SUM(COALESCE(weight_kg, 0) * COALESCE(reps, 0)), 0) as total
-     FROM workout_sets WHERE session_id = ? AND is_warmup = 0`,
+     FROM workout_sets WHERE session_id = ? AND is_warmup = 0 AND deleted_at IS NULL`,
     [sessionId],
   );
   return result?.total ?? 0;

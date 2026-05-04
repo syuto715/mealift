@@ -27,7 +27,7 @@ export async function getBodyLogs(
       ? ` AND date >= date('now', '-${historyWindowDays} days')`
       : '';
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    `SELECT * FROM body_logs WHERE profile_id = ?${clamp} ORDER BY date DESC LIMIT ?`,
+    `SELECT * FROM body_logs WHERE profile_id = ? AND deleted_at IS NULL${clamp} ORDER BY date DESC LIMIT ?`,
     [profileId, limit]
   );
   return rows.map(rowToBodyLog);
@@ -36,7 +36,7 @@ export async function getBodyLogs(
 export async function getBodyLogByDate(profileId: string, date: string): Promise<BodyLog | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM body_logs WHERE profile_id = ? AND date = ?',
+    'SELECT * FROM body_logs WHERE profile_id = ? AND date = ? AND deleted_at IS NULL',
     [profileId, date]
   );
   return row ? rowToBodyLog(row) : null;
@@ -54,7 +54,7 @@ export async function getRecordedBodyLogDates(
       : '';
   const rows = await db.getAllAsync<{ date: string }>(
     `SELECT DISTINCT date FROM body_logs
-     WHERE profile_id = ? AND date LIKE ? || '%'${clamp}
+     WHERE profile_id = ? AND date LIKE ? || '%' AND deleted_at IS NULL${clamp}
      ORDER BY date`,
     [profileId, monthPrefix]
   );

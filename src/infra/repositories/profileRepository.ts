@@ -38,7 +38,9 @@ function rowToProfile(row: Record<string, unknown>): Profile {
 
 export async function getProfile(): Promise<Profile | null> {
   const db = await getDatabase();
-  const row = await db.getFirstAsync<Record<string, unknown>>('SELECT * FROM profiles LIMIT 1');
+  const row = await db.getFirstAsync<Record<string, unknown>>(
+    'SELECT * FROM profiles WHERE deleted_at IS NULL LIMIT 1',
+  );
   return row ? rowToProfile(row) : null;
 }
 

@@ -30,8 +30,8 @@ export async function getNotes(
 ): Promise<Note[]> {
   const db = await getDatabase();
   const query = limit
-    ? 'SELECT * FROM notes WHERE profile_id = ? ORDER BY date DESC, created_at DESC LIMIT ?'
-    : 'SELECT * FROM notes WHERE profile_id = ? ORDER BY date DESC, created_at DESC';
+    ? 'SELECT * FROM notes WHERE profile_id = ? AND deleted_at IS NULL ORDER BY date DESC, created_at DESC LIMIT ?'
+    : 'SELECT * FROM notes WHERE profile_id = ? AND deleted_at IS NULL ORDER BY date DESC, created_at DESC';
   const params = limit ? [profileId, limit] : [profileId];
   const rows = await db.getAllAsync<Record<string, unknown>>(query, params);
   return rows.map(rowToNote);
@@ -43,7 +43,7 @@ export async function getNotesByCategory(
 ): Promise<Note[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM notes WHERE profile_id = ? AND category = ? ORDER BY date DESC, created_at DESC',
+    'SELECT * FROM notes WHERE profile_id = ? AND category = ? AND deleted_at IS NULL ORDER BY date DESC, created_at DESC',
     [profileId, category]
   );
   return rows.map(rowToNote);

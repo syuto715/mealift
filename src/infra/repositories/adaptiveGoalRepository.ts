@@ -45,7 +45,7 @@ export async function markSuggestionStatus(
 export async function getSuggestionHistory(profileId: string): Promise<AdaptiveGoalSuggestion[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Row>(
-    `SELECT * FROM adaptive_goal_suggestions WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`,
+    `SELECT * FROM adaptive_goal_suggestions WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 50`,
     [profileId]
   );
   const out: AdaptiveGoalSuggestion[] = [];
@@ -65,7 +65,7 @@ export async function getLatestPendingSuggestion(
 ): Promise<AdaptiveGoalSuggestion | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<Row>(
-    `SELECT * FROM adaptive_goal_suggestions WHERE user_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1`,
+    `SELECT * FROM adaptive_goal_suggestions WHERE user_id = ? AND status = 'pending' AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1`,
     [profileId]
   );
   if (!row) return null;

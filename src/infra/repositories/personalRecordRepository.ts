@@ -47,7 +47,7 @@ export async function insertPR(input: {
     ]
   );
   const row = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM personal_records WHERE id = ?',
+    'SELECT * FROM personal_records WHERE id = ? AND deleted_at IS NULL',
     [id]
   );
   return rowToPR(row!);
@@ -60,7 +60,7 @@ export async function getBestPR(
   const db = await getDatabase();
   const row = await db.getFirstAsync<Record<string, unknown>>(
     `SELECT * FROM personal_records
-     WHERE exercise_id = ? AND record_type = ?
+     WHERE exercise_id = ? AND record_type = ? AND deleted_at IS NULL
      ORDER BY value DESC
      LIMIT 1`,
     [exerciseId, recordType]
@@ -98,7 +98,7 @@ export async function getExercisePRs(
 export async function getRecentPRs(userId: string, limit: number = 10): Promise<PersonalRecord[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    `SELECT * FROM personal_records WHERE user_id = ? ORDER BY achieved_at DESC LIMIT ?`,
+    `SELECT * FROM personal_records WHERE user_id = ? AND deleted_at IS NULL ORDER BY achieved_at DESC LIMIT ?`,
     [userId, limit]
   );
   return rows.map(rowToPR);
@@ -111,7 +111,7 @@ export async function getPRHistoryForExercise(
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
     `SELECT * FROM personal_records
-     WHERE exercise_id = ? AND record_type = ?
+     WHERE exercise_id = ? AND record_type = ? AND deleted_at IS NULL
      ORDER BY achieved_at ASC`,
     [exerciseId, recordType]
   );
@@ -134,7 +134,7 @@ export async function listUserExercisePRSummary(
       MAX(CASE WHEN record_type = 'max_weight' THEN value END) AS best_weight,
       MAX(CASE WHEN record_type = 'max_volume_session' THEN value END) AS best_volume
      FROM personal_records
-     WHERE user_id = ?
+     WHERE user_id = ? AND deleted_at IS NULL
      GROUP BY exercise_id
      ORDER BY best_1rm DESC NULLS LAST`,
     [userId]

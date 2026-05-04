@@ -64,7 +64,7 @@ export async function getOrCreateMealLog(
 ): Promise<MealLog> {
   const db = await getDatabase();
   const existing = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM meal_logs WHERE profile_id = ? AND date = ? AND meal_type = ?',
+    'SELECT * FROM meal_logs WHERE profile_id = ? AND date = ? AND meal_type = ? AND deleted_at IS NULL',
     [profileId, date, mealType]
   );
   if (existing) {
@@ -76,7 +76,7 @@ export async function getOrCreateMealLog(
     [id, profileId, date, mealType]
   );
   const created = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM meal_logs WHERE id = ?',
+    'SELECT * FROM meal_logs WHERE id = ? AND deleted_at IS NULL',
     [id]
   );
   return rowToMealLog(created!);
@@ -134,7 +134,7 @@ export async function addMealLogItem(
     ]
   );
   const created = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM meal_log_items WHERE id = ?',
+    'SELECT * FROM meal_log_items WHERE id = ? AND deleted_at IS NULL',
     [id]
   );
   return rowToMealLogItem(created!);
@@ -212,7 +212,7 @@ export async function getDailyNutritionSummary(
   const db = await getDatabase();
 
   const mealRows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM meal_logs WHERE profile_id = ? AND date = ? ORDER BY created_at',
+    'SELECT * FROM meal_logs WHERE profile_id = ? AND date = ? AND deleted_at IS NULL ORDER BY created_at',
     [profileId, date]
   );
 
@@ -233,7 +233,7 @@ export async function getDailyNutritionSummary(
   for (const mealRow of mealRows) {
     const mealLog = rowToMealLog(mealRow);
     const itemRows = await db.getAllAsync<Record<string, unknown>>(
-      'SELECT * FROM meal_log_items WHERE meal_log_id = ? ORDER BY created_at',
+      'SELECT * FROM meal_log_items WHERE meal_log_id = ? AND deleted_at IS NULL ORDER BY created_at',
       [mealLog.id]
     );
     const items = itemRows.map(rowToMealLogItem);
@@ -311,7 +311,7 @@ export async function getDailyCalories(
     `SELECT COALESCE(SUM(mli.calories), 0) as total
      FROM meal_log_items mli
      JOIN meal_logs ml ON mli.meal_log_id = ml.id
-     WHERE ml.profile_id = ? AND ml.date = ?`,
+     WHERE ml.profile_id = ? AND ml.date = ? AND ml.deleted_at IS NULL AND mli.deleted_at IS NULL`,
     [profileId, date]
   );
   return result?.total ?? 0;
@@ -331,7 +331,7 @@ export async function getRecordedNutritionDates(
       : '';
   const rows = await db.getAllAsync<{ date: string }>(
     `SELECT DISTINCT date FROM meal_logs
-     WHERE profile_id = ? AND date LIKE ? || '%'${clamp}
+     WHERE profile_id = ? AND date LIKE ? || '%' AND deleted_at IS NULL${clamp}
      ORDER BY date`,
     [profileId, monthPrefix]
   );
@@ -361,7 +361,7 @@ export async function copyMealFromDate(
     `SELECT mli.*, ml.meal_type AS _meal_type
      FROM meal_log_items mli
      JOIN meal_logs ml ON mli.meal_log_id = ml.id
-     WHERE ml.profile_id = ? AND ml.date = ? ${mealFilter}
+     WHERE ml.profile_id = ? AND ml.date = ? AND ml.deleted_at IS NULL AND mli.deleted_at IS NULL ${mealFilter}
      ORDER BY mli.created_at`,
     params
   );
@@ -452,8 +452,8 @@ export async function getPreviousMealsSummary(
   }>(
     `SELECT ml.date, COUNT(mli.id) AS item_count, COALESCE(SUM(mli.calories), 0) AS total_calories
      FROM meal_logs ml
-     LEFT JOIN meal_log_items mli ON mli.meal_log_id = ml.id
-     WHERE ml.profile_id = ? AND ml.meal_type = ?${clamp}
+     LEFT JOIN meal_log_items mli ON mli.meal_log_id = ml.id AND mli.deleted_at IS NULL
+     WHERE ml.profile_id = ? AND ml.meal_type = ? AND ml.deleted_at IS NULL${clamp}
      GROUP BY ml.date
      HAVING item_count > 0
      ORDER BY ml.date DESC
@@ -467,7 +467,7 @@ export async function getPreviousMealsSummary(
       `SELECT mli.food_name
        FROM meal_log_items mli
        JOIN meal_logs ml ON mli.meal_log_id = ml.id
-       WHERE ml.profile_id = ? AND ml.date = ? AND ml.meal_type = ?
+       WHERE ml.profile_id = ? AND ml.date = ? AND ml.meal_type = ? AND ml.deleted_at IS NULL AND mli.deleted_at IS NULL
        ORDER BY mli.created_at
        LIMIT 3`,
       [profileId, r.date, mealType]
@@ -490,8 +490,8 @@ export async function getWeeklyCalories(
   return db.getAllAsync<{ date: string; calories: number }>(
     `SELECT ml.date, COALESCE(SUM(mli.calories), 0) as calories
      FROM meal_logs ml
-     LEFT JOIN meal_log_items mli ON mli.meal_log_id = ml.id
-     WHERE ml.profile_id = ? AND ml.date >= date('now', '-7 days')
+     LEFT JOIN meal_log_items mli ON mli.meal_log_id = ml.id AND mli.deleted_at IS NULL
+     WHERE ml.profile_id = ? AND ml.date >= date('now', '-7 days') AND ml.deleted_at IS NULL
      GROUP BY ml.date
      ORDER BY ml.date`,
     [profileId]

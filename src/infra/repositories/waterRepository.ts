@@ -26,7 +26,7 @@ export async function addWaterLog(
     [id, profileId, amountMl, logged]
   );
   const row = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM water_logs WHERE id = ?',
+    'SELECT * FROM water_logs WHERE id = ? AND deleted_at IS NULL',
     [id]
   );
   return rowToWaterLog(row!);
@@ -38,7 +38,7 @@ export async function getTodayTotal(profileId: string, date?: string): Promise<n
   const row = await db.getFirstAsync<{ total: number }>(
     `SELECT COALESCE(SUM(amount_ml), 0) AS total
      FROM water_logs
-     WHERE user_id = ? AND substr(logged_at, 1, 10) = ?`,
+     WHERE user_id = ? AND substr(logged_at, 1, 10) = ? AND deleted_at IS NULL`,
     [profileId, target]
   );
   return row?.total ?? 0;
@@ -49,7 +49,7 @@ export async function getTodayLogs(profileId: string, date?: string): Promise<Wa
   const target = date ?? getISODate();
   const rows = await db.getAllAsync<Record<string, unknown>>(
     `SELECT * FROM water_logs
-     WHERE user_id = ? AND substr(logged_at, 1, 10) = ?
+     WHERE user_id = ? AND substr(logged_at, 1, 10) = ? AND deleted_at IS NULL
      ORDER BY logged_at DESC`,
     [profileId, target]
   );
@@ -64,7 +64,7 @@ export async function getHistory(
   const rows = await db.getAllAsync<{ date: string; total: number }>(
     `SELECT substr(logged_at, 1, 10) AS date, SUM(amount_ml) AS total
      FROM water_logs
-     WHERE user_id = ? AND logged_at >= datetime('now', '-' || ? || ' days')
+     WHERE user_id = ? AND logged_at >= datetime('now', '-' || ? || ' days') AND deleted_at IS NULL
      GROUP BY substr(logged_at, 1, 10)
      ORDER BY date DESC`,
     [profileId, days]

@@ -132,7 +132,7 @@ export async function getDishById(
   const db = await getDatabase();
 
   const row = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM dishes WHERE id = ?',
+    'SELECT * FROM dishes WHERE id = ? AND deleted_at IS NULL',
     [dishId],
   );
   if (!row) return null;
@@ -140,7 +140,7 @@ export async function getDishById(
   const dish = rowToDish(row);
 
   const ingredientRows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM dish_ingredients WHERE dish_id = ? ORDER BY sort_order',
+    'SELECT * FROM dish_ingredients WHERE dish_id = ? AND deleted_at IS NULL ORDER BY sort_order',
     [dishId],
   );
 
@@ -168,7 +168,7 @@ export async function getDishCategories(): Promise<
 > {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT category, COUNT(*) as count FROM dishes GROUP BY category ORDER BY count DESC',
+    'SELECT category, COUNT(*) as count FROM dishes WHERE deleted_at IS NULL GROUP BY category ORDER BY count DESC',
   );
   return rows.map((row) => ({
     category: row.category as DishCategory,
@@ -182,7 +182,7 @@ export async function getDishesByCategory(
 ): Promise<Dish[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT * FROM dishes WHERE category = ? ORDER BY use_count DESC, name_ja LIMIT ?',
+    'SELECT * FROM dishes WHERE category = ? AND deleted_at IS NULL ORDER BY use_count DESC, name_ja LIMIT ?',
     [category, limit],
   );
   return rows.map(rowToDish);
@@ -215,7 +215,7 @@ export async function getFavoriteDishes(limit: number = 50): Promise<Dish[]> {
 export async function toggleDishFavorite(dishId: string): Promise<boolean> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ is_favorite: number }>(
-    'SELECT is_favorite FROM dishes WHERE id = ?',
+    'SELECT is_favorite FROM dishes WHERE id = ? AND deleted_at IS NULL',
     [dishId],
   );
   if (!row) return false;
@@ -230,7 +230,7 @@ export async function toggleDishFavorite(dishId: string): Promise<boolean> {
 export async function getDishFavoriteCount(): Promise<number> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ count: number }>(
-    'SELECT COUNT(*) as count FROM dishes WHERE is_favorite = 1',
+    'SELECT COUNT(*) as count FROM dishes WHERE is_favorite = 1 AND deleted_at IS NULL',
   );
   return row?.count ?? 0;
 }
@@ -285,7 +285,7 @@ export async function saveDishFromAI(
   }
 
   const dishRow = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT * FROM dishes WHERE id = ?',
+    'SELECT * FROM dishes WHERE id = ? AND deleted_at IS NULL',
     [dishId],
   );
 
