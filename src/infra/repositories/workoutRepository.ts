@@ -181,12 +181,12 @@ export async function updateCustomExercise(
   const db = await getDatabase();
   if (exerciseType !== undefined) {
     await db.runAsync(
-      'UPDATE exercises SET name_ja = ?, muscle_group = ?, equipment = ?, exercise_type = ?, met_value = ? WHERE id = ? AND is_custom = 1',
+      "UPDATE exercises SET name_ja = ?, muscle_group = ?, equipment = ?, exercise_type = ?, met_value = ?, updated_at = datetime('now') WHERE id = ? AND is_custom = 1",
       [nameJa, muscleGroup, equipment, exerciseType, metValue ?? null, id],
     );
   } else {
     await db.runAsync(
-      'UPDATE exercises SET name_ja = ?, muscle_group = ?, equipment = ? WHERE id = ? AND is_custom = 1',
+      "UPDATE exercises SET name_ja = ?, muscle_group = ?, equipment = ?, updated_at = datetime('now') WHERE id = ? AND is_custom = 1",
       [nameJa, muscleGroup, equipment, id],
     );
   }
@@ -546,6 +546,7 @@ export async function updateSet(
 
   if (fields.length === 0) return;
 
+  fields.push("updated_at = datetime('now')");
   values.push(setId);
   await db.runAsync(
     `UPDATE workout_sets SET ${fields.join(', ')} WHERE id = ?`,

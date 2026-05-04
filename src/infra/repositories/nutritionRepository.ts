@@ -154,7 +154,8 @@ export async function updateMealLogItem(
   const db = await getDatabase();
   await db.runAsync(
     `UPDATE meal_log_items
-     SET serving_amount = ?, serving_unit = ?, calories = ?, protein_g = ?, fat_g = ?, carb_g = ?
+     SET serving_amount = ?, serving_unit = ?, calories = ?, protein_g = ?, fat_g = ?, carb_g = ?,
+         updated_at = datetime('now')
      WHERE id = ?`,
     [
       updates.servingAmount,

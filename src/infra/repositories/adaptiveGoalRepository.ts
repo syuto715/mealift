@@ -37,7 +37,7 @@ export async function markSuggestionStatus(
 ): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
-    `UPDATE adaptive_goal_suggestions SET status = ? WHERE id = ?`,
+    `UPDATE adaptive_goal_suggestions SET status = ?, updated_at = datetime('now') WHERE id = ?`,
     [status, suggestionId]
   );
 }

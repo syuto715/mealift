@@ -192,7 +192,7 @@ export async function incrementDishUseCount(dishId: string): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
   await db.runAsync(
-    'UPDATE dishes SET use_count = use_count + 1, last_used_at = ? WHERE id = ?',
+    "UPDATE dishes SET use_count = use_count + 1, last_used_at = ?, updated_at = datetime('now') WHERE id = ?",
     [now, dishId],
   );
 }
@@ -221,7 +221,7 @@ export async function toggleDishFavorite(dishId: string): Promise<boolean> {
   if (!row) return false;
   const newValue = row.is_favorite ? 0 : 1;
   await db.runAsync(
-    'UPDATE dishes SET is_favorite = ? WHERE id = ?',
+    "UPDATE dishes SET is_favorite = ?, updated_at = datetime('now') WHERE id = ?",
     [newValue, dishId],
   );
   return newValue === 1;
@@ -378,6 +378,7 @@ export async function saveMyDish(
       'total_carb_g = ?',
       'user_note = ?',
       ...extCols.map((c) => `${c} = ?`),
+      "updated_at = datetime('now')",
     ].join(', ');
     await db.runAsync(
       `UPDATE dishes SET ${setClauses} WHERE id = ? AND is_my_dish = 1`,
@@ -483,7 +484,7 @@ export async function softDeleteMyDish(dishId: string): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
   await db.runAsync(
-    'UPDATE dishes SET deleted_at = ? WHERE id = ? AND is_my_dish = 1',
+    "UPDATE dishes SET deleted_at = ?, updated_at = datetime('now') WHERE id = ? AND is_my_dish = 1",
     [now, dishId],
   );
 }
