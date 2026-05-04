@@ -9,11 +9,6 @@
  *   tsx scripts/check-soft-delete-filter.ts
  *
  * Exits 0 when clean, 1 when violations found.
- *
- * Implementation note: uses a proper-ish tokenizer that respects quote
- * types, comments, and ${...} template interpolations — naive regex
- * approaches yield false positives because single quotes inside backtick
- * template literals look like string boundaries to a flat regex.
  */
 
 import * as fs from 'fs';
@@ -22,7 +17,7 @@ import * as path from 'path';
 // User-private tables that participate in cloud sync. Lifted from
 // src/infra/database/migrations/v23.ts USER_PRIVATE_TABLES — keep them
 // in lockstep when adding new sync resources.
-const USER_PRIVATE_TABLES = new Set<string>([
+export const USER_PRIVATE_TABLES = new Set<string>([
   'profiles',
   'body_logs',
   'workout_routines',
@@ -45,7 +40,7 @@ const USER_PRIVATE_TABLES = new Set<string>([
 
 // Repos that intentionally manage tombstones internally (sync infra,
 // repos for tables not in the user-private set, etc.).
-const SKIP_FILE_BASENAMES = new Set<string>([
+export const SKIP_FILE_BASENAMES = new Set<string>([
   'userSubmittedFoodRepository.ts',
   'userBadgeRepository.ts',
   'userConsentRepository.ts',
@@ -55,9 +50,7 @@ const SKIP_FILE_BASENAMES = new Set<string>([
   'foodRepository.ts',
 ]);
 
-const REPO_DIR = path.resolve(__dirname, '..', 'src', 'infra', 'repositories');
-
-interface Violation {
+export interface Violation {
   file: string;
   table: string;
   sqlPreview: string;
@@ -69,7 +62,7 @@ interface Violation {
 //   - escape sequences inside string content
 //   - ${...} interpolation inside template strings — depth-tracked so
 //     backticks/quotes inside the interpolation don't confuse the parser
-function extractStringLiterals(content: string): string[] {
+export function extractStringLiterals(content: string): string[] {
   const out: string[] = [];
   let i = 0;
   while (i < content.length) {
@@ -99,7 +92,6 @@ function extractStringLiterals(content: string): string[] {
       let str = '';
       while (i < content.length && content[i] !== delim) {
         if (content[i] === '\\') {
-          // copy the escape and the next char raw
           str += content[i];
           if (i + 1 < content.length) str += content[i + 1];
           i += 2;
@@ -142,7 +134,7 @@ function extractStringLiterals(content: string): string[] {
   return out;
 }
 
-function findUserPrivateSelects(content: string): Array<{
+export function findUserPrivateSelects(content: string): Array<{
   table: string;
   sql: string;
 }> {
@@ -150,10 +142,16 @@ function findUserPrivateSelects(content: string): Array<{
   const literals = extractStringLiterals(content);
   for (const sql of literals) {
     if (!/\bSELECT\b/i.test(sql)) continue;
-    const fromRegex = /\bFROM\s+(\w+)/gi;
-    let fromMatch: RegExpExecArray | null;
-    while ((fromMatch = fromRegex.exec(sql)) !== null) {
-      const table = fromMatch[1].toLowerCase();
+    // Match every FROM <table> AND every JOIN <table> (any kind of JOIN —
+    // INNER, LEFT, RIGHT, OUTER, CROSS). User-private tables must be
+    // filtered for deleted_at no matter how they're referenced.
+    const tableRegex = /\b(?:FROM|JOIN)\s+(\w+)/gi;
+    let tableMatch: RegExpExecArray | null;
+    const seen = new Set<string>();
+    while ((tableMatch = tableRegex.exec(sql)) !== null) {
+      const table = tableMatch[1].toLowerCase();
+      if (seen.has(table)) continue;
+      seen.add(table);
       if (USER_PRIVATE_TABLES.has(table)) {
         out.push({ table, sql });
       }
@@ -162,9 +160,28 @@ function findUserPrivateSelects(content: string): Array<{
   return out;
 }
 
+export function findViolations(
+  fileBasename: string,
+  content: string,
+): Violation[] {
+  if (SKIP_FILE_BASENAMES.has(fileBasename)) return [];
+  const violations: Violation[] = [];
+  const selects = findUserPrivateSelects(content);
+  for (const { table, sql } of selects) {
+    if (/deleted_at/i.test(sql)) continue;
+    violations.push({
+      file: fileBasename,
+      table,
+      sqlPreview: sql.replace(/\s+/g, ' ').trim().slice(0, 180),
+    });
+  }
+  return violations;
+}
+
 function main(): void {
+  const repoDir = path.resolve(__dirname, '..', 'src', 'infra', 'repositories');
   const files = fs
-    .readdirSync(REPO_DIR)
+    .readdirSync(repoDir)
     .filter(
       (f) =>
         f.endsWith('.ts') &&
@@ -173,19 +190,10 @@ function main(): void {
     );
 
   const violations: Violation[] = [];
-
   for (const file of files) {
-    const fullPath = path.join(REPO_DIR, file);
+    const fullPath = path.join(repoDir, file);
     const content = fs.readFileSync(fullPath, 'utf8');
-    const selects = findUserPrivateSelects(content);
-    for (const { table, sql } of selects) {
-      if (/deleted_at/i.test(sql)) continue;
-      violations.push({
-        file,
-        table,
-        sqlPreview: sql.replace(/\s+/g, ' ').trim().slice(0, 180),
-      });
-    }
+    violations.push(...findViolations(file, content));
   }
 
   if (violations.length === 0) {
@@ -207,4 +215,8 @@ function main(): void {
   process.exit(1);
 }
 
-main();
+// Only run main when invoked directly (not when imported by tests).
+// In tsx, require.main === module; in jest, this comparison is false.
+if (require.main === module) {
+  main();
+}
