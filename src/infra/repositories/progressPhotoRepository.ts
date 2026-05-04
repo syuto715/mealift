@@ -191,7 +191,14 @@ export async function deleteProgressPhoto(id: string): Promise<void> {
     deletePhotoFile(row.photo_uri);
   }
 
-  await db.runAsync('DELETE FROM progress_photos WHERE id = ?', [id]);
+  // Soft delete the row; the photo file itself is hard-deleted above.
+  // After sync, the tombstone propagates so other devices stop showing
+  // the entry. The file URI in the row becomes unresolvable, which is
+  // consistent with the file being gone locally.
+  await db.runAsync(
+    "UPDATE progress_photos SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+    [id],
+  );
 }
 
 export async function getPhotoCount(profileId: string): Promise<number> {

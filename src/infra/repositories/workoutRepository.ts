@@ -194,7 +194,12 @@ export async function updateCustomExercise(
 
 export async function deleteCustomExercise(id: string): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync('DELETE FROM exercises WHERE id = ? AND is_custom = 1', [id]);
+  // Soft delete: preserves the custom exercise row + tombstone. Canonical
+  // (is_custom=0) seed rows can never reach this path because of the WHERE.
+  await db.runAsync(
+    "UPDATE exercises SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND is_custom = 1",
+    [id],
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -294,8 +299,18 @@ export async function createRoutine(
 
 export async function deleteRoutine(routineId: string): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync('DELETE FROM workout_routine_items WHERE routine_id = ?', [routineId]);
-  await db.runAsync('DELETE FROM workout_routines WHERE id = ?', [routineId]);
+  // Soft-delete cascade: items first, then routine. Same shape as the
+  // hard-delete sequence this replaced — both rows must end up tombstoned
+  // together so the sync layer pushes them as a coherent pair.
+  const now = new Date().toISOString();
+  await db.runAsync(
+    'UPDATE workout_routine_items SET deleted_at = ?, updated_at = ? WHERE routine_id = ?',
+    [now, now, routineId],
+  );
+  await db.runAsync(
+    'UPDATE workout_routines SET deleted_at = ?, updated_at = ? WHERE id = ?',
+    [now, now, routineId],
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -556,7 +571,11 @@ export async function updateSet(
 
 export async function removeSet(setId: string): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync('DELETE FROM workout_sets WHERE id = ?', [setId]);
+  // Soft delete: preserves the set row + tombstone for sync.
+  await db.runAsync(
+    "UPDATE workout_sets SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+    [setId],
+  );
 }
 
 export async function getSetsForSession(sessionId: string): Promise<WorkoutSet[]> {

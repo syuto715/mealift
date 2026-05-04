@@ -171,7 +171,11 @@ export async function updateMealLogItem(
 
 export async function removeMealLogItem(itemId: string): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync('DELETE FROM meal_log_items WHERE id = ?', [itemId]);
+  // Soft delete: preserves the row + tombstone for sync to propagate.
+  await db.runAsync(
+    "UPDATE meal_log_items SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+    [itemId],
+  );
 }
 
 function emptyDailySummary(date: string): DailyNutritionSummary {

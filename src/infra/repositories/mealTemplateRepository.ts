@@ -62,7 +62,11 @@ export async function createTemplate(
 
 export async function deleteTemplate(templateId: string): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync('DELETE FROM meal_templates WHERE id = ?', [templateId]);
+  // Soft delete: preserves the row + tombstone for sync to propagate.
+  await db.runAsync(
+    "UPDATE meal_templates SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+    [templateId],
+  );
 }
 
 export async function incrementTemplateUseCount(templateId: string): Promise<void> {

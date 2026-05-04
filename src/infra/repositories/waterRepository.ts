@@ -74,5 +74,9 @@ export async function getHistory(
 
 export async function deleteLog(id: string): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync('DELETE FROM water_logs WHERE id = ?', [id]);
+  // Soft delete: preserves the row + tombstone for sync to propagate.
+  await db.runAsync(
+    "UPDATE water_logs SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+    [id],
+  );
 }

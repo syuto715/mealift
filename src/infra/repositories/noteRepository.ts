@@ -78,5 +78,9 @@ export async function createNote(
 
 export async function deleteNote(noteId: string): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync('DELETE FROM notes WHERE id = ?', [noteId]);
+  // Soft delete: preserves the row + tombstone for sync to propagate.
+  await db.runAsync(
+    "UPDATE notes SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+    [noteId],
+  );
 }
