@@ -16,10 +16,12 @@ import { z } from 'zod/v4';
 import { getColors, radius } from '../../src/theme/tokens';
 import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Button, Input } from '../../src/components/ui';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useUIStore } from '../../src/stores/uiStore';
 import { isSupabaseConfigured } from '../../src/infra/supabase/auth';
+import { useAppleSignIn } from '../../src/hooks/useAppleSignIn';
 
 const loginSchema = z.object({
   email: z.email('有効なメールアドレスを入力してください'),
@@ -32,6 +34,7 @@ export default function LoginScreen() {
   const login = useAuthStore((s) => s.login);
   const startLocalMode = useAuthStore((s) => s.startLocalMode);
   const showToast = useUIStore((s) => s.showToast);
+  const apple = useAppleSignIn();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -90,6 +93,23 @@ export default function LoginScreen() {
   const handleGoToRegister = useCallback(() => {
     router.push('/(auth)/register');
   }, []);
+
+  const handleAppleSignIn = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      showToast(
+        'Supabaseが設定されていません。ローカルモードをお使いください。',
+        'error',
+      );
+      return;
+    }
+    const result = await apple.signIn();
+    if (result.cancelled) return;
+    if (result.error) {
+      showToast(result.error, 'error');
+      return;
+    }
+    router.replace('/');
+  }, [apple, showToast]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
@@ -186,6 +206,23 @@ export default function LoginScreen() {
             />
           </View>
 
+          {/* Apple Sign In — iOS 13+ only */}
+          {apple.available && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={
+                AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+              }
+              buttonStyle={
+                scheme === 'dark'
+                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+              }
+              cornerRadius={radius.md}
+              style={styles.appleButton}
+              onPress={handleAppleSignIn}
+            />
+          )}
+
           {/* Local only */}
           <Button
             title="アカウントなしで始める"
@@ -262,5 +299,9 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     ...typography.labelSmall,
+  },
+  appleButton: {
+    width: '100%',
+    height: 48,
   },
 });

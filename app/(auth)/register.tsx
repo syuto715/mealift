@@ -16,10 +16,12 @@ import { z } from 'zod/v4';
 import { getColors, radius } from '../../src/theme/tokens';
 import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Button, Input } from '../../src/components/ui';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useUIStore } from '../../src/stores/uiStore';
 import { isSupabaseConfigured } from '../../src/infra/supabase/auth';
+import { useAppleSignIn } from '../../src/hooks/useAppleSignIn';
 
 const registerSchema = z
   .object({
@@ -37,6 +39,7 @@ export default function RegisterScreen() {
   const colors = getColors(scheme);
   const register = useAuthStore((s) => s.register);
   const showToast = useUIStore((s) => s.showToast);
+  const apple = useAppleSignIn();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -104,6 +107,27 @@ export default function RegisterScreen() {
       router.push('/(auth)/login');
     }
   }, []);
+
+  // Apple Sign In doubles as a registration path: a first-time Apple
+  // ID logging in creates the auth.users row server-side. New users
+  // land on the onboarding flow same as email-registration; existing
+  // users skip onboarding via the home redirect.
+  const handleAppleSignIn = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      showToast(
+        'Supabaseが設定されていません。ローカルモードをお使いください。',
+        'error',
+      );
+      return;
+    }
+    const result = await apple.signIn();
+    if (result.cancelled) return;
+    if (result.error) {
+      showToast(result.error, 'error');
+      return;
+    }
+    router.replace('/(onboarding)/welcome');
+  }, [apple, showToast]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
@@ -211,6 +235,36 @@ export default function RegisterScreen() {
               ログインはこちら
             </Text>
           </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View
+              style={[styles.dividerLine, { backgroundColor: colors.border }]}
+            />
+            <Text style={[styles.dividerText, { color: colors.textTertiary }]}>
+              または
+            </Text>
+            <View
+              style={[styles.dividerLine, { backgroundColor: colors.border }]}
+            />
+          </View>
+
+          {/* Apple Sign In — iOS 13+ only */}
+          {apple.available && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={
+                AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP
+              }
+              buttonStyle={
+                scheme === 'dark'
+                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+              }
+              cornerRadius={radius.md}
+              style={styles.appleButton}
+              onPress={handleAppleSignIn}
+            />
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -256,6 +310,22 @@ const styles = StyleSheet.create({
     width: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    ...typography.labelSmall,
+  },
+  appleButton: {
+    width: '100%',
+    height: 48,
   },
   linkRow: {
     flexDirection: 'row',

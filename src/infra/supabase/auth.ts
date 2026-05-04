@@ -37,6 +37,29 @@ export async function signIn(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password });
 }
 
+// Apple Sign In via OIDC ID-token flow.
+//
+// Apple gives the client a JWT identity token. Supabase's Auth API
+// accepts that token along with the *raw* (un-hashed) nonce — Supabase
+// verifies that SHA256(rawNonce) matches the `nonce` claim Apple
+// embedded in the JWT. The hashing happens at the call site so this
+// function takes both pre-hashed inputs.
+//
+// Returns the same `{ data, error }` shape Supabase JS gives us.
+// Caller (authStore.loginWithApple) maps that into the
+// {error?: string} contract the screens use.
+export async function signInWithApple(
+  identityToken: string,
+  rawNonce: string,
+) {
+  if (!supabase) throw new Error('Supabase is not configured');
+  return supabase.auth.signInWithIdToken({
+    provider: 'apple',
+    token: identityToken,
+    nonce: rawNonce,
+  });
+}
+
 export async function signOut() {
   if (!supabase) return;
   return supabase.auth.signOut();

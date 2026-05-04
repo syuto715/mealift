@@ -37,6 +37,10 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: 'com.mealift.app',
     buildNumber: '1',
+    // Sign In with Apple capability — Expo prebuild adds the entitlement
+    // when this flag is true. Apple Provider is enabled in Supabase Auth
+    // (Bundle ID com.mealift.app, Team 9WCKU8U5XV, Key 7PP32JU7F4).
+    usesAppleSignIn: true,
     // NOTE: NSHealthShareUsageDescription / NSHealthUpdateUsageDescription and
     // the `com.apple.developer.healthkit` entitlement are injected by the
     // @kingstinct/react-native-healthkit config plugin (see `plugins` below).

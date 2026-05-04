@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signIn, signUp, signOut } from '../infra/supabase/auth';
+import { signIn, signUp, signOut, signInWithApple } from '../infra/supabase/auth';
 import { generateId } from '../utils/id';
 
 interface AuthUser {
@@ -20,6 +20,10 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   login: (email: string, password: string) => Promise<{ error?: string }>;
   register: (email: string, password: string) => Promise<{ error?: string }>;
+  loginWithApple: (
+    identityToken: string,
+    rawNonce: string,
+  ) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
   startLocalMode: () => void;
 }
@@ -132,6 +136,44 @@ export const useAuthStore = create<AuthState>()(
             };
           }
           return { error: '登録に失敗しました' };
+        }
+      },
+
+      loginWithApple: async (identityToken: string, rawNonce: string) => {
+        try {
+          const { data, error } = await signInWithApple(
+            identityToken,
+            rawNonce,
+          );
+          if (error) {
+            const message =
+              error.message?.includes('network') ||
+              error.message?.includes('fetch')
+                ? 'ネットワークエラーが発生しました。接続を確認してください。'
+                : error.message ?? 'Apple Sign In に失敗しました';
+            return { error: message };
+          }
+          if (data.session?.user) {
+            set({
+              isAuthenticated: true,
+              isLocalOnly: false,
+              user: {
+                id: data.session.user.id,
+                email: data.session.user.email,
+              },
+              isLoading: false,
+            });
+          }
+          return {};
+        } catch (e) {
+          const err = e instanceof Error ? e.message : '';
+          if (err.includes('network') || err.includes('fetch')) {
+            return {
+              error:
+                'ネットワークエラーが発生しました。接続を確認してください。',
+            };
+          }
+          return { error: 'Apple Sign In に失敗しました' };
         }
       },
 
