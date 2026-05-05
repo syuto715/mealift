@@ -1,5 +1,6 @@
 import { getDatabase } from '../database/connection';
 import { AdaptiveGoalSuggestion, AdaptiveGoalStatus } from '../../types/adaptiveGoal';
+import { enqueueRowFromTable } from './syncRepository';
 
 interface Row {
   id: string;
@@ -29,6 +30,11 @@ export async function saveSuggestion(
       suggestion.calculatedAt,
     ]
   );
+  // INSERT-or-UPDATE; we don't easily know which path the upsert took.
+  // 'UPDATE' is the safe choice since it covers both cases on the
+  // server (upsert by id is operation-agnostic in submissionSync's
+  // pattern, and here too).
+  await enqueueRowFromTable('adaptive_goal_suggestions', suggestion.id, 'UPDATE');
 }
 
 export async function markSuggestionStatus(
@@ -40,6 +46,7 @@ export async function markSuggestionStatus(
     `UPDATE adaptive_goal_suggestions SET status = ?, updated_at = datetime('now') WHERE id = ?`,
     [status, suggestionId]
   );
+  await enqueueRowFromTable('adaptive_goal_suggestions', suggestionId, 'UPDATE');
 }
 
 export async function getSuggestionHistory(profileId: string): Promise<AdaptiveGoalSuggestion[]> {

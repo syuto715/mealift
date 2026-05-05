@@ -54,6 +54,35 @@ export async function enqueueSync(
 // pre-Phase-3 name. New code should use enqueueSync.
 export const addToSyncQueue = enqueueSync;
 
+// Convenience hook for repository write sites: read the row back from
+// the table (no deleted_at filter — soft-deletes need to enqueue the
+// tombstone too) and enqueue it. Per Phase 6 sign-off Option A,
+// payload = full row including computed columns (created_at trigger
+// values, updated_at after the UPDATE, etc) so the sync layer sees
+// the canonical state.
+//
+// Always enqueues, regardless of localOnly mode (Phase 6 sign-off
+// Option α). The orchestrator's pushAllPending no-ops when not
+// authenticated, so the queue accumulates harmlessly until the user
+// signs in; at that point claimLocalDataForUser remaps profile_id /
+// user_id and the queued rows flush with the new auth uid.
+//
+// Returns silently if the row is missing — defensive only; should
+// never happen in practice since the caller just wrote it.
+export async function enqueueRowFromTable(
+  tableName: string,
+  recordId: string,
+  operation: SyncOperation,
+): Promise<void> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<Record<string, unknown>>(
+    `SELECT * FROM ${tableName} WHERE id = ?`,
+    [recordId],
+  );
+  if (!row) return;
+  await enqueueSync(tableName, recordId, operation, row);
+}
+
 export async function getPendingSyncItems(
   limit: number = 50,
 ): Promise<SyncQueueRow[]> {

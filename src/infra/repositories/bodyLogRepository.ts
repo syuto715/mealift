@@ -1,6 +1,7 @@
 import { getDatabase } from '../database/connection';
 import { BodyLog, BodyLogInput } from '../../types/bodyLog';
 import { generateId } from '../../utils/id';
+import { enqueueRowFromTable } from './syncRepository';
 
 function rowToBodyLog(row: Record<string, unknown>): BodyLog {
   return {
@@ -70,6 +71,7 @@ export async function upsertBodyLog(profileId: string, input: BodyLogInput): Pro
       `UPDATE body_logs SET weight_kg = ?, body_fat_pct = ?, muscle_mass_kg = ?, note = ?, updated_at = datetime('now') WHERE id = ?`,
       [input.weightKg ?? null, input.bodyFatPct ?? null, input.muscleMassKg ?? null, input.note ?? null, existing.id]
     );
+    await enqueueRowFromTable('body_logs', existing.id, 'UPDATE');
     return (await getBodyLogByDate(profileId, input.date))!;
   }
 
@@ -78,5 +80,6 @@ export async function upsertBodyLog(profileId: string, input: BodyLogInput): Pro
     `INSERT INTO body_logs (id, profile_id, date, weight_kg, body_fat_pct, muscle_mass_kg, note) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [id, profileId, input.date, input.weightKg ?? null, input.bodyFatPct ?? null, input.muscleMassKg ?? null, input.note ?? null]
   );
+  await enqueueRowFromTable('body_logs', id, 'INSERT');
   return (await getBodyLogByDate(profileId, input.date))!;
 }

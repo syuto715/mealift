@@ -2,6 +2,7 @@ import { getDatabase } from '../database/connection';
 import { WaterLog } from '../../types/water';
 import { generateId } from '../../utils/id';
 import { getISODate } from '../../utils/format';
+import { enqueueRowFromTable } from './syncRepository';
 
 function rowToWaterLog(row: Record<string, unknown>): WaterLog {
   return {
@@ -25,6 +26,7 @@ export async function addWaterLog(
     `INSERT INTO water_logs (id, user_id, amount_ml, logged_at) VALUES (?, ?, ?, ?)`,
     [id, profileId, amountMl, logged]
   );
+  await enqueueRowFromTable('water_logs', id, 'INSERT');
   const row = await db.getFirstAsync<Record<string, unknown>>(
     'SELECT * FROM water_logs WHERE id = ? AND deleted_at IS NULL',
     [id]
@@ -79,4 +81,5 @@ export async function deleteLog(id: string): Promise<void> {
     "UPDATE water_logs SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
     [id],
   );
+  await enqueueRowFromTable('water_logs', id, 'UPDATE');
 }

@@ -1,6 +1,7 @@
 import { getDatabase } from '../database/connection';
 import { Profile, ProfileInput, AdaptiveGoalSensitivity, PlanBillingCycle } from '../../types/profile';
 import { generateId } from '../../utils/id';
+import { enqueueRowFromTable } from './syncRepository';
 
 function rowToProfile(row: Record<string, unknown>): Profile {
   return {
@@ -54,6 +55,7 @@ export async function createProfile(input: ProfileInput): Promise<Profile> {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, input.displayName, input.gender, input.birthYear, input.heightCm, input.currentWeightKg, input.targetWeightKg ?? null, input.targetBodyFatPct ?? null, input.goalType, input.activityLevel, input.trainingDaysPerWeek, input.targetDate ?? null, input.equipment, now, now]
   );
+  await enqueueRowFromTable('profiles', id, 'INSERT');
 
   const profile = await getProfile();
   return profile!;
@@ -110,6 +112,7 @@ export async function updateProfile(id: string, updates: Partial<Profile>): Prom
     `UPDATE profiles SET ${fields.join(', ')} WHERE id = ?`,
     values
   );
+  await enqueueRowFromTable('profiles', id, 'UPDATE');
 }
 
 export async function startTrial(id: string, startedAt: string): Promise<void> {
@@ -120,5 +123,6 @@ export async function startTrial(id: string, startedAt: string): Promise<void> {
      WHERE id = ? AND trial_started_at IS NULL`,
     [startedAt, id],
   );
+  await enqueueRowFromTable('profiles', id, 'UPDATE');
 }
 

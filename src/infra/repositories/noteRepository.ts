@@ -1,6 +1,7 @@
 import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
 import { NoteCategory } from '../../types/common';
+import { enqueueRowFromTable } from './syncRepository';
 
 export interface Note {
   id: string;
@@ -64,6 +65,7 @@ export async function createNote(
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [id, profileId, date, category, content, now, now]
   );
+  await enqueueRowFromTable('notes', id, 'INSERT');
 
   return {
     id,
@@ -83,4 +85,5 @@ export async function deleteNote(noteId: string): Promise<void> {
     "UPDATE notes SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
     [noteId],
   );
+  await enqueueRowFromTable('notes', noteId, 'UPDATE');
 }
