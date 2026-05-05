@@ -5,6 +5,7 @@ import { generateId } from '../../utils/id';
 import { ProgressPhoto, ProgressPhotoInput, PoseType } from '../../types/progressPhoto';
 import { canAddProgressPhoto } from '../../domain/subscription/gates';
 import type { PlanStatus } from '../services/subscriptionService';
+import { enqueueRowFromTable } from './syncRepository';
 
 export class PhotoLimitExceededError extends Error {
   constructor() {
@@ -120,6 +121,7 @@ export async function addProgressPhoto(
      VALUES (?, ?, ?, ?, ?, ?)`,
     [id, input.profileId, input.date, input.photoUri, input.poseType, input.note ?? null],
   );
+  await enqueueRowFromTable('progress_photos', id, 'INSERT');
 
   const row = await db.getFirstAsync<Record<string, unknown>>(
     'SELECT * FROM progress_photos WHERE id = ? AND deleted_at IS NULL',
@@ -199,6 +201,7 @@ export async function deleteProgressPhoto(id: string): Promise<void> {
     "UPDATE progress_photos SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
     [id],
   );
+  await enqueueRowFromTable('progress_photos', id, 'UPDATE');
 }
 
 export async function getPhotoCount(profileId: string): Promise<number> {

@@ -2,6 +2,7 @@ import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
 import { MealTemplate, MealLogItemInput } from '../../types/nutrition';
 import { MealType } from '../../types/common';
+import { enqueueRowFromTable } from './syncRepository';
 
 function rowToTemplate(row: Record<string, unknown>): MealTemplate {
   let items: MealLogItemInput[] = [];
@@ -47,6 +48,7 @@ export async function createTemplate(
      VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
     [id, profileId, name, mealType ?? null, itemsJson, now, now]
   );
+  await enqueueRowFromTable('meal_templates', id, 'INSERT');
 
   return {
     id,
@@ -67,6 +69,7 @@ export async function deleteTemplate(templateId: string): Promise<void> {
     "UPDATE meal_templates SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
     [templateId],
   );
+  await enqueueRowFromTable('meal_templates', templateId, 'UPDATE');
 }
 
 export async function incrementTemplateUseCount(templateId: string): Promise<void> {
@@ -75,6 +78,7 @@ export async function incrementTemplateUseCount(templateId: string): Promise<voi
     "UPDATE meal_templates SET use_count = use_count + 1, updated_at = datetime('now') WHERE id = ?",
     [templateId]
   );
+  await enqueueRowFromTable('meal_templates', templateId, 'UPDATE');
 }
 
 export async function getTemplateCount(profileId: string): Promise<number> {
@@ -121,6 +125,7 @@ export async function updateTemplate(
     `UPDATE meal_templates SET ${fields.join(', ')} WHERE id = ?`,
     values
   );
+  await enqueueRowFromTable('meal_templates', templateId, 'UPDATE');
 }
 
 export async function applyTemplateToMeal(
@@ -147,6 +152,7 @@ export async function applyTemplateToMeal(
       `INSERT INTO meal_logs (id, profile_id, date, meal_type) VALUES (?, ?, ?, ?)`,
       [mealLogId, profileId, date, mealType]
     );
+    await enqueueRowFromTable('meal_logs', mealLogId, 'INSERT');
   }
 
   let copied = 0;
@@ -197,6 +203,7 @@ export async function applyTemplateToMeal(
         item.note ?? null,
       ]
     );
+    await enqueueRowFromTable('meal_log_items', newId, 'INSERT');
     copied++;
   }
 
@@ -205,5 +212,6 @@ export async function applyTemplateToMeal(
     "UPDATE meal_templates SET last_used_at = datetime('now') WHERE id = ?",
     [templateId]
   );
+  await enqueueRowFromTable('meal_templates', templateId, 'UPDATE');
   return copied;
 }

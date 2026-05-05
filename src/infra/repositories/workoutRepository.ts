@@ -1,6 +1,7 @@
 import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
 import { MuscleGroup } from '../../types/common';
+import { enqueueRowFromTable } from './syncRepository';
 import {
   Exercise,
   ExerciseType,
@@ -190,6 +191,7 @@ export async function updateCustomExercise(
       [nameJa, muscleGroup, equipment, id],
     );
   }
+  await enqueueRowFromTable('exercises', id, 'UPDATE');
 }
 
 export async function deleteCustomExercise(id: string): Promise<void> {
@@ -200,6 +202,7 @@ export async function deleteCustomExercise(id: string): Promise<void> {
     "UPDATE exercises SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND is_custom = 1",
     [id],
   );
+  await enqueueRowFromTable('exercises', id, 'UPDATE');
 }
 
 // ---------------------------------------------------------------------------
@@ -276,6 +279,7 @@ export async function createRoutine(
     'INSERT INTO workout_routines (id, profile_id, name, sort_order, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)',
     [id, profileId, name, now, now],
   );
+  await enqueueRowFromTable('workout_routines', id, 'INSERT');
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
@@ -284,6 +288,7 @@ export async function createRoutine(
       'INSERT INTO workout_routine_items (id, routine_id, exercise_id, target_sets, target_reps, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
       [itemId, id, item.exerciseId, item.targetSets, item.targetReps, i],
     );
+    await enqueueRowFromTable('workout_routine_items', itemId, 'INSERT');
   }
 
   return {
@@ -299,6 +304,13 @@ export async function createRoutine(
 
 export async function deleteRoutine(routineId: string): Promise<void> {
   const db = await getDatabase();
+  // Read the items list BEFORE the soft delete (so we can enqueue
+  // each item's tombstone individually after).
+  const items = await db.getAllAsync<{ id: string }>(
+    'SELECT id FROM workout_routine_items WHERE routine_id = ?',
+    [routineId],
+  );
+
   // Soft-delete cascade: items first, then routine. Same shape as the
   // hard-delete sequence this replaced — both rows must end up tombstoned
   // together so the sync layer pushes them as a coherent pair.
@@ -311,6 +323,13 @@ export async function deleteRoutine(routineId: string): Promise<void> {
     'UPDATE workout_routines SET deleted_at = ?, updated_at = ? WHERE id = ?',
     [now, now, routineId],
   );
+
+  // Enqueue cascading tombstones. Items pushed before routine so the
+  // server-side foreign-key checks pass (items reference the parent).
+  for (const item of items) {
+    await enqueueRowFromTable('workout_routine_items', item.id, 'UPDATE');
+  }
+  await enqueueRowFromTable('workout_routines', routineId, 'UPDATE');
 }
 
 // ---------------------------------------------------------------------------
@@ -329,6 +348,7 @@ export async function createSession(
     'INSERT INTO workout_sessions (id, profile_id, routine_id, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
     [id, profileId, routineId, now, now, now],
   );
+  await enqueueRowFromTable('workout_sessions', id, 'INSERT');
 
   return {
     id,
@@ -367,6 +387,7 @@ export async function finishSession(
     'UPDATE workout_sessions SET finished_at = ?, duration_seconds = ?, estimated_calories = ?, note = ?, updated_at = ? WHERE id = ?',
     [now, durationSeconds, estimatedCalories ?? null, note ?? null, now, sessionId],
   );
+  await enqueueRowFromTable('workout_sessions', sessionId, 'UPDATE');
 
   return { durationSeconds };
 }
@@ -486,6 +507,7 @@ export async function addSet(
       now,
     ],
   );
+  await enqueueRowFromTable('workout_sets', id, 'INSERT');
 
   return {
     id,
@@ -567,6 +589,7 @@ export async function updateSet(
     `UPDATE workout_sets SET ${fields.join(', ')} WHERE id = ?`,
     values as (string | number | null)[],
   );
+  await enqueueRowFromTable('workout_sets', setId, 'UPDATE');
 }
 
 export async function removeSet(setId: string): Promise<void> {
@@ -576,6 +599,7 @@ export async function removeSet(setId: string): Promise<void> {
     "UPDATE workout_sets SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
     [setId],
   );
+  await enqueueRowFromTable('workout_sets', setId, 'UPDATE');
 }
 
 export async function getSetsForSession(sessionId: string): Promise<WorkoutSet[]> {

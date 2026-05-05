@@ -1,6 +1,7 @@
 import { getDatabase } from '../database/connection';
 import { PersonalRecord, PRRecordType } from '../../types/personalRecord';
 import { generateId } from '../../utils/id';
+import { enqueueRowFromTable } from './syncRepository';
 
 function rowToPR(row: Record<string, unknown>): PersonalRecord {
   return {
@@ -46,6 +47,7 @@ export async function insertPR(input: {
       input.sessionId ?? null,
     ]
   );
+  await enqueueRowFromTable('personal_records', id, 'INSERT');
   const row = await db.getFirstAsync<Record<string, unknown>>(
     'SELECT * FROM personal_records WHERE id = ? AND deleted_at IS NULL',
     [id]
