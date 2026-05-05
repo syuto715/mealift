@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signIn, signUp, signOut, signInWithApple } from '../infra/supabase/auth';
 import { generateId } from '../utils/id';
+import { getDatabase } from '../infra/database/connection';
+import { claimLocalDataForUser } from '../infra/database/dataReconciliation';
 
 interface AuthUser {
   id: string;
@@ -153,17 +155,48 @@ export const useAuthStore = create<AuthState>()(
                 : error.message ?? 'Apple Sign In に失敗しました';
             return { error: message };
           }
-          if (data.session?.user) {
-            set({
-              isAuthenticated: true,
-              isLocalOnly: false,
-              user: {
-                id: data.session.user.id,
-                email: data.session.user.email,
-              },
-              isLoading: false,
-            });
+          if (!data.session?.user) {
+            return { error: 'Apple Sign In に失敗しました' };
           }
+          const userId = data.session.user.id;
+
+          // Reconcile local data with the new auth identity. Three of the
+          // four ClaimResult kinds (remapped / already_claimed_same_uid /
+          // no_profile) all proceed to authenticated state; the fourth
+          // (conflict_different_uid) aborts with a sign-out so the user's
+          // session doesn't stick when their device data belongs to a
+          // different auth account.
+          try {
+            const db = await getDatabase();
+            const claimResult = await claimLocalDataForUser(db, userId);
+            if (claimResult.kind === 'conflict_different_uid') {
+              await signOut();
+              return {
+                error:
+                  'このデバイスには別のアカウントのデータが残っています。一度ログアウトしてからやり直してください。',
+              };
+            }
+          } catch (e) {
+            // Reconciliation transaction failed — sign out so the
+            // partially-authenticated state doesn't masquerade as success.
+            await signOut();
+            return {
+              error:
+                e instanceof Error
+                  ? `データ整合中にエラーが発生しました: ${e.message}`
+                  : 'データ整合中にエラーが発生しました',
+            };
+          }
+
+          set({
+            isAuthenticated: true,
+            isLocalOnly: false,
+            user: {
+              id: userId,
+              email: data.session.user.email,
+            },
+            isLoading: false,
+          });
           return {};
         } catch (e) {
           const err = e instanceof Error ? e.message : '';
