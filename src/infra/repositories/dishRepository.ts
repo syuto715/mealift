@@ -4,6 +4,7 @@ import { Dish, DishIngredient, DishWithIngredients, DishCategory } from '../../t
 import { ExtendedNutrients, EXTENDED_NUTRIENT_KEYS, EXTENDED_NUTRIENT_DB_COLUMNS } from '../../types/food';
 import { buildRecipeFromFoodMap, type RecipeIngredientInput } from '../../domain/recipeBuilder';
 import { getFoodsByIds } from './foodRepository';
+import { enqueueRowFromTable } from './syncRepository';
 
 /** Generic input type for saving AI-estimated dishes */
 export interface SaveDishInput {
@@ -195,6 +196,7 @@ export async function incrementDishUseCount(dishId: string): Promise<void> {
     "UPDATE dishes SET use_count = use_count + 1, last_used_at = ?, updated_at = datetime('now') WHERE id = ?",
     [now, dishId],
   );
+  await enqueueRowFromTable('dishes', dishId, 'UPDATE');
 }
 
 export async function getFavoriteDishes(limit: number = 50): Promise<Dish[]> {
@@ -224,6 +226,7 @@ export async function toggleDishFavorite(dishId: string): Promise<boolean> {
     "UPDATE dishes SET is_favorite = ?, updated_at = datetime('now') WHERE id = ?",
     [newValue, dishId],
   );
+  await enqueueRowFromTable('dishes', dishId, 'UPDATE');
   return newValue === 1;
 }
 
@@ -254,6 +257,10 @@ export async function saveDishFromAI(
       estimate.totalCarb,
     ],
   );
+  // saveDishFromAI is the AI-estimate path. is_my_dish stays 0 here so
+  // these dishes don't sync. Only saveMyDish (below) sets is_my_dish=1
+  // and triggers enqueue. Skipping the enqueue keeps AI-only dishes
+  // local-only — they're never the user's curated content.
 
   const ingredients: DishIngredient[] = [];
   for (let i = 0; i < estimate.ingredients.length; i++) {
@@ -394,8 +401,14 @@ export async function saveMyDish(
         dishId,
       ],
     );
+    await enqueueRowFromTable('dishes', dishId, 'UPDATE');
 
-    // Replace ingredients atomically.
+    // Replace ingredients atomically. HARD delete here is intentional
+    // (Phase 6 sign-off #5): regen pattern, not a user-facing delete.
+    // Server-side dish_ingredients rows are not tombstoned for these,
+    // but new ingredient ids INSERT below get enqueued, so the new
+    // shape ends up on the server. Stale server-side ingredient rows
+    // for the previous shape will accumulate — accepted v1 trade-off.
     await db.runAsync('DELETE FROM dish_ingredients WHERE dish_id = ?', [dishId]);
   } else {
     const insertCols = [
@@ -428,6 +441,7 @@ export async function saveMyDish(
         ...extVals,
       ],
     );
+    await enqueueRowFromTable('dishes', dishId, 'INSERT');
   }
 
   const ingExtCols = EXTENDED_NUTRIENT_KEYS.map((k) => EXTENDED_NUTRIENT_DB_COLUMNS[k]);
@@ -457,6 +471,7 @@ export async function saveMyDish(
         ...ingExtVals,
       ],
     );
+    await enqueueRowFromTable('dish_ingredients', ingId, 'INSERT');
   }
 
   const full = await getDishById(dishId);
@@ -487,6 +502,7 @@ export async function softDeleteMyDish(dishId: string): Promise<void> {
     "UPDATE dishes SET deleted_at = ?, updated_at = datetime('now') WHERE id = ? AND is_my_dish = 1",
     [now, dishId],
   );
+  await enqueueRowFromTable('dishes', dishId, 'UPDATE');
 }
 
 export async function duplicateMyDish(
