@@ -1,6 +1,7 @@
 import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
 import { MealType } from '../../types/common';
+import { enqueueRowFromTable } from './syncRepository';
 import {
   MealLog,
   MealLogItem,
@@ -75,6 +76,7 @@ export async function getOrCreateMealLog(
     `INSERT INTO meal_logs (id, profile_id, date, meal_type) VALUES (?, ?, ?, ?)`,
     [id, profileId, date, mealType]
   );
+  await enqueueRowFromTable('meal_logs', id, 'INSERT');
   const created = await db.getFirstAsync<Record<string, unknown>>(
     'SELECT * FROM meal_logs WHERE id = ? AND deleted_at IS NULL',
     [id]
@@ -133,6 +135,7 @@ export async function addMealLogItem(
       input.note ?? null,
     ]
   );
+  await enqueueRowFromTable('meal_log_items', id, 'INSERT');
   const created = await db.getFirstAsync<Record<string, unknown>>(
     'SELECT * FROM meal_log_items WHERE id = ? AND deleted_at IS NULL',
     [id]
@@ -167,6 +170,7 @@ export async function updateMealLogItem(
       itemId,
     ]
   );
+  await enqueueRowFromTable('meal_log_items', itemId, 'UPDATE');
 }
 
 export async function removeMealLogItem(itemId: string): Promise<void> {
@@ -176,6 +180,7 @@ export async function removeMealLogItem(itemId: string): Promise<void> {
     "UPDATE meal_log_items SET deleted_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
     [itemId],
   );
+  await enqueueRowFromTable('meal_log_items', itemId, 'UPDATE');
 }
 
 function emptyDailySummary(date: string): DailyNutritionSummary {
@@ -426,6 +431,7 @@ export async function copyMealFromDate(
         consumedAt,
       ]
     );
+    await enqueueRowFromTable('meal_log_items', newId, 'INSERT');
     copied++;
   }
   return copied;
