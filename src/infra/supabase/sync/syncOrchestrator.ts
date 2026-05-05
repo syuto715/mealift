@@ -27,6 +27,10 @@ import { personalRecordSync } from './personalRecordSync';
 import { progressPhotoSync } from './progressPhotoSync';
 import { customExerciseSync } from './customExerciseSync';
 import { dishSync } from './dishSync';
+import { workoutSessionSync } from './workoutSessionSync';
+import { workoutRoutineItemSync } from './workoutRoutineItemSync';
+import { mealLogItemSync } from './mealLogItemSync';
+import { dishIngredientSync } from './dishIngredientSync';
 
 // Cloud Sync Orchestrator (Phase 3-B skeleton).
 //
@@ -125,8 +129,11 @@ export const RESOURCE_MODULES: readonly ResourceSyncModule[] = [
   progressPhotoSync,
   customExerciseSync,
   dishSync,
-  // LEVEL 2 (Phase 5-C): workout_sessions, workout_routine_items,
-  //   meal_log_items, dish_ingredients
+  // LEVEL 2 (Phase 5-C): depend on level-1 parents via FK
+  workoutSessionSync,    // → user_workout_routines (routine_id, nullable)
+  workoutRoutineItemSync, // → user_workout_routines (routine_id)
+  mealLogItemSync,        // → user_meal_logs (meal_log_id)
+  dishIngredientSync,     // → user_dishes (dish_id)
   // LEVEL 3 (Phase 5-D): workout_sets
 ];
 
