@@ -10,7 +10,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // restarts so the user sees an honest picture even when the
 // orchestrator hasn't run yet in the new session.
 
-export type SyncState = 'idle' | 'syncing' | 'error';
+// 'claiming' is the pre-sync identity-remap step (Phase 4 / Phase 7).
+// 'syncing' covers pull/push/submission — fine-grained progress lives
+// in `currentResource`. UI can show the four top-level states; cards
+// or progress bars consult `currentResource` for sub-state.
+export type SyncState = 'idle' | 'claiming' | 'syncing' | 'error';
 
 interface SyncStatusState {
   // Current orchestrator run state.
@@ -27,7 +31,9 @@ interface SyncStatusState {
   pendingCount: number;
   deadLetterCount: number;
 
-  // Mutators called by the orchestrator.
+  // Mutators called by the orchestrator and by loginSyncBootstrap.
+  beginClaim: () => void;
+  finishClaim: (error?: string) => void;
   beginRun: () => void;
   setResource: (resource: string | null) => void;
   setProgress: (completed: number, total: number) => void;
@@ -48,6 +54,26 @@ export const useSyncStatusStore = create<SyncStatusState>()(
       lastError: null,
       pendingCount: 0,
       deadLetterCount: 0,
+
+      beginClaim: () =>
+        set({
+          state: 'claiming',
+          currentResource: null,
+          progressTotal: 0,
+          progressCompleted: 0,
+          lastError: null,
+        }),
+
+      // Called immediately after the claim step. Without arg, drops to
+      // 'idle' so the next caller (typically syncAll's beginRun) can
+      // transition to 'syncing'. With arg, parks the store at 'error'
+      // so the UI surfaces the conflict / claim failure.
+      finishClaim: (error) =>
+        set({
+          state: error ? 'error' : 'idle',
+          currentResource: null,
+          lastError: error ?? null,
+        }),
 
       beginRun: () =>
         set({

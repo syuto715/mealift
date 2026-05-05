@@ -26,6 +26,7 @@ import {
   applyCustomerInfoToProfile,
   getCustomerInfo as getRevenueCatCustomerInfo,
 } from '../src/infra/services/revenueCatService';
+import { runLoginSync } from '../src/infra/sync/loginSyncBootstrap';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -151,7 +152,7 @@ export default function RootLayout() {
 
         // Listen for auth state changes
         try {
-          const { data } = onAuthStateChange((_event, session) => {
+          const { data } = onAuthStateChange((event, session) => {
             if (session && typeof session === 'object' && 'user' in session) {
               const user = (
                 session as { user: { id: string; email?: string } }
@@ -161,6 +162,13 @@ export default function RootLayout() {
                 const info = await getRevenueCatCustomerInfo();
                 await applyCustomerInfoToProfile(info);
               });
+              // SIGNED_IN only — TOKEN_REFRESHED / INITIAL_SESSION /
+              // USER_UPDATED don't trigger a sync run. Re-entry while a
+              // run is already going gets dropped by runLoginSync's
+              // mutex; surfaced errors land in syncStatusStore.lastError.
+              if (event === 'SIGNED_IN') {
+                void runLoginSync(user.id);
+              }
             } else if (!useAuthStore.getState().isLocalOnly) {
               setUnauthenticated();
               void logOutRevenueCat();
