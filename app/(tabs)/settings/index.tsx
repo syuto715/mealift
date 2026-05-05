@@ -356,6 +356,16 @@ export default function SettingsScreen() {
         </Card>
 
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>データ管理</Text>
+        {!isLocalOnly && (
+          <Card padding="none">
+            <SettingsRow
+              icon="cloud-outline"
+              label="クラウド同期"
+              onPress={() => router.push('/(tabs)/settings/sync')}
+              colors={colors}
+            />
+          </Card>
+        )}
         <TouchableOpacity
           style={[styles.logoutButton, { backgroundColor: colors.error + '15' }]}
           onPress={handleResetData}

@@ -6,6 +6,7 @@ import {
   markFailed,
   markSynced,
   getPendingCount,
+  getDeadLetterCount,
   type SyncQueueRow,
 } from '../../repositories/syncRepository';
 import {
@@ -287,6 +288,7 @@ export async function syncAll(
     const submission = await syncSubmissions(db, client);
 
     status.setPendingCount(await getPendingCount());
+    status.setDeadLetterCount(await getDeadLetterCount());
     status.finishRun();
 
     return { push, pull, submission };

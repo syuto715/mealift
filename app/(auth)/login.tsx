@@ -20,8 +20,17 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { Button, Input } from '../../src/components/ui';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useUIStore } from '../../src/stores/uiStore';
+import { useSyncStatusStore } from '../../src/stores/syncStatusStore';
 import { isSupabaseConfigured } from '../../src/infra/supabase/auth';
 import { useAppleSignIn } from '../../src/hooks/useAppleSignIn';
+
+// Phase 7's loginSyncBootstrap sets lastError to this exact prefix
+// when claimLocalDataForUser detects that the local data belongs to
+// a different auth uid. The login screen reads syncStatusStore on
+// mount and surfaces a banner so the user knows why they bounced
+// back to the sign-in screen (see app/_layout.tsx for the
+// SIGNED_OUT auto-redirect).
+const CONFLICT_ERROR_PREFIX = 'このデバイスには別のアカウントのデータ';
 
 const loginSchema = z.object({
   email: z.email('有効なメールアドレスを入力してください'),
@@ -34,7 +43,10 @@ export default function LoginScreen() {
   const login = useAuthStore((s) => s.login);
   const startLocalMode = useAuthStore((s) => s.startLocalMode);
   const showToast = useUIStore((s) => s.showToast);
+  const lastError = useSyncStatusStore((s) => s.lastError);
+  const clearError = useSyncStatusStore((s) => s.clearError);
   const apple = useAppleSignIn();
+  const showConflictBanner = lastError?.startsWith(CONFLICT_ERROR_PREFIX) ?? false;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -122,6 +134,42 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* Conflict banner — surfaces Phase 7's claim-conflict
+             auto-signout. Renders inside the centered scrollContent so
+             it pushes the logo down rather than overlapping. */}
+          {showConflictBanner && lastError ? (
+            <View
+              style={[
+                styles.conflictBanner,
+                { backgroundColor: colors.error + '12', borderColor: colors.error },
+              ]}
+            >
+              <Ionicons
+                name="alert-circle"
+                size={20}
+                color={colors.error}
+                style={styles.conflictIcon}
+              />
+              <Text
+                style={[styles.conflictText, { color: colors.textPrimary }]}
+              >
+                {lastError}
+              </Text>
+              <TouchableOpacity
+                onPress={clearError}
+                style={styles.conflictDismiss}
+                hitSlop={8}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[styles.conflictDismissText, { color: colors.error }]}
+                >
+                  OK
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           {/* Logo area */}
           <View style={styles.logoArea}>
             <Text style={[styles.appName, { color: colors.primary }]}>
@@ -208,19 +256,26 @@ export default function LoginScreen() {
 
           {/* Apple Sign In — iOS 13+ only */}
           {apple.available && (
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={
-                AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-              }
-              buttonStyle={
-                scheme === 'dark'
-                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-              }
-              cornerRadius={radius.md}
-              style={styles.appleButton}
-              onPress={handleAppleSignIn}
-            />
+            <View style={styles.appleArea}>
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={
+                  AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+                }
+                buttonStyle={
+                  scheme === 'dark'
+                    ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                    : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                }
+                cornerRadius={radius.md}
+                style={styles.appleButton}
+                onPress={handleAppleSignIn}
+              />
+              <Text
+                style={[styles.transferHint, { color: colors.textTertiary }]}
+              >
+                他の端末でお使いだったアカウントは Apple またはメールでサインインするとデータを復元できます
+              </Text>
+            </View>
           )}
 
           {/* Local only */}
@@ -300,8 +355,40 @@ const styles = StyleSheet.create({
   dividerText: {
     ...typography.labelSmall,
   },
+  appleArea: {
+    gap: spacing.sm,
+  },
   appleButton: {
     width: '100%',
     height: 48,
+  },
+  transferHint: {
+    ...typography.bodySmall,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: spacing.sm,
+  },
+  conflictBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.sm,
+  },
+  conflictIcon: {
+    marginTop: 2,
+  },
+  conflictText: {
+    ...typography.bodySmall,
+    flex: 1,
+    lineHeight: 20,
+  },
+  conflictDismiss: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  conflictDismissText: {
+    ...typography.labelLarge,
   },
 });

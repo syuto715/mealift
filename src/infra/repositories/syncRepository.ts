@@ -117,6 +117,19 @@ export async function getPendingCount(): Promise<number> {
   return row?.count ?? 0;
 }
 
+// Number of rows that have exhausted MAX_RETRIES and been moved to
+// sync_dead_letter. Read by syncOrchestrator.syncAll at end-of-run so
+// syncStatusStore.deadLetterCount reflects reality even when the UI
+// (Phase 8 v1) doesn't display it. Future Phase 9 can wire the count
+// into a debug/admin screen without further plumbing.
+export async function getDeadLetterCount(): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM sync_dead_letter',
+  );
+  return row?.count ?? 0;
+}
+
 export async function markSynced(id: string): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
