@@ -147,6 +147,7 @@ export async function createCustomExercise(
      VALUES (?, ?, NULL, ?, NULL, ?, 1, 999, ?, ?, ?)`,
     [id, nameJa, muscleGroup, equipment, exerciseType, metValue, now],
   );
+  await enqueueRowFromTable('exercises', id, 'INSERT');
 
   return {
     id,
@@ -305,9 +306,11 @@ export async function createRoutine(
 export async function deleteRoutine(routineId: string): Promise<void> {
   const db = await getDatabase();
   // Read the items list BEFORE the soft delete (so we can enqueue
-  // each item's tombstone individually after).
+  // each item's tombstone individually after). Filter `deleted_at IS NULL`
+  // so already-tombstoned items aren't re-enqueued — they already had
+  // their tombstone pushed when the user removed them individually.
   const items = await db.getAllAsync<{ id: string }>(
-    'SELECT id FROM workout_routine_items WHERE routine_id = ?',
+    'SELECT id FROM workout_routine_items WHERE routine_id = ? AND deleted_at IS NULL',
     [routineId],
   );
 

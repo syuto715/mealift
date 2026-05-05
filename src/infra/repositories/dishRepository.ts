@@ -244,6 +244,9 @@ export async function saveDishFromAI(
   const db = await getDatabase();
   const dishId = generateId();
 
+  // sync-skip: AI-estimate path keeps is_my_dish=0; only saveMyDish
+  // (below) sets is_my_dish=1 and enqueues. AI-only dishes stay
+  // local — they aren't the user's curated content.
   await db.runAsync(
     `INSERT INTO dishes (id, name_ja, name_en, category, serving_description, total_calories, total_protein_g, total_fat_g, total_carb_g, is_custom, use_count)
      VALUES (?, ?, NULL, 'other', ?, ?, ?, ?, ?, 1, 0)`,
@@ -257,10 +260,6 @@ export async function saveDishFromAI(
       estimate.totalCarb,
     ],
   );
-  // saveDishFromAI is the AI-estimate path. is_my_dish stays 0 here so
-  // these dishes don't sync. Only saveMyDish (below) sets is_my_dish=1
-  // and triggers enqueue. Skipping the enqueue keeps AI-only dishes
-  // local-only — they're never the user's curated content.
 
   const ingredients: DishIngredient[] = [];
   for (let i = 0; i < estimate.ingredients.length; i++) {
@@ -271,6 +270,7 @@ export async function saveDishFromAI(
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [ingId, dishId, ing.name, ing.amountG, ing.calories, ing.protein, ing.fat, ing.carb, i],
     );
+    // sync-skip: parent dish (saveDishFromAI) is local-only; ingredients follow it.
     ingredients.push({
       id: ingId,
       dishId,
@@ -403,13 +403,12 @@ export async function saveMyDish(
     );
     await enqueueRowFromTable('dishes', dishId, 'UPDATE');
 
-    // Replace ingredients atomically. HARD delete here is intentional
-    // (Phase 6 sign-off #5): regen pattern, not a user-facing delete.
-    // Server-side dish_ingredients rows are not tombstoned for these,
-    // but new ingredient ids INSERT below get enqueued, so the new
-    // shape ends up on the server. Stale server-side ingredient rows
-    // for the previous shape will accumulate — accepted v1 trade-off.
     await db.runAsync('DELETE FROM dish_ingredients WHERE dish_id = ?', [dishId]);
+    // sync-skip: regen pattern (Phase 6 sign-off #5) — HARD delete is
+    // intentional, not a user-facing delete. New ingredient INSERTs
+    // below are enqueued, so the new shape reaches the server. Stale
+    // server-side ingredient rows for the previous shape accumulate —
+    // accepted v1 trade-off.
   } else {
     const insertCols = [
       'id', 'name_ja', 'name_en', 'category', 'serving_description',
