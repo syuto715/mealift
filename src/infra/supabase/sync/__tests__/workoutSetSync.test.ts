@@ -1,0 +1,43 @@
+import { workoutSetSync } from '../workoutSetSync';
+import { runStandardSyncTests } from './standardSyncTests';
+
+runStandardSyncTests({
+  module: workoutSetSync,
+  validLocalPayload: {
+    id: 'set-1',
+    session_id: 'sess-1',
+    exercise_id: 'ex-bench',
+    set_number: 1,
+    weight_kg: 90,
+    reps: 5,
+    rpe: 8,
+    rir: 2,
+    is_warmup: 0,
+    note: null,
+    duration_minutes: null,
+    distance_km: null,
+    calories_burned: null,
+    perceived_intensity: null,
+  },
+  validServerRow: {
+    id: 'set-1',
+    user_id: 'u-1',
+    session_id: 'sess-1',
+    exercise_id: 'ex-bench',
+    set_number: 1,
+    weight_kg: 90,
+    reps: 5,
+    rpe: 8,
+    rir: 2,
+    is_warmup: false,
+    note: null,
+    duration_minutes: null,
+    distance_km: null,
+    calories_burned: null,
+    perceived_intensity: null,
+    updated_at: '2026-05-06T10:00:00Z',
+    deleted_at: null,
+  },
+  expectedServerTable: 'user_workout_sets',
+  expectedLocalTable: 'workout_sets',
+});

@@ -31,6 +31,7 @@ import { workoutSessionSync } from './workoutSessionSync';
 import { workoutRoutineItemSync } from './workoutRoutineItemSync';
 import { mealLogItemSync } from './mealLogItemSync';
 import { dishIngredientSync } from './dishIngredientSync';
+import { workoutSetSync } from './workoutSetSync';
 
 // Cloud Sync Orchestrator (Phase 3-B skeleton).
 //
@@ -134,7 +135,8 @@ export const RESOURCE_MODULES: readonly ResourceSyncModule[] = [
   workoutRoutineItemSync, // → user_workout_routines (routine_id)
   mealLogItemSync,        // → user_meal_logs (meal_log_id)
   dishIngredientSync,     // → user_dishes (dish_id)
-  // LEVEL 3 (Phase 5-D): workout_sets
+  // LEVEL 3 (Phase 5-D): grandchild
+  workoutSetSync,         // → user_workout_sessions (session_id)
 ];
 
 // Constant used in pull batches. Mirrors submissionSync.ts.
