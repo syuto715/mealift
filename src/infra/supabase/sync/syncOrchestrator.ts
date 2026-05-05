@@ -15,6 +15,18 @@ import {
 import { syncSubmissions } from '../submissionSync';
 import { useSyncStatusStore } from '../../../stores/syncStatusStore';
 import { profileSync } from './profileSync';
+import { bodyLogSync } from './bodyLogSync';
+import { workoutRoutineSync } from './workoutRoutineSync';
+import { mealLogSync } from './mealLogSync';
+import { noteSync } from './noteSync';
+import { mealTemplateSync } from './mealTemplateSync';
+import { waterLogSync } from './waterLogSync';
+import { adaptiveGoalSync } from './adaptiveGoalSync';
+import { weeklyReportSync } from './weeklyReportSync';
+import { personalRecordSync } from './personalRecordSync';
+import { progressPhotoSync } from './progressPhotoSync';
+import { customExerciseSync } from './customExerciseSync';
+import { dishSync } from './dishSync';
 
 // Cloud Sync Orchestrator (Phase 3-B skeleton).
 //
@@ -100,12 +112,21 @@ export interface SyncResult {
 export const RESOURCE_MODULES: readonly ResourceSyncModule[] = [
   // LEVEL 0
   profileSync,
-  // LEVEL 1 (Phase 5-B): body_logs, workout_routines, workout_sessions,
-  //   meal_logs, notes, meal_templates, water_logs,
-  //   adaptive_goal_suggestions, weekly_reports, personal_records,
-  //   progress_photos, custom_exercises, dishes
-  // LEVEL 2 (Phase 5-C): workout_routine_items, meal_log_items,
-  //   dish_ingredients
+  // LEVEL 1 (Phase 5-B): no parent FK, can sync in any order among themselves
+  bodyLogSync,
+  workoutRoutineSync,
+  mealLogSync,
+  noteSync,
+  mealTemplateSync,
+  waterLogSync,
+  adaptiveGoalSync,
+  weeklyReportSync,
+  personalRecordSync,
+  progressPhotoSync,
+  customExerciseSync,
+  dishSync,
+  // LEVEL 2 (Phase 5-C): workout_sessions, workout_routine_items,
+  //   meal_log_items, dish_ingredients
   // LEVEL 3 (Phase 5-D): workout_sets
 ];
 

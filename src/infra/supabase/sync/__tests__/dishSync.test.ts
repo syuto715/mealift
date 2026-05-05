@@ -1,0 +1,42 @@
+import { dishSync } from '../dishSync';
+import { runStandardSyncTests } from './standardSyncTests';
+
+runStandardSyncTests({
+  module: dishSync,
+  validLocalPayload: {
+    id: 'd-1',
+    name_ja: 'My Special Dish',
+    name_en: null,
+    category: 'japanese',
+    serving_description: '1人前',
+    total_calories: 500,
+    total_protein_g: 30,
+    total_fat_g: 15,
+    total_carb_g: 50,
+    is_favorite: 1,
+    use_count: 5,
+    last_used_at: null,
+    user_note: 'tasty',
+  },
+  validServerRow: {
+    id: 'd-1',
+    user_id: 'u-1',
+    name_ja: 'My Special Dish',
+    name_en: null,
+    category: 'japanese',
+    serving_description: '1人前',
+    total_calories: 500,
+    total_protein_g: 30,
+    total_fat_g: 15,
+    total_carb_g: 50,
+    is_my_dish: true,
+    is_favorite: true,
+    use_count: 5,
+    last_used_at: null,
+    user_note: 'tasty',
+    updated_at: '2026-05-06T10:00:00Z',
+    deleted_at: null,
+  },
+  expectedServerTable: 'user_dishes',
+  expectedLocalTable: 'dishes',
+});
