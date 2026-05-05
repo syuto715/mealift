@@ -14,6 +14,7 @@ import {
 } from '../../repositories/syncWatermarkRepository';
 import { syncSubmissions } from '../submissionSync';
 import { useSyncStatusStore } from '../../../stores/syncStatusStore';
+import { profileSync } from './profileSync';
 
 // Cloud Sync Orchestrator (Phase 3-B skeleton).
 //
@@ -93,18 +94,19 @@ export interface SyncResult {
 // before their parent and never get applied locally before the parent
 // row exists. See docs/cloud-sync-design.md Part 2-5.
 //
-// Phase 5 will populate this array. Each entry imports the per-resource
-// module's pushOne / pullBatch and adds an object literal here.
+// Each per-resource module exports a ResourceSyncModule object literal.
+// Order matters — see Part 2-5 of the design doc. Push and pull both
+// walk this array forwards.
 export const RESOURCE_MODULES: readonly ResourceSyncModule[] = [
   // LEVEL 0
-  // { localTableName: 'profiles', serverTableName: 'profiles', pushOne, pullBatch },
-  // LEVEL 1
-  // { localTableName: 'body_logs', ... },
-  // ...
-  // LEVEL 2
-  // ...
-  // LEVEL 3
-  // { localTableName: 'workout_sets', ... },
+  profileSync,
+  // LEVEL 1 (Phase 5-B): body_logs, workout_routines, workout_sessions,
+  //   meal_logs, notes, meal_templates, water_logs,
+  //   adaptive_goal_suggestions, weekly_reports, personal_records,
+  //   progress_photos, custom_exercises, dishes
+  // LEVEL 2 (Phase 5-C): workout_routine_items, meal_log_items,
+  //   dish_ingredients
+  // LEVEL 3 (Phase 5-D): workout_sets
 ];
 
 // Constant used in pull batches. Mirrors submissionSync.ts.
