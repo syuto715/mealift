@@ -1,0 +1,21 @@
+# Supabase CLI configuration. Persists per-function settings so that
+# `supabase functions deploy <name>` produces a stable result without
+# extra command-line flags.
+#
+# Without this file, `supabase functions deploy send-push-notifications`
+# defaulted to `verify_jwt = true`, causing the cron job's
+# `Bearer <CRON_SECRET>` (a hex string, not a JWT) to be rejected at
+# the gateway with 401. The fix landed at deploy time as
+# `--no-verify-jwt` but that flag wasn't persisted — next deploy
+# would re-enable JWT verification and silently break cron delivery.
+# Pinning verify_jwt = false here keeps the no-JWT-verification
+# behavior across re-deploys.
+
+project_id = "mealift"
+
+# send-push-notifications — outbox drainer Edge Function, called by
+# pg_cron with a hex Bearer CRON_SECRET (not a JWT). The function
+# performs its own auth check against the secret; gateway-level JWT
+# verification would block the cron call before the function runs.
+[functions.send-push-notifications]
+verify_jwt = false
