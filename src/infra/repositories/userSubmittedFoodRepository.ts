@@ -178,6 +178,22 @@ export async function listSubmissionsByStatus(
   return rows.map(rowToSubmission);
 }
 
+// countSubmissionsByStatus — fast COUNT(*) without fetching the rows.
+// Build 15 / Feature 4 uses this for the nutrition-home My Submissions
+// badge — reading the full list each time the tab focuses would be
+// wasteful when only the integer matters.
+export async function countSubmissionsByStatus(
+  db: SQLiteDatabase,
+  status: SubmissionStatus,
+): Promise<number> {
+  const row = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM user_submitted_foods
+      WHERE submission_status = ?`,
+    [status],
+  );
+  return row?.count ?? 0;
+}
+
 // listAllSubmissions — full local library, newest first. Drives the
 // "my submissions" UI in a future sprint.
 export async function listAllSubmissions(

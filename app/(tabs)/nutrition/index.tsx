@@ -34,6 +34,7 @@ import { format as fmtDate } from 'date-fns';
 import { DAILY_NUTRIENT_TARGETS, NutrientTarget } from '../../../src/constants/dailyNutrientTargets';
 import { canUse } from '../../../src/infra/services/subscriptionService';
 import { useSubscription } from '../../../src/hooks/useSubscription';
+import { usePendingSubmissionCount } from '../../../src/hooks/usePendingSubmissionCount';
 import { historyWindowDaysFor } from '../../../src/domain/subscription/gates';
 
 const MEAL_LABELS: Record<MealType, string> = {
@@ -112,6 +113,7 @@ export default function NutritionScreen() {
 
   const { status: planStatus } = useSubscription();
   const historyWindowDays = historyWindowDaysFor(planStatus);
+  const pendingSubmissionCount = usePendingSubmissionCount();
 
   // Load recorded dates for the month around selectedDate
   useEffect(() => {
@@ -256,9 +258,42 @@ export default function NutritionScreen() {
           <Text style={[styles.title, { color: colors.textPrimary }]}>
             食事
           </Text>
-          <Text style={[styles.dateText, { color: colors.textSecondary }]}>
-            {dateFormatted}
-          </Text>
+          <View style={styles.headerRight}>
+            <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+              {dateFormatted}
+            </Text>
+            {/* My Submissions entry — Build 15 / Feature 4. Routes to
+                /(tabs)/nutrition/my-submissions where the user can see
+                the status of their public_foods submissions. Badge shows
+                pending_review count from usePendingSubmissionCount. */}
+            <TouchableOpacity
+              style={styles.mySubmissionsBtn}
+              onPress={() => router.push('/(tabs)/nutrition/my-submissions')}
+              hitSlop={8}
+              activeOpacity={0.7}
+              testID="nutrition-home-my-submissions-btn"
+            >
+              <Ionicons
+                name="cloud-upload-outline"
+                size={22}
+                color={colors.textSecondary}
+              />
+              {pendingSubmissionCount > 0 ? (
+                <View
+                  style={[
+                    styles.mySubmissionsBadge,
+                    { backgroundColor: colors.warning },
+                  ]}
+                >
+                  <Text style={styles.mySubmissionsBadgeText}>
+                    {pendingSubmissionCount > 99
+                      ? '99+'
+                      : pendingSubmissionCount}
+                  </Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Card>
@@ -699,10 +734,40 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   title: { ...typography.titleLarge },
   dateText: { ...typography.bodyMedium },
+  mySubmissionsBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  mySubmissionsBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mySubmissionsBadgeText: {
+    ...typography.labelSmall,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 10,
+    lineHeight: 12,
+  },
   calorieRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
