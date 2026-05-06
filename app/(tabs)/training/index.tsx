@@ -300,14 +300,22 @@ export default function TrainingScreen() {
           />
         </View>
 
-        {/* Free session button */}
+        {/* Free session button — disabled until profile hydrates so a
+            cold-start tap before the store loads doesn't silently no-op
+            (handleFreeSession early-returns on null profile). */}
         <TouchableOpacity
-          style={[styles.freeSessionButton, { backgroundColor: colors.primary }]}
+          style={[
+            styles.freeSessionButton,
+            { backgroundColor: colors.primary, opacity: profile ? 1 : 0.5 },
+          ]}
           onPress={handleFreeSession}
+          disabled={!profile}
           activeOpacity={0.7}
         >
           <Ionicons name="flash-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.freeSessionText}>フリーセッション</Text>
+          <Text style={styles.freeSessionText}>
+            {profile ? 'フリーセッション' : '読込中...'}
+          </Text>
         </TouchableOpacity>
 
         {/* Routines */}
