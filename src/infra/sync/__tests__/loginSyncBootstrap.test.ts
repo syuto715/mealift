@@ -12,6 +12,16 @@ jest.mock('../../supabase/sync/syncOrchestrator', () => ({
   syncAll: jest.fn(),
 }));
 jest.mock('../../supabase/auth', () => ({ signOut: jest.fn() }));
+// supabase/client transitively pulls react-native-url-polyfill which
+// fails under node; mock to null so the `defaultSupabase` branch is
+// inert by default. Tests that need a client thread it via options.
+jest.mock('../../supabase/client', () => ({ supabase: null }));
+// pushTokenService transitively pulls expo-notifications / expo-constants /
+// react-native; mock the named export so the import chain stops at this
+// boundary. Tests inject behavior via options.registerPushToken.
+jest.mock('../../services/pushTokenService', () => ({
+  registerExpoPushToken: jest.fn(),
+}));
 // AsyncStorage's web fallback references `window`; the in-memory
 // stub keeps zustand's persist middleware happy under node.
 jest.mock('@react-native-async-storage/async-storage', () => {
@@ -325,5 +335,129 @@ describe('runLoginSync — store wiring', () => {
 
     // beginClaim clears lastError; the success path doesn't re-set it.
     expect(useSyncStatusStore.getState().lastError).toBeNull();
+  });
+});
+
+describe('runLoginSync — push token registration (Build 15 / Feature 3)', () => {
+  // The default supabase mock at the top of this file resolves to null,
+  // so registration is skipped unless a test explicitly threads a client.
+
+  const fakeClient = { __mock: 'client' } as never;
+
+  it('fires push token registration after claim succeeds when a client is available', async () => {
+    const claim = jest.fn(async (): Promise<ClaimResult> => ({ kind: 'no_profile' }));
+    const sync = jest.fn(async () => SAMPLE_SYNC_RESULT);
+    const registerPushToken = jest.fn(async () => ({
+      kind: 'registered' as const,
+      token: 'ExponentPushToken[xxx]',
+    }));
+
+    await runLoginSync('auth-uid-1', {
+      db: fakeDb,
+      client: fakeClient,
+      claim,
+      sync,
+      registerPushToken,
+    });
+
+    expect(registerPushToken).toHaveBeenCalledTimes(1);
+    expect(registerPushToken).toHaveBeenCalledWith('auth-uid-1', fakeClient);
+  });
+
+  it('does NOT fire registration on conflict path (signOut precedes any post-claim work)', async () => {
+    const claim = jest.fn(
+      async (): Promise<ClaimResult> => ({
+        kind: 'conflict_different_uid',
+        existingUid: 'other-account-uid',
+      }),
+    );
+    const sync = jest.fn();
+    const registerPushToken = jest.fn();
+    const onSignOut = jest.fn(async () => {});
+
+    await runLoginSync('auth-uid-1', {
+      db: fakeDb,
+      client: fakeClient,
+      claim,
+      sync,
+      registerPushToken,
+      onSignOut,
+    });
+
+    expect(registerPushToken).not.toHaveBeenCalled();
+  });
+
+  it('skips registration when no client is available (default supabase null + no override)', async () => {
+    const claim = jest.fn(async (): Promise<ClaimResult> => ({ kind: 'no_profile' }));
+    const sync = jest.fn(async () => SAMPLE_SYNC_RESULT);
+    const registerPushToken = jest.fn();
+
+    await runLoginSync('auth-uid-1', {
+      db: fakeDb,
+      // client omitted → defaultSupabase (mocked null) → skip
+      claim,
+      sync,
+      registerPushToken,
+    });
+
+    expect(registerPushToken).not.toHaveBeenCalled();
+  });
+
+  it('swallows registration errors without affecting the run outcome', async () => {
+    const claim = jest.fn(async (): Promise<ClaimResult> => ({ kind: 'no_profile' }));
+    const sync = jest.fn(async () => SAMPLE_SYNC_RESULT);
+    // The function rejects — but the production code wraps the call in
+    // void + .catch() so the run completes normally.
+    const registerPushToken = jest.fn(async () => {
+      throw new Error('Expo push API down');
+    });
+
+    const out = await runLoginSync('auth-uid-1', {
+      db: fakeDb,
+      client: fakeClient,
+      claim,
+      sync,
+      registerPushToken,
+    });
+
+    expect(out.kind).toBe('completed');
+    expect(registerPushToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT block syncAll on registration completion (fire-and-forget)', async () => {
+    const order: string[] = [];
+    const claim = jest.fn(async (): Promise<ClaimResult> => {
+      order.push('claim');
+      return { kind: 'no_profile' };
+    });
+    let releaseRegister: (() => void) | null = null;
+    const registerPushToken = jest.fn(
+      () =>
+        new Promise<{ kind: 'registered'; token: string }>((res) => {
+          order.push('register-start');
+          releaseRegister = () =>
+            res({ kind: 'registered', token: 'late' });
+        }),
+    );
+    const sync = jest.fn(async () => {
+      order.push('sync');
+      return SAMPLE_SYNC_RESULT;
+    });
+
+    const runPromise = runLoginSync('auth-uid-1', {
+      db: fakeDb,
+      client: fakeClient,
+      claim,
+      sync,
+      registerPushToken,
+    });
+
+    // syncFn must be reachable before register resolves — fire-and-forget.
+    const out = await runPromise;
+    expect(out.kind).toBe('completed');
+    expect(order).toEqual(['claim', 'register-start', 'sync']);
+
+    // Resolving register late is harmless.
+    releaseRegister!();
   });
 });

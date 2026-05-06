@@ -7,6 +7,8 @@ import {
 } from '../database/dataReconciliation';
 import { syncAll, type SyncResult } from '../supabase/sync/syncOrchestrator';
 import { signOut } from '../supabase/auth';
+import { supabase as defaultSupabase } from '../supabase/client';
+import { registerExpoPushToken } from '../services/pushTokenService';
 import { useSyncStatusStore } from '../../stores/syncStatusStore';
 
 // Phase 7 — login-time pull-and-push bootstrap.
@@ -55,6 +57,7 @@ interface RunLoginSyncOptions {
   claim?: typeof claimLocalDataForUser;
   sync?: typeof syncAll;
   onSignOut?: () => Promise<unknown>;
+  registerPushToken?: typeof registerExpoPushToken;
 }
 
 const CONFLICT_MESSAGE_JP =
@@ -105,6 +108,23 @@ export async function runLoginSync(
 
     // Drop 'claiming' so syncAll's beginRun() can transition to 'syncing'.
     status.finishClaim();
+
+    // Best-effort push token registration (Build 15 / Feature 3). Failure
+    // is non-fatal — sync proceeds regardless. options.client === null
+    // (test injection for "no Supabase") and defaultSupabase missing both
+    // collapse to the no-op branch. The dev-only console.warn surfaces
+    // systemic registration failures during development without polluting
+    // production logs. typeof guard handles the rare jest-async edge
+    // where __DEV__ isn't defined when the .catch microtask runs.
+    const pushClient = options.client ?? defaultSupabase;
+    if (pushClient) {
+      const registerFn = options.registerPushToken ?? registerExpoPushToken;
+      void registerFn(authUid, pushClient).catch((error) => {
+        if (typeof __DEV__ !== 'undefined' && __DEV__) {
+          console.warn('[push token registration] failed:', error);
+        }
+      });
+    }
 
     let result: SyncResult;
     try {
