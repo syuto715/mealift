@@ -122,7 +122,7 @@ const FEATURE_GROUPS: FeatureGroup[] = [
       { label: 'ワークアウト自動提案', free: false, plus: true, pro: true },
       { label: 'カスタム種目登録', free: false, plus: true, pro: true },
       { label: 'PR 全種別・履歴', free: false, plus: true, pro: true },
-      { label: 'バーコードスキャン', free: false, plus: true, pro: true },
+      { label: 'バーコードスキャン', free: true, plus: true, pro: true },
       { label: 'シェア画像生成', free: false, plus: true, pro: true },
     ],
   },
@@ -144,6 +144,7 @@ const FEATURE_GROUPS: FeatureGroup[] = [
 const FREE_FEATURES = [
   '食事・体重・トレーニング記録',
   '食品検索（八訂 2,500品）',
+  'バーコードスキャン',
   '通知リマインダー',
   '履歴30日、進捗写真3枚まで',
 ];
@@ -156,7 +157,6 @@ const PLUS_FEATURES = [
   'ワークアウト自動提案',
   'カスタム種目登録・PR履歴',
   '週次レポート完全版',
-  'バーコードスキャン',
   'シェア画像生成',
 ];
 

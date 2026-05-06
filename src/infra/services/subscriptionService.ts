@@ -38,7 +38,12 @@ export interface FeatureFlags {
 const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
   free: {
     maxRoutines: 3,
-    barcodeScanner: false,
+    // Barcode scanner unlocked for free tier (Build 15 / Feature 2). Sign-off
+    // rationale: zero paying users today, so no downgrade concern, and the
+    // scanner drives food-DB submissions which feed the public_foods loop.
+    // FEATURE_MATRIX is auto-derived from this constant — no other change
+    // needed to flip the gate.
+    barcodeScanner: true,
     photoMealLog: false,
     goalPrediction: true,
     goalPredictionDetailed: false,

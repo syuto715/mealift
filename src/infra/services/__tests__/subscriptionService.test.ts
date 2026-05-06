@@ -28,7 +28,8 @@ describe('subscriptionService — production gating (__DEV__ = false)', () => {
 
   describe('free tier', () => {
     it('blocks plus-tier features', () => {
-      expect(hasFeature('barcodeScanner', 'free')).toBe(false);
+      // Note: barcodeScanner flipped to free in Build 15 — see the
+      // free-open-features test below for the positive assertion.
       expect(hasFeature('progressPhotos', 'free')).toBe(false);
       expect(hasFeature('historyUnlimited', 'free')).toBe(false);
       expect(hasFeature('weeklyReport', 'free')).toBe(false);
@@ -40,17 +41,19 @@ describe('subscriptionService — production gating (__DEV__ = false)', () => {
       expect(hasFeature('aiNutritionEstimate', 'free')).toBe(false);
     });
 
-    it('allows free-open features (healthSync, goalPrediction)', () => {
+    it('allows free-open features (healthSync, goalPrediction, barcodeScanner)', () => {
       // Health integrations were unlocked for free in fix(subscription).
-      // Guard against accidental regression.
+      // Barcode scanner unlocked in Build 15 (feeds public_foods submissions).
+      // Guard against accidental regression on either.
       expect(hasFeature('healthSync', 'free')).toBe(true);
       expect(hasFeature('goalPrediction', 'free')).toBe(true);
+      expect(hasFeature('barcodeScanner', 'free')).toBe(true);
     });
 
     it('returns the free flag set from getFeatureFlags', () => {
       setTier('free');
       const flags = getFeatureFlags();
-      expect(flags.barcodeScanner).toBe(false);
+      expect(flags.barcodeScanner).toBe(true);
       expect(flags.healthSync).toBe(true);
       expect(flags.maxRoutines).toBe(3);
     });
