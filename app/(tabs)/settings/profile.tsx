@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ScrollView,
   View,
@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getColors } from '../../../src/theme/tokens';
+import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { Card, Button, Input, NumberInput, SegmentedControl, Toast } from '../../../src/components/ui';
@@ -19,6 +19,7 @@ import { useProfileStore } from '../../../src/stores/profileStore';
 import { updateProfile as updateProfileDB } from '../../../src/infra/repositories/profileRepository';
 import { calculateAllCalories } from '../../../src/domain/calories';
 import { calculateMacros } from '../../../src/domain/macros';
+import { calculateBMI, type BMICategory } from '../../../src/domain/bmi';
 import { Gender } from '../../../src/types/common';
 
 const GENDER_SEGMENTS = [
@@ -40,6 +41,29 @@ export default function ProfileScreen() {
   const [currentWeightKg, setCurrentWeightKg] = useState<number | null>(profile?.currentWeightKg ?? 70);
   const [saving, setSaving] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
+
+  // BMI re-derives from the live state (not the saved profile) so the
+  // value updates as soon as the user adjusts height or weight, before
+  // they tap save.
+  const bmiResult = useMemo(() => {
+    if (heightCm === null || currentWeightKg === null) return null;
+    return calculateBMI(currentWeightKg, heightCm);
+  }, [heightCm, currentWeightKg]);
+
+  const bmiCategoryColor = (category: BMICategory): string => {
+    switch (category) {
+      case 'normal':
+        return colors.success;
+      case 'underweight':
+        return colors.textSecondary;
+      case 'obese_1':
+      case 'obese_2':
+        return colors.warning;
+      case 'obese_3':
+      case 'obese_4':
+        return colors.error;
+    }
+  };
 
   useEffect(() => {
     if (profile) {
@@ -159,6 +183,39 @@ export default function ProfileScreen() {
               decimals={1}
               suffix="kg"
             />
+
+            {bmiResult ? (
+              <View
+                style={[
+                  styles.bmiRow,
+                  { backgroundColor: colors.surfaceSecondary },
+                ]}
+              >
+                <View style={styles.bmiLabelGroup}>
+                  <Text
+                    style={[styles.bmiLabel, { color: colors.textSecondary }]}
+                  >
+                    BMI
+                  </Text>
+                  <Text
+                    style={[
+                      styles.bmiValue,
+                      { color: colors.textPrimary },
+                    ]}
+                  >
+                    {bmiResult.bmi.toFixed(1)}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.bmiCategory,
+                    { color: bmiCategoryColor(bmiResult.category) },
+                  ]}
+                >
+                  {bmiResult.label}
+                </Text>
+              </View>
+            ) : null}
           </View>
         </Card>
       </ScrollView>
@@ -180,4 +237,20 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxxxl },
   fields: { gap: spacing.lg },
   fieldLabel: { ...typography.labelMedium, marginBottom: spacing.sm },
+  bmiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+  },
+  bmiLabelGroup: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+  },
+  bmiLabel: { ...typography.labelMedium },
+  bmiValue: { ...typography.numberSmall, fontSize: 20 },
+  bmiCategory: { ...typography.labelMedium, fontWeight: '600' },
 });
