@@ -3,6 +3,7 @@ import { generateId } from '../../utils/id';
 import { MealTemplate, MealLogItemInput } from '../../types/nutrition';
 import { MealType } from '../../types/common';
 import { enqueueRowFromTable } from './syncRepository';
+import { bumpPublicFoodUseCount } from '../supabase/publicFoodUseCount';
 
 function rowToTemplate(row: Record<string, unknown>): MealTemplate {
   let items: MealLogItemInput[] = [];
@@ -204,6 +205,10 @@ export async function applyTemplateToMeal(
       ]
     );
     await enqueueRowFromTable('meal_log_items', newId, 'INSERT');
+    // Build 15 / Feature 3 prereq: applying a template materializes
+    // each templated item as a fresh meal-log-item, which counts as a
+    // "use" of the underlying food. Bump server-side use_count.
+    bumpPublicFoodUseCount(item.foodId ?? null);
     copied++;
   }
 

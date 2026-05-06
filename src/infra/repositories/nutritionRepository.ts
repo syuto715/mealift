@@ -2,6 +2,7 @@ import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
 import { MealType } from '../../types/common';
 import { enqueueRowFromTable } from './syncRepository';
+import { bumpPublicFoodUseCount } from '../supabase/publicFoodUseCount';
 import {
   MealLog,
   MealLogItem,
@@ -136,6 +137,10 @@ export async function addMealLogItem(
     ]
   );
   await enqueueRowFromTable('meal_log_items', id, 'INSERT');
+  // Build 15 / Feature 3 prereq: bump server-side public_foods.use_count
+  // when this meal log references a public food. Fire-and-forget; soft
+  // metric. Non-public / null foodId no-ops at the helper level.
+  bumpPublicFoodUseCount(input.foodId);
   const created = await db.getFirstAsync<Record<string, unknown>>(
     'SELECT * FROM meal_log_items WHERE id = ? AND deleted_at IS NULL',
     [id]
@@ -432,6 +437,10 @@ export async function copyMealFromDate(
       ]
     );
     await enqueueRowFromTable('meal_log_items', newId, 'INSERT');
+    // Build 15 / Feature 3 prereq: each copied item is a fresh "use"
+    // of the source food, so bump server-side use_count. food_id from
+    // the source row may be null (manual entries) — helper handles it.
+    bumpPublicFoodUseCount((item.food_id as string) ?? null);
     copied++;
   }
   return copied;

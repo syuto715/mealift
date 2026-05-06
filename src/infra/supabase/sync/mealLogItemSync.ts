@@ -131,6 +131,12 @@ function toServerPayload(
   };
 }
 
+// Server-pull path. INTENTIONALLY does NOT call bumpPublicFoodUseCount
+// (Build 15 / Feature 3). The originating device already bumped
+// use_count when this row was first created — bumping again on each
+// pulled mirror would double-count once per syncing device. Mirrors
+// the audit pattern from Phase 6-E: we filter writes by their origin
+// (client INSERT vs server pull), not by table name.
 async function applyServerRow(
   db: SQLiteDatabase,
   row: ServerRow,
