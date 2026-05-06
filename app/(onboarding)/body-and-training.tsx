@@ -224,6 +224,7 @@ export default function BodyAndTrainingScreen() {
             step={0.1}
             min={20}
             max={300}
+            decimals={1}
             suffix="kg"
           />
           <NumberInput
@@ -233,6 +234,7 @@ export default function BodyAndTrainingScreen() {
             step={0.1}
             min={20}
             max={300}
+            decimals={1}
             suffix="kg"
           />
 
