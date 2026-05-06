@@ -36,6 +36,19 @@ export function NumberInput({
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
 
+  // Dev warning for the step/decimals mismatch that bit body-and-training:
+  // step=0.1 with decimals=0 silently rounds every change back to the
+  // nearest integer, making the +/- buttons appear dead. Issued once
+  // per render rather than once-per-component to keep the implementation
+  // simple — React StrictMode logs it twice in development, which is
+  // acceptable noise for a guard that fires only on developer mistakes.
+  if (__DEV__ && step < 1 && decimals === 0) {
+    console.warn(
+      `NumberInput: step=${step} with decimals=0 rounds all changes to integer. ` +
+        `Did you forget to set decimals? (e.g., step=0.1 → decimals=1)`,
+    );
+  }
+
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState('');
 
