@@ -28,6 +28,8 @@ import {
   requestNotificationPermissions,
 } from '../../../src/infra/services/notificationService';
 import { useProfileStore } from '../../../src/stores/profileStore';
+import { updateProfile as updateProfileDB } from '../../../src/infra/repositories/profileRepository';
+import { Linking } from 'react-native';
 
 // ---------------------------------------------------------------------------
 // Time Picker Modal
@@ -277,6 +279,48 @@ export default function NotificationSettingsScreen() {
 
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
   const [loaded, setLoaded] = useState(false);
+
+  // Build 15 / Feature 3: submission-notifications toggle backed by
+  // profiles.notifications_submission_enabled (synced via profileSync).
+  const profile = useProfileStore((s) => s.profile);
+  const updateProfileStore = useProfileStore((s) => s.updateProfile);
+  const submissionNotificationsEnabled =
+    profile?.notificationsSubmissionEnabled ?? true;
+
+  const handleToggleSubmissionNotifications = useCallback(
+    async (next: boolean) => {
+      if (!profile) return;
+      // When enabling, ensure OS-level Notifications permission is also
+      // granted — without it the toggle being ON is decorative.
+      if (next) {
+        const granted = await requestNotificationPermissions();
+        if (!granted) {
+          Alert.alert(
+            '通知の許可が必要です',
+            '端末の設定からミーリフトの通知を許可してください。',
+            [
+              { text: 'キャンセル', style: 'cancel' },
+              { text: '設定を開く', onPress: () => Linking.openSettings() },
+            ],
+          );
+          // Don't flip the toggle: OS gate not yet open. User can re-try
+          // after enabling in iOS Settings.
+          return;
+        }
+      }
+      // Optimistic local update for immediate UI feedback. Sync layer will
+      // pick up the change via the existing profile sync_queue enqueue.
+      updateProfileStore({ notificationsSubmissionEnabled: next });
+      try {
+        await updateProfileDB(profile.id, { notificationsSubmissionEnabled: next });
+      } catch {
+        // Revert local on persistence failure.
+        updateProfileStore({ notificationsSubmissionEnabled: !next });
+        Alert.alert('エラー', '通知設定の保存に失敗しました。');
+      }
+    },
+    [profile, updateProfileStore],
+  );
 
   // Time picker state
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -586,6 +630,42 @@ export default function NotificationSettingsScreen() {
               />
             </View>
           )}
+        </Card>
+
+        {/* Submission notifications (Build 15 / Feature 3) — opt-out
+            toggle backed by profiles.notifications_submission_enabled.
+            Generic copy because Build 16+ will add 'approved' notif under
+            the same toggle. */}
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          投稿
+        </Text>
+        <Card padding="none">
+          <View style={[styles.row, { borderBottomColor: colors.border }]}>
+            <Ionicons name="cloud-upload-outline" size={22} color={colors.textSecondary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>
+                投稿関連通知
+              </Text>
+              <Text
+                style={{
+                  ...typography.bodySmall,
+                  color: colors.textTertiary,
+                  marginTop: 2,
+                }}
+              >
+                自分の投稿が他のユーザーに使われたときに通知
+              </Text>
+            </View>
+            <Switch
+              value={submissionNotificationsEnabled}
+              onValueChange={handleToggleSubmissionNotifications}
+              disabled={!profile}
+              trackColor={{ false: colors.border, true: colors.primaryLight }}
+              thumbColor={
+                submissionNotificationsEnabled ? colors.primary : colors.surface
+              }
+            />
+          </View>
         </Card>
 
         <Text style={[styles.hint, { color: colors.textTertiary }]}>

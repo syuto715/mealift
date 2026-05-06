@@ -32,6 +32,11 @@ export interface Profile {
   trialStartedAt: ISODateTimeString | null;
   planBillingCycle: PlanBillingCycle | null;
   planExpiresAt: ISODateTimeString | null;
+  // Build 15 / Feature 3: gates submission-related push notifications
+  // (used / approved). Default true; user can opt out via Settings →
+  // 通知 → 投稿関連通知. Generic naming so Build 16+ approval
+  // notifications can share the same toggle.
+  notificationsSubmissionEnabled: boolean;
   createdAt: ISODateTimeString;
   updatedAt: ISODateTimeString;
 }

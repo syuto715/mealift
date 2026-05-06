@@ -23,6 +23,7 @@ import { migrateV20 } from './migrations/v20';
 import { migrateV21 } from './migrations/v21';
 import { migrateV22 } from './migrations/v22';
 import { migrateV23 } from './migrations/v23';
+import { migrateV24 } from './migrations/v24';
 import { seedFoods, seedExercises } from './seed/foods';
 import { seedDishes } from './seed/dishes';
 import { seedFitnessDishes } from './seed/fitnessDishes';
@@ -150,6 +151,10 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     if (currentVersion < 23) {
       await migrateV23(db);
       await db.execAsync('PRAGMA user_version = 23;');
+    }
+    if (currentVersion < 24) {
+      await migrateV24(db);
+      await db.execAsync('PRAGMA user_version = 24;');
     }
 
   } catch (error) {

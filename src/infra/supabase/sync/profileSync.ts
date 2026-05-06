@@ -69,6 +69,9 @@ interface LocalProfilePayload {
   trial_started_at?: string | null;
   plan_billing_cycle?: string | null;
   plan_expires_at?: string | null;
+  // Build 15 / Feature 3 — submission push notifications opt-out.
+  // SQLite stores 0/1, server stores boolean.
+  notifications_submission_enabled?: number | boolean;
 }
 
 // Server row shape — Postgres types as JSON-serialized over the wire.
@@ -99,6 +102,7 @@ interface ServerProfileRow {
   trial_started_at: string | null;
   plan_billing_cycle: string | null;
   plan_expires_at: string | null;
+  notifications_submission_enabled: boolean;
   updated_at: string;
   deleted_at: string | null;
 }
@@ -134,6 +138,10 @@ function toServerPayload(
     trial_started_at: local.trial_started_at ?? null,
     plan_billing_cycle: local.plan_billing_cycle ?? null,
     plan_expires_at: local.plan_expires_at ?? null,
+    notifications_submission_enabled:
+      local.notifications_submission_enabled === undefined
+        ? true
+        : intToBool(local.notifications_submission_enabled),
   };
 }
 
@@ -150,9 +158,10 @@ async function applyServerProfile(
        onboarding_completed, adaptive_goal_enabled, adaptive_goal_sensitivity,
        adaptive_goal_last_shown_at, daily_water_target_ml, onboarding_version,
        trial_started_at, plan_billing_cycle, plan_expires_at,
+       notifications_submission_enabled,
        updated_at, synced_at
      ) VALUES (
-       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now')
+       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now')
      )
      ON CONFLICT(id) DO UPDATE SET
        supabase_uid = excluded.supabase_uid,
@@ -181,6 +190,7 @@ async function applyServerProfile(
        trial_started_at = excluded.trial_started_at,
        plan_billing_cycle = excluded.plan_billing_cycle,
        plan_expires_at = excluded.plan_expires_at,
+       notifications_submission_enabled = excluded.notifications_submission_enabled,
        updated_at = excluded.updated_at,
        synced_at = excluded.synced_at`,
     [
@@ -211,6 +221,9 @@ async function applyServerProfile(
       server.trial_started_at ?? null,
       server.plan_billing_cycle ?? null,
       server.plan_expires_at ?? null,
+      // Default to true if missing on server (backfill safety for
+      // pre-build-15 rows that may exist without the column populated).
+      boolToInt(server.notifications_submission_enabled ?? true),
       server.updated_at,
     ],
   );

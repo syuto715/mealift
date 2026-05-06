@@ -32,6 +32,13 @@ function rowToProfile(row: Record<string, unknown>): Profile {
     trialStartedAt: (row.trial_started_at as string | null) ?? null,
     planBillingCycle: (row.plan_billing_cycle as PlanBillingCycle | null) ?? null,
     planExpiresAt: (row.plan_expires_at as string | null) ?? null,
+    // notifications_submission_enabled: stored as INTEGER 0/1 in SQLite
+    // (Build 15 v24); coerce to boolean. Default true preserves the
+    // server-side default semantics for old rows that pre-date v24.
+    notificationsSubmissionEnabled:
+      row.notifications_submission_enabled == null
+        ? true
+        : Boolean(row.notifications_submission_enabled),
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -92,9 +99,14 @@ export async function updateProfile(id: string, updates: Partial<Profile>): Prom
     trialStartedAt: 'trial_started_at',
     planBillingCycle: 'plan_billing_cycle',
     planExpiresAt: 'plan_expires_at',
+    notificationsSubmissionEnabled: 'notifications_submission_enabled',
   };
 
-  const BOOL_KEYS = new Set(['onboardingCompleted', 'adaptiveGoalEnabled']);
+  const BOOL_KEYS = new Set([
+    'onboardingCompleted',
+    'adaptiveGoalEnabled',
+    'notificationsSubmissionEnabled',
+  ]);
   for (const [key, column] of Object.entries(fieldMap)) {
     if (key in updates) {
       fields.push(`${column} = ?`);
