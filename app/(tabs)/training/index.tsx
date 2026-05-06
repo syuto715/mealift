@@ -62,11 +62,15 @@ export default function TrainingScreen() {
   const [routines, setRoutines] = useState<WorkoutRoutineWithItems[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Create routine modal state
+  // Create routine modal state. The "form" and "picker" stages share a
+  // single RNModal — RN's native modal can only present one at a time
+  // on iOS, so the previous nested-Modal approach silently failed when
+  // the user tapped "+ 種目を追加" from inside the form. Stage swap keeps
+  // the wizard inside a single presented modal.
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [modalStage, setModalStage] = useState<'form' | 'picker'>('form');
   const [routineName, setRoutineName] = useState('');
   const [draftItems, setDraftItems] = useState<RoutineItemDraft[]>([]);
-  const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [exerciseFilter, setExerciseFilter] = useState<string>('all');
   const [exerciseTypeFilter, setExerciseTypeFilter] = useState<ExerciseType>('strength');
@@ -192,10 +196,10 @@ export default function TrainingScreen() {
   }, [exerciseSearch, exerciseFilter, exerciseTypeFilter]);
 
   useEffect(() => {
-    if (showExercisePicker) {
+    if (modalStage === 'picker') {
       loadExercises();
     }
-  }, [showExercisePicker, loadExercises]);
+  }, [modalStage, loadExercises]);
 
   const handleStartRoutine = async (routineId: string) => {
     if (!profile) return;
@@ -229,7 +233,7 @@ export default function TrainingScreen() {
       ...prev,
       { exercise, targetSets: DEFAULT_TARGET_SETS, targetReps: DEFAULT_TARGET_REPS },
     ]);
-    setShowExercisePicker(false);
+    setModalStage('form');
   };
 
   const handleRemoveDraftItem = (exerciseId: string) => {
@@ -429,16 +433,22 @@ export default function TrainingScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Create Routine Modal */}
+      {/* Create Routine Modal — single RNModal that swaps between
+          the routine-form stage and the exercise-picker stage.
+          Nested RNModals don't work on iOS (only one native modal can
+          be presented at a time), so this stage swap is the fix for
+          the "+ 種目を追加" button having no effect. */}
       <Modal
         visible={showCreateModal}
         onClose={() => {
           setShowCreateModal(false);
+          setModalStage('form');
           setRoutineName('');
           setDraftItems([]);
         }}
-        title="ルーティン作成"
+        title={modalStage === 'form' ? 'ルーティン作成' : '種目を選択'}
       >
+        {modalStage === 'form' ? (
         <View style={styles.modalContent}>
           <Input
             label="ルーティン名"
@@ -472,7 +482,7 @@ export default function TrainingScreen() {
 
           <Button
             title="+ 種目を追加"
-            onPress={() => setShowExercisePicker(true)}
+            onPress={() => setModalStage('picker')}
             variant="outline"
             size="sm"
             fullWidth
@@ -483,6 +493,7 @@ export default function TrainingScreen() {
               title="キャンセル"
               onPress={() => {
                 setShowCreateModal(false);
+                setModalStage('form');
                 setRoutineName('');
                 setDraftItems([]);
               }}
@@ -498,14 +509,7 @@ export default function TrainingScreen() {
             />
           </View>
         </View>
-      </Modal>
-
-      {/* Exercise Picker Modal */}
-      <Modal
-        visible={showExercisePicker}
-        onClose={() => setShowExercisePicker(false)}
-        title="種目を選択"
-      >
+        ) : (
         <KeyboardAvoidingView
           style={styles.exercisePickerContent}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -636,7 +640,15 @@ export default function TrainingScreen() {
               </Text>
             }
           />
+          <Button
+            title="フォームに戻る"
+            onPress={() => setModalStage('form')}
+            variant="ghost"
+            size="md"
+            fullWidth
+          />
         </KeyboardAvoidingView>
+        )}
       </Modal>
     </SafeAreaView>
   );
