@@ -642,8 +642,11 @@ async function maybeRecordE1RMObservation(
       sourceSetId: setId,
       observedAt,
     });
-  } catch {
+  } catch (err) {
     // Swallow — observation is a derived metric, not user data.
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.warn('[e1rm] observation insert failed:', err);
+    }
   }
 }
 

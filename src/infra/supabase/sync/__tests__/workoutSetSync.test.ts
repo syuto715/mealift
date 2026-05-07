@@ -18,6 +18,7 @@ runStandardSyncTests({
     distance_km: null,
     calories_burned: null,
     perceived_intensity: null,
+    set_type: 'working',
   },
   validServerRow: {
     id: 'set-1',
@@ -35,6 +36,7 @@ runStandardSyncTests({
     distance_km: null,
     calories_burned: null,
     perceived_intensity: null,
+    set_type: 'working',
     updated_at: '2026-05-06T10:00:00Z',
     deleted_at: null,
   },

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ScrollView,
   View,
@@ -9,7 +9,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors } from '../../../../src/theme/tokens';
 import { typography } from '../../../../src/theme/typography';
@@ -45,27 +45,40 @@ export default function PRDetailScreen() {
   // stable while the user scrolls.
   const sinceISO = useMemo(() => subDays(new Date(), 90).toISOString(), []);
 
-  useEffect(() => {
-    if (!exerciseId) return;
-    (async () => {
-      try {
-        const ex = await getExerciseById(exerciseId);
-        setExerciseName(ex?.nameJa ?? '—');
-        const h = await getPRHistoryForExercise(exerciseId, 'estimated_1rm');
-        setHistory(h);
-        if (profile) {
-          const [obs, current] = await Promise.all([
-            getE1RMHistory(profile.id, exerciseId, sinceISO),
-            getCurrentE1RM(profile.id, exerciseId),
-          ]);
-          setE1RMHistory(obs);
-          setCurrentE1RM(current);
+  // Build 15 / Phase 3 fix — refetch on screen focus so newly-recorded
+  // sets surface in the chart without requiring a full screen remount.
+  // Fires both on initial mount and on every navigation back to this
+  // screen.
+  useFocusEffect(
+    useCallback(() => {
+      if (!exerciseId) return;
+      let cancelled = false;
+      (async () => {
+        try {
+          const ex = await getExerciseById(exerciseId);
+          if (cancelled) return;
+          setExerciseName(ex?.nameJa ?? '—');
+          const h = await getPRHistoryForExercise(exerciseId, 'estimated_1rm');
+          if (cancelled) return;
+          setHistory(h);
+          if (profile) {
+            const [obs, current] = await Promise.all([
+              getE1RMHistory(profile.id, exerciseId, sinceISO),
+              getCurrentE1RM(profile.id, exerciseId),
+            ]);
+            if (cancelled) return;
+            setE1RMHistory(obs);
+            setCurrentE1RM(current);
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
         }
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [exerciseId, profile, sinceISO]);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [exerciseId, profile, sinceISO]),
+  );
 
   const growthPerMonth = (() => {
     if (history.length < 2) return null;

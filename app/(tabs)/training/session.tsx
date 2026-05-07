@@ -164,6 +164,7 @@ export default function SessionScreen() {
                   caloriesBurned: null,
                   perceivedIntensity: previousSets[i]?.perceivedIntensity ?? null,
                   completed: false,
+                  setType: 'working',
                 });
               }
 
@@ -283,6 +284,15 @@ export default function SessionScreen() {
         distanceKm: set.distanceKm,
         caloriesBurned: kcalToSave,
         perceivedIntensity: set.perceivedIntensity,
+        // Build 15 / Feature 5-O — pass the per-set role through to
+        // workout_sets.set_type. Defaults to 'working' for sets created
+        // before pattern UI is wired in Phase 5.
+        setType: set.setType,
+        // Keep isWarmup in sync for the legacy boolean column. addSet
+        // derives set_type from isWarmup if setType is omitted; passing
+        // both keeps the columns aligned for any reader that still
+        // checks is_warmup directly (e.g. cardio totals filter).
+        isWarmup: set.setType === 'warmup',
       });
     } catch {
       Alert.alert('エラー', 'セットの保存に失敗しました');
@@ -381,6 +391,7 @@ export default function SessionScreen() {
         caloriesBurned: null,
         perceivedIntensity: previousSets[i]?.perceivedIntensity ?? null,
         completed: false,
+        setType: 'working',
       });
     }
 

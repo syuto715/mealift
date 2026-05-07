@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { MuscleGroup } from '../types/common';
-import { ExerciseType, WorkoutSet } from '../types/workout';
+import { ExerciseType, SetType, WorkoutSet } from '../types/workout';
 import { generateId } from '../utils/id';
 
 export interface SetInSession {
@@ -14,6 +14,10 @@ export interface SetInSession {
   caloriesBurned: number | null;
   perceivedIntensity: number | null;
   completed: boolean;
+  // Build 15 / Feature 5-O — per-set role. Defaults to 'working' when
+  // the user adds a set; warmup/top/drop/failure are set later via
+  // routine pattern auto-fill (Phase 5) or per-set override UI (Phase 5).
+  setType: SetType;
 }
 
 export interface ExerciseInSession {
@@ -50,6 +54,7 @@ interface WorkoutState {
         | 'distanceKm'
         | 'caloriesBurned'
         | 'perceivedIntensity'
+        | 'setType'
       >
     >,
   ) => void;
@@ -106,6 +111,7 @@ export const useWorkoutStore = create<WorkoutState>((set) => ({
           caloriesBurned: null,
           perceivedIntensity: lastSet?.perceivedIntensity ?? null,
           completed: false,
+          setType: 'working',
         };
         return { ...ex, sets: [...ex.sets, newSet] };
       }),
@@ -163,6 +169,10 @@ export const useWorkoutStore = create<WorkoutState>((set) => ({
           caloriesBurned: null,
           perceivedIntensity: prev.perceivedIntensity ?? null,
           completed: false,
+          // Build 15 / Feature 5-O — copy the prior session's per-set
+          // role. Pre-v26 rows surface as 'warmup' (when is_warmup=1)
+          // or 'working' via rowToSet's fallback.
+          setType: prev.setType,
         }));
 
         return { ...ex, sets: newSets };

@@ -40,6 +40,10 @@ interface LocalPayload {
   distance_km?: number | null;
   calories_burned?: number | null;
   perceived_intensity?: number | null;
+  // Build 15 / Feature 5-O. Optional on the local payload — pre-v26
+  // rows lack this column; toServerPayload coerces missing values to
+  // 'working' so the server CHECK constraint never sees a stale row.
+  set_type?: string;
   deleted_at?: string | null;
 }
 
@@ -59,6 +63,7 @@ interface ServerRow {
   calories_burned: number | null;
   perceived_intensity: number | null;
   note: string | null;
+  set_type: string;
   updated_at: string;
   deleted_at: string | null;
 }
@@ -83,6 +88,7 @@ function toServerPayload(
     calories_burned: local.calories_burned ?? null,
     perceived_intensity: local.perceived_intensity ?? null,
     note: local.note ?? null,
+    set_type: local.set_type ?? 'working',
     deleted_at: local.deleted_at ?? null,
   };
 }
@@ -96,9 +102,9 @@ async function applyServerRow(
        id, session_id, exercise_id, set_number, weight_kg, reps,
        rpe, rir, is_warmup, note,
        duration_minutes, distance_km, calories_burned, perceived_intensity,
-       updated_at, synced_at
+       set_type, updated_at, synced_at
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(id) DO UPDATE SET
        session_id = excluded.session_id,
        exercise_id = excluded.exercise_id,
@@ -113,6 +119,7 @@ async function applyServerRow(
        distance_km = excluded.distance_km,
        calories_burned = excluded.calories_burned,
        perceived_intensity = excluded.perceived_intensity,
+       set_type = excluded.set_type,
        updated_at = excluded.updated_at,
        synced_at = excluded.synced_at`,
     [
@@ -130,6 +137,7 @@ async function applyServerRow(
       row.distance_km,
       row.calories_burned,
       row.perceived_intensity,
+      row.set_type ?? 'working',
       row.updated_at,
     ],
   );
