@@ -13,7 +13,11 @@ export type AIErrorCode =
   | 'gemini_error'
   | 'internal_error'
   | 'network_error'
-  | 'not_configured';
+  | 'not_configured'
+  // Build 15 / Session 8 / Feature 5-元 — generate-workout-menu EF
+  // returns these on top of the nutrition pipeline's set.
+  | 'no_equipment'
+  | 'validation_failed';
 
 export class AIError extends Error {
   code: AIErrorCode;
@@ -86,7 +90,10 @@ async function getAccessToken(): Promise<string> {
   return token;
 }
 
-async function callEdgeFunction<TReq, TRes>(
+// Exported for sibling AI services (aiWorkoutService Build 15 / Session 8).
+// Token retrieval, error mapping, and structured-error parsing are
+// uniform across every Edge Function call in the app.
+export async function callEdgeFunction<TReq, TRes>(
   path: string,
   body: TReq,
 ): Promise<TRes> {

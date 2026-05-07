@@ -149,6 +149,33 @@ export async function getExerciseById(exerciseId: string): Promise<Exercise | nu
   return row ? rowToExercise(row) : null;
 }
 
+// Build 15 / Session 8 / Feature 5-元 — exact-slug lookup for the
+// AI menu's slug → Exercise resolver. Tier 1 of the 3-tier matching
+// strategy (design §6.8.4).
+export async function findExerciseBySlug(slug: string): Promise<Exercise | null> {
+  if (!slug) return null;
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<Record<string, unknown>>(
+    'SELECT * FROM exercises WHERE slug = ? AND deleted_at IS NULL LIMIT 1',
+    [slug],
+  );
+  return row ? rowToExercise(row) : null;
+}
+
+// Returns every non-null slug currently in the exercises seed. Used
+// by aiWorkoutService to prepare the allowlist sent to Gemini when
+// the caller doesn't pre-filter by muscle group (default Phase 5
+// behavior; Phase 6+ may pass a filtered subset).
+export async function listAllExerciseSlugs(): Promise<string[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ slug: string }>(
+    `SELECT slug FROM exercises
+      WHERE slug IS NOT NULL AND deleted_at IS NULL
+      ORDER BY sort_order, slug`,
+  );
+  return rows.map((r) => r.slug);
+}
+
 export async function getExerciseDefaultRestSeconds(exerciseId: string): Promise<number | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ default_rest_seconds: number | null }>(
