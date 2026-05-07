@@ -217,16 +217,18 @@ describe('violatesEnqueueContract', () => {
 });
 
 describe('USER_PRIVATE_TABLES — invariant', () => {
-  it('matches the resource-sync registry list (19 tables)', () => {
+  it('matches the resource-sync registry list (20 tables)', () => {
     // Same set as the v23 migration / soft-delete audit. Must
     // be the union of every table with a per-resource sync module.
-    // Build 15 Session 6 / v26 added estimated_1rm → 19 total.
-    expect(USER_PRIVATE_TABLES.size).toBe(19);
+    // Build 15 Session 6 / v26 added estimated_1rm; Session 8 / v28
+    // added user_equipment → 20 total.
+    expect(USER_PRIVATE_TABLES.size).toBe(20);
     expect(USER_PRIVATE_TABLES.has('profiles')).toBe(true);
     expect(USER_PRIVATE_TABLES.has('exercises')).toBe(true);
     expect(USER_PRIVATE_TABLES.has('workout_sets')).toBe(true);
     expect(USER_PRIVATE_TABLES.has('dish_ingredients')).toBe(true);
     expect(USER_PRIVATE_TABLES.has('estimated_1rm')).toBe(true);
+    expect(USER_PRIVATE_TABLES.has('user_equipment')).toBe(true);
     // Foods table is canonical (not user-private)
     expect(USER_PRIVATE_TABLES.has('foods')).toBe(false);
   });

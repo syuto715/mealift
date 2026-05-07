@@ -43,6 +43,7 @@ const USER_PRIVATE_TABLES = new Set<string>([
   'dish_ingredients',
   'personal_records',
   'estimated_1rm',
+  'user_equipment',
   'water_logs',
   'adaptive_goal_suggestions',
   'weekly_reports',
