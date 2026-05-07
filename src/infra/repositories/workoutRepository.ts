@@ -4,6 +4,8 @@ import { MuscleGroup } from '../../types/common';
 import { enqueueRowFromTable } from './syncRepository';
 import { estimate1RM } from '../../domain/oneRepMax';
 import { insertE1RMObservation } from './oneRepMaxRepository';
+import { computeRpeAdjustmentFactor } from '../../domain/rpeAdjustment';
+import { parseTargetReps } from '../../utils/parseTargetReps';
 import {
   Exercise,
   ExerciseType,
@@ -635,15 +637,29 @@ async function maybeRecordE1RMObservation(
     if (weightKg <= 0 || reps < 1 || reps > 10) return;
 
     const db = await getDatabase();
+    // JOIN extended in Phase 3 — target_reps now comes from the
+    // routine_item bound to this session (LEFT JOIN so free-form
+    // sessions, where session.routine_id is null, fall through with
+    // target_reps = NULL and skip the §7.3 adjustment branch). LIMIT 1
+    // protects against routine_items with duplicate (routine_id,
+    // exercise_id) rows (no UNIQUE constraint at the column level).
     const ctx = await db.getFirstAsync<{
       profile_id: string;
       exercise_type: string;
+      target_reps: string | null;
     }>(
-      `SELECT s.profile_id AS profile_id, e.exercise_type AS exercise_type
+      `SELECT s.profile_id AS profile_id,
+              e.exercise_type AS exercise_type,
+              ri.target_reps AS target_reps
          FROM workout_sessions s
          JOIN exercises e ON e.id = ?
-        WHERE s.id = ? AND s.deleted_at IS NULL AND e.deleted_at IS NULL`,
-      [input.exerciseId, sessionId],
+         LEFT JOIN workout_routine_items ri
+                ON ri.routine_id = s.routine_id
+               AND ri.exercise_id = ?
+               AND ri.deleted_at IS NULL
+        WHERE s.id = ? AND s.deleted_at IS NULL AND e.deleted_at IS NULL
+        LIMIT 1`,
+      [input.exerciseId, input.exerciseId, sessionId],
     );
     if (!ctx) return;
     if (ctx.exercise_type !== 'strength') return;
@@ -659,6 +675,33 @@ async function maybeRecordE1RMObservation(
       sourceSetId: setId,
       observedAt,
     });
+
+    // Build 15 / Phase 3 — §7.3 RPE-feedback adjustment. After the
+    // raw observation lands, append a second row with formula
+    // 'adjusted' if the (RPE, reps, target) tuple matches one of the
+    // three rules. Using the same source_set_id + observed_at links
+    // adjusted point to its origin set; the chart renders both kinds
+    // (raw + adjusted) on the same timeline. RPE-only adjustment —
+    // RIR is not consulted as a fallback (RIR-only sets pass through
+    // unadjusted; user logging RPE in a future session triggers the
+    // feedback loop).
+    const targetReps = parseTargetReps(ctx.target_reps);
+    const adjustment = computeRpeAdjustmentFactor({
+      rpe: input.rpe ?? null,
+      reps,
+      targetReps,
+    });
+    if (adjustment) {
+      const adjustedValue = Number((value * adjustment.factor).toFixed(2));
+      await insertE1RMObservation({
+        profileId: ctx.profile_id,
+        exerciseId: input.exerciseId,
+        e1rmKg: adjustedValue,
+        formula: 'adjusted',
+        sourceSetId: setId,
+        observedAt,
+      });
+    }
   } catch (err) {
     // Swallow — observation is a derived metric, not user data.
     if (typeof __DEV__ !== 'undefined' && __DEV__) {

@@ -22,7 +22,11 @@
 
 export const EPLEY_REPS_CAP = 30;
 
-export type OneRepMaxFormula = 'brzycki' | 'epley' | 'avg';
+// 'adjusted' joins the formula union as the marker for §7.3
+// RPE-feedback adjusted observations (Build 15 / Session 7 Phase 3).
+// Server CHECK on user_estimated_1rm.formula already includes
+// 'adjusted' (migration 20260507000008).
+export type OneRepMaxFormula = 'brzycki' | 'epley' | 'avg' | 'adjusted';
 
 export interface OneRepMaxResult {
   value: number;
