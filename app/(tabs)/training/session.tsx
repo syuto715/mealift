@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   ScrollView,
   View,
@@ -25,8 +25,10 @@ import { useWorkoutStore, ExerciseInSession, SetInSession } from '../../../src/s
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { useRestTimer } from '../../../src/hooks/useRestTimer';
 import { MUSCLE_GROUPS, MUSCLE_GROUP_MAP } from '../../../src/constants/muscleGroups';
+import { EQUIPMENT_CATEGORIES, EquipmentKey } from '../../../src/constants/equipment';
 import { MuscleGroup } from '../../../src/types/common';
 import { Exercise, ExerciseType, WorkoutSet } from '../../../src/types/workout';
+import { filterExercisesByEquipment } from '../../../src/utils/filterExercisesByEquipment';
 import { generateId } from '../../../src/utils/id';
 import { getISODate } from '../../../src/utils/format';
 import * as workoutRepo from '../../../src/infra/repositories/workoutRepository';
@@ -96,7 +98,12 @@ export default function SessionScreen() {
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [exerciseFilter, setExerciseFilter] = useState<string>('all');
   const [exerciseTypeFilter, setExerciseTypeFilter] = useState<ExerciseType>('strength');
-  const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
+  const [rawExercises, setRawExercises] = useState<Exercise[]>([]);
+  // Equipment chip filter (Build 15 / Feature 5-P). Multi-select OR within
+  // the chip row; empty selection = no filter. Lives in useMemo (NOT in
+  // loadExercises deps) so chip toggle is instant in-memory and never
+  // triggers a SQL refetch.
+  const [selectedEquipments, setSelectedEquipments] = useState<EquipmentKey[]>([]);
 
   // Expandable detail rows: key = `${exerciseId}_${setId}`
   const [expandedSets, setExpandedSets] = useState<Record<string, boolean>>({});
@@ -215,11 +222,24 @@ export default function SessionScreen() {
         data = await workoutRepo.getExercises();
       }
       data = data.filter((ex) => ex.exerciseType === exerciseTypeFilter);
-      setAvailableExercises(data);
+      setRawExercises(data);
     } catch {
       // silently fail
     }
   }, [exerciseSearch, exerciseFilter, exerciseTypeFilter]);
+
+  const displayExercises = useMemo(
+    () => filterExercisesByEquipment(rawExercises, selectedEquipments),
+    [rawExercises, selectedEquipments],
+  );
+
+  const toggleEquipment = useCallback((key: EquipmentKey) => {
+    setSelectedEquipments((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  }, []);
+
+  const clearEquipments = useCallback(() => setSelectedEquipments([]), []);
 
   useEffect(() => {
     if (showAddExercise) {
@@ -1183,8 +1203,53 @@ export default function SessionScreen() {
             </ScrollView>
           )}
 
+          {exerciseTypeFilter === 'strength' && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              {EQUIPMENT_CATEGORIES.map((cat) => {
+                const selected = selectedEquipments.includes(cat.key);
+                return (
+                  <TouchableOpacity
+                    key={cat.key}
+                    style={[
+                      styles.filterChip,
+                      {
+                        backgroundColor: selected ? colors.primary : colors.surfaceSecondary,
+                        borderRadius: radius.full,
+                      },
+                    ]}
+                    onPress={() => toggleEquipment(cat.key)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        { color: selected ? '#FFFFFF' : colors.textSecondary },
+                      ]}
+                    >
+                      {cat.ja}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              {selectedEquipments.length > 0 && (
+                <TouchableOpacity
+                  style={[styles.filterChip, { borderRadius: radius.full }]}
+                  onPress={clearEquipments}
+                >
+                  <Text style={[styles.filterChipText, { color: colors.textSecondary }]}>
+                    クリア
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+          )}
+
           <FlatList
-            data={availableExercises}
+            data={displayExercises}
             keyExtractor={(item) => item.id}
             style={styles.exerciseList}
             keyboardShouldPersistTaps="handled"

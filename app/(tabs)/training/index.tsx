@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ScrollView,
   View,
@@ -22,11 +22,13 @@ import { Card, Button, Badge, Modal, Input, SegmentedControl } from '../../../sr
 import { VolumeChart } from '../../../src/components/training/VolumeChart';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { MUSCLE_GROUPS, MUSCLE_GROUP_MAP } from '../../../src/constants/muscleGroups';
+import { EQUIPMENT_CATEGORIES, EquipmentKey } from '../../../src/constants/equipment';
 import { DEFAULT_TARGET_SETS, DEFAULT_TARGET_REPS } from '../../../src/constants/defaults';
 import { MuscleGroup } from '../../../src/types/common';
 import { Exercise, ExerciseType, WorkoutRoutineWithItems, WorkoutSession, WorkoutSet } from '../../../src/types/workout';
 import { calculateSessionVolume, calculateWorkingSets } from '../../../src/domain/volume';
 import * as workoutRepo from '../../../src/infra/repositories/workoutRepository';
+import { filterExercisesByEquipment } from '../../../src/utils/filterExercisesByEquipment';
 import { startOfWeek, endOfWeek, subWeeks, format } from 'date-fns';
 
 interface RoutineItemDraft {
@@ -74,7 +76,12 @@ export default function TrainingScreen() {
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [exerciseFilter, setExerciseFilter] = useState<string>('all');
   const [exerciseTypeFilter, setExerciseTypeFilter] = useState<ExerciseType>('strength');
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [rawExercises, setRawExercises] = useState<Exercise[]>([]);
+  // Equipment chip filter (Build 15 / Feature 5-P). Multi-select OR within
+  // the chip row; empty selection = no filter. Lives in useMemo (NOT in
+  // loadExercises deps) so chip toggle is instant in-memory and never
+  // triggers a SQL refetch.
+  const [selectedEquipments, setSelectedEquipments] = useState<EquipmentKey[]>([]);
 
   // Volume analysis state
   const [currentWeekVolume, setCurrentWeekVolume] = useState<Record<MuscleGroup, number>>(createEmptyVolumeRecord());
@@ -189,11 +196,24 @@ export default function TrainingScreen() {
       // muscleGroup filter only applies to strength; cardio/sports/other are
       // all tagged as full_body, so we filter by exerciseType at the JS layer.
       data = data.filter((ex) => ex.exerciseType === exerciseTypeFilter);
-      setExercises(data);
+      setRawExercises(data);
     } catch {
       // silently fail
     }
   }, [exerciseSearch, exerciseFilter, exerciseTypeFilter]);
+
+  const displayExercises = useMemo(
+    () => filterExercisesByEquipment(rawExercises, selectedEquipments),
+    [rawExercises, selectedEquipments],
+  );
+
+  const toggleEquipment = useCallback((key: EquipmentKey) => {
+    setSelectedEquipments((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  }, []);
+
+  const clearEquipments = useCallback(() => setSelectedEquipments([]), []);
 
   useEffect(() => {
     if (modalStage === 'picker') {
@@ -595,8 +615,53 @@ export default function TrainingScreen() {
             </ScrollView>
           )}
 
+          {exerciseTypeFilter === 'strength' && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              {EQUIPMENT_CATEGORIES.map((cat) => {
+                const selected = selectedEquipments.includes(cat.key);
+                return (
+                  <TouchableOpacity
+                    key={cat.key}
+                    style={[
+                      styles.filterChip,
+                      {
+                        backgroundColor: selected ? colors.primary : colors.surfaceSecondary,
+                        borderRadius: radius.full,
+                      },
+                    ]}
+                    onPress={() => toggleEquipment(cat.key)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        { color: selected ? '#FFFFFF' : colors.textSecondary },
+                      ]}
+                    >
+                      {cat.ja}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              {selectedEquipments.length > 0 && (
+                <TouchableOpacity
+                  style={[styles.filterChip, { borderRadius: radius.full }]}
+                  onPress={clearEquipments}
+                >
+                  <Text style={[styles.filterChipText, { color: colors.textSecondary }]}>
+                    クリア
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+          )}
+
           <FlatList
-            data={exercises}
+            data={displayExercises}
             keyExtractor={(item) => item.id}
             style={styles.exerciseList}
             keyboardShouldPersistTaps="handled"
