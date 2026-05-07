@@ -310,7 +310,13 @@ export async function getRoutines(profileId: string): Promise<WorkoutRoutineWith
 export async function createRoutine(
   profileId: string,
   name: string,
-  items: { exerciseId: string; targetSets: number; targetReps: string }[],
+  items: {
+    exerciseId: string;
+    targetSets: number;
+    targetReps: string;
+    setPattern?: SetPattern | null;
+    patternConfig?: string | null;
+  }[],
 ): Promise<WorkoutRoutine> {
   const db = await getDatabase();
   const id = generateId();
@@ -326,8 +332,19 @@ export async function createRoutine(
     const item = items[i];
     const itemId = generateId();
     await db.runAsync(
-      'INSERT INTO workout_routine_items (id, routine_id, exercise_id, target_sets, target_reps, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-      [itemId, id, item.exerciseId, item.targetSets, item.targetReps, i],
+      `INSERT INTO workout_routine_items
+         (id, routine_id, exercise_id, target_sets, target_reps, sort_order, set_pattern, pattern_config)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        itemId,
+        id,
+        item.exerciseId,
+        item.targetSets,
+        item.targetReps,
+        i,
+        item.setPattern ?? null,
+        item.patternConfig ?? null,
+      ],
     );
     await enqueueRowFromTable('workout_routine_items', itemId, 'INSERT');
   }

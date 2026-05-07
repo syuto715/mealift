@@ -10,6 +10,8 @@ runStandardSyncTests({
     target_sets: 3,
     target_reps: '8-10',
     sort_order: 0,
+    set_pattern: null,
+    pattern_config: null,
   },
   validServerRow: {
     id: 'ri-1',
@@ -19,6 +21,8 @@ runStandardSyncTests({
     target_sets: 3,
     target_reps: '8-10',
     sort_order: 0,
+    set_pattern: null,
+    pattern_config: null,
     updated_at: '2026-05-06T10:00:00Z',
     deleted_at: null,
   },

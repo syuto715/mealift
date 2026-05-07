@@ -25,7 +25,8 @@ import { MUSCLE_GROUPS, MUSCLE_GROUP_MAP } from '../../../src/constants/muscleGr
 import { EQUIPMENT_CATEGORIES, EquipmentKey } from '../../../src/constants/equipment';
 import { DEFAULT_TARGET_SETS, DEFAULT_TARGET_REPS } from '../../../src/constants/defaults';
 import { MuscleGroup } from '../../../src/types/common';
-import { Exercise, ExerciseType, WorkoutRoutineWithItems, WorkoutSession, WorkoutSet } from '../../../src/types/workout';
+import { Exercise, ExerciseType, SetPattern, WorkoutRoutineWithItems, WorkoutSession, WorkoutSet } from '../../../src/types/workout';
+import { PATTERN_PRESETS, getPatternPreset } from '../../../src/constants/setPatterns';
 import { calculateSessionVolume, calculateWorkingSets } from '../../../src/domain/volume';
 import * as workoutRepo from '../../../src/infra/repositories/workoutRepository';
 import { filterExercisesByEquipment } from '../../../src/utils/filterExercisesByEquipment';
@@ -35,6 +36,9 @@ interface RoutineItemDraft {
   exercise: Exercise;
   targetSets: number;
   targetReps: string;
+  // Build 15 / Feature 5-O — pattern preset selection. null = standard.
+  setPattern: SetPattern | null;
+  patternConfig: string | null;
 }
 
 const EXERCISE_TYPE_TABS: { label: string; value: ExerciseType }[] = [
@@ -251,9 +255,40 @@ export default function TrainingScreen() {
     if (draftItems.some((d) => d.exercise.id === exercise.id)) return;
     setDraftItems((prev) => [
       ...prev,
-      { exercise, targetSets: DEFAULT_TARGET_SETS, targetReps: DEFAULT_TARGET_REPS },
+      {
+        exercise,
+        targetSets: DEFAULT_TARGET_SETS,
+        targetReps: DEFAULT_TARGET_REPS,
+        setPattern: null,
+        patternConfig: null,
+      },
     ]);
     setModalStage('form');
+  };
+
+  // Build 15 / Feature 5-O — apply a preset to a draft item. The
+  // preset overwrites target_sets / target_reps / pattern_config to the
+  // preset defaults; manual edits to those fields after preset
+  // selection are preserved (next preset selection will overwrite
+  // again).
+  const handleSelectPattern = (
+    exerciseId: string,
+    pattern: SetPattern | null,
+  ) => {
+    const preset = getPatternPreset(pattern);
+    setDraftItems((prev) =>
+      prev.map((d) =>
+        d.exercise.id !== exerciseId
+          ? d
+          : {
+              ...d,
+              setPattern: preset.setPattern,
+              patternConfig: preset.patternConfigJson,
+              targetSets: preset.defaultTargetSets,
+              targetReps: preset.defaultTargetReps,
+            },
+      ),
+    );
   };
 
   const handleRemoveDraftItem = (exerciseId: string) => {
@@ -270,6 +305,8 @@ export default function TrainingScreen() {
           exerciseId: d.exercise.id,
           targetSets: d.targetSets,
           targetReps: d.targetReps,
+          setPattern: d.setPattern,
+          patternConfig: d.patternConfig,
         })),
       );
       setShowCreateModal(false);
@@ -486,17 +523,60 @@ export default function TrainingScreen() {
               key={item.exercise.id}
               style={[styles.draftItem, { borderBottomColor: colors.border }]}
             >
-              <View style={styles.draftItemInfo}>
-                <Text style={[styles.draftItemName, { color: colors.textPrimary }]}>
-                  {item.exercise.nameJa}
-                </Text>
-                <Text style={[styles.draftItemMeta, { color: colors.textTertiary }]}>
-                  {item.targetSets}セット / {item.targetReps}回
-                </Text>
+              <View style={styles.draftItemRow}>
+                <View style={styles.draftItemInfo}>
+                  <Text style={[styles.draftItemName, { color: colors.textPrimary }]}>
+                    {item.exercise.nameJa}
+                  </Text>
+                  <Text style={[styles.draftItemMeta, { color: colors.textTertiary }]}>
+                    {item.targetSets}セット / {item.targetReps}回
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => handleRemoveDraftItem(item.exercise.id)}>
+                  <Ionicons name="close-circle" size={22} color={colors.error} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => handleRemoveDraftItem(item.exercise.id)}>
-                <Ionicons name="close-circle" size={22} color={colors.error} />
-              </TouchableOpacity>
+              {/* Build 15 / Feature 5-O — set pattern preset chips. Single
+                  select; tapping a chip applies the preset's defaults
+                  for target_sets / target_reps / pattern_config. */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.patternChipScroll}
+                contentContainerStyle={styles.patternChipContent}
+              >
+                {PATTERN_PRESETS.map((preset) => {
+                  const selected = item.setPattern === preset.setPattern;
+                  return (
+                    <TouchableOpacity
+                      key={preset.ja}
+                      style={[
+                        styles.patternChip,
+                        {
+                          backgroundColor: selected
+                            ? colors.primary
+                            : colors.surfaceSecondary,
+                          borderRadius: radius.full,
+                        },
+                      ]}
+                      onPress={() =>
+                        handleSelectPattern(item.exercise.id, preset.setPattern)
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.patternChipText,
+                          {
+                            color: selected ? '#FFFFFF' : colors.textSecondary,
+                          },
+                        ]}
+                      >
+                        {preset.ja}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </View>
           ))}
 
@@ -795,14 +875,24 @@ const styles = StyleSheet.create({
   modalContent: { gap: spacing.lg },
   sectionLabel: { ...typography.labelMedium, marginTop: spacing.sm },
   draftItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: spacing.sm,
     borderBottomWidth: 0.5,
+    gap: spacing.xs,
+  },
+  draftItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   draftItemInfo: { flex: 1 },
   draftItemName: { ...typography.bodyMedium },
   draftItemMeta: { ...typography.bodySmall },
+  patternChipScroll: { flexGrow: 0 },
+  patternChipContent: { gap: spacing.xs },
+  patternChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  patternChipText: { ...typography.labelSmall, fontSize: 11 },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',

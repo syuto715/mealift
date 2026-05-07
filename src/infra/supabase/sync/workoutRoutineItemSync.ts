@@ -26,6 +26,10 @@ interface LocalPayload {
   target_sets?: number;
   target_reps?: string | null;
   sort_order?: number;
+  // Build 15 / Feature 5-O — pattern preset on this routine item.
+  // Optional on the local payload for pre-v26 row defense.
+  set_pattern?: string | null;
+  pattern_config?: string | null;
   deleted_at?: string | null;
 }
 
@@ -37,6 +41,8 @@ interface ServerRow {
   target_sets: number;
   target_reps: string | null;
   sort_order: number;
+  set_pattern: string | null;
+  pattern_config: string | null;
   updated_at: string;
   deleted_at: string | null;
 }
@@ -53,6 +59,8 @@ function toServerPayload(
     target_sets: local.target_sets ?? 3,
     target_reps: local.target_reps ?? null,
     sort_order: local.sort_order ?? 0,
+    set_pattern: local.set_pattern ?? null,
+    pattern_config: local.pattern_config ?? null,
     deleted_at: local.deleted_at ?? null,
   };
 }
@@ -64,15 +72,17 @@ async function applyServerRow(
   await db.runAsync(
     `INSERT INTO workout_routine_items (
        id, routine_id, exercise_id, target_sets, target_reps,
-       sort_order, updated_at, synced_at
+       sort_order, set_pattern, pattern_config, updated_at, synced_at
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(id) DO UPDATE SET
        routine_id = excluded.routine_id,
        exercise_id = excluded.exercise_id,
        target_sets = excluded.target_sets,
        target_reps = excluded.target_reps,
        sort_order = excluded.sort_order,
+       set_pattern = excluded.set_pattern,
+       pattern_config = excluded.pattern_config,
        updated_at = excluded.updated_at,
        synced_at = excluded.synced_at`,
     [
@@ -82,6 +92,8 @@ async function applyServerRow(
       row.target_sets,
       row.target_reps,
       row.sort_order,
+      row.set_pattern ?? null,
+      row.pattern_config ?? null,
       row.updated_at,
     ],
   );
