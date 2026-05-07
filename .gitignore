@@ -35,3 +35,6 @@ yarn-error.*
 # MEXT food composition table — raw download cache (not tracked; re-run importer to fetch)
 scripts/import-mext-foods/downloaded/
 .env.save
+# Supabase CLI cache (regenerated on every `supabase functions deploy` / link).
+# Tracking these makes the working tree dirty after every CLI invocation.
+supabase/.temp/
