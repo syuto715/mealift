@@ -27,8 +27,14 @@ import { useRestTimer } from '../../../src/hooks/useRestTimer';
 import { MUSCLE_GROUPS, MUSCLE_GROUP_MAP } from '../../../src/constants/muscleGroups';
 import { EQUIPMENT_CATEGORIES, EquipmentKey } from '../../../src/constants/equipment';
 import { MuscleGroup } from '../../../src/types/common';
-import { Exercise, ExerciseType, WorkoutSet } from '../../../src/types/workout';
+import { Exercise, ExerciseType, SetPattern, SetType, WorkoutSet } from '../../../src/types/workout';
 import { filterExercisesByEquipment } from '../../../src/utils/filterExercisesByEquipment';
+import {
+  parseDropSetConfig,
+  parseTopSetConfig,
+  SET_TYPE_COLORS,
+  SET_TYPE_LABELS_JA,
+} from '../../../src/constants/setPatterns';
 import { generateId } from '../../../src/utils/id';
 import { getISODate } from '../../../src/utils/format';
 import * as workoutRepo from '../../../src/infra/repositories/workoutRepository';
@@ -52,6 +58,122 @@ const EXERCISE_TYPE_TABS: { label: string; value: ExerciseType }[] = [
   { label: 'スポーツ', value: 'sports' },
   { label: 'その他', value: 'other' },
 ];
+
+const SET_TYPE_OVERRIDE_OPTIONS: SetType[] = [
+  'warmup',
+  'working',
+  'top',
+  'drop',
+  'failure',
+];
+
+// Build 15 / Feature 5-O — translate a routine_item's pattern + config
+// into a fully-formed initial set list. Pre-v26 routines (setPattern =
+// null) get the legacy flat list. Pattern presets pre-fill the per-set
+// setType so the session UI renders the right shape immediately.
+//
+// Pre-fill weights are best-effort: we copy from previousSets when a
+// matching slot exists (mirrors the legacy behavior). Pattern-driven
+// weight cascades (top → backoff, working → drop) are applied
+// reactively via applyPatternCascade when the user commits the
+// driving slot's weight.
+function buildInitialSets(args: {
+  pattern: SetPattern | null;
+  patternConfig: string | null;
+  targetSets: number;
+  previousSets: WorkoutSet[];
+}): SetInSession[] {
+  const { pattern, patternConfig, targetSets, previousSets } = args;
+  const baseSlot = (i: number, setType: SetType): SetInSession => ({
+    id: generateId(),
+    setNumber: i + 1,
+    weightKg: previousSets[i]?.weightKg ?? null,
+    reps: previousSets[i]?.reps ?? null,
+    rpe: null,
+    durationMinutes: previousSets[i]?.durationMinutes ?? null,
+    distanceKm: previousSets[i]?.distanceKm ?? null,
+    caloriesBurned: null,
+    perceivedIntensity: previousSets[i]?.perceivedIntensity ?? null,
+    completed: false,
+    setType,
+  });
+
+  if (pattern === '5x5') {
+    return Array.from({ length: 5 }, (_, i) => baseSlot(i, 'working'));
+  }
+
+  if (pattern === 'top_set') {
+    const cfg = parseTopSetConfig(patternConfig);
+    const backoffCount = cfg?.backoff_sets ?? 3;
+    const slots: SetInSession[] = [];
+    slots.push(baseSlot(0, 'top'));
+    for (let i = 0; i < backoffCount; i++) {
+      slots.push(baseSlot(i + 1, 'working'));
+    }
+    return slots;
+  }
+
+  if (pattern === 'drop_set') {
+    const cfg = parseDropSetConfig(patternConfig);
+    const dropCount = cfg?.drops ?? 3;
+    const slots: SetInSession[] = [];
+    slots.push(baseSlot(0, 'working'));
+    for (let i = 0; i < dropCount; i++) {
+      slots.push(baseSlot(i + 1, 'drop'));
+    }
+    return slots;
+  }
+
+  // Standard / null pattern → flat 'working' list of length targetSets.
+  return Array.from({ length: targetSets }, (_, i) => baseSlot(i, 'working'));
+}
+
+// Build 15 / Feature 5-O — derive cascaded weights for pattern-driven
+// rows when the user commits the driving slot's weight.
+//
+// top_set: the first 'top' slot drives subsequent 'working' (backoff)
+//   slots at top × backoff_pct.
+// drop_set: the first 'working' slot drives subsequent 'drop' slots at
+//   working × percents[i] (in order).
+// other patterns: returns null (no cascade).
+//
+// The caller applies the returned updates by calling updateSet for
+// each entry. Slots already manually edited stay as-is; cascade only
+// fills slots that are downstream of the source.
+function computePatternCascade(
+  exercise: ExerciseInSession,
+  sourceSet: SetInSession,
+  sourceWeight: number,
+): { setId: string; weightKg: number }[] | null {
+  const { setPattern, patternConfig, sets } = exercise;
+  if (sourceWeight <= 0) return null;
+  const sourceIndex = sets.findIndex((s) => s.id === sourceSet.id);
+  if (sourceIndex < 0) return null;
+
+  if (setPattern === 'top_set' && sourceSet.setType === 'top') {
+    const cfg = parseTopSetConfig(patternConfig);
+    const pct = cfg?.backoff_pct ?? 0.8;
+    const target = Math.round(sourceWeight * pct * 10) / 10;
+    return sets
+      .slice(sourceIndex + 1)
+      .filter((s) => s.setType === 'working')
+      .map((s) => ({ setId: s.id, weightKg: target }));
+  }
+
+  if (setPattern === 'drop_set' && sourceSet.setType === 'working') {
+    const cfg = parseDropSetConfig(patternConfig);
+    const percents = cfg?.percents ?? [0.8, 0.6, 0.4];
+    const dropSlots = sets
+      .slice(sourceIndex + 1)
+      .filter((s) => s.setType === 'drop');
+    return dropSlots.slice(0, percents.length).map((s, idx) => ({
+      setId: s.id,
+      weightKg: Math.round(sourceWeight * percents[idx] * 10) / 10,
+    }));
+  }
+
+  return null;
+}
 
 export default function SessionScreen() {
   const scheme = useColorScheme() ?? 'light';
@@ -88,6 +210,13 @@ export default function SessionScreen() {
 
   // Plate calculator state (Feature G)
   const [plateCalcFor, setPlateCalcFor] = useState<{ exerciseId: string; setId: string; initial: number } | null>(null);
+  // Build 15 / Feature 5-O — per-set role override sheet target.
+  // Setting this opens the bottom sheet; null = closed.
+  const [overrideTarget, setOverrideTarget] = useState<{
+    exerciseId: string;
+    setId: string;
+    current: SetType;
+  } | null>(null);
 
   // Elapsed time
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -151,22 +280,18 @@ export default function SessionScreen() {
                 item.exerciseId,
               );
 
-              const initialSets: SetInSession[] = [];
-              for (let i = 0; i < item.targetSets; i++) {
-                initialSets.push({
-                  id: generateId(),
-                  setNumber: i + 1,
-                  weightKg: previousSets[i]?.weightKg ?? null,
-                  reps: previousSets[i]?.reps ?? null,
-                  rpe: null,
-                  durationMinutes: previousSets[i]?.durationMinutes ?? null,
-                  distanceKm: previousSets[i]?.distanceKm ?? null,
-                  caloriesBurned: null,
-                  perceivedIntensity: previousSets[i]?.perceivedIntensity ?? null,
-                  completed: false,
-                  setType: 'working',
-                });
-              }
+              const initialSets = buildInitialSets({
+                pattern: item.setPattern,
+                patternConfig: item.patternConfig,
+                targetSets: item.targetSets,
+                previousSets,
+              });
+              // Pattern slots renumber sequentially regardless of count
+              // so the user-visible "1, 2, 3..." stays in step with the
+              // visible slot order.
+              initialSets.forEach((s, idx) => {
+                s.setNumber = idx + 1;
+              });
 
               const exerciseInSession: ExerciseInSession = {
                 exerciseId: item.exerciseId,
@@ -176,6 +301,8 @@ export default function SessionScreen() {
                 metValue: item.exercise.metValue,
                 sets: initialSets,
                 previousSets,
+                setPattern: item.setPattern,
+                patternConfig: item.patternConfig,
               };
 
               useWorkoutStore.getState().addExercise(exerciseInSession);
@@ -403,6 +530,10 @@ export default function SessionScreen() {
       metValue: exercise.metValue,
       sets: initialSets,
       previousSets,
+      // Mid-session adds carry no routine pattern; user can still
+      // override per-set via long-press if they want a one-off drop.
+      setPattern: null,
+      patternConfig: null,
     });
 
     setShowAddExercise(false);
@@ -918,13 +1049,31 @@ export default function SessionScreen() {
                     )}
 
                     {/* Main set row */}
-                    <View
+                    <TouchableOpacity
+                      activeOpacity={1}
+                      onLongPress={() =>
+                        setOverrideTarget({
+                          exerciseId: exercise.exerciseId,
+                          setId: set.id,
+                          current: set.setType,
+                        })
+                      }
                       style={[
                         styles.setRow,
                         { borderBottomColor: colors.border },
                         set.completed && { backgroundColor: colors.success + '10' },
                       ]}
                     >
+                      {/* Build 15 / Feature 5-O — set_type stripe.
+                          Left-edge color tag mirrors the SET_TYPE_COLORS
+                          map. Tapping-and-holding the row anywhere
+                          opens the per-set override sheet. */}
+                      <View
+                        style={[
+                          styles.setTypeStripe,
+                          { backgroundColor: SET_TYPE_COLORS[set.setType] },
+                        ]}
+                      />
                       <Text
                         style={[styles.setNum, styles.setNumCol, { color: colors.textSecondary }]}
                       >
@@ -942,11 +1091,30 @@ export default function SessionScreen() {
                             },
                           ]}
                           value={set.weightKg ?? null}
-                          onCommit={(v) =>
+                          onCommit={(v) => {
                             updateSet(exercise.exerciseId, set.id, {
                               weightKg: v,
-                            })
-                          }
+                            });
+                            // Build 15 / Feature 5-O — pattern cascade.
+                            // When the user commits a weight on a top
+                            // (top_set) or working (drop_set) driver
+                            // slot, fill the dependent slots so the
+                            // user sees the pre-filled chain without
+                            // doing math. Manual edits to dependents
+                            // afterwards are preserved.
+                            if (v != null && v > 0) {
+                              const cascade = computePatternCascade(
+                                exercise,
+                                set,
+                                v,
+                              );
+                              cascade?.forEach(({ setId, weightKg }) => {
+                                updateSet(exercise.exerciseId, setId, {
+                                  weightKg,
+                                });
+                              });
+                            }
+                          }}
                           returnKeyType="next"
                           placeholder="0"
                           placeholderTextColor={colors.textTertiary}
@@ -1013,7 +1181,7 @@ export default function SessionScreen() {
                           </View>
                         </TouchableOpacity>
                       </View>
-                    </View>
+                    </TouchableOpacity>
 
                     {/* Expandable detail toggle */}
                     {!set.completed && (
@@ -1108,6 +1276,52 @@ export default function SessionScreen() {
           fullWidth
         />
       </View>
+
+      {/* Build 15 / Feature 5-O — per-set role override sheet.
+          Opens on long-press of any set row. */}
+      <BottomSheet
+        visible={overrideTarget !== null}
+        onClose={() => setOverrideTarget(null)}
+        title="セット種別を変更"
+      >
+        <View style={styles.setTypeOverrideList}>
+          {SET_TYPE_OVERRIDE_OPTIONS.map((option) => {
+            const isCurrent = overrideTarget?.current === option;
+            return (
+              <TouchableOpacity
+                key={option}
+                style={[
+                  styles.setTypeOverrideRow,
+                  { borderBottomColor: colors.border },
+                ]}
+                onPress={() => {
+                  if (overrideTarget) {
+                    updateSet(overrideTarget.exerciseId, overrideTarget.setId, {
+                      setType: option,
+                    });
+                  }
+                  setOverrideTarget(null);
+                }}
+              >
+                <View
+                  style={[
+                    styles.setTypeOverrideStripe,
+                    { backgroundColor: SET_TYPE_COLORS[option] },
+                  ]}
+                />
+                <Text
+                  style={[styles.setTypeOverrideLabel, { color: colors.textPrimary }]}
+                >
+                  {SET_TYPE_LABELS_JA[option]}
+                </Text>
+                {isCurrent && (
+                  <Ionicons name="checkmark" size={18} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BottomSheet>
 
       {/* Add Exercise BottomSheet */}
       <BottomSheet
@@ -1645,6 +1859,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.xs,
     borderBottomWidth: 0.5,
+  },
+  // Build 15 / Feature 5-O — left-edge stripe, color-coded by setType.
+  // 6px wide, full row height. Sits before setNum so existing column
+  // widths (setNumCol etc.) stay measurement-stable.
+  setTypeStripe: {
+    width: 6,
+    alignSelf: 'stretch',
+    marginRight: spacing.xs,
+    borderRadius: 2,
+  },
+  setTypeOverrideList: { paddingVertical: spacing.sm },
+  setTypeOverrideRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 0.5,
+    gap: spacing.md,
+  },
+  setTypeOverrideStripe: {
+    width: 6,
+    height: 24,
+    borderRadius: 2,
+  },
+  setTypeOverrideLabel: {
+    ...typography.bodyMedium,
+    flex: 1,
   },
   setNum: {
     ...typography.labelMedium,

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { MuscleGroup } from '../types/common';
-import { ExerciseType, SetType, WorkoutSet } from '../types/workout';
+import { ExerciseType, SetPattern, SetType, WorkoutSet } from '../types/workout';
 import { generateId } from '../utils/id';
 
 export interface SetInSession {
@@ -28,6 +28,12 @@ export interface ExerciseInSession {
   metValue: number | null;
   sets: SetInSession[];
   previousSets: WorkoutSet[];
+  // Build 15 / Feature 5-O — pattern preset inherited from the source
+  // routine_item. NULL = standard routine; in that case the session
+  // renders a flat list of 'working' sets and never cascades weights
+  // between rows.
+  setPattern: SetPattern | null;
+  patternConfig: string | null;
 }
 
 interface WorkoutState {
