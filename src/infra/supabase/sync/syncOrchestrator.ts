@@ -26,6 +26,7 @@ import { adaptiveGoalSync } from './adaptiveGoalSync';
 import { weeklyReportSync } from './weeklyReportSync';
 import { personalRecordSync } from './personalRecordSync';
 import { estimatedOneRMSync } from './estimatedOneRMSync';
+import { userEquipmentSync } from './userEquipmentSync';
 import { progressPhotoSync } from './progressPhotoSync';
 import { customExerciseSync } from './customExerciseSync';
 import { dishSync } from './dishSync';
@@ -130,6 +131,7 @@ export const RESOURCE_MODULES: readonly ResourceSyncModule[] = [
   weeklyReportSync,
   personalRecordSync,
   estimatedOneRMSync,
+  userEquipmentSync,
   progressPhotoSync,
   customExerciseSync,
   dishSync,
