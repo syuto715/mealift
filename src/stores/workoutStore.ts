@@ -34,6 +34,11 @@ export interface ExerciseInSession {
   // between rows.
   setPattern: SetPattern | null;
   patternConfig: string | null;
+  // Build 15 / Feature 5-C — target_reps from the source routine_item.
+  // Drives the Easy/Normal/Hard recommendation. Mid-session adds (no
+  // routine context) set this to null and the chip strip stays
+  // hidden for the whole exercise.
+  targetReps: string | null;
 }
 
 interface WorkoutState {

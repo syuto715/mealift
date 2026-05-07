@@ -14,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { getColors, radius } from '../../../src/theme/tokens';
@@ -35,6 +35,9 @@ import {
   SET_TYPE_COLORS,
   SET_TYPE_LABELS_JA,
 } from '../../../src/constants/setPatterns';
+import { recommendNextSet } from '../../../src/domain/workoutRecommendation';
+import { parseTargetReps } from '../../../src/utils/parseTargetReps';
+import { getCurrentE1RM } from '../../../src/infra/repositories/oneRepMaxRepository';
 import { generateId } from '../../../src/utils/id';
 import { getISODate } from '../../../src/utils/format';
 import * as workoutRepo from '../../../src/infra/repositories/workoutRepository';
@@ -175,6 +178,78 @@ function computePatternCascade(
   return null;
 }
 
+// Build 15 / Feature 5-C — Easy/Normal/Hard chip strip rendered below
+// each uncompleted working set row. Computes the recommendation lazily
+// (useMemo) and skips render entirely when there's no e1rm yet or no
+// parseable target_reps. The hint copy steers first-time users toward
+// logging a working set so the engine has data to work with.
+const RecommendationStrip = React.memo(function RecommendationStrip(props: {
+  e1rm: number | null;
+  targetRepsRaw: string | null;
+  plateStep: number;
+  onApply: (weightKg: number, reps: number) => void;
+  colors: ReturnType<typeof getColors>;
+}) {
+  const { e1rm, targetRepsRaw, plateStep, onApply, colors } = props;
+  const parsedTarget = useMemo(() => parseTargetReps(targetRepsRaw), [targetRepsRaw]);
+  const recommendation = useMemo(
+    () => recommendNextSet(e1rm, parsedTarget, 2, plateStep),
+    [e1rm, parsedTarget, plateStep],
+  );
+
+  // Hint when there's literally no observation yet. Shown only when a
+  // routine target exists — free-form sessions (target null) get no
+  // strip and no hint, matching the legacy zero-state.
+  if (recommendation === null) {
+    if (e1rm == null && parsedTarget != null) {
+      return (
+        <View style={styles.recommendStripHintWrap}>
+          <Text style={[styles.recommendHintText, { color: colors.textTertiary }]}>
+            1セット記録すると次回から重量が推奨されます
+          </Text>
+        </View>
+      );
+    }
+    return null;
+  }
+
+  const chips: { kind: 'easy' | 'normal' | 'hard'; label: string }[] = [
+    { kind: 'easy', label: 'Easy' },
+    { kind: 'normal', label: 'Normal' },
+    { kind: 'hard', label: 'Hard' },
+  ];
+
+  return (
+    <View style={styles.recommendStripRow}>
+      {chips.map(({ kind, label }) => {
+        const r = recommendation[kind];
+        return (
+          <TouchableOpacity
+            key={kind}
+            style={[
+              styles.recommendChip,
+              {
+                backgroundColor: colors.surfaceSecondary,
+                borderColor: colors.border,
+                borderRadius: radius.full,
+              },
+            ]}
+            onPress={() => onApply(r.weight, r.reps)}
+            activeOpacity={0.6}
+          >
+            <Text style={[styles.recommendChipLabel, { color: colors.textTertiary }]}>
+              {label}
+            </Text>
+            <Text style={[styles.recommendChipWeight, { color: colors.textPrimary }]}>
+              {r.weight}kg × {r.reps}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+});
+
 export default function SessionScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
@@ -217,6 +292,38 @@ export default function SessionScreen() {
     setId: string;
     current: SetType;
   } | null>(null);
+
+  // Build 15 / Feature 5-C — current e1rm per exercise. Refetched on
+  // screen focus and after any successful set save (handleCompleteSet
+  // success path) so the chip strip reflects the just-inserted
+  // observation. Stored as a flat record keyed by exerciseId; null
+  // means "no e1rm yet" → chip strip hides, hint shows.
+  const [e1rmByExercise, setE1rmByExercise] = useState<Record<string, number | null>>({});
+
+  const refetchE1rmMap = useCallback(async () => {
+    if (!profile) return;
+    const ids = useWorkoutStore.getState().exercises.map((e) => e.exerciseId);
+    if (ids.length === 0) {
+      setE1rmByExercise({});
+      return;
+    }
+    const map: Record<string, number | null> = {};
+    for (const id of ids) {
+      try {
+        const obs = await getCurrentE1RM(profile.id, id);
+        map[id] = obs?.e1rmKg ?? null;
+      } catch {
+        map[id] = null;
+      }
+    }
+    setE1rmByExercise(map);
+  }, [profile]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetchE1rmMap();
+    }, [refetchE1rmMap]),
+  );
 
   // Elapsed time
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -303,6 +410,7 @@ export default function SessionScreen() {
                 previousSets,
                 setPattern: item.setPattern,
                 patternConfig: item.patternConfig,
+                targetReps: item.targetReps,
               };
 
               useWorkoutStore.getState().addExercise(exerciseInSession);
@@ -431,6 +539,13 @@ export default function SessionScreen() {
     // Haptic feedback on set completion
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+    // Build 15 / Feature 5-C — addSet's hook may have appended a fresh
+    // estimated_1rm observation (Phase 3 raw + adjusted rows). Refetch
+    // the e1rm map so the chip strip on subsequent uncompleted sets
+    // reflects the latest current e1rm without waiting for a screen
+    // focus event.
+    void refetchE1rmMap();
+
     // Check for PRs (Feature E). Strength tracks 1RM/weight/reps-at-weight;
     // cardio/sports/other tracks duration/distance/kcal.
     if (
@@ -534,6 +649,9 @@ export default function SessionScreen() {
       // override per-set via long-press if they want a one-off drop.
       setPattern: null,
       patternConfig: null,
+      // No routine_item context → no target_reps → recommendation chip
+      // strip stays hidden for this exercise.
+      targetReps: null,
     });
 
     setShowAddExercise(false);
@@ -1182,6 +1300,28 @@ export default function SessionScreen() {
                         </TouchableOpacity>
                       </View>
                     </TouchableOpacity>
+
+                    {/* Build 15 / Feature 5-C — Easy/Normal/Hard chip strip.
+                        Renders only on uncompleted 'working' sets when an
+                        e1rm and a parseable target_reps both exist for
+                        the exercise. Warmup / top / drop / failure rows
+                        skip the strip (top/drop are user-judgment +
+                        cascade-driven; warmup needs a separate base ×
+                        0.4-0.6 logic deferred to v2). */}
+                    {!set.completed && set.setType === 'working' && (
+                      <RecommendationStrip
+                        e1rm={e1rmByExercise[exercise.exerciseId] ?? null}
+                        targetRepsRaw={exercise.targetReps}
+                        plateStep={profile?.plateStepKg ?? 2.5}
+                        onApply={(weightKg, reps) =>
+                          updateSet(exercise.exerciseId, set.id, {
+                            weightKg,
+                            reps,
+                          })
+                        }
+                        colors={colors}
+                      />
+                    )}
 
                     {/* Expandable detail toggle */}
                     {!set.completed && (
@@ -1886,6 +2026,41 @@ const styles = StyleSheet.create({
   setTypeOverrideLabel: {
     ...typography.bodyMedium,
     flex: 1,
+  },
+  // Build 15 / Feature 5-C recommendation chip strip (below each
+  // uncompleted working set row). Three pill-shaped chips lined up
+  // horizontally; tap fills weight + reps into the row above.
+  recommendStripRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs / 2,
+  },
+  recommendChip: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.xs,
+    borderWidth: 0.5,
+    alignItems: 'center',
+  },
+  recommendChipLabel: {
+    ...typography.labelSmall,
+    fontSize: 10,
+  },
+  recommendChipWeight: {
+    ...typography.labelMedium,
+    fontSize: 12,
+    marginTop: 1,
+  },
+  recommendStripHintWrap: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  recommendHintText: {
+    ...typography.labelSmall,
+    fontSize: 11,
+    textAlign: 'center',
   },
   setNum: {
     ...typography.labelMedium,
