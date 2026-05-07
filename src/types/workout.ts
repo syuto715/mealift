@@ -2,6 +2,30 @@ import { UUID, ISODateTimeString, MuscleGroup } from './common';
 
 export type ExerciseType = 'strength' | 'cardio' | 'sports' | 'other';
 
+// Movement pattern taxonomy (Build 15 / Feature 5-A). Used by the AI
+// menu generator (Session 8 / 5-元) to balance push/pull/squat/hinge
+// across a workout. NULL allowed for cardio/sports/other rows that
+// don't fit the strength-training taxonomy.
+export type MovementPattern =
+  | 'horizontal_push'
+  | 'horizontal_pull'
+  | 'vertical_push'
+  | 'vertical_pull'
+  | 'squat'
+  | 'hinge'
+  | 'lunge'
+  | 'carry'
+  | 'rotation'
+  | 'isolation_curl'
+  | 'isolation_extension'
+  | 'isolation_raise'
+  | 'isolation_fly'
+  | 'core_flexion'
+  | 'core_anti_extension'
+  | 'core_anti_rotation'
+  | 'olympic'
+  | 'other';
+
 export interface Exercise {
   id: UUID;
   nameJa: string;
@@ -14,6 +38,17 @@ export interface Exercise {
   exerciseType: ExerciseType;
   metValue: number | null;
   createdAt: ISODateTimeString;
+  // Build 15 / Feature 5-A — exercise DB expansion. All nullable for
+  // pre-v25 rows that haven't been re-seeded yet, plus user customs
+  // (is_custom=1) which never get auto-populated.
+  slug: string | null;
+  primaryMuscle: string | null;
+  movementPattern: MovementPattern | null;
+  isCompound: boolean;
+  repRangeLow: number | null;
+  repRangeHigh: number | null;
+  formCueJa: string | null;
+  videoUrl: string | null;
 }
 
 export interface WorkoutRoutine {

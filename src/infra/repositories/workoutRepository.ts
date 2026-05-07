@@ -33,6 +33,16 @@ function rowToExercise(row: Record<string, unknown>): Exercise {
     exerciseType: ((row.exercise_type as string) ?? 'strength') as ExerciseType,
     metValue: (row.met_value as number) ?? null,
     createdAt: row.created_at as string,
+    // Build 15 / Feature 5-A v25 fields. NULL on pre-migration rows or
+    // user customs (is_custom=1) — caller treats null as "no metadata".
+    slug: (row.slug as string) ?? null,
+    primaryMuscle: (row.primary_muscle as string) ?? null,
+    movementPattern: (row.movement_pattern as Exercise['movementPattern']) ?? null,
+    isCompound: (row.is_compound as number) === 1,
+    repRangeLow: (row.rep_range_low as number | null) ?? null,
+    repRangeHigh: (row.rep_range_high as number | null) ?? null,
+    formCueJa: (row.form_cue_ja as string) ?? null,
+    videoUrl: (row.video_url as string) ?? null,
   };
 }
 
@@ -161,6 +171,16 @@ export async function createCustomExercise(
     exerciseType,
     metValue,
     createdAt: now,
+    // Build 15 v25 fields. User customs leave them null/false until
+    // a future Settings UI lets users author their own slug + metadata.
+    slug: null,
+    primaryMuscle: null,
+    movementPattern: null,
+    isCompound: false,
+    repRangeLow: null,
+    repRangeHigh: null,
+    formCueJa: null,
+    videoUrl: null,
   };
 }
 

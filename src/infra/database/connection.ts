@@ -25,6 +25,7 @@ import { migrateV22 } from './migrations/v22';
 import { migrateV23 } from './migrations/v23';
 import { migrateV24 } from './migrations/v24';
 import { migrateV25 } from './migrations/v25';
+import { seedExercisesV2 } from '../../../scripts/seed-exercises-v2/run';
 import { seedFoods, seedExercises } from './seed/foods';
 import { seedDishes } from './seed/dishes';
 import { seedFitnessDishes } from './seed/fitnessDishes';
@@ -178,6 +179,15 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   // cheap after the first run.
   try {
     await seedExercises(db);
+  } catch (error) {
+  }
+
+  // Build 15 / Feature 5-A: refresh v2 metadata on existing strength rows
+  // and insert new strength variations via UPSERT(slug). Runs after
+  // seedExercises so the existing 85 base rows are guaranteed present
+  // before the v2 UPSERT touches them. Idempotent; ~50ms per boot.
+  try {
+    await seedExercisesV2(db);
   } catch (error) {
   }
 
