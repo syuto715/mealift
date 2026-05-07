@@ -95,6 +95,18 @@ describe('subscriptionService — production gating (__DEV__ = false)', () => {
       }
     });
   });
+
+  describe('aiWorkoutGenerationLimit (Build 15 / Feature 5-元)', () => {
+    // Numbers must stay in lockstep with
+    // supabase/functions/generate-workout-menu/index.ts MONTHLY_QUOTA
+    // — the EF is the authoritative gate; this flag is for client UI
+    // display ("今月: N/M 残り" badge, Phase 6).
+    it('matches the per-tier monthly quota the Edge Function enforces', () => {
+      expect(getFeaturesForTier('free').aiWorkoutGenerationLimit).toBe(3);
+      expect(getFeaturesForTier('plus').aiWorkoutGenerationLimit).toBe(30);
+      expect(getFeaturesForTier('pro').aiWorkoutGenerationLimit).toBe(100);
+    });
+  });
 });
 
 describe('subscriptionService — dev mode (__DEV__ = true)', () => {

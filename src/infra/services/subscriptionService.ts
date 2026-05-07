@@ -33,6 +33,12 @@ export interface FeatureFlags {
   restTimerPerExercise: boolean;
   shareImages: boolean;
   historyUnlimited: boolean;
+  // Build 15 / Session 8 / Feature 5-元 — monthly cap on AI workout
+  // routine generation (generate-workout-menu Edge Function). Server
+  // is authoritative; this flag drives the "今月: N/M 残り" badge in
+  // the Phase 6 UI. Keep these numbers in lockstep with the EF's
+  // MONTHLY_QUOTA constant.
+  aiWorkoutGenerationLimit: number;
 }
 
 const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
@@ -70,6 +76,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     restTimerPerExercise: false,
     shareImages: false,
     historyUnlimited: false,
+    aiWorkoutGenerationLimit: 3,
   },
   plus: {
     maxRoutines: Infinity,
@@ -96,6 +103,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     restTimerPerExercise: true,
     shareImages: true,
     historyUnlimited: true,
+    aiWorkoutGenerationLimit: 30,
   },
   pro: {
     maxRoutines: Infinity,
@@ -122,6 +130,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     restTimerPerExercise: true,
     shareImages: true,
     historyUnlimited: true,
+    aiWorkoutGenerationLimit: 100,
   },
 };
 
