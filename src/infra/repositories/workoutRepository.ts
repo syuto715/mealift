@@ -2,6 +2,8 @@ import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
 import { MuscleGroup } from '../../types/common';
 import { enqueueRowFromTable } from './syncRepository';
+import { estimate1RM } from '../../domain/oneRepMax';
+import { insertE1RMObservation } from './oneRepMaxRepository';
 import {
   Exercise,
   ExerciseType,
@@ -558,6 +560,12 @@ export async function addSet(
   );
   await enqueueRowFromTable('workout_sets', id, 'INSERT');
 
+  // Build 15 / Feature 5-B — record an estimated_1rm observation when
+  // the set qualifies. Side effect of addSet; failures are swallowed
+  // so a missing observation point never blocks the user's set save.
+  // See docs/build-15-design.md §6.5.4.
+  await maybeRecordE1RMObservation(sessionId, input, id, setType, now);
+
   return {
     id,
     sessionId,
@@ -576,6 +584,67 @@ export async function addSet(
     createdAt: now,
     setType,
   };
+}
+
+// Conditionally append an estimated_1rm observation for a freshly-saved
+// set. Filters:
+//   - set_type !== 'warmup' (warmup sets excluded — they don't reflect
+//     near-failure effort)
+//   - weightKg > 0 AND reps in [1, 10] (the formula band; reps > 10
+//     trips Epley extrapolation territory which we explicitly avoid
+//     for chart history per Phase 2 design)
+//   - exercise_type === 'strength' (cardio / sports / other don't have
+//     a 1RM concept)
+//
+// Profile and exercise context are looked up via a single JOIN against
+// workout_sessions + exercises so the caller (session.tsx) doesn't have
+// to thread either through addSet's signature.
+//
+// All errors are caught and swallowed. The chart can tolerate a missing
+// data point; the user's set save must not be blocked by an
+// observation-write failure.
+async function maybeRecordE1RMObservation(
+  sessionId: string,
+  input: WorkoutSetInput,
+  setId: string,
+  setType: SetType,
+  observedAt: string,
+): Promise<void> {
+  try {
+    if (setType === 'warmup') return;
+    const weightKg = input.weightKg;
+    const reps = input.reps;
+    if (weightKg == null || reps == null) return;
+    if (weightKg <= 0 || reps < 1 || reps > 10) return;
+
+    const db = await getDatabase();
+    const ctx = await db.getFirstAsync<{
+      profile_id: string;
+      exercise_type: string;
+    }>(
+      `SELECT s.profile_id AS profile_id, e.exercise_type AS exercise_type
+         FROM workout_sessions s
+         JOIN exercises e ON e.id = ?
+        WHERE s.id = ? AND s.deleted_at IS NULL AND e.deleted_at IS NULL`,
+      [input.exerciseId, sessionId],
+    );
+    if (!ctx) return;
+    if (ctx.exercise_type !== 'strength') return;
+
+    const { value, formula } = estimate1RM(weightKg, reps);
+    if (value <= 0) return;
+
+    await insertE1RMObservation({
+      profileId: ctx.profile_id,
+      exerciseId: input.exerciseId,
+      e1rmKg: Number(value.toFixed(2)),
+      formula,
+      sourceSetId: setId,
+      observedAt,
+    });
+  } catch {
+    // Swallow — observation is a derived metric, not user data.
+  }
 }
 
 export async function updateSet(
