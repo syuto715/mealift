@@ -1,5 +1,5 @@
 import { getDatabase } from '../database/connection';
-import { Profile, ProfileInput, AdaptiveGoalSensitivity, PlanBillingCycle } from '../../types/profile';
+import { Profile, ProfileInput, AdaptiveGoalSensitivity, PlanBillingCycle, PlateStep, PLATE_STEP_OPTIONS } from '../../types/profile';
 import { generateId } from '../../utils/id';
 import { enqueueRowFromTable } from './syncRepository';
 
@@ -39,6 +39,16 @@ function rowToProfile(row: Record<string, unknown>): Profile {
       row.notifications_submission_enabled == null
         ? true
         : Boolean(row.notifications_submission_enabled),
+    // plate_step_kg: Build 15 v27. Defensive coerce — pre-v27 rows
+    // surface as 2.5 (matches DEFAULT) and the union narrows any
+    // non-enum server value to 2.5 too.
+    plateStepKg: ((): PlateStep => {
+      const raw = row.plate_step_kg;
+      if (typeof raw !== 'number') return 2.5;
+      return PLATE_STEP_OPTIONS.includes(raw as PlateStep)
+        ? (raw as PlateStep)
+        : 2.5;
+    })(),
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -100,6 +110,7 @@ export async function updateProfile(id: string, updates: Partial<Profile>): Prom
     planBillingCycle: 'plan_billing_cycle',
     planExpiresAt: 'plan_expires_at',
     notificationsSubmissionEnabled: 'notifications_submission_enabled',
+    plateStepKg: 'plate_step_kg',
   };
 
   const BOOL_KEYS = new Set([

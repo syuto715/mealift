@@ -226,6 +226,12 @@ export default function SettingsScreen() {
             colors={colors}
           />
           <SettingsRow
+            icon="options-outline"
+            label="トレーニング設定"
+            onPress={() => router.push('/(tabs)/settings/training-prefs')}
+            colors={colors}
+          />
+          <SettingsRow
             icon="trophy-outline"
             label="自己ベスト履歴"
             onPress={() => router.push('/(tabs)/progress/pr-history')}
