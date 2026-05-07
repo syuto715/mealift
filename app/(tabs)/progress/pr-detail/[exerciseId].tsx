@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ScrollView,
   View,
@@ -17,18 +17,33 @@ import { spacing } from '../../../../src/theme/spacing';
 import { Card } from '../../../../src/components/ui';
 import { getPRHistoryForExercise } from '../../../../src/infra/repositories/personalRecordRepository';
 import { getExerciseById } from '../../../../src/infra/repositories/workoutRepository';
+import {
+  getCurrentE1RM,
+  getE1RMHistory,
+  type E1RMObservation,
+} from '../../../../src/infra/repositories/oneRepMaxRepository';
+import { useProfileStore } from '../../../../src/stores/profileStore';
 import { PersonalRecord } from '../../../../src/types/personalRecord';
 import { formatDate } from '../../../../src/utils/format';
-import { differenceInCalendarDays, parseISO } from 'date-fns';
+import { E1RMHistoryChart } from '../../../../src/components/training/E1RMHistoryChart';
+import { differenceInCalendarDays, parseISO, subDays } from 'date-fns';
 
 export default function PRDetailScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
   const { exerciseId } = useLocalSearchParams<{ exerciseId: string }>();
 
+  const profile = useProfileStore((s) => s.profile);
   const [exerciseName, setExerciseName] = useState('');
   const [history, setHistory] = useState<PersonalRecord[]>([]);
+  const [e1rmHistory, setE1RMHistory] = useState<E1RMObservation[]>([]);
+  const [currentE1RM, setCurrentE1RM] = useState<E1RMObservation | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Build 15 / Feature 5-B — 90-day window for the e1rm history chart.
+  // sinceISO is computed once at mount; the chart axis labels stay
+  // stable while the user scrolls.
+  const sinceISO = useMemo(() => subDays(new Date(), 90).toISOString(), []);
 
   useEffect(() => {
     if (!exerciseId) return;
@@ -38,11 +53,19 @@ export default function PRDetailScreen() {
         setExerciseName(ex?.nameJa ?? '—');
         const h = await getPRHistoryForExercise(exerciseId, 'estimated_1rm');
         setHistory(h);
+        if (profile) {
+          const [obs, current] = await Promise.all([
+            getE1RMHistory(profile.id, exerciseId, sinceISO),
+            getCurrentE1RM(profile.id, exerciseId),
+          ]);
+          setE1RMHistory(obs);
+          setCurrentE1RM(current);
+        }
       } finally {
         setLoading(false);
       }
     })();
-  }, [exerciseId]);
+  }, [exerciseId, profile, sinceISO]);
 
   const growthPerMonth = (() => {
     if (history.length < 2) return null;
@@ -77,6 +100,12 @@ export default function PRDetailScreen() {
           <>
             <Card>
               <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>1RM推移</Text>
+              {currentE1RM && (
+                <Text style={[styles.currentE1RM, { color: colors.textPrimary }]}>
+                  現在推定 1RM: {currentE1RM.e1rmKg.toFixed(1)} kg
+                </Text>
+              )}
+              <E1RMHistoryChart history={e1rmHistory} windowStart={sinceISO} />
               {growthPerMonth !== null && (
                 <Text style={[styles.growth, { color: colors.primary }]}>
                   {growthPerMonth >= 0 ? '+' : ''}
@@ -122,7 +151,8 @@ const styles = StyleSheet.create({
   title: { ...typography.titleMedium, flex: 1, textAlign: 'center' },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxxl },
   sectionTitle: { ...typography.labelMedium, marginBottom: spacing.md },
-  growth: { ...typography.titleSmall, marginBottom: spacing.md },
+  currentE1RM: { ...typography.titleSmall, marginBottom: spacing.sm },
+  growth: { ...typography.titleSmall, marginBottom: spacing.md, marginTop: spacing.sm },
   empty: { ...typography.bodyMedium, textAlign: 'center', paddingVertical: spacing.md },
   historyRow: {
     flexDirection: 'row',
