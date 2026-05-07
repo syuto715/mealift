@@ -5,6 +5,8 @@ import { enqueueRowFromTable } from './syncRepository';
 import {
   Exercise,
   ExerciseType,
+  SetPattern,
+  SetType,
   WorkoutRoutine,
   WorkoutRoutineItem,
   WorkoutRoutineWithItems,
@@ -74,6 +76,18 @@ function rowToSession(row: Record<string, unknown>): WorkoutSession {
 }
 
 function rowToSet(row: Record<string, unknown>): WorkoutSet {
+  const isWarmup = (row.is_warmup as number) === 1;
+  // Build 15 / Feature 5-O — set_type column lands in v26. Fall back to
+  // is_warmup-derived value for any pre-v26 row that survived migration
+  // (the v26 backfill UPDATE catches is_warmup=1, but a defensive
+  // fallback keeps rowToSet correct even if a brand-new row gets read
+  // before the migration hook lands on this device).
+  const rawSetType = row.set_type as string | undefined;
+  const setType: SetType = rawSetType
+    ? (rawSetType as SetType)
+    : isWarmup
+      ? 'warmup'
+      : 'working';
   return {
     id: row.id as string,
     sessionId: row.session_id as string,
@@ -83,13 +97,14 @@ function rowToSet(row: Record<string, unknown>): WorkoutSet {
     reps: (row.reps as number) ?? null,
     rpe: (row.rpe as number) ?? null,
     rir: (row.rir as number) ?? null,
-    isWarmup: (row.is_warmup as number) === 1,
+    isWarmup,
     note: (row.note as string) ?? null,
     durationMinutes: (row.duration_minutes as number) ?? null,
     distanceKm: (row.distance_km as number) ?? null,
     caloriesBurned: (row.calories_burned as number) ?? null,
     perceivedIntensity: (row.perceived_intensity as number) ?? null,
     createdAt: row.created_at as string,
+    setType,
   };
 }
 
@@ -245,6 +260,7 @@ export async function getRoutines(profileId: string): Promise<WorkoutRoutineWith
 
     const itemRows = await db.getAllAsync<Record<string, unknown>>(
       `SELECT ri.id, ri.routine_id, ri.exercise_id, ri.target_sets, ri.target_reps, ri.sort_order,
+              ri.set_pattern, ri.pattern_config,
               e.id AS e_id, e.name_ja AS e_name_ja, e.name_en AS e_name_en,
               e.muscle_group AS e_muscle_group, e.secondary_muscles AS e_secondary_muscles,
               e.equipment AS e_equipment, e.is_custom AS e_is_custom,
@@ -264,6 +280,8 @@ export async function getRoutines(profileId: string): Promise<WorkoutRoutineWith
       targetSets: (ir.target_sets as number) ?? 3,
       targetReps: (ir.target_reps as string) ?? null,
       sortOrder: (ir.sort_order as number) ?? 0,
+      setPattern: ((ir.set_pattern as string) ?? null) as SetPattern | null,
+      patternConfig: (ir.pattern_config as string) ?? null,
       exercise: {
         id: ir.e_id as string,
         nameJa: ir.e_name_ja as string,
@@ -506,12 +524,19 @@ export async function addSet(
   const id = generateId();
   const now = new Date().toISOString();
 
+  // Build 15 / Feature 5-O — Phase 1 minimal write-path bridge. Until
+  // Phase 4 plumbs WorkoutSetInput.setType from the picker UI, derive
+  // set_type from the legacy isWarmup boolean so new rows persist with
+  // the correct value rather than the column DEFAULT 'working'.
+  const setType: SetType =
+    input.setType ?? (input.isWarmup ? 'warmup' : 'working');
+
   await db.runAsync(
     `INSERT INTO workout_sets
        (id, session_id, exercise_id, set_number, weight_kg, reps, rpe, rir,
         is_warmup, note, duration_minutes, distance_km, calories_burned,
-        perceived_intensity, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        perceived_intensity, set_type, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       sessionId,
@@ -527,6 +552,7 @@ export async function addSet(
       input.distanceKm ?? null,
       input.caloriesBurned ?? null,
       input.perceivedIntensity ?? null,
+      setType,
       now,
     ],
   );
@@ -548,6 +574,7 @@ export async function addSet(
     caloriesBurned: input.caloriesBurned ?? null,
     perceivedIntensity: input.perceivedIntensity ?? null,
     createdAt: now,
+    setType,
   };
 }
 

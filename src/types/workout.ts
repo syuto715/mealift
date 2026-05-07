@@ -2,6 +2,22 @@ import { UUID, ISODateTimeString, MuscleGroup } from './common';
 
 export type ExerciseType = 'strength' | 'cardio' | 'sports' | 'other';
 
+// Build 15 / Feature 5-O — per-set role marker. CHECK constraint on
+// public.user_workout_sets enforces this enum server-side. Local SQLite
+// can't add CHECK to existing tables (v26 ALTER), so app-level
+// validation is the gate for new rows.
+//
+// AMRAP intentionally excluded — deferred to v2. 'failure' is reserved
+// for the terminal slot of a drop-set chain or a logged-to-failure
+// working set.
+export type SetType = 'warmup' | 'working' | 'top' | 'drop' | 'failure';
+
+// Build 15 / Feature 5-O — routine-level template marker on
+// workout_routine_items. NULL = standard (existing routines unaffected).
+// pattern_config holds optional JSON parameters (e.g. drop count /
+// percents for drop_set, weight progression rules for 5x5 in v2).
+export type SetPattern = '5x5' | 'top_set' | 'drop_set';
+
 // Movement pattern taxonomy (Build 15 / Feature 5-A). Used by the AI
 // menu generator (Session 8 / 5-元) to balance push/pull/squat/hinge
 // across a workout. NULL allowed for cardio/sports/other rows that
@@ -68,6 +84,10 @@ export interface WorkoutRoutineItem {
   targetSets: number;
   targetReps: string | null;
   sortOrder: number;
+  // Build 15 / Feature 5-O — pattern preset on this routine item.
+  // NULL = standard. Pre-v26 rows always read NULL.
+  setPattern: SetPattern | null;
+  patternConfig: string | null;
 }
 
 export interface WorkoutSession {
@@ -99,6 +119,9 @@ export interface WorkoutSet {
   caloriesBurned: number | null;
   perceivedIntensity: number | null;
   createdAt: ISODateTimeString;
+  // Build 15 / Feature 5-O — per-set role. Pre-v26 rows read 'warmup'
+  // when is_warmup=1 (rowToSet fallback) or 'working' otherwise.
+  setType: SetType;
 }
 
 export interface WorkoutSetInput {
@@ -114,6 +137,11 @@ export interface WorkoutSetInput {
   distanceKm?: number | null;
   caloriesBurned?: number | null;
   perceivedIntensity?: number | null;
+  // Build 15 / Feature 5-O — optional per-set role override. addSet
+  // derives 'warmup' from isWarmup when this is omitted (Phase 1 minimal
+  // bridge); explicit set_type plumbing through the picker UI lands in
+  // Phase 4.
+  setType?: SetType;
 }
 
 export interface WorkoutRoutineWithItems extends WorkoutRoutine {
