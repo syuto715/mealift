@@ -80,7 +80,7 @@ export default function HistoryScreen() {
         // Calculate best 1RM per exercise from this session
         for (const s of sets) {
           if (s.isWarmup || !s.weightKg || !s.reps || s.reps <= 0) continue;
-          const orm = estimateOneRepMax(s.weightKg, s.reps);
+          const orm = estimateOneRepMax(s.weightKg, s.reps).value;
           if (orm > 0) {
             const existing = bestsMap[s.exerciseId];
             if (!existing || orm > existing.oneRepMax) {
@@ -177,7 +177,7 @@ export default function HistoryScreen() {
     let best: number | null = null;
     for (const s of sets) {
       if (s.isWarmup || !s.weightKg || !s.reps || s.reps <= 0) continue;
-      const orm = estimateOneRepMax(s.weightKg, s.reps);
+      const orm = estimateOneRepMax(s.weightKg, s.reps).value;
       if (orm > 0 && (best === null || orm > best)) {
         best = orm;
       }

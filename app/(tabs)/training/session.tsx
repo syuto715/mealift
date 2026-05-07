@@ -879,7 +879,7 @@ export default function SessionScreen() {
                 const prevSet = exercise.previousSets[setIndex];
                 const e1rm =
                   set.weightKg && set.reps
-                    ? estimateOneRepMax(set.weightKg, set.reps)
+                    ? estimateOneRepMax(set.weightKg, set.reps).value
                     : null;
                 const detailKey = `${exercise.exerciseId}_${set.id}`;
                 const isExpanded = expandedSets[detailKey] ?? false;

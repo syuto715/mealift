@@ -26,8 +26,12 @@ export async function checkAndRecordPRs(
   const exerciseName = exercise?.nameJa ?? '種目';
   const updates: PRInfo[] = [];
 
-  // 1. Estimated 1RM
-  const newEst1RM = Number(estimate1RM(weightKg, reps).toFixed(2));
+  // 1. Estimated 1RM. Hybrid formula (Build 15 Session 6 / Phase 2):
+  //    Brzycki for rep 1-6, avg(Epley,Brzycki) for 7-10, Epley capped
+  //    above 10. We persist value-only here (personal_records has no
+  //    formula column); the estimated_1rm history pipeline is what
+  //    records which formula produced each observation.
+  const newEst1RM = Number(estimate1RM(weightKg, reps).value.toFixed(2));
   const best1RM = await getBestPR(exerciseId, 'estimated_1rm');
   if (!best1RM || newEst1RM > best1RM.value + 0.01) {
     await insertPR({
