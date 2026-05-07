@@ -39,8 +39,9 @@ export async function seedExercisesV2(
       `INSERT INTO exercises (
          id, slug, name_ja, name_en, muscle_group, secondary_muscles,
          equipment, is_custom, sort_order, exercise_type, met_value,
-         primary_muscle, movement_pattern, is_compound
-       ) VALUES (?, ?, ?, ?, ?, NULL, ?, 0, ?, 'strength', NULL, ?, ?, ?)
+         primary_muscle, movement_pattern, is_compound,
+         form_cue_ja, rep_range_low, rep_range_high
+       ) VALUES (?, ?, ?, ?, ?, NULL, ?, 0, ?, 'strength', NULL, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(slug) DO UPDATE SET
          name_ja = excluded.name_ja,
          name_en = excluded.name_en,
@@ -49,7 +50,10 @@ export async function seedExercisesV2(
          sort_order = excluded.sort_order,
          primary_muscle = excluded.primary_muscle,
          movement_pattern = excluded.movement_pattern,
-         is_compound = excluded.is_compound
+         is_compound = excluded.is_compound,
+         form_cue_ja = excluded.form_cue_ja,
+         rep_range_low = excluded.rep_range_low,
+         rep_range_high = excluded.rep_range_high
        WHERE exercises.is_custom = 0;`,
       [
         exercise.id,
@@ -62,6 +66,12 @@ export async function seedExercisesV2(
         exercise.primary_muscle,
         exercise.movement_pattern,
         exercise.is_compound ? 1 : 0,
+        // Phase 2B fields. Optional on the row type; NULL fallback
+        // for entries not yet authored (shoulders/arms/legs/core/full
+        // body until their batches land).
+        exercise.form_cue_ja ?? null,
+        exercise.rep_range_low ?? null,
+        exercise.rep_range_high ?? null,
       ],
     );
   }
