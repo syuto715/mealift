@@ -232,6 +232,12 @@ export default function SettingsScreen() {
             colors={colors}
           />
           <SettingsRow
+            icon="barbell-outline"
+            label="ジム器具"
+            onPress={() => router.push('/(tabs)/settings/equipment')}
+            colors={colors}
+          />
+          <SettingsRow
             icon="trophy-outline"
             label="自己ベスト履歴"
             onPress={() => router.push('/(tabs)/progress/pr-history')}
