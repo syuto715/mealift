@@ -25,6 +25,7 @@ import {
   ERROR_MESSAGE_BY_CODE,
 } from '../../../src/infra/services/aiWorkoutService';
 import { listExerciseSlugsByMuscles } from '../../../src/infra/repositories/workoutRepository';
+import { listByProfileId as listUserEquipment } from '../../../src/infra/repositories/userEquipmentRepository';
 import { getFeatureFlags } from '../../../src/infra/services/subscriptionService';
 import { supabase } from '../../../src/infra/supabase/client';
 import { useAIMenuStagingStore } from '../../../src/stores/aiMenuStagingStore';
@@ -219,9 +220,30 @@ export default function AIMenuScreen() {
           400,
         );
       }
+      // Phase 7 cache key inputs. Equipment is fetched fresh from
+      // local DB at generate time so a recently-toggled chip is
+      // reflected — listUserEquipment runs against SQLite (sub-ms)
+      // and the result also mirrors what the EF reads server-side
+      // via user_equipment, keeping the cache in lockstep with the
+      // EF's view.
+      const equipmentRows = profile?.id
+        ? await listUserEquipment(profile.id)
+        : [];
+      const equipmentKeys = equipmentRows
+        .filter((r) => r.available)
+        .map((r) => r.equipmentKey);
+
+      const cacheArgs = profile?.id
+        ? {
+            profileId: profile.id,
+            goalType: profile.goalType ?? null,
+            equipmentKeys,
+          }
+        : undefined;
+
       const program = await generateAIWorkoutMenu(
         { targetMuscles: muscles, durationMinutes, exerciseSlugs },
-        { signal: controller.signal },
+        { signal: controller.signal, cache: cacheArgs },
       );
       // Hand off to preview via the staging store. router params would
       // need to JSON-stringify a multi-week program (>4 KB typical),

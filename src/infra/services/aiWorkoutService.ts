@@ -3,6 +3,13 @@ import {
   type AIErrorCode,
   callEdgeFunction,
 } from './aiNutritionService';
+import {
+  buildCacheKey,
+  getCached,
+  setCached,
+  recordCacheHit,
+  recordCacheMiss,
+} from './aiMenuCache';
 
 // Build 15 / Session 8 / Feature 5-元 — client wrapper around the
 // generate-workout-menu Edge Function (Phase 4).
@@ -111,15 +118,54 @@ function rethrowAsWorkoutError(err: unknown): never {
 // `signal` is an optional AbortSignal forwarded to fetch — Phase 6 UI
 // passes one wired to a cancel button so the user can abort cold-start
 // Gemini calls. Aborted requests surface as AIWorkoutError(code='aborted').
+//
+// Cache (Phase 7 / Commit 26): when `cache.profileId` is supplied,
+// the wrapper computes a per-user FNV-1a key over (targetMuscles,
+// durationMinutes, equipmentSet, goalType, exerciseSlugs) and tries
+// AsyncStorage first. A hit returns immediately and skips both the EF
+// call and the server quota counter (cache hits are free). A miss
+// proceeds to the EF call and writes the result back on success. If
+// the caller doesn't supply cache.profileId the cache is bypassed
+// entirely (e.g. unit tests, ad-hoc invocations).
+export interface CacheArgs {
+  profileId: string;
+  goalType: string | null;
+  equipmentKeys: string[];
+}
+
 export async function generateAIWorkoutMenu(
   request: GenerateMenuRequest,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; cache?: CacheArgs },
 ): Promise<GeneratedProgram> {
+  // --- Cache lookup ---
+  // Compute the key once even on miss so we can reuse it for the
+  // subsequent setCached without re-stringifying. The EF call still
+  // happens; only the response transit is short-circuited.
+  let cacheHash: string | null = null;
+  const cacheArgs = options?.cache;
+  if (cacheArgs) {
+    cacheHash = buildCacheKey({
+      targetMuscles: request.targetMuscles,
+      durationMinutes: request.durationMinutes,
+      equipmentSet: cacheArgs.equipmentKeys,
+      goalType: cacheArgs.goalType,
+      exerciseSlugs: request.exerciseSlugs,
+    });
+    const cached = await getCached(cacheArgs.profileId, cacheHash);
+    if (cached) {
+      // Telemetry is fire-and-forget so a storage hiccup never blocks
+      // the user-facing return path.
+      void recordCacheHit();
+      return cached;
+    }
+    void recordCacheMiss();
+  }
+
   try {
     const response = await callEdgeFunction<
       GenerateMenuRequest,
       GeneratedProgram
-    >('generate-workout-menu', request, options);
+    >('generate-workout-menu', request, { signal: options?.signal });
 
     if (!response || typeof response.programName !== 'string') {
       throw new AIWorkoutError(
@@ -127,6 +173,12 @@ export async function generateAIWorkoutMenu(
         'AI が想定外の形式の応答を返しました',
         502,
       );
+    }
+
+    // Cache write only happens on a successful, validated EF response —
+    // never cache an error or a malformed payload.
+    if (cacheArgs && cacheHash) {
+      void setCached(cacheArgs.profileId, cacheHash, response);
     }
 
     return response;
