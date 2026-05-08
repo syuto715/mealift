@@ -17,7 +17,11 @@ export type AIErrorCode =
   // Build 15 / Session 8 / Feature 5-元 — generate-workout-menu EF
   // returns these on top of the nutrition pipeline's set.
   | 'no_equipment'
-  | 'validation_failed';
+  | 'validation_failed'
+  // Build 15 / Phase 6 — user-initiated AbortController cancellation
+  // surfaces as this code so UI can distinguish "user pressed cancel"
+  // from "network down".
+  | 'aborted';
 
 export class AIError extends Error {
   code: AIErrorCode;
@@ -93,9 +97,17 @@ async function getAccessToken(): Promise<string> {
 // Exported for sibling AI services (aiWorkoutService Build 15 / Session 8).
 // Token retrieval, error mapping, and structured-error parsing are
 // uniform across every Edge Function call in the app.
+//
+// `signal` is an optional AbortSignal — Phase 6 AI menu UI passes one
+// from a cancel button so the user can abort cold-start Gemini calls
+// (~10-15 sec p99). When the signal aborts mid-flight, fetch rejects
+// with a DOMException(name='AbortError') which we surface as a
+// dedicated AIError code so the UI can distinguish user-cancel from
+// network failure.
 export async function callEdgeFunction<TReq, TRes>(
   path: string,
   body: TReq,
+  options?: { signal?: AbortSignal },
 ): Promise<TRes> {
   const token = await getAccessToken();
 
@@ -110,9 +122,18 @@ export async function callEdgeFunction<TReq, TRes>(
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
+        signal: options?.signal,
       },
     );
   } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new AIError(
+        'aborted',
+        'リクエストを中止しました',
+        0,
+        { cause: e.message },
+      );
+    }
     throw new AIError(
       'network_error',
       'ネットワーク接続を確認してください',

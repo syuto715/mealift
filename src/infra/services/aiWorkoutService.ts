@@ -75,7 +75,7 @@ export class AIWorkoutError extends Error {
 // Map raw AIError codes (sibling nutrition pipeline + 5-元 additions)
 // to user-facing Japanese strings + a stable code surface for the
 // UI's error-rendering switch.
-const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
+export const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   unauthorized: 'ログインが必要です',
   invalid_token: 'セッションが切れました。再ログインしてください',
   invalid_request: 'リクエスト内容に不備があります',
@@ -86,6 +86,7 @@ const ERROR_MESSAGE_BY_CODE: Record<string, string> = {
   internal_error: 'サーバーエラーが発生しました',
   network_error: 'ネットワーク接続を確認してください',
   not_configured: 'サーバー接続が設定されていません',
+  aborted: 'リクエストを中止しました',
 };
 
 function rethrowAsWorkoutError(err: unknown): never {
@@ -106,14 +107,19 @@ function rethrowAsWorkoutError(err: unknown): never {
 // EF-side validation already enforces §7.1 shape — we trust the
 // payload here and surface any mismatch via the existing
 // 502 'validation_failed' path (rethrown as AIWorkoutError).
+//
+// `signal` is an optional AbortSignal forwarded to fetch — Phase 6 UI
+// passes one wired to a cancel button so the user can abort cold-start
+// Gemini calls. Aborted requests surface as AIWorkoutError(code='aborted').
 export async function generateAIWorkoutMenu(
   request: GenerateMenuRequest,
+  options?: { signal?: AbortSignal },
 ): Promise<GeneratedProgram> {
   try {
     const response = await callEdgeFunction<
       GenerateMenuRequest,
       GeneratedProgram
-    >('generate-workout-menu', request);
+    >('generate-workout-menu', request, options);
 
     if (!response || typeof response.programName !== 'string') {
       throw new AIWorkoutError(

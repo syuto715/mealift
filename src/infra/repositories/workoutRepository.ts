@@ -1,3 +1,4 @@
+import type * as SQLite from 'expo-sqlite';
 import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
 import { MuscleGroup } from '../../types/common';
@@ -174,6 +175,93 @@ export async function listAllExerciseSlugs(): Promise<string[]> {
       ORDER BY sort_order, slug`,
   );
   return rows.map((r) => r.slug);
+}
+
+// Build 15 / Session 8 / Phase 6 — Pattern C slug list builder for
+// the AI menu generation prompt. Returns slugs whose muscle_group
+// matches the user's selection, plus full_body compounds (always
+// useful as foundation lifts), plus partial coverage of synergists
+// via the secondary_muscles JSON column.
+//
+// secondary_muscles is populated only for the 43 legacy strength rows
+// (ex_001..ex_063, seeded via the pre-v25 INSERT OR IGNORE path); the
+// v25 seedExercisesV2 leaves the column NULL for ex_064+. Coverage is
+// partial but lands on exactly the major compound lifts where the
+// synergist hint matters most (bench press → shoulders/arms,
+// deadlift → legs/core, etc).
+//
+// minCount floor: if the muscle filter + secondary + full_body union
+// yields < minCount slugs, the function tops up with is_compound=1
+// rows from any muscle group. Prevents narrow filters (e.g. core
+// alone, 15 slugs) from starving the AI prompt of options.
+//
+// dbOverride is a test seam — Phase 5 sign-off learning that DI by
+// parameter sidesteps babel-jest module hoisting issues that bite
+// jest.mock() on getDatabase.
+export async function listExerciseSlugsByMuscles(
+  muscles: MuscleGroup[],
+  options: { minCount: number },
+  dbOverride?: SQLite.SQLiteDatabase,
+): Promise<string[]> {
+  const db = dbOverride ?? (await getDatabase());
+  const minCount = Math.max(1, options.minCount);
+
+  // Empty muscles → fall back to the full slug allowlist. Defensive;
+  // Phase 6 UI always passes ≥1 muscle but the helper stays safe.
+  if (muscles.length === 0) {
+    const rows = await db.getAllAsync<{ slug: string }>(
+      `SELECT slug FROM exercises
+        WHERE slug IS NOT NULL AND deleted_at IS NULL
+        ORDER BY sort_order, slug`,
+    );
+    return rows.map((r) => r.slug);
+  }
+
+  const placeholders = muscles.map(() => '?').join(',');
+  // secondary_muscles is stored as JSON.stringify(MuscleGroup[]) →
+  // strings like '["shoulders","arms"]'. Substring '"shoulders"' is a
+  // reliable contains check because the JSON encoder always quotes
+  // string array elements, and MuscleGroup values never contain
+  // double quotes themselves.
+  const likeClauses = muscles
+    .map(() => 'secondary_muscles LIKE ?')
+    .join(' OR ');
+  const likeParams = muscles.map((m) => `%"${m}"%`);
+
+  const primaryRows = await db.getAllAsync<{ slug: string }>(
+    `SELECT slug FROM exercises
+      WHERE slug IS NOT NULL
+        AND deleted_at IS NULL
+        AND (
+          muscle_group IN (${placeholders})
+          OR muscle_group = 'full_body'
+          OR (secondary_muscles IS NOT NULL AND (${likeClauses}))
+        )
+      ORDER BY sort_order, slug`,
+    [...muscles, ...likeParams],
+  );
+  const slugs = new Set<string>(primaryRows.map((r) => r.slug));
+
+  if (slugs.size < minCount) {
+    const existing = Array.from(slugs);
+    const excludePlaceholders = existing.map(() => '?').join(',');
+    const excludeClause = existing.length > 0
+      ? `AND slug NOT IN (${excludePlaceholders})`
+      : '';
+    const topupRows = await db.getAllAsync<{ slug: string }>(
+      `SELECT slug FROM exercises
+        WHERE slug IS NOT NULL
+          AND deleted_at IS NULL
+          AND is_compound = 1
+          ${excludeClause}
+        ORDER BY sort_order, slug
+        LIMIT ?`,
+      [...existing, minCount - slugs.size],
+    );
+    for (const r of topupRows) slugs.add(r.slug);
+  }
+
+  return Array.from(slugs);
 }
 
 export async function getExerciseDefaultRestSeconds(exerciseId: string): Promise<number | null> {

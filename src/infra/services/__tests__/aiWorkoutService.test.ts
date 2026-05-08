@@ -100,7 +100,29 @@ describe('generateAIWorkoutMenu', () => {
     expect(callEdgeFunction).toHaveBeenCalledWith(
       'generate-workout-menu',
       VALID_REQUEST,
+      undefined,
     );
+  });
+
+  it('forwards an AbortSignal to callEdgeFunction when provided', async () => {
+    callEdgeFunction.mockResolvedValueOnce(VALID_PROGRAM);
+    const controller = new AbortController();
+    await generateAIWorkoutMenu(VALID_REQUEST, { signal: controller.signal });
+    expect(callEdgeFunction).toHaveBeenCalledWith(
+      'generate-workout-menu',
+      VALID_REQUEST,
+      { signal: controller.signal },
+    );
+  });
+
+  it('rethrows AIError "aborted" as AIWorkoutError with same code', async () => {
+    callEdgeFunction.mockRejectedValueOnce(
+      new AIError('aborted', 'user cancelled', 0),
+    );
+    await expect(generateAIWorkoutMenu(VALID_REQUEST)).rejects.toMatchObject({
+      name: 'AIWorkoutError',
+      code: 'aborted',
+    });
   });
 
   it('rethrows AIError "no_equipment" as AIWorkoutError with same code', async () => {

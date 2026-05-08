@@ -353,12 +353,20 @@ export default function TrainingScreen() {
       >
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.textPrimary }]}>トレーニング</Text>
-          <Button
-            title="+ ルーティン作成"
-            onPress={() => setShowCreateModal(true)}
-            variant="ghost"
-            size="sm"
-          />
+          <View style={styles.headerActions}>
+            <Button
+              title="✨ AIメニュー"
+              onPress={() => router.push('/(tabs)/training/ai-menu')}
+              variant="ghost"
+              size="sm"
+            />
+            <Button
+              title="+ ルーティン作成"
+              onPress={() => setShowCreateModal(true)}
+              variant="ghost"
+              size="sm"
+            />
+          </View>
         </View>
 
         {/* Free session button — disabled until profile hydrates so a
@@ -808,6 +816,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   title: { ...typography.titleLarge },
   freeSessionButton: {
     flexDirection: 'row',
