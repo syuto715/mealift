@@ -23,11 +23,11 @@ import {
   generateAIWorkoutMenu,
   AIWorkoutError,
   ERROR_MESSAGE_BY_CODE,
-  type GeneratedProgram,
 } from '../../../src/infra/services/aiWorkoutService';
 import { listExerciseSlugsByMuscles } from '../../../src/infra/repositories/workoutRepository';
 import { getFeatureFlags } from '../../../src/infra/services/subscriptionService';
 import { supabase } from '../../../src/infra/supabase/client';
+import { useAIMenuStagingStore } from '../../../src/stores/aiMenuStagingStore';
 
 // Build 15 / Session 8 / Phase 6 / Commit 24 — AI menu generation
 // entry screen.
@@ -85,7 +85,6 @@ const LOADING_STAGE_4_MS = 30_000;
 type ScreenState =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'success'; program: GeneratedProgram }
   | { kind: 'error'; message: string };
 
 // UTC month-start ISO — matches the EF's quota window (utcMonthStartISO
@@ -117,6 +116,8 @@ export default function AIMenuScreen() {
 
   const abortRef = useRef<AbortController | null>(null);
   const stageTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const setStaging = useAIMenuStagingStore((s) => s.setStaging);
 
   const planFlags = getFeatureFlags();
   const monthlyLimit = planFlags.aiWorkoutGenerationLimit;
@@ -222,14 +223,15 @@ export default function AIMenuScreen() {
         { targetMuscles: muscles, durationMinutes, exerciseSlugs },
         { signal: controller.signal },
       );
-      setScreenState({ kind: 'success', program });
-      setToast({
-        message: `「${program.programName}」を生成しました（プレビューは Commit 25 で実装）`,
-        type: 'success',
-        visible: true,
-      });
-      // Refresh quota count to advance the badge.
+      // Hand off to preview via the staging store. router params would
+      // need to JSON-stringify a multi-week program (>4 KB typical),
+      // which Expo Router doesn't love — see aiMenuStagingStore.ts.
+      setStaging(program, muscles);
+      setScreenState({ kind: 'idle' });
+      // Refresh quota count to advance the badge before navigation so
+      // the user-facing remaining count is fresh on return.
       void fetchQuota();
+      router.push('/(tabs)/training/ai-menu-preview');
     } catch (err) {
       const code = err instanceof AIWorkoutError ? err.code : 'internal_error';
       const message =
@@ -375,20 +377,6 @@ export default function AIMenuScreen() {
           disabled={generateDisabled}
         />
 
-        {screenState.kind === 'success' && (
-          <Card>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-              生成結果（プレビューは Commit 25 で実装）
-            </Text>
-            <Text style={[styles.successName, { color: colors.textPrimary }]}>
-              {screenState.program.programName}
-            </Text>
-            <Text style={[styles.successMeta, { color: colors.textTertiary }]}>
-              {screenState.program.durationWeeks}週間 ・ split:{' '}
-              {screenState.program.splitType}
-            </Text>
-          </Card>
-        )}
       </ScrollView>
 
       {/* Loading overlay */}
@@ -465,8 +453,6 @@ const styles = StyleSheet.create({
   },
   chipText: { ...typography.labelMedium },
   helperText: { ...typography.bodySmall, textAlign: 'center' },
-  successName: { ...typography.titleSmall, marginTop: spacing.xs },
-  successMeta: { ...typography.bodySmall, marginTop: spacing.xs },
   overlay: {
     flex: 1,
     alignItems: 'center',

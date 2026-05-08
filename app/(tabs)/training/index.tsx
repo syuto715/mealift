@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   ScrollView,
   View,
@@ -10,9 +10,10 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
@@ -64,6 +65,13 @@ export default function TrainingScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
   const profile = useProfileStore((s) => s.profile);
+
+  // highlightRoutineId is set when the AI menu preview screen saves a
+  // new routine and replace()'s back here — drives a brief Animated
+  // flash on the matching card so the user sees what just landed.
+  const params = useLocalSearchParams<{ highlightRoutineId?: string }>();
+  const highlightRoutineId = params.highlightRoutineId ?? null;
+  const flashAnim = useRef(new Animated.Value(0)).current;
 
   const [routines, setRoutines] = useState<WorkoutRoutineWithItems[]>([]);
   const [loading, setLoading] = useState(true);
@@ -186,6 +194,42 @@ export default function TrainingScreen() {
       loadVolumeAnalysis();
     }, [loadRoutines, loadVolumeAnalysis]),
   );
+
+  // Trigger the flash sequence when a highlightRoutineId arrives and the
+  // matching routine has loaded into state. Two-pulse pattern lasting
+  // ~1.6 sec — visible enough to draw the eye without being jarring.
+  useEffect(() => {
+    if (!highlightRoutineId) return;
+    if (!routines.some((r) => r.id === highlightRoutineId)) return;
+    flashAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(flashAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: false,
+      }),
+      Animated.timing(flashAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: false,
+      }),
+      Animated.timing(flashAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: false,
+      }),
+      Animated.timing(flashAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [highlightRoutineId, routines, flashAnim]);
+
+  const flashBgColor = flashAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(0,0,0,0)', 'rgba(46,176,206,0.18)'],
+  });
 
   const loadExercises = useCallback(async () => {
     try {
@@ -405,8 +449,18 @@ export default function TrainingScreen() {
             </View>
           </Card>
         ) : (
-          routines.map((routine) => (
-            <Card key={routine.id}>
+          routines.map((routine) => {
+            const isHighlighted = routine.id === highlightRoutineId;
+            return (
+            <Animated.View
+              key={routine.id}
+              style={
+                isHighlighted
+                  ? { backgroundColor: flashBgColor, borderRadius: radius.md }
+                  : undefined
+              }
+            >
+            <Card>
               <View style={styles.routineRow}>
                 <TouchableOpacity
                   style={styles.routineInfo}
@@ -441,7 +495,9 @@ export default function TrainingScreen() {
                 </View>
               </View>
             </Card>
-          ))
+            </Animated.View>
+            );
+          })
         )}
 
         {/* History link */}
