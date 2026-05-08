@@ -22,6 +22,15 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
+// Phase 7 / Codex review #2 — aiWorkoutService now imports
+// syncRepository for the bypass check. syncRepository transitively
+// pulls expo-sqlite (an ESM native module), so stub it at the module
+// boundary. Default behavior: no pending writes (cache active);
+// individual tests override via getPendingForTable.mockResolvedValueOnce.
+jest.mock('../../repositories/syncRepository', () => ({
+  getPendingForTable: jest.fn(async () => []),
+}));
+
 // Mock the aiNutritionService module so the test runtime doesn't pull
 // in the Expo env transform chain (constants/config → expo/virtual/env).
 // This pins the test surface to aiWorkoutService's wrapper logic
@@ -281,6 +290,7 @@ describe('generateAIWorkoutMenu — cache integration (Phase 7)', () => {
     profileId: 'profile-1',
     goalType: 'muscle_gain',
     equipmentKeys: ['barbell', 'machine'],
+    trainingDaysPerWeek: 3,
   };
 
   it('returns cached program on hit and skips the EF call', async () => {
@@ -366,5 +376,122 @@ describe('generateAIWorkoutMenu — cache integration (Phase 7)', () => {
     const t = await readTelemetry();
     expect(t.hits).toBe(1);
     expect(t.misses).toBe(1);
+  });
+
+  // Phase 7 / Codex review #1 — trainingDaysPerWeek partition.
+  it('partitions cache by trainingDaysPerWeek', async () => {
+    callEdgeFunction.mockResolvedValue(VALID_PROGRAM);
+    await generateAIWorkoutMenu(VALID_REQUEST, { cache: CACHE_ARGS });
+    // Different trainingDaysPerWeek → distinct key → miss → second EF call.
+    await generateAIWorkoutMenu(VALID_REQUEST, {
+      cache: { ...CACHE_ARGS, trainingDaysPerWeek: 5 },
+    });
+    expect(callEdgeFunction).toHaveBeenCalledTimes(2);
+  });
+
+  it('treats null trainingDaysPerWeek distinctly from an explicit number', async () => {
+    callEdgeFunction.mockResolvedValue(VALID_PROGRAM);
+    await generateAIWorkoutMenu(VALID_REQUEST, {
+      cache: { ...CACHE_ARGS, trainingDaysPerWeek: null },
+    });
+    await generateAIWorkoutMenu(VALID_REQUEST, {
+      cache: { ...CACHE_ARGS, trainingDaysPerWeek: 3 },
+    });
+    expect(callEdgeFunction).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('generateAIWorkoutMenu — sync-bypass guard (Phase 7 / Codex #2)', () => {
+  const CACHE_ARGS = {
+    profileId: 'profile-1',
+    goalType: 'muscle_gain',
+    equipmentKeys: ['barbell'],
+    trainingDaysPerWeek: 3,
+  };
+
+  // Pulled in dynamically so the mocked module is the same instance
+  // the production code receives.
+  const { getPendingForTable } = jest.requireMock(
+    '../../repositories/syncRepository',
+  ) as {
+    getPendingForTable: jest.Mock;
+  };
+
+  beforeEach(() => {
+    getPendingForTable.mockReset();
+    getPendingForTable.mockImplementation(async () => []);
+  });
+
+  it('skips cache read when user_equipment has pending sync writes', async () => {
+    callEdgeFunction.mockResolvedValue(VALID_PROGRAM);
+    // Prime the cache with a clean state.
+    await generateAIWorkoutMenu(VALID_REQUEST, { cache: CACHE_ARGS });
+    expect(callEdgeFunction).toHaveBeenCalledTimes(1);
+
+    // Now simulate a pending equipment write — should bypass cache
+    // and call the EF again even though the entry exists.
+    callEdgeFunction.mockClear();
+    getPendingForTable.mockImplementation(async (table: string) =>
+      table === 'user_equipment' ? [{ id: 'pending-row' }] : [],
+    );
+    await generateAIWorkoutMenu(VALID_REQUEST, { cache: CACHE_ARGS });
+    expect(callEdgeFunction).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips cache write when profiles has pending sync writes', async () => {
+    callEdgeFunction.mockResolvedValue(VALID_PROGRAM);
+    getPendingForTable.mockImplementation(async (table: string) =>
+      table === 'profiles' ? [{ id: 'pending-profile' }] : [],
+    );
+    // Generate while sync is pending — no cache write should land.
+    await generateAIWorkoutMenu(VALID_REQUEST, { cache: CACHE_ARGS });
+
+    // Sync now drained. A second call must still hit the EF (no
+    // cache entry was written during the pending window).
+    callEdgeFunction.mockClear();
+    getPendingForTable.mockImplementation(async () => []);
+    await generateAIWorkoutMenu(VALID_REQUEST, { cache: CACHE_ARGS });
+    expect(callEdgeFunction).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses cache normally when sync queue is clean', async () => {
+    callEdgeFunction.mockResolvedValue(VALID_PROGRAM);
+    await generateAIWorkoutMenu(VALID_REQUEST, { cache: CACHE_ARGS });
+    callEdgeFunction.mockClear();
+    await generateAIWorkoutMenu(VALID_REQUEST, { cache: CACHE_ARGS });
+    expect(callEdgeFunction).not.toHaveBeenCalled();
+  });
+});
+
+describe('generateAIWorkoutMenu — storage failure isolation (Phase 7 / Codex #3)', () => {
+  const CACHE_ARGS = {
+    profileId: 'profile-1',
+    goalType: 'muscle_gain',
+    equipmentKeys: ['barbell'],
+    trainingDaysPerWeek: 3,
+  };
+
+  it('falls back to EF call when AsyncStorage.getItem throws', async () => {
+    const original = AsyncStorage.getItem as jest.Mock;
+    original.mockImplementationOnce(async () => {
+      throw new Error('storage offline');
+    });
+    callEdgeFunction.mockResolvedValueOnce(VALID_PROGRAM);
+    const result = await generateAIWorkoutMenu(VALID_REQUEST, {
+      cache: CACHE_ARGS,
+    });
+    expect(result.programName).toBe(VALID_PROGRAM.programName);
+    expect(callEdgeFunction).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not throw when AsyncStorage.setItem fails after a successful EF call', async () => {
+    const original = AsyncStorage.setItem as jest.Mock;
+    original.mockImplementationOnce(async () => {
+      throw new Error('disk full');
+    });
+    callEdgeFunction.mockResolvedValueOnce(VALID_PROGRAM);
+    await expect(
+      generateAIWorkoutMenu(VALID_REQUEST, { cache: CACHE_ARGS }),
+    ).resolves.toBeDefined();
   });
 });

@@ -10,6 +10,7 @@ import {
   recordCacheHit,
   recordCacheMiss,
 } from './aiMenuCache';
+import { getPendingForTable } from '../repositories/syncRepository';
 
 // Build 15 / Session 8 / Feature 5-元 — client wrapper around the
 // generate-workout-menu Edge Function (Phase 4).
@@ -131,6 +132,37 @@ export interface CacheArgs {
   profileId: string;
   goalType: string | null;
   equipmentKeys: string[];
+  // Phase 7 / Codex review #1 — included in the cache key because the
+  // EF prompt embeds it (see generate-workout-menu/index.ts §6 build
+  // prompt). null means "EF falls back to its 3-day default", which
+  // is partitioned distinctly from an explicit 3.
+  trainingDaysPerWeek: number | null;
+}
+
+// Phase 7 / Codex review #2 — sync-lag drift guard.
+//
+// The cache key is computed from local state (profile, user_equipment)
+// while the EF reads remote state. Local writes enqueue for sync but
+// don't push inline, so a user can:
+//   1. toggle equipment locally → enqueue
+//   2. hit "generate" before sync drains
+//   3. local cache key reflects NEW equipment but EF generates from
+//      OLD remote equipment → response gets cached under the NEW key
+//      but actually represents OLD inputs → permanent poisoning.
+//
+// Mitigation: skip the cache (both read and write) entirely whenever
+// the sync queue contains a pending write on `user_equipment` or
+// `profiles`. Once sync drains, future generations get a clean cache
+// with consistent local/remote state. A residual ~ms-scale race still
+// exists between "queue drains" and "EF reads"; that window is
+// acceptable for an opportunistic local cache and would need an EF
+// echo of inputs to fully eliminate (Phase 4 sealed; Build 16+ TODO).
+async function shouldBypassCache(): Promise<boolean> {
+  const [eq, pf] = await Promise.all([
+    getPendingForTable('user_equipment', 1),
+    getPendingForTable('profiles', 1),
+  ]);
+  return eq.length > 0 || pf.length > 0;
 }
 
 export async function generateAIWorkoutMenu(
@@ -141,14 +173,23 @@ export async function generateAIWorkoutMenu(
   // Compute the key once even on miss so we can reuse it for the
   // subsequent setCached without re-stringifying. The EF call still
   // happens; only the response transit is short-circuited.
+  //
+  // Bypass entirely when the sync queue holds a pending write on the
+  // tables we read for cache-key inputs — see shouldBypassCache for
+  // why this prevents a poisoning race against EF remote-state reads.
   let cacheHash: string | null = null;
   const cacheArgs = options?.cache;
+  let cacheActive = false;
   if (cacheArgs) {
+    cacheActive = !(await shouldBypassCache());
+  }
+  if (cacheArgs && cacheActive) {
     cacheHash = buildCacheKey({
       targetMuscles: request.targetMuscles,
       durationMinutes: request.durationMinutes,
       equipmentSet: cacheArgs.equipmentKeys,
       goalType: cacheArgs.goalType,
+      trainingDaysPerWeek: cacheArgs.trainingDaysPerWeek,
       exerciseSlugs: request.exerciseSlugs,
     });
     const cached = await getCached(cacheArgs.profileId, cacheHash);
@@ -176,8 +217,9 @@ export async function generateAIWorkoutMenu(
     }
 
     // Cache write only happens on a successful, validated EF response —
-    // never cache an error or a malformed payload.
-    if (cacheArgs && cacheHash) {
+    // never cache an error or a malformed payload. Skipped when sync
+    // bypass is active so we don't write poisoned entries.
+    if (cacheArgs && cacheActive && cacheHash) {
       void setCached(cacheArgs.profileId, cacheHash, response);
     }
 

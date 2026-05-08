@@ -53,6 +53,14 @@ export interface CacheableInput {
   durationMinutes: number;
   equipmentSet: string[];
   goalType: string | null;
+  // Phase 7 / Codex review #1 — the EF prompt includes
+  // "週のトレーニング日数: ${days}日" and the resulting program shape
+  // (PPL split vs upper_lower vs full_body) shifts meaningfully with
+  // this value, so it MUST partition the cache. Null means "the EF
+  // will fall back to its 3-day default" — captured explicitly so a
+  // user with no profile.training_days_per_week set still partitions
+  // distinctly from a user who set 3.
+  trainingDaysPerWeek: number | null;
   exerciseSlugs: string[];
 }
 
@@ -87,6 +95,7 @@ export function buildCacheKey(input: CacheableInput): string {
     durationMinutes: input.durationMinutes,
     equipmentSet: [...input.equipmentSet].sort(),
     goalType: input.goalType ?? null,
+    trainingDaysPerWeek: input.trainingDaysPerWeek ?? null,
     exerciseSlugs: [...input.exerciseSlugs].sort(),
   });
   return fnv1a(canonical);
@@ -96,9 +105,35 @@ function namespaceKey(userId: string, hash: string): string {
   return `${KEY_PREFIX}${userId}:${hash}`;
 }
 
+// Best-effort entry deletion. Used by the multiple "drop and report
+// miss" branches in getCached. A removeItem failure during eviction
+// is non-fatal — the entry will fall back to TTL or version-mismatch
+// expiry on the next read.
+async function safeRemove(storage: CacheStorage, key: string): Promise<void> {
+  try {
+    await storage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
 // Lazy expiry — TTL + cacheVersion are checked on read. Eager cleanup
 // of expired entries would need a periodic background job; not worth
 // it given storage worst case <1 MB per user.
+//
+// Storage isolation (Phase 7 / Codex review #3): every AsyncStorage
+// read failure is treated as a cache miss rather than a thrown error
+// so a transient storage hiccup never aborts AI menu generation —
+// the EF-call fallback path stays available. Likewise, any of the
+// "drop corrupt entry" branches use safeRemove so removeItem failure
+// during eviction doesn't propagate.
+//
+// Shape validation (Phase 7 / Codex review #4): a structurally-valid
+// CacheEntry whose `data` is missing programName (corrupt write,
+// downgrade past a CACHE_VERSION bump that happened to slip through,
+// etc.) is treated as expired — entry removed, miss reported. The
+// non-cache path validates programName explicitly, so the cache path
+// upholds the same contract instead of returning malformed data.
 export async function getCached(
   userId: string,
   hash: string,
@@ -113,7 +148,14 @@ export async function getCached(
   const ttl = options?.ttlMs ?? TTL_MS;
   const key = namespaceKey(userId, hash);
 
-  const raw = await storage.getItem(key);
+  let raw: string | null;
+  try {
+    raw = await storage.getItem(key);
+  } catch {
+    // Storage read failed — fall through to a miss so the caller can
+    // still hit the EF.
+    return null;
+  }
   if (raw == null) return null;
 
   let entry: CacheEntry;
@@ -121,16 +163,26 @@ export async function getCached(
     entry = JSON.parse(raw) as CacheEntry;
   } catch {
     // Corrupt entry — drop and report miss.
-    await storage.removeItem(key);
+    await safeRemove(storage, key);
     return null;
   }
 
   if (entry.version !== CACHE_VERSION) {
-    await storage.removeItem(key);
+    await safeRemove(storage, key);
     return null;
   }
   if (now - entry.createdAt > ttl) {
-    await storage.removeItem(key);
+    await safeRemove(storage, key);
+    return null;
+  }
+  if (
+    !entry.data ||
+    typeof entry.data.programName !== 'string' ||
+    entry.data.programName.length === 0
+  ) {
+    // Self-healing: a structurally-bad entry is no better than a
+    // corrupt one. Remove and miss.
+    await safeRemove(storage, key);
     return null;
   }
   return entry.data;
@@ -152,7 +204,13 @@ export async function setCached(
     createdAt: now,
     data,
   };
-  await storage.setItem(namespaceKey(userId, hash), JSON.stringify(entry));
+  try {
+    await storage.setItem(namespaceKey(userId, hash), JSON.stringify(entry));
+  } catch {
+    // Cache write failures are non-fatal — the user already has the
+    // EF response in hand. Worst case is the next identical request
+    // misses again.
+  }
 }
 
 // Telemetry counters. Fire-and-forget from the cache integration site

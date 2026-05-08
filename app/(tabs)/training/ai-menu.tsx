@@ -238,6 +238,10 @@ export default function AIMenuScreen() {
             profileId: profile.id,
             goalType: profile.goalType ?? null,
             equipmentKeys,
+            // Phase 7 / Codex #1 — must match what the EF prompt
+            // embeds. profile.trainingDaysPerWeek is the raw int the
+            // EF reads server-side; pipe it through unchanged.
+            trainingDaysPerWeek: profile.trainingDaysPerWeek ?? null,
           }
         : undefined;
 

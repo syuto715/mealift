@@ -71,6 +71,7 @@ const SAMPLE_INPUT: CacheableInput = {
   durationMinutes: 60,
   equipmentSet: ['barbell', 'machine'],
   goalType: 'muscle_gain',
+  trainingDaysPerWeek: 3,
   exerciseSlugs: ['bench_press_barbell', 'lat_pulldown_machine'],
 };
 
@@ -115,6 +116,20 @@ describe('buildCacheKey', () => {
   it('is sensitive to goalType', () => {
     const a = buildCacheKey(SAMPLE_INPUT);
     const b = buildCacheKey({ ...SAMPLE_INPUT, goalType: 'maintenance' });
+    expect(a).not.toBe(b);
+  });
+
+  // Codex review #1 — partition by trainingDaysPerWeek so a schedule
+  // change doesn't return a stale program shape.
+  it('is sensitive to trainingDaysPerWeek', () => {
+    const a = buildCacheKey(SAMPLE_INPUT);
+    const b = buildCacheKey({ ...SAMPLE_INPUT, trainingDaysPerWeek: 5 });
+    expect(a).not.toBe(b);
+  });
+
+  it('treats null trainingDaysPerWeek distinctly from a number', () => {
+    const a = buildCacheKey({ ...SAMPLE_INPUT, trainingDaysPerWeek: null });
+    const b = buildCacheKey({ ...SAMPLE_INPUT, trainingDaysPerWeek: 3 });
     expect(a).not.toBe(b);
   });
 
@@ -198,6 +213,77 @@ describe('getCached / setCached', () => {
     const result = await getCached('user-1', 'h', { storage });
     expect(result).toBeNull();
     expect(storage.removeCalls).toContain('ai_menu:cache:user-1:h');
+  });
+
+  // Codex review #4 — structurally-valid CacheEntry whose `data` lacks
+  // a programName must be treated as expired (self-healing). Mirrors
+  // the non-cache path's programName check in aiWorkoutService.
+  it('treats entry with empty programName as expired and removes it', async () => {
+    const storage = makeFakeStorage();
+    await storage.setItem(
+      'ai_menu:cache:user-1:h',
+      JSON.stringify({
+        version: CACHE_VERSION,
+        createdAt: Date.now(),
+        // empty string is the most likely "structurally valid but
+        // semantically broken" shape Gemini could ever produce.
+        data: { programName: '', durationWeeks: 0, splitType: 'ppl', weeks: [] },
+      }),
+    );
+    const result = await getCached('user-1', 'h', { storage });
+    expect(result).toBeNull();
+    expect(storage.removeCalls).toContain('ai_menu:cache:user-1:h');
+  });
+
+  it('treats entry with missing data field as expired and removes it', async () => {
+    const storage = makeFakeStorage();
+    await storage.setItem(
+      'ai_menu:cache:user-1:h',
+      JSON.stringify({
+        version: CACHE_VERSION,
+        createdAt: Date.now(),
+        // data omitted entirely.
+      }),
+    );
+    const result = await getCached('user-1', 'h', { storage });
+    expect(result).toBeNull();
+    expect(storage.removeCalls).toContain('ai_menu:cache:user-1:h');
+  });
+
+  // Codex review #3 — storage failure must not propagate to the
+  // caller. A getItem reject becomes a cache miss; setItem reject is
+  // swallowed silently so generation success isn't undone.
+  it('returns null (cache miss) when storage.getItem rejects', async () => {
+    const failing: CacheStorage = {
+      async getItem() {
+        throw new Error('storage offline');
+      },
+      async setItem() {
+        // not called
+      },
+      async removeItem() {
+        // not called
+      },
+    };
+    const result = await getCached('user-1', 'h', { storage: failing });
+    expect(result).toBeNull();
+  });
+
+  it('does not throw when storage.setItem rejects', async () => {
+    const failing: CacheStorage = {
+      async getItem() {
+        return null;
+      },
+      async setItem() {
+        throw new Error('disk full');
+      },
+      async removeItem() {
+        // not called
+      },
+    };
+    await expect(
+      setCached('user-1', 'h', SAMPLE_PROGRAM, { storage: failing }),
+    ).resolves.toBeUndefined();
   });
 });
 
