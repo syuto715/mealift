@@ -24,6 +24,7 @@ import { mealTemplateSync } from './mealTemplateSync';
 import { waterLogSync } from './waterLogSync';
 import { adaptiveGoalSync } from './adaptiveGoalSync';
 import { weeklyReportSync } from './weeklyReportSync';
+import { deloadRecommendationSync } from './deloadRecommendationSync';
 import { personalRecordSync } from './personalRecordSync';
 import { estimatedOneRMSync } from './estimatedOneRMSync';
 import { userEquipmentSync } from './userEquipmentSync';
@@ -129,6 +130,7 @@ export const RESOURCE_MODULES: readonly ResourceSyncModule[] = [
   waterLogSync,
   adaptiveGoalSync,
   weeklyReportSync,
+  deloadRecommendationSync,
   personalRecordSync,
   estimatedOneRMSync,
   userEquipmentSync,

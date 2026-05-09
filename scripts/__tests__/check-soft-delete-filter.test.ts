@@ -152,15 +152,17 @@ describe('findViolations', () => {
 });
 
 describe('USER_PRIVATE_TABLES — invariant', () => {
-  it('matches the v23 migration list + Build 15 additions', () => {
+  it('matches the v23 migration list + Build 15 additions + Build 16 additions', () => {
     // 18 tables from v23 + estimated_1rm (Session 6 / v26) +
-    // user_equipment (Session 8 / v28) = 20 total.
-    expect(USER_PRIVATE_TABLES.size).toBe(20);
+    // user_equipment (Session 8 / v28) + deload_recommendations
+    // (Build 16 / Phase 4 / v29) = 21 total.
+    expect(USER_PRIVATE_TABLES.size).toBe(21);
     expect(USER_PRIVATE_TABLES.has('profiles')).toBe(true);
     expect(USER_PRIVATE_TABLES.has('workout_sets')).toBe(true);
     expect(USER_PRIVATE_TABLES.has('progress_photos')).toBe(true);
     expect(USER_PRIVATE_TABLES.has('estimated_1rm')).toBe(true);
     expect(USER_PRIVATE_TABLES.has('user_equipment')).toBe(true);
+    expect(USER_PRIVATE_TABLES.has('deload_recommendations')).toBe(true);
     // Sync-managed-elsewhere tables MUST NOT be in the user-private set
     expect(USER_PRIVATE_TABLES.has('user_submitted_foods')).toBe(false);
     // Local-only-by-design tables MUST NOT be in the set

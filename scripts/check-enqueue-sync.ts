@@ -49,6 +49,8 @@ const USER_PRIVATE_TABLES = new Set<string>([
   'weekly_reports',
   'progress_photos',
   'exercises',
+  // Build 16 / Phase 4 / Feature F.
+  'deload_recommendations',
 ]);
 
 const SKIP_FILE_BASENAMES = new Set<string>([
