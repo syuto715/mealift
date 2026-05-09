@@ -16,6 +16,7 @@ import {
   BLOCK_TEMPLATE,
   DUP_TEMPLATE,
   getPeriodizationTemplate,
+  type PeriodizationTemplate,
   type PeriodizedRoutineItemInput,
 } from '../../constants/periodizationTemplates';
 import {
@@ -560,5 +561,46 @@ describe('spawnAllPeriodizedRoutines', () => {
         'ex-curl',
       ]);
     }
+  });
+
+  // Codex review pass 1 / Important — spawnAllPeriodizedRoutines must
+  // fail fast on a malformed DUP template (missing/empty sessions on
+  // any week), not silently emit fewer outputs. Prior to the fix,
+  // `week.sessions ?? []` would let a 4-week DUP template that drifted
+  // to a 3-session-week produce 11 outputs instead of 12 with no
+  // signal to the caller. The fixed contract throws same-shape error
+  // as generatePeriodizedRoutine.
+  it('throws when a DUP template week has missing sessions (constant drift)', () => {
+    const malformed: PeriodizationTemplate = {
+      id: 'dup',
+      nameJa: 'broken',
+      description: 'broken',
+      durationWeeks: 1,
+      weeks: [{ weekIndex: 1 }], // no sessions field
+    };
+    expect(() =>
+      spawnAllPeriodizedRoutines({
+        baseName: 'X',
+        baseItems: BASE_ITEMS,
+        template: malformed,
+      }),
+    ).toThrow(/missing sessions/);
+  });
+
+  it('throws when a DUP template week has empty sessions array', () => {
+    const malformed: PeriodizationTemplate = {
+      id: 'dup',
+      nameJa: 'broken',
+      description: 'broken',
+      durationWeeks: 1,
+      weeks: [{ weekIndex: 1, sessions: [] }],
+    };
+    expect(() =>
+      spawnAllPeriodizedRoutines({
+        baseName: 'X',
+        baseItems: BASE_ITEMS,
+        template: malformed,
+      }),
+    ).toThrow(/missing sessions/);
   });
 });

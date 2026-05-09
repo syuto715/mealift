@@ -187,8 +187,19 @@ export function spawnAllPeriodizedRoutines<T extends PeriodizedRoutineItemInput>
 
   for (const week of template.weeks) {
     if (template.id === 'dup') {
-      const sessions = week.sessions ?? [];
-      for (const session of sessions) {
+      // Codex review pass 1 / Important — fail fast on a malformed
+      // DUP template (missing or empty sessions). The previous
+      // `?? []` would silently produce fewer outputs than
+      // durationWeeks × 3 and hide constant drift / ad-hoc bad
+      // input. generatePeriodizedRoutine treats the same invariant
+      // as exceptional below; spawnAll has to match the contract or
+      // it becomes the weaker boundary.
+      if (!week.sessions || week.sessions.length === 0) {
+        throw new Error(
+          `spawnAllPeriodizedRoutines: DUP template '${template.id}' weekIndex ${week.weekIndex} missing sessions`,
+        );
+      }
+      for (const session of week.sessions) {
         out.push(
           generatePeriodizedRoutine({
             baseName,
