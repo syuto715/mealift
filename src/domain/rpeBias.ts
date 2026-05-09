@@ -83,25 +83,28 @@ export interface RpeBiasResult {
 
 // === Helpers ===
 
-// Reps the Helms/RTS table covers explicitly. Off-grid rep counts
-// snap to the nearest entry — Phase 3 sign-off chose this over
-// linear interpolation because the table is already published as a
-// 0.5-RPE-step grid and interpolation buys little accuracy at the
-// cost of more obscure boundaries.
-const TABLE_REPS = [1, 3, 5, 8, 10, 12] as const;
+// Reps the Helms/RTS table covers explicitly. Codex review pass 1 /
+// Critical #1 — forward/reverse parity. The forward path
+// (recommendNextSet) falls back to FALLBACK_PCT = rirToPctOf1RM[8][2]
+// = 0.745 for any reps not in this set, so the reverse path must
+// use the same row (= reps 8) for non-key reps. A previous "snap to
+// nearest reps" approach broke this round-trip:
+//
+//   recommendNextSet(repTarget=6, rir=2) returned 0.745×e1rm,
+//   backDeriveRpeFromWeight(0.745×e1rm, 6) snapped to row 5 and
+//   replied with RPE 6 — so a perfectly on-target set drifted the
+//   bias by -2 RPE per sample.
+//
+// Now both paths agree: a set whose weight matches what
+// recommendNextSet would have suggested for the same (reps, rir)
+// reverses to that exact RPE.
 const TABLE_RIRS = [0, 1, 2, 3, 4] as const;
 
-function nearestTableReps(reps: number): number {
-  let best: number = TABLE_REPS[0];
-  let bestDiff = Math.abs(reps - best);
-  for (const r of TABLE_REPS) {
-    const d = Math.abs(reps - r);
-    if (d < bestDiff) {
-      best = r;
-      bestDiff = d;
-    }
-  }
-  return best;
+// Mirrors recommendNextSet's fallback policy: if reps is one of the
+// table keys, use that row; otherwise fall back to the rep-8 row,
+// which is the row containing FALLBACK_PCT.
+function selectTableReps(reps: number): number {
+  return rirToPctOf1RM[reps] ? reps : 8;
 }
 
 // Reverse lookup: given the user's actual lift (weight + reps) and
@@ -130,7 +133,7 @@ export function backDeriveRpeFromWeight(
   // scan and avoids an "infinity" ambiguity in the search.
   if (pct >= 1.0) return 10;
 
-  const tableReps = nearestTableReps(reps);
+  const tableReps = selectTableReps(reps);
   const row = rirToPctOf1RM[tableReps];
 
   let bestRir: number = TABLE_RIRS[0];

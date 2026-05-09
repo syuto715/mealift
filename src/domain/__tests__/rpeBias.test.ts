@@ -29,18 +29,59 @@ describe('backDeriveRpeFromWeight', () => {
     expect(backDeriveRpeFromWeight(weight, 8, e1rm)).toBe(8);
   });
 
-  it('snaps off-grid reps to the nearest table row (reps=6 → row 5)', () => {
-    // rirToPctOf1RM[5][2] = 0.811. With pct=0.811 and reps=6, nearest
-    // table row should be 5, RIR 2 → RPE 8.
+  // Codex review pass 1 / Critical #1 — non-key reps must use the
+  // same fallback row as recommendNextSet (= rep-8 row containing
+  // FALLBACK_PCT), not "snap to nearest". A previous "snap to nearest"
+  // policy broke round-trip consistency: a recommendation engine that
+  // suggests 0.745×e1rm at reps=6 would round-trip to RPE 6 instead
+  // of the intended RPE 8.
+  it('non-key reps fall back to the rep-8 row (matches recommendNextSet fallback)', () => {
     const e1rm = 100;
-    const weight = e1rm * rirToPctOf1RM[5][2];
+    // Weight that recommendNextSet would suggest at reps=6, rir=2 —
+    // that's the FALLBACK path (= rep-8 row, RIR 2, 0.745).
+    const weight = e1rm * rirToPctOf1RM[8][2];
     expect(backDeriveRpeFromWeight(weight, 6, e1rm)).toBe(8);
   });
 
-  it('snaps very high reps (15) to the table cap row (12)', () => {
+  it('non-key reps far above the table also use the rep-8 row', () => {
     const e1rm = 100;
-    const weight = e1rm * rirToPctOf1RM[12][2];
+    const weight = e1rm * rirToPctOf1RM[8][2];
+    // reps=15 → row 8 fallback; same weight → RPE 8.
     expect(backDeriveRpeFromWeight(weight, 15, e1rm)).toBe(8);
+  });
+
+  // Round-trip consistency tests for the non-key reps cases. Mirrors
+  // exactly how recommendNextSet would have advised a weight at a
+  // given (reps, rir), then backDerives and asserts the matching
+  // RPE. Phase 3.1 Codex pass 1 baseline regression — break this and
+  // bias estimation drifts systematically for any non-{1,3,5,8,10,12}
+  // rep target.
+  it('round-trip: recommendNextSet(reps=6, rir=2) → backDerive returns RPE 8', () => {
+    const e1rm = 100;
+    // recommendNextSet uses FALLBACK_PCT for non-key reps regardless
+    // of rir, so its "RIR 2" weight at reps=6 is 0.745 × e1rm.
+    const recommendedWeight = e1rm * rirToPctOf1RM[8][2];
+    expect(backDeriveRpeFromWeight(recommendedWeight, 6, e1rm)).toBe(8);
+  });
+
+  it('round-trip: recommendNextSet(reps=9, rir=2) → backDerive returns RPE 8', () => {
+    const e1rm = 100;
+    const recommendedWeight = e1rm * rirToPctOf1RM[8][2];
+    expect(backDeriveRpeFromWeight(recommendedWeight, 9, e1rm)).toBe(8);
+  });
+
+  it('round-trip: recommendNextSet(reps=11, rir=2) → backDerive returns RPE 8', () => {
+    const e1rm = 100;
+    const recommendedWeight = e1rm * rirToPctOf1RM[8][2];
+    expect(backDeriveRpeFromWeight(recommendedWeight, 11, e1rm)).toBe(8);
+  });
+
+  // Forward path with key reps still uses the explicit row.
+  it('round-trip: key reps (10) preserve their own row', () => {
+    const e1rm = 100;
+    // recommendNextSet(reps=10, rir=2) would use rirToPctOf1RM[10][2] = 0.700.
+    const recommendedWeight = e1rm * rirToPctOf1RM[10][2];
+    expect(backDeriveRpeFromWeight(recommendedWeight, 10, e1rm)).toBe(8);
   });
 
   it('returns 10 (max effort) when pct >= 1.0 (weight at or above 1RM)', () => {
