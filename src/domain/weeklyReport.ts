@@ -6,7 +6,7 @@ import {
   NARRATIVE_CACHE_VERSION,
 } from '../types/weeklyReport';
 import { generateId } from '../utils/id';
-import { startOfWeek, endOfWeek, format, subWeeks } from 'date-fns';
+import { startOfWeek, endOfWeek, format, subWeeks, addDays } from 'date-fns';
 
 // ---------------------------------------------------------------------------
 // Generate a weekly report from raw DB data
@@ -76,6 +76,25 @@ export async function generateWeeklyReport(
       : 0;
 
   // --- Training ---
+  // Build 16 / Phase 2 hotfix — workout_sessions has `started_at`,
+  // not `date`, so the prior `ws.date BETWEEN ? AND ?` clause threw
+  // SQLITE_ERROR ("no such column"). The screen layer's try/catch
+  // caught it and showed an empty state, but Phase 1.2's AI narrative
+  // also consumed these stats — meaning every generated narrative
+  // saw workoutCount=0 / totalVolume=0. The fake DB used in
+  // weeklyReport.test.ts returns []  for getAllAsync regardless of
+  // SQL, so the bug never surfaced in CI.
+  //
+  // Two changes:
+  //   1. Switch the filter to `started_at`. ISO dates are 'YYYY-MM-DD'
+  //      while started_at is 'YYYY-MM-DDTHH:MM:SS.sssZ', so a
+  //      half-open `>= startStr AND < dayAfterEnd` interval picks
+  //      up every session inside the week without missing the last
+  //      day's late-evening rows.
+  //   2. Filter out soft-deleted rows (v23 added deleted_at across
+  //      all user-private tables — every other workoutRepository
+  //      query honors it; this one missed the migration).
+  const dayAfterEnd = format(addDays(weekEnd, 1), 'yyyy-MM-dd');
   const trainingRows = await db.getAllAsync<{
     session_count: number;
     total_volume: number;
@@ -87,8 +106,11 @@ export async function generateWeeklyReport(
        COALESCE(SUM(ws.estimated_calories), 0) as total_cal_burned
      FROM workout_sessions ws
      LEFT JOIN workout_sets wss ON wss.session_id = ws.id
-     WHERE ws.profile_id = ? AND ws.date BETWEEN ? AND ?`,
-    [profileId, startStr, endStr],
+     WHERE ws.profile_id = ?
+       AND ws.started_at >= ?
+       AND ws.started_at < ?
+       AND ws.deleted_at IS NULL`,
+    [profileId, startStr, dayAfterEnd],
   );
 
   const training = trainingRows[0] ?? { session_count: 0, total_volume: 0, total_cal_burned: 0 };

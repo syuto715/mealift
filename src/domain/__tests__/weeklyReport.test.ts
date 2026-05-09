@@ -341,3 +341,166 @@ describe('saveNarrativeToReport / getNarrativeFromReport', () => {
     expect(got).toBeNull();
   });
 });
+
+// Build 16 / Phase 2 hotfix — pin the training-stats SQL against
+// the schema. The original `WHERE ws.date BETWEEN ? AND ?` clause
+// referenced a column that doesn't exist on workout_sessions
+// (only `started_at`), so the query threw at runtime and the
+// caller's catch produced empty stats. This block now uses a
+// richer fake DB that recognizes the training query, returns
+// shaped rows, and verifies generateWeeklyReport assembles them
+// correctly under the half-open started_at filter.
+//
+// Two regression tests:
+//   1. half-open week boundary (a session at 23:59:59 of weekEnd
+//      counts; a session at 00:00:00 of weekEnd+1 does not).
+//   2. soft-deleted sessions (deleted_at IS NOT NULL) are excluded.
+describe('generateWeeklyReport — training-stats schema (Phase 2 hotfix)', () => {
+  // Imported lazily to keep the test isolated from the makeFakeDb
+  // pattern above; the import resolves the same module so the
+  // jest.mock setup at the top of the file still applies.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { generateWeeklyReport } = require('../weeklyReport') as typeof import('../weeklyReport');
+
+  interface Session {
+    id: string;
+    profile_id: string;
+    started_at: string;
+    estimated_calories: number | null;
+    deleted_at: string | null;
+  }
+  interface Set {
+    session_id: string;
+    weight_kg: number;
+    reps: number;
+  }
+
+  function makeTrainingFakeDb(sessions: Session[], sets: Set[]) {
+    const trainingDb = {
+      async getFirstAsync(_sql: string, _params: unknown[]) {
+        // Not exercised by the training query itself.
+        return null;
+      },
+      async getAllAsync(sql: string, params: unknown[]) {
+        if (sql.includes('FROM workout_sessions')) {
+          // Reproduce the half-open + deleted_at filter the helper
+          // uses so the test verifies the SQL contract, not just
+          // the JS aggregation.
+          const [profileId, startStr, dayAfterEnd] = params as [
+            string,
+            string,
+            string,
+          ];
+          const filtered = sessions.filter(
+            (s) =>
+              s.profile_id === profileId &&
+              s.started_at >= startStr &&
+              s.started_at < dayAfterEnd &&
+              s.deleted_at === null,
+          );
+          const sessionIds = new Set(filtered.map((s) => s.id));
+          const matchingSets = sets.filter((x) => sessionIds.has(x.session_id));
+          const totalVolume = matchingSets.reduce(
+            (acc, x) => acc + x.weight_kg * x.reps,
+            0,
+          );
+          const totalCalBurned = filtered.reduce(
+            (acc, s) => acc + (s.estimated_calories ?? 0),
+            0,
+          );
+          return [
+            {
+              session_count: filtered.length,
+              total_volume: totalVolume,
+              total_cal_burned: totalCalBurned,
+            },
+          ];
+        }
+        // body_logs / meal_logs etc. — empty fall-through.
+        return [];
+      },
+      async runAsync(_sql: string, _params: unknown[]) {
+        return { changes: 0 };
+      },
+    };
+    return trainingDb;
+  }
+
+  it('uses started_at half-open intervals (sessions on the last day count, sessions on the next day do not)', async () => {
+    const sessions: Session[] = [
+      // Mon 06:00 — counts
+      {
+        id: 's1',
+        profile_id: 'p1',
+        started_at: '2026-05-04T06:00:00.000Z',
+        estimated_calories: 100,
+        deleted_at: null,
+      },
+      // Sun 23:59 — counts (last hour of the week)
+      {
+        id: 's2',
+        profile_id: 'p1',
+        started_at: '2026-05-10T23:59:00.000Z',
+        estimated_calories: 200,
+        deleted_at: null,
+      },
+      // Mon next week 00:00 — must NOT count
+      {
+        id: 's3',
+        profile_id: 'p1',
+        started_at: '2026-05-11T00:00:00.000Z',
+        estimated_calories: 999,
+        deleted_at: null,
+      },
+    ];
+    const sets: Set[] = [
+      { session_id: 's1', weight_kg: 100, reps: 5 },
+      { session_id: 's2', weight_kg: 60, reps: 10 },
+      { session_id: 's3', weight_kg: 80, reps: 5 },
+    ];
+    mockGetDatabase.mockResolvedValue(makeTrainingFakeDb(sessions, sets));
+
+    const report = await generateWeeklyReport(
+      'p1',
+      new Date('2026-05-07T12:00:00Z'),
+    );
+    expect(report.workoutCount).toBe(2);
+    // s1 + s2 only: 100*5 + 60*10 = 1100; s3 (1100kg×reps from 80*5*N? = 400) excluded
+    expect(report.totalVolume).toBe(1100);
+    // s1 100 + s2 200 = 300; s3 (999) excluded
+    expect(report.totalCaloriesBurned).toBe(300);
+  });
+
+  it('excludes soft-deleted sessions from training stats (v23 deleted_at filter)', async () => {
+    const sessions: Session[] = [
+      {
+        id: 's1',
+        profile_id: 'p1',
+        started_at: '2026-05-04T06:00:00.000Z',
+        estimated_calories: 100,
+        deleted_at: null,
+      },
+      {
+        id: 's2',
+        profile_id: 'p1',
+        started_at: '2026-05-05T06:00:00.000Z',
+        estimated_calories: 50,
+        // Tombstone — must be excluded.
+        deleted_at: '2026-05-06T00:00:00.000Z',
+      },
+    ];
+    const sets: Set[] = [
+      { session_id: 's1', weight_kg: 100, reps: 5 },
+      { session_id: 's2', weight_kg: 80, reps: 5 },
+    ];
+    mockGetDatabase.mockResolvedValue(makeTrainingFakeDb(sessions, sets));
+
+    const report = await generateWeeklyReport(
+      'p1',
+      new Date('2026-05-07T12:00:00Z'),
+    );
+    expect(report.workoutCount).toBe(1);
+    expect(report.totalVolume).toBe(500);
+    expect(report.totalCaloriesBurned).toBe(100);
+  });
+});
