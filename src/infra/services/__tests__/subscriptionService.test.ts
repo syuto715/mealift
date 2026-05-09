@@ -107,6 +107,26 @@ describe('subscriptionService — production gating (__DEV__ = false)', () => {
       expect(getFeaturesForTier('pro').aiWorkoutGenerationLimit).toBe(100);
     });
   });
+
+  describe('oneRepMaxRecommendation (Build 15 / Feature 5-C, Phase 9.1)', () => {
+    // Gate covers: Easy/Normal/Hard chip strip in session.tsx and the
+    // plate_step_kg picker in settings/training-prefs.tsx. The §7.3
+    // RPE adjustment in workoutRepository.maybeRecordE1RMObservation
+    // is intentionally NOT gated — it's a backend accuracy
+    // improvement applied for every tier.
+    it('locks the chip strip and plate-step picker behind Plus', () => {
+      expect(getFeaturesForTier('free').oneRepMaxRecommendation).toBe(false);
+      expect(getFeaturesForTier('plus').oneRepMaxRecommendation).toBe(true);
+      expect(getFeaturesForTier('pro').oneRepMaxRecommendation).toBe(true);
+    });
+
+    it('FEATURE_MATRIX (auto-derived) treats Plus as the minimum tier', () => {
+      expect(hasFeature('oneRepMaxRecommendation', 'free')).toBe(false);
+      expect(hasFeature('oneRepMaxRecommendation', 'trial')).toBe(true);
+      expect(hasFeature('oneRepMaxRecommendation', 'plus')).toBe(true);
+      expect(hasFeature('oneRepMaxRecommendation', 'pro')).toBe(true);
+    });
+  });
 });
 
 describe('subscriptionService — dev mode (__DEV__ = true)', () => {

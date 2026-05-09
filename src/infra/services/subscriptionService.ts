@@ -39,6 +39,13 @@ export interface FeatureFlags {
   // the Phase 6 UI. Keep these numbers in lockstep with the EF's
   // MONTHLY_QUOTA constant.
   aiWorkoutGenerationLimit: number;
+  // Build 15 / Session 9 / Phase 9.1 — gate the Easy/Normal/Hard
+  // chip strip (session.tsx) and the plate_step_kg picker
+  // (settings/training-prefs.tsx) behind Plus. The §7.3 RPE
+  // adjustment in workoutRepository.maybeRecordE1RMObservation runs
+  // for every tier — that's a backend accuracy improvement, not a
+  // gated feature.
+  oneRepMaxRecommendation: boolean;
 }
 
 const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
@@ -77,6 +84,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     shareImages: false,
     historyUnlimited: false,
     aiWorkoutGenerationLimit: 3,
+    oneRepMaxRecommendation: false,
   },
   plus: {
     maxRoutines: Infinity,
@@ -104,6 +112,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     shareImages: true,
     historyUnlimited: true,
     aiWorkoutGenerationLimit: 30,
+    oneRepMaxRecommendation: true,
   },
   pro: {
     maxRoutines: Infinity,
@@ -131,6 +140,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     shareImages: true,
     historyUnlimited: true,
     aiWorkoutGenerationLimit: 100,
+    oneRepMaxRecommendation: true,
   },
 };
 

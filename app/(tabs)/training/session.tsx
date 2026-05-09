@@ -183,19 +183,50 @@ function computePatternCascade(
 // (useMemo) and skips render entirely when there's no e1rm yet or no
 // parseable target_reps. The hint copy steers first-time users toward
 // logging a working set so the engine has data to work with.
+//
+// Phase 9.1 — when `gated` is true (Free tier without trial), the
+// chip strip + first-time hint are both replaced by an inline
+// upgrade prompt. Tapping it routes to /(tabs)/settings/subscription
+// (existing RevenueCat-backed paywall surface). The strip still only
+// renders on uncompleted working sets when a routine target exists,
+// so free-form sessions stay banner-free.
 const RecommendationStrip = React.memo(function RecommendationStrip(props: {
   e1rm: number | null;
   targetRepsRaw: string | null;
   plateStep: number;
   onApply: (weightKg: number, reps: number) => void;
   colors: ReturnType<typeof getColors>;
+  gated: boolean;
 }) {
-  const { e1rm, targetRepsRaw, plateStep, onApply, colors } = props;
+  const { e1rm, targetRepsRaw, plateStep, onApply, colors, gated } = props;
   const parsedTarget = useMemo(() => parseTargetReps(targetRepsRaw), [targetRepsRaw]);
   const recommendation = useMemo(
     () => recommendNextSet(e1rm, parsedTarget, 2, plateStep),
     [e1rm, parsedTarget, plateStep],
   );
+
+  if (gated) {
+    // Skip the upgrade banner on free-form sessions (no routine
+    // target → no recommendation context anyway, so nothing to gate).
+    if (parsedTarget == null) return null;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.recommendUpgradeWrap,
+          { backgroundColor: colors.surfaceSecondary, borderRadius: radius.md },
+        ]}
+        onPress={() => router.push('/(tabs)/settings/subscription')}
+        activeOpacity={0.6}
+        accessibilityRole="button"
+      >
+        <Ionicons name="sparkles-outline" size={14} color={colors.primary} />
+        <Text style={[styles.recommendUpgradeText, { color: colors.textSecondary }]}>
+          Plus にアップグレードで重量推奨が使えます
+        </Text>
+        <Ionicons name="chevron-forward" size={14} color={colors.textTertiary} />
+      </TouchableOpacity>
+    );
+  }
 
   // Hint when there's literally no observation yet. Shown only when a
   // routine target exists — free-form sessions (target null) get no
@@ -271,6 +302,12 @@ export default function SessionScreen() {
 
   const restTimer = useRestTimer();
   const prevTimerRunning = useRef(restTimer.isRunning);
+
+  // Phase 9.1 — gate the chip strip to Plus/Pro. Computed once per
+  // render so the per-set RecommendationStrip doesn't re-evaluate
+  // canUse() in a hot loop. canUse already returns true unconditionally
+  // in __DEV__, so dev builds keep showing chips for visual debugging.
+  const recommendationGated = !canUse('oneRepMaxRecommendation');
 
   // Rest timer overlay state (Feature D)
   const [restTimerSettings, setRestTimerSettings] = useState<RestTimerSettings>(DEFAULT_REST_TIMER_SETTINGS);
@@ -1320,6 +1357,7 @@ export default function SessionScreen() {
                           })
                         }
                         colors={colors}
+                        gated={recommendationGated}
                       />
                     )}
 
@@ -2061,6 +2099,20 @@ const styles = StyleSheet.create({
     ...typography.labelSmall,
     fontSize: 11,
     textAlign: 'center',
+  },
+  recommendUpgradeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs + 2,
+    marginHorizontal: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  recommendUpgradeText: {
+    ...typography.labelSmall,
+    fontSize: 11,
+    flex: 1,
   },
   setNum: {
     ...typography.labelMedium,
