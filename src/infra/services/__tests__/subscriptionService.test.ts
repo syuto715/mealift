@@ -4,6 +4,7 @@ import {
   getFeaturesForTier,
   setTier,
   derivePlanSnapshot,
+  type PlanTier,
 } from '../subscriptionService';
 
 // `__DEV__` is the React Native global. It is `true` by default under jest
@@ -105,6 +106,42 @@ describe('subscriptionService — production gating (__DEV__ = false)', () => {
       expect(getFeaturesForTier('free').aiWorkoutGenerationLimit).toBe(3);
       expect(getFeaturesForTier('plus').aiWorkoutGenerationLimit).toBe(30);
       expect(getFeaturesForTier('pro').aiWorkoutGenerationLimit).toBe(100);
+    });
+  });
+
+  describe('aiWeeklyReport / aiWeeklyReportLimit (Build 16 / Feature H, Phase 1.2)', () => {
+    // Numbers must stay in lockstep with
+    // supabase/functions/generate-weekly-report/index.ts MONTHLY_QUOTA
+    // — the EF is the authoritative gate; this flag drives the client
+    // UI badge and the boolean is the canonical Plus-tier check.
+    it('matches the per-tier monthly quota the Edge Function enforces', () => {
+      expect(getFeaturesForTier('free').aiWeeklyReportLimit).toBe(0);
+      expect(getFeaturesForTier('plus').aiWeeklyReportLimit).toBe(4);
+      expect(getFeaturesForTier('pro').aiWeeklyReportLimit).toBe(12);
+    });
+
+    it('locks the AI narrative behind Plus, but the rule-based report flag stays open at Plus+', () => {
+      expect(getFeaturesForTier('free').aiWeeklyReport).toBe(false);
+      expect(getFeaturesForTier('plus').aiWeeklyReport).toBe(true);
+      expect(getFeaturesForTier('pro').aiWeeklyReport).toBe(true);
+    });
+
+    it('FEATURE_MATRIX (auto-derived) treats Plus as the minimum tier and admits trial users', () => {
+      expect(hasFeature('aiWeeklyReport', 'free')).toBe(false);
+      expect(hasFeature('aiWeeklyReport', 'trial')).toBe(true);
+      expect(hasFeature('aiWeeklyReport', 'plus')).toBe(true);
+      expect(hasFeature('aiWeeklyReport', 'pro')).toBe(true);
+    });
+
+    it('keeps the boolean flag and quota number consistent (drift guard)', () => {
+      // Boolean true ↔ limit > 0; Boolean false ↔ limit 0. Catches the
+      // most common out-of-sync mode (someone bumps the limit but
+      // forgets the boolean, or vice versa).
+      const tiers: PlanTier[] = ['free', 'plus', 'pro'];
+      for (const t of tiers) {
+        const f = getFeaturesForTier(t);
+        expect(f.aiWeeklyReport).toBe(f.aiWeeklyReportLimit > 0);
+      }
     });
   });
 

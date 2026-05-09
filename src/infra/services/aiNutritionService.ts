@@ -21,7 +21,12 @@ export type AIErrorCode =
   // Build 15 / Phase 6 — user-initiated AbortController cancellation
   // surfaces as this code so UI can distinguish "user pressed cancel"
   // from "network down".
-  | 'aborted';
+  | 'aborted'
+  // Build 16 / Phase 1 (Feature H) — generate-weekly-report locks
+  // out the Free tier with this code (rather than a generic 429
+  // quota_exceeded with limit=0) so the client can route directly
+  // to the subscription screen with the right copy.
+  | 'plus_required';
 
 export class AIError extends Error {
   code: AIErrorCode;

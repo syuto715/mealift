@@ -46,6 +46,17 @@ export interface FeatureFlags {
   // for every tier — that's a backend accuracy improvement, not a
   // gated feature.
   oneRepMaxRecommendation: boolean;
+  // Build 16 / Phase 1 (Feature H) — gate the AI weekly narrative
+  // (generate-weekly-report Edge Function) behind Plus. The
+  // rule-based weekly report (workouts/nutrition/weight stats +
+  // scores) stays free; only the AI overlay is paywalled. Pairs
+  // with aiWeeklyReportLimit below.
+  aiWeeklyReport: boolean;
+  // Monthly cap on AI weekly report generation. Server is the
+  // authoritative gate (supabase/functions/generate-weekly-report
+  // MONTHLY_QUOTA); this number drives the client's "残り N/M"
+  // badge and the drift-guard test below.
+  aiWeeklyReportLimit: number;
 }
 
 const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
@@ -85,6 +96,8 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     historyUnlimited: false,
     aiWorkoutGenerationLimit: 3,
     oneRepMaxRecommendation: false,
+    aiWeeklyReport: false,
+    aiWeeklyReportLimit: 0,
   },
   plus: {
     maxRoutines: Infinity,
@@ -113,6 +126,8 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     historyUnlimited: true,
     aiWorkoutGenerationLimit: 30,
     oneRepMaxRecommendation: true,
+    aiWeeklyReport: true,
+    aiWeeklyReportLimit: 4,
   },
   pro: {
     maxRoutines: Infinity,
@@ -141,6 +156,8 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     historyUnlimited: true,
     aiWorkoutGenerationLimit: 100,
     oneRepMaxRecommendation: true,
+    aiWeeklyReport: true,
+    aiWeeklyReportLimit: 12,
   },
 };
 
