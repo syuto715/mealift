@@ -41,6 +41,13 @@ import { useSubscription } from '../../../src/hooks/useSubscription';
 import { historyWindowDaysFor } from '../../../src/domain/subscription/gates';
 import { BodyLog } from '../../../src/types/bodyLog';
 import { calculateAllCalories, calculateDailyBurn } from '../../../src/domain/calories';
+import {
+  aggregateWeeklySetsByMuscle,
+  summarizeVolumeGroups,
+  type VolumeGroupSummary,
+} from '../../../src/domain/volumeLandmark';
+import { VolumeLandmarkChart } from '../../../src/components/training/VolumeLandmarkChart';
+import { router } from 'expo-router';
 
 const PERIOD_SEGMENTS = [
   { label: '1W', value: '1W' },
@@ -122,8 +129,37 @@ export default function ProgressScreen() {
   // Calorie burn state
   const [todayWorkoutCal, setTodayWorkoutCal] = useState(0);
 
-  const { status: planStatus } = useSubscription();
+  const sub = useSubscription();
+  const planStatus = sub.status;
   const historyWindowDays = historyWindowDaysFor(planStatus);
+  const volumeDashboardUnlocked = sub.hasFeature('volumeDashboard');
+
+  // Build 16 / Phase 2.2 — top-3 volume preview state. Hidden when
+  // the user can't see the dashboard at all (Free).
+  const [volumePreview, setVolumePreview] = useState<VolumeGroupSummary[] | null>(null);
+
+  useEffect(() => {
+    if (!profile?.id || !volumeDashboardUnlocked) {
+      setVolumePreview(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const setsByGroup = await aggregateWeeklySetsByMuscle(
+          profile.id,
+          new Date(),
+        );
+        if (cancelled) return;
+        setVolumePreview(summarizeVolumeGroups(setsByGroup));
+      } catch {
+        if (!cancelled) setVolumePreview(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id, volumeDashboardUnlocked]);
 
   // Load recorded dates for DateNavigator
   useEffect(() => {
@@ -621,6 +657,29 @@ export default function ProgressScreen() {
           </Card>
         )}
 
+        {/* Build 16 / Phase 2 (Feature E) — MEV/MAV/MRV preview.
+            Plus-only; Free users don't see this card at all. The
+            preview shows the user's top-3 most-trained muscles as
+            of this week, with a tap-target to the full dashboard. */}
+        {volumeDashboardUnlocked && volumePreview && volumePreview.length > 0 && (
+          <Card>
+            <View style={styles.volumeHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
+                ボリュームダッシュボード
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/progress/volume-dashboard')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={[styles.volumeViewAll, { color: colors.primary }]}>
+                  全て見る ›
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <VolumeLandmarkChart summaries={volumePreview} topN={3} compact />
+          </Card>
+        )}
+
         {/* Recent records */}
         <Card>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>最近の記録</Text>
@@ -823,6 +882,13 @@ const styles = StyleSheet.create({
   noDataContainer: { paddingVertical: spacing.lg, alignItems: 'center' },
   noDataText: { ...typography.bodyMedium, textAlign: 'center' },
   recordsList: { gap: 0 },
+  volumeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  volumeViewAll: { ...typography.labelMedium },
   recordRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

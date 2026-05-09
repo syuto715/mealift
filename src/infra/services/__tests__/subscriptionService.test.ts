@@ -145,6 +145,24 @@ describe('subscriptionService — production gating (__DEV__ = false)', () => {
     });
   });
 
+  describe('volumeDashboard (Build 16 / Feature E, Phase 2)', () => {
+    // Phase 2 sign-off — gate the MEV/MAV/MRV per-muscle dashboard
+    // behind Plus. Rule-based weekly volume sums elsewhere in the
+    // app stay free; only the landmark chart is paywalled.
+    it('locks the dashboard behind Plus', () => {
+      expect(getFeaturesForTier('free').volumeDashboard).toBe(false);
+      expect(getFeaturesForTier('plus').volumeDashboard).toBe(true);
+      expect(getFeaturesForTier('pro').volumeDashboard).toBe(true);
+    });
+
+    it('FEATURE_MATRIX (auto-derived) treats Plus as the minimum tier and admits trial users', () => {
+      expect(hasFeature('volumeDashboard', 'free')).toBe(false);
+      expect(hasFeature('volumeDashboard', 'trial')).toBe(true);
+      expect(hasFeature('volumeDashboard', 'plus')).toBe(true);
+      expect(hasFeature('volumeDashboard', 'pro')).toBe(true);
+    });
+  });
+
   describe('oneRepMaxRecommendation (Build 15 / Feature 5-C, Phase 9.1)', () => {
     // Gate covers: Easy/Normal/Hard chip strip in session.tsx and the
     // plate_step_kg picker in settings/training-prefs.tsx. The §7.3

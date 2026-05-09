@@ -57,6 +57,12 @@ export interface FeatureFlags {
   // MONTHLY_QUOTA); this number drives the client's "残り N/M"
   // badge and the drift-guard test below.
   aiWeeklyReportLimit: number;
+  // Build 16 / Phase 2 (Feature E) — MEV/MAV/MRV volume dashboard
+  // (9 muscle groups, hardcoded RP/Israetel landmarks). Plus-tier
+  // differentiator; the rule-based weekly volume sum (kg×reps)
+  // stays free elsewhere in the app, but the per-muscle landmark
+  // chart is the gated surface.
+  volumeDashboard: boolean;
 }
 
 const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
@@ -98,6 +104,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     oneRepMaxRecommendation: false,
     aiWeeklyReport: false,
     aiWeeklyReportLimit: 0,
+    volumeDashboard: false,
   },
   plus: {
     maxRoutines: Infinity,
@@ -128,6 +135,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     oneRepMaxRecommendation: true,
     aiWeeklyReport: true,
     aiWeeklyReportLimit: 4,
+    volumeDashboard: true,
   },
   pro: {
     maxRoutines: Infinity,
@@ -158,6 +166,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     oneRepMaxRecommendation: true,
     aiWeeklyReport: true,
     aiWeeklyReportLimit: 12,
+    volumeDashboard: true,
   },
 };
 
