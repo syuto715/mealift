@@ -203,3 +203,46 @@ describe('derivePlanSnapshot', () => {
     expect(['plus', 'pro']).toContain(snap.status);
   });
 });
+
+// Phase 9.1 / Codex review #3 — pin the trial→Plus access path the
+// session.tsx and training-prefs.tsx gates actually run. The screens
+// take useSubscription().hasFeature, which threads PlanStatus through
+// hasFeature(feature, status). Going through derivePlanSnapshot here
+// matches that exact code path, so a regression to canUse() — which
+// reads PlanTier and silently locks trial users out — would fail
+// here even without RNTL.
+describe('oneRepMaxRecommendation — trial access via the screen path', () => {
+  const NOW = new Date('2026-04-28T12:00:00Z');
+
+  beforeAll(() => setDevMode(false));
+
+  it('grants access when an active trial profile is fed through derivePlanSnapshot → hasFeature', () => {
+    const trialStartedAt = new Date('2026-04-26T12:00:00Z').toISOString();
+    const snap = derivePlanSnapshot(
+      {
+        trialStartedAt,
+        planExpiresAt: null,
+        planBillingCycle: null,
+      } as Parameters<typeof derivePlanSnapshot>[0],
+      NOW,
+    );
+    expect(snap.status).toBe('trial');
+    // This is the same composition the screen runs:
+    //   useSubscription().hasFeature(feat) === hasFeature(feat, derived.status).
+    expect(hasFeature('oneRepMaxRecommendation', snap.status)).toBe(true);
+  });
+
+  it('blocks a profile whose trial has lapsed', () => {
+    const trialStartedAt = new Date('2026-03-01T12:00:00Z').toISOString();
+    const snap = derivePlanSnapshot(
+      {
+        trialStartedAt,
+        planExpiresAt: null,
+        planBillingCycle: null,
+      } as Parameters<typeof derivePlanSnapshot>[0],
+      NOW,
+    );
+    expect(snap.status).toBe('free');
+    expect(hasFeature('oneRepMaxRecommendation', snap.status)).toBe(false);
+  });
+});

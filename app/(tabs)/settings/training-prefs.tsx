@@ -17,7 +17,7 @@ import { Card, SegmentedControl } from '../../../src/components/ui';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { updateProfile } from '../../../src/infra/repositories/profileRepository';
 import { PLATE_STEP_OPTIONS, type PlateStep } from '../../../src/types/profile';
-import { canUse } from '../../../src/infra/services/subscriptionService';
+import { useSubscription } from '../../../src/hooks/useSubscription';
 
 // Build 15 / Feature 5-C — training preferences screen.
 // Currently hosts the plate-step picker; future 5-C+ settings (RPE
@@ -30,6 +30,22 @@ import { canUse } from '../../../src/infra/services/subscriptionService';
 // stored profile.plateStepKg value is preserved across downgrades —
 // a Plus-era 1.0kg user keeps 1.0kg recommendations after dropping
 // to Free, just can't change it. Read-only freeze, not erase.
+//
+// Gate API: useSubscription().hasFeature is required (NOT canUse) so
+// active trial users get Plus-level access. canUse reads
+// `currentTier: PlanTier` which has no trial state. Bug caught by
+// Codex review of commit 9eb7f33.
+//
+// Client-only enforcement caveat (Codex #2 / Build 16+ TODO 12):
+// updateProfile and the profileSync write path do NOT re-check the
+// subscription gate, so a sufficiently sophisticated user (tampered
+// SQLite, modified sync payload) can still set plateStepKg outside
+// this screen. Server-side enforcement at the profile-update boundary
+// is the proper defense; deferred to Build 16+ because the kickoff
+// sign-off chose "read-only freeze" — a write-side enforcement would
+// also block legitimate value restoration when a Plus subscription
+// resumes after downgrade. The two requirements are in direct tension
+// and we picked preservation.
 
 const PLATE_STEP_SEGMENTS = PLATE_STEP_OPTIONS.map((step) => ({
   label: `${step}kg`,
@@ -41,6 +57,8 @@ export default function TrainingPrefsScreen() {
   const colors = getColors(scheme);
   const profile = useProfileStore((s) => s.profile);
   const setProfile = useProfileStore((s) => s.setProfile);
+  const sub = useSubscription();
+  const canEditPlateStep = sub.hasFeature('oneRepMaxRecommendation');
 
   const onChangePlateStep = useCallback(
     async (raw: string) => {
@@ -67,7 +85,7 @@ export default function TrainingPrefsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {canUse('oneRepMaxRecommendation') ? (
+        {canEditPlateStep ? (
           <Card>
             <Text style={[styles.label, { color: colors.textPrimary }]}>プレート単位</Text>
             <Text style={[styles.hint, { color: colors.textTertiary }]}>

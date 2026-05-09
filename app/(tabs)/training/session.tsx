@@ -37,6 +37,7 @@ import {
 } from '../../../src/constants/setPatterns';
 import { recommendNextSet } from '../../../src/domain/workoutRecommendation';
 import { parseTargetReps } from '../../../src/utils/parseTargetReps';
+import { useSubscription } from '../../../src/hooks/useSubscription';
 import { getCurrentE1RM } from '../../../src/infra/repositories/oneRepMaxRepository';
 import { generateId } from '../../../src/utils/id';
 import { getISODate } from '../../../src/utils/format';
@@ -303,11 +304,17 @@ export default function SessionScreen() {
   const restTimer = useRestTimer();
   const prevTimerRunning = useRef(restTimer.isRunning);
 
-  // Phase 9.1 — gate the chip strip to Plus/Pro. Computed once per
-  // render so the per-set RecommendationStrip doesn't re-evaluate
-  // canUse() in a hot loop. canUse already returns true unconditionally
-  // in __DEV__, so dev builds keep showing chips for visual debugging.
-  const recommendationGated = !canUse('oneRepMaxRecommendation');
+  // Phase 9.1 — gate the chip strip to Plus/Pro (and trial). Computed
+  // once per render so the per-set RecommendationStrip doesn't
+  // re-evaluate the gate in a hot loop. useSubscription().hasFeature
+  // is required (NOT canUse): canUse reads `currentTier: PlanTier`
+  // which has no `trial` state, while hasFeature derives `PlanStatus`
+  // from profile.trialStartedAt and lets active trial users access
+  // Plus features. Bug caught by Codex review of commit 9eb7f33.
+  // hasFeature respects __DEV__ via the same getFeatureFlags path so
+  // dev builds still bypass the gate.
+  const sub = useSubscription();
+  const recommendationGated = !sub.hasFeature('oneRepMaxRecommendation');
 
   // Rest timer overlay state (Feature D)
   const [restTimerSettings, setRestTimerSettings] = useState<RestTimerSettings>(DEFAULT_REST_TIMER_SETTINGS);
