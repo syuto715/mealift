@@ -165,6 +165,17 @@ export interface CacheArgs {
 
 // === Top-level entry ===
 
+// Codex review pass 1 (Phase 1.4) / Important #2 — caller must
+// know whether the result came back from the local cache so the
+// quota badge isn't optimistically advanced when no EF call (and
+// therefore no quota row) actually happened. Returning a tagged
+// shape is more explicit than a sibling "lastWasCacheHit" module
+// flag and survives concurrent calls.
+export interface AIWeeklyReportResult {
+  narrative: WeeklyNarrative;
+  fromCache: boolean;
+}
+
 export async function generateAIWeeklyReport(
   request: GenerateWeeklyReportRequest,
   options: {
@@ -175,7 +186,7 @@ export async function generateAIWeeklyReport(
     signal?: AbortSignal;
     cache?: CacheArgs;
   },
-): Promise<WeeklyNarrative> {
+): Promise<AIWeeklyReportResult> {
   // --- 1. Plus tier preflight ---
   // Server enforces this too (plus_required 402) but cutting the
   // round trip for free users is a UX + cost win.
@@ -220,7 +231,7 @@ export async function generateAIWeeklyReport(
     const cached = await getCached(cacheArgs.profileId, cacheHash);
     if (cached) {
       void recordCacheHit();
-      return cached;
+      return { narrative: cached, fromCache: true };
     }
     void recordCacheMiss();
   }
@@ -256,7 +267,7 @@ export async function generateAIWeeklyReport(
     if (cacheArgs && cacheActive && cacheHash) {
       void setCached(cacheArgs.profileId, cacheHash, stamped);
     }
-    return stamped;
+    return { narrative: stamped, fromCache: false };
   } catch (err) {
     if (err instanceof AIWeeklyReportError) throw err;
     rethrowAsWeeklyReportError(err);

@@ -103,6 +103,14 @@ export default function WeeklyReportScreen() {
 
   const [quotaUsed, setQuotaUsed] = useState<number | null>(null);
 
+  // Codex review pass 1 / Critical #1 — autoGenerate must wait until
+  // both narrative-from-DB and quota-from-server have settled,
+  // otherwise it can fire on a stale `null` narrative + null quota
+  // and double-spend a Plus quota slot for a week the user already
+  // has a saved summary for.
+  const [narrativeChecked, setNarrativeChecked] = useState(false);
+  const [quotaChecked, setQuotaChecked] = useState(false);
+
   const abortRef = useRef<AbortController | null>(null);
   const stageTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -129,6 +137,10 @@ export default function WeeklyReportScreen() {
   const fetchQuota = useCallback(async () => {
     if (!profile?.id || !supabase || !aiNarrativeUnlocked) {
       setQuotaUsed(null);
+      // Codex pass 1 / Critical #1 — mark quota as resolved (with
+      // null = unknown) so autoGenerate doesn't block forever when
+      // the user is on Free or supabase is unconfigured.
+      setQuotaChecked(true);
       return;
     }
     const monthStart = utcMonthStartISO(new Date());
@@ -141,9 +153,11 @@ export default function WeeklyReportScreen() {
       .gte('created_at', monthStart);
     if (error) {
       setQuotaUsed(null);
+      setQuotaChecked(true);
       return;
     }
     setQuotaUsed(count ?? 0);
+    setQuotaChecked(true);
   }, [profile?.id, aiNarrativeUnlocked]);
 
   useFocusEffect(
@@ -170,7 +184,15 @@ export default function WeeklyReportScreen() {
       } catch {
         // silent — empty-state UI handles report===null
       } finally {
-        if (!cancelled) setReportLoading(false);
+        if (!cancelled) {
+          setReportLoading(false);
+          // Codex pass 1 / Critical #1 — set narrativeChecked=true
+          // exactly once the persistence read has either resolved or
+          // failed. autoGenerate's effect waits on this signal so
+          // the "no narrative cached" branch can't fire while the
+          // DB is still being read.
+          setNarrativeChecked(true);
+        }
       }
     })();
     return () => {
@@ -209,30 +231,44 @@ export default function WeeklyReportScreen() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Codex pass 1 / Important #2 — when a narrative is already on
+    // screen the user pressing the button is asking for a fresh one,
+    // so bypass the cache (cache: undefined) so the EF actually
+    // runs. First-time generation can still cache-hit (e.g. another
+    // tab generated for this week earlier in the same install).
+    const isRegenerate = narrative !== null;
+    const cacheArgs = isRegenerate
+      ? undefined
+      : { profileId: profile.id, goalType: profile.goalType ?? null };
+
     try {
       const result = await generateAIWeeklyReport(
         { weekStart: report.weekStart, reportData: report },
         {
           planStatus: sub.status,
           signal: controller.signal,
-          cache: {
-            profileId: profile.id,
-            goalType: profile.goalType ?? null,
-          },
+          cache: cacheArgs,
         },
       );
-      setNarrative(result);
+      setNarrative(result.narrative);
       // Persist locally so a cold start with the same week still
       // shows the narrative without re-spending quota.
       try {
-        await saveNarrativeToReport(profile.id, report.weekStart, result);
+        await saveNarrativeToReport(
+          profile.id,
+          report.weekStart,
+          result.narrative,
+        );
       } catch {
         // Persistence failure is non-fatal — the in-memory state
         // already shows the narrative for this session.
       }
-      // Optimistic badge advance; useFocusEffect will reconcile on
-      // next return-to-screen.
-      setQuotaUsed((prev) => (prev == null ? prev : prev + 1));
+      // Codex pass 1 / Important #2 — only optimistically advance
+      // the quota badge when the EF actually ran. A cache hit means
+      // no ai_usage_logs row was created server-side.
+      if (!result.fromCache) {
+        setQuotaUsed((prev) => (prev == null ? prev : prev + 1));
+      }
     } catch (err) {
       const code = err instanceof AIWeeklyReportError ? err.code : 'internal_error';
       const message =
@@ -254,6 +290,7 @@ export default function WeeklyReportScreen() {
     profile?.id,
     profile?.goalType,
     report,
+    narrative,
     generating,
     quotaRemaining,
     sub.status,
@@ -266,6 +303,11 @@ export default function WeeklyReportScreen() {
   // autoGenerate one-shot trigger. Skips when:
   //   - already consumed (back-navigation / re-mount)
   //   - the rule-based report hasn't loaded yet (no payload to send)
+  //   - either the persisted-narrative read OR the quota fetch is
+  //     still in flight (Codex pass 1 / Critical #1: firing in the
+  //     intermediate "narrative=null, quota=null" render would
+  //     double-spend a Plus quota slot for a week that already has
+  //     a saved narrative)
   //   - the user already has a narrative for this week (cache hit
   //     from the persisted layer; saving the round-trip)
   //   - the user can't actually generate (Free tier — let the upgrade
@@ -275,6 +317,7 @@ export default function WeeklyReportScreen() {
     if (!autoGenerateRequested) return;
     if (autoGenerateConsumedRef.current) return;
     if (!report || !aiNarrativeUnlocked) return;
+    if (!narrativeChecked || !quotaChecked) return;
     if (narrative) {
       autoGenerateConsumedRef.current = true;
       return;
@@ -290,6 +333,8 @@ export default function WeeklyReportScreen() {
     report,
     aiNarrativeUnlocked,
     narrative,
+    narrativeChecked,
+    quotaChecked,
     quotaRemaining,
     handleGenerate,
   ]);

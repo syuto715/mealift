@@ -28,6 +28,7 @@ import {
   getCustomerInfo as getRevenueCatCustomerInfo,
 } from '../src/infra/services/revenueCatService';
 import { runLoginSync } from '../src/infra/sync/loginSyncBootstrap';
+import { decideNotificationRoute } from '../src/utils/notificationRouting';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -236,48 +237,47 @@ export default function RootLayout() {
   // the given params; weekly-report.tsx then auto-fires AI generation
   // when autoGenerate=1 is set and the user has Plus+ access.
   //
-  // The handler validates `data.route` against an allowlist so a
-  // malformed payload (corrupt notification storage, future migration
-  // mismatch) can't navigate the user to an arbitrary route. Today
-  // only the weekly-report path needs deep-link routing; new entries
-  // get added here as more notifications grow data fields.
+  // Allowlist + param coercion live in src/utils/notificationRouting
+  // so the decision logic is unit-testable and shared between the
+  // warm-app listener and the cold-start one-shot below (Codex
+  // review pass 1 / Important #3 — terminated-app taps were
+  // previously dropped because only the listener was wired).
   useEffect(() => {
     if (!appReady) return;
-    const ALLOWED_ROUTES = new Set<string>([
-      '/(tabs)/progress/weekly-report',
-    ]);
+
+    const dispatch = (data: unknown) => {
+      try {
+        const decision = decideNotificationRoute(data);
+        if (!decision) return;
+        router.push({
+          pathname: decision.route as never,
+          params: decision.params,
+        });
+      } catch {
+        // Listener / cold-start errors must never propagate — they'd
+        // crash the notification subsystem on Android.
+      }
+    };
+
+    // Warm-app responses.
     const sub = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        try {
-          const data = response.notification.request.content.data as
-            | { route?: unknown; params?: unknown }
-            | null
-            | undefined;
-          const route = data?.route;
-          if (typeof route !== 'string' || !ALLOWED_ROUTES.has(route)) {
-            return;
-          }
-          // Best-effort param coercion — only string entries make it
-          // through to expo-router so any malformed object is dropped.
-          const rawParams =
-            data?.params && typeof data.params === 'object'
-              ? (data.params as Record<string, unknown>)
-              : {};
-          const params: Record<string, string> = {};
-          for (const k of Object.keys(rawParams)) {
-            const v = rawParams[k];
-            if (typeof v === 'string') params[k] = v;
-          }
-          router.push({
-            pathname: route as never,
-            params,
-          });
-        } catch {
-          // Listener errors must never propagate — they'd crash the
-          // notification subsystem on Android.
-        }
-      },
+      (response) => dispatch(response.notification.request.content.data),
     );
+
+    // Cold-start: app was terminated when the user tapped the
+    // notification. expo-notifications keeps the last response
+    // available exactly once for this case. Fire-and-forget; if it
+    // resolves to null nothing happens.
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) {
+          dispatch(response.notification.request.content.data);
+        }
+      })
+      .catch(() => {
+        // ignore
+      });
+
     return () => sub.remove();
   }, [appReady]);
 

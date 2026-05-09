@@ -169,10 +169,11 @@ describe('generateAIWeeklyReport — happy path', () => {
     const result = await generateAIWeeklyReport(VALID_REQUEST, {
       planStatus: PLUS_STATUS,
     });
-    expect(result.overall).toBe(VALID_NARRATIVE.overall);
-    expect(result.sections).toEqual(VALID_NARRATIVE.sections);
-    expect(typeof result.generatedAt).toBe('number');
-    expect(result.cacheVersion).toBe(NARRATIVE_CACHE_VERSION);
+    expect(result.narrative.overall).toBe(VALID_NARRATIVE.overall);
+    expect(result.narrative.sections).toEqual(VALID_NARRATIVE.sections);
+    expect(typeof result.narrative.generatedAt).toBe('number');
+    expect(result.narrative.cacheVersion).toBe(NARRATIVE_CACHE_VERSION);
+    expect(result.fromCache).toBe(false);
   });
 
   it('passes the request body verbatim to the EF helper', async () => {
@@ -303,7 +304,20 @@ describe('generateAIWeeklyReport — cache integration', () => {
       cache: CACHE_ARGS,
     });
     expect(callEdgeFunction).not.toHaveBeenCalled();
-    expect(result.overall).toBe(VALID_NARRATIVE.overall);
+    expect(result.narrative.overall).toBe(VALID_NARRATIVE.overall);
+    // Codex review pass 1 / Important #2 — cache hit must surface
+    // fromCache=true so callers can suppress optimistic quota
+    // increments.
+    expect(result.fromCache).toBe(true);
+  });
+
+  it('returns fromCache=false on a cache miss', async () => {
+    callEdgeFunction.mockResolvedValueOnce(VALID_NARRATIVE);
+    const result = await generateAIWeeklyReport(VALID_REQUEST, {
+      planStatus: PLUS_STATUS,
+      cache: CACHE_ARGS,
+    });
+    expect(result.fromCache).toBe(false);
   });
 
   it('does NOT cache without cache args (e.g. unit tests)', async () => {
