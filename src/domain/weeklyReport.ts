@@ -1,5 +1,11 @@
 import { getDatabase } from '../infra/database/connection';
-import { WeeklyReportData } from '../types/weeklyReport';
+import { enqueueRowFromTable } from '../infra/repositories/syncRepository';
+import {
+  WeeklyReportData,
+  WeeklyNarrative,
+  NARRATIVE_CACHE_VERSION,
+} from '../types/weeklyReport';
+import { generateId } from '../utils/id';
 import { startOfWeek, endOfWeek, format, subWeeks } from 'date-fns';
 
 // ---------------------------------------------------------------------------
@@ -146,20 +152,147 @@ export async function getOrGenerateCurrentReport(
   return report;
 }
 
-/** Save a report to the DB */
+/**
+ * Save a report to the DB.
+ *
+ * Build 16 / Phase 1.1 — opportunistic correctness fix while wiring
+ * the AI narrative helpers below. Two issues the original version had:
+ *
+ *   1. Used `INSERT OR REPLACE` with a fresh generateId() every call,
+ *      so the unique (profile_id, week_start) index would delete the
+ *      prior local row and insert a new id. Cloud sync would then
+ *      orphan the previous server row instead of updating it.
+ *      → Now: look up the existing row's id and reuse it (UPDATE
+ *      path); only generate a new id on first insert.
+ *
+ *   2. Did not enqueue the write into sync_queue, so weekly reports
+ *      never reached the cloud. The check-enqueue-sync audit doesn't
+ *      catch this because it scans `src/infra/repositories/` only,
+ *      and saveWeeklyReport lives in `src/domain/`.
+ *      → Now: enqueueRowFromTable on every persist.
+ *
+ * The pre-existing function was effectively dead code (only called
+ * by the new saveNarrativeToReport below), so this fix doesn't
+ * disturb any live call site.
+ */
 export async function saveWeeklyReport(
   profileId: string,
   report: WeeklyReportData,
 ): Promise<void> {
   const db = await getDatabase();
-  const { generateId } = await import('../utils/id');
-  const id = generateId();
+  const now = new Date().toISOString();
+
+  const existing = await db.getFirstAsync<{ id: string }>(
+    `SELECT id FROM weekly_reports
+       WHERE profile_id = ? AND week_start = ? AND deleted_at IS NULL`,
+    [profileId, report.weekStart],
+  );
+  const id = existing?.id ?? generateId();
+  const operation = existing ? 'UPDATE' : 'INSERT';
 
   await db.runAsync(
-    `INSERT OR REPLACE INTO weekly_reports (id, profile_id, week_start, week_end, data_json)
-     VALUES (?, ?, ?, ?, ?)`,
-    [id, profileId, report.weekStart, report.weekEnd, JSON.stringify(report)],
+    `INSERT INTO weekly_reports
+       (id, profile_id, week_start, week_end, data_json, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       week_end = excluded.week_end,
+       data_json = excluded.data_json,
+       updated_at = excluded.updated_at`,
+    [
+      id,
+      profileId,
+      report.weekStart,
+      report.weekEnd,
+      JSON.stringify(report),
+      now,
+      now,
+    ],
   );
+  await enqueueRowFromTable('weekly_reports', id, operation);
+}
+
+// ---------------------------------------------------------------------------
+// Build 16 / Phase 1.1 — AI narrative helpers
+// ---------------------------------------------------------------------------
+
+// Fetch the persisted report row for an exact week. Distinct from
+// getOrGenerateCurrentReport (which only handles "this week" and has
+// fallback compute-on-miss semantics) — this one returns null when no
+// row exists, leaving the merge / fresh-generate decision to the caller.
+async function fetchReportForWeek(
+  profileId: string,
+  weekStart: string,
+): Promise<WeeklyReportData | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ data_json: string }>(
+    `SELECT data_json FROM weekly_reports
+       WHERE profile_id = ? AND week_start = ? AND deleted_at IS NULL`,
+    [profileId, weekStart],
+  );
+  if (!row) return null;
+  try {
+    return JSON.parse(row.data_json) as WeeklyReportData;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Attach an AI narrative to the persisted report for a given week.
+ *
+ * Flow:
+ *   1. Look up the existing report row. If none exists yet (first
+ *      narrative generation for that week), compute the rule-based
+ *      stats fresh via generateWeeklyReport so the narrative attaches
+ *      to a complete WeeklyReportData payload.
+ *   2. Merge: spread existing + overwrite the `narrative` field. All
+ *      other fields are preserved.
+ *   3. Persist via saveWeeklyReport (which now enqueues sync — see
+ *      that function's comment above).
+ *
+ * `weekStart` is the canonical Monday-anchored ISO date. Callers are
+ * expected to use the same week-boundary convention as
+ * generateWeeklyReport (Monday start). The narrative includes a
+ * generatedAt millis timestamp + cacheVersion stamped by this helper,
+ * so callers can pass a partial WeeklyNarrative if they want.
+ */
+export async function saveNarrativeToReport(
+  profileId: string,
+  weekStart: string,
+  narrative: Omit<WeeklyNarrative, 'generatedAt' | 'cacheVersion'> &
+    Partial<Pick<WeeklyNarrative, 'generatedAt' | 'cacheVersion'>>,
+): Promise<void> {
+  let report = await fetchReportForWeek(profileId, weekStart);
+  if (!report) {
+    // First narrative for this week — generate fresh stats so the
+    // saved row is self-contained instead of having a narrative
+    // attached to placeholder zeros.
+    report = await generateWeeklyReport(profileId, new Date(weekStart));
+  }
+  const stamped: WeeklyNarrative = {
+    overall: narrative.overall,
+    sections: narrative.sections,
+    generatedAt: narrative.generatedAt ?? Date.now(),
+    cacheVersion: narrative.cacheVersion ?? NARRATIVE_CACHE_VERSION,
+  };
+  await saveWeeklyReport(profileId, { ...report, narrative: stamped });
+}
+
+/**
+ * Read the AI narrative attached to a saved report row.
+ *
+ * Returns null when:
+ *   - no row exists for that week
+ *   - the row exists but has no narrative field (rule-based-only)
+ *   - the row's data_json fails to parse (corrupt write — extremely
+ *     rare, would have failed validation upstream)
+ */
+export async function getNarrativeFromReport(
+  profileId: string,
+  weekStart: string,
+): Promise<WeeklyNarrative | null> {
+  const report = await fetchReportForWeek(profileId, weekStart);
+  return report?.narrative ?? null;
 }
 
 /** Get past N weeks of reports */
