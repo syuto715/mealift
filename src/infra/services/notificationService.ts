@@ -267,6 +267,7 @@ async function _scheduleWeekly(
   body: string,
   expoWeekday: number,
   time: NotificationTime,
+  data?: Record<string, unknown>,
 ): Promise<void> {
   await Notifications.scheduleNotificationAsync({
     identifier,
@@ -274,6 +275,7 @@ async function _scheduleWeekly(
       title,
       body,
       sound: true,
+      ...(data ? { data } : {}),
       ...(Platform.OS === 'android' ? { channelId: 'reminders' } : {}),
     },
     trigger: {
@@ -408,12 +410,22 @@ async function _doSyncNotifications(
     }
 
     if (settings.weeklyReport.enabled) {
+      // Build 16 / Phase 1 (Feature H) — tap deep-link payload.
+      // app/_layout.tsx's notification-response listener reads
+      // `data.route` + `data.params` and routes the user into the
+      // weekly-report screen with autoGenerate=1, which auto-fires
+      // the AI narrative generation when the user has Plus+ access
+      // and hasn't already cached a narrative for the week.
       await _scheduleWeekly(
         ID_WEEKLY_REPORT,
         '週次レポート',
         '今週の記録をまとめました。確認してみましょう',
         toExpoWeekday(settings.weeklyReport.dayOfWeek),
         settings.weeklyReport.time,
+        {
+          route: '/(tabs)/progress/weekly-report',
+          params: { autoGenerate: '1' },
+        },
       );
     }
   } catch {

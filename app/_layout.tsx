@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
+import * as Notifications from 'expo-notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getColors } from '../src/theme/tokens';
 import { getDatabase } from '../src/infra/database/connection';
@@ -225,6 +226,58 @@ export default function RootLayout() {
 
     Linking.getInitialURL().then(route).catch(() => {});
     const sub = Linking.addEventListener('url', ({ url }) => route(url));
+    return () => sub.remove();
+  }, [appReady]);
+
+  // Build 16 / Phase 1 (Feature H) — notification-tap deep-link
+  // routing. Weekly-report notifications carry
+  // `data: { route, params }` (see notificationService _scheduleWeekly
+  // call site). Tapping routes the user to the matching screen with
+  // the given params; weekly-report.tsx then auto-fires AI generation
+  // when autoGenerate=1 is set and the user has Plus+ access.
+  //
+  // The handler validates `data.route` against an allowlist so a
+  // malformed payload (corrupt notification storage, future migration
+  // mismatch) can't navigate the user to an arbitrary route. Today
+  // only the weekly-report path needs deep-link routing; new entries
+  // get added here as more notifications grow data fields.
+  useEffect(() => {
+    if (!appReady) return;
+    const ALLOWED_ROUTES = new Set<string>([
+      '/(tabs)/progress/weekly-report',
+    ]);
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        try {
+          const data = response.notification.request.content.data as
+            | { route?: unknown; params?: unknown }
+            | null
+            | undefined;
+          const route = data?.route;
+          if (typeof route !== 'string' || !ALLOWED_ROUTES.has(route)) {
+            return;
+          }
+          // Best-effort param coercion — only string entries make it
+          // through to expo-router so any malformed object is dropped.
+          const rawParams =
+            data?.params && typeof data.params === 'object'
+              ? (data.params as Record<string, unknown>)
+              : {};
+          const params: Record<string, string> = {};
+          for (const k of Object.keys(rawParams)) {
+            const v = rawParams[k];
+            if (typeof v === 'string') params[k] = v;
+          }
+          router.push({
+            pathname: route as never,
+            params,
+          });
+        } catch {
+          // Listener errors must never propagate — they'd crash the
+          // notification subsystem on Android.
+        }
+      },
+    );
     return () => sub.remove();
   }, [appReady]);
 

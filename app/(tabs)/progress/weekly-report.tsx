@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   ScrollView,
   View,
@@ -7,18 +7,34 @@ import {
   TouchableOpacity,
   useColorScheme,
   ActivityIndicator,
+  Modal as RNModal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { Card, ProgressRing, Button } from '../../../src/components/ui';
 import { canUse } from '../../../src/infra/services/subscriptionService';
+import { useSubscription } from '../../../src/hooks/useSubscription';
 import { useProfileStore } from '../../../src/stores/profileStore';
-import { WeeklyReportData } from '../../../src/types/weeklyReport';
-import { generateWeeklyReport } from '../../../src/domain/weeklyReport';
+import {
+  WeeklyReportData,
+  WeeklyNarrative,
+} from '../../../src/types/weeklyReport';
+import {
+  generateWeeklyReport,
+  saveNarrativeToReport,
+  getNarrativeFromReport,
+} from '../../../src/domain/weeklyReport';
+import {
+  generateAIWeeklyReport,
+  AIWeeklyReportError,
+  ERROR_MESSAGE_BY_CODE as AI_ERROR_MESSAGE_BY_CODE,
+} from '../../../src/infra/services/aiWeeklyReportService';
+import { supabase } from '../../../src/infra/supabase/client';
+import { getFeaturesForTier } from '../../../src/infra/services/subscriptionService';
 
 function ScoreRing({
   score,
@@ -46,29 +62,239 @@ const ringStyles = StyleSheet.create({
   label: { ...typography.labelSmall },
 });
 
+// Loading-stage breakpoints mirror Phase 6 ai-menu screen so the
+// progressive copy stays consistent across every AI generation flow
+// in the app.
+const LOADING_STAGE_2_MS = 5_000;
+const LOADING_STAGE_3_MS = 15_000;
+const LOADING_STAGE_4_MS = 30_000;
+
+function utcMonthStartISO(now: Date): string {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
+  ).toISOString();
+}
+
 export default function WeeklyReportScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
   const profile = useProfileStore((s) => s.profile);
   const hasDetailAccess = canUse('weeklyReport');
+  // Phase 1.4 — separate gate for the AI narrative. Trial users get
+  // Plus access via hasFeature (Phase 9.1 lesson) so canUse won't
+  // do here; useSubscription is the right call.
+  const sub = useSubscription();
+  const aiNarrativeUnlocked = sub.hasFeature('aiWeeklyReport');
+
+  // autoGenerate=1 from the weekly-report push notification deep
+  // link triggers a one-shot generate on mount. Consumed flag-style
+  // so navigating away + back doesn't re-trigger.
+  const params = useLocalSearchParams<{ autoGenerate?: string }>();
+  const autoGenerateRequested = params.autoGenerate === '1';
+  const autoGenerateConsumedRef = useRef(false);
 
   const [report, setReport] = useState<WeeklyReportData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [reportLoading, setReportLoading] = useState(true);
 
+  const [narrative, setNarrative] = useState<WeeklyNarrative | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [loadingStage, setLoadingStage] = useState<1 | 2 | 3 | 4>(1);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  const [quotaUsed, setQuotaUsed] = useState<number | null>(null);
+
+  const abortRef = useRef<AbortController | null>(null);
+  const stageTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Phase 1.2 quota number is the Plus or Pro tier's limit. Pull it
+  // from getFeaturesForTier(sub.tier) so the badge tracks the active
+  // plan (Plus → 4, Pro → 12, Free has no limit display).
+  const monthlyLimit = useMemo(() => {
+    return getFeaturesForTier(sub.tier).aiWeeklyReportLimit;
+  }, [sub.tier]);
+  const quotaRemaining =
+    quotaUsed != null && monthlyLimit > 0
+      ? Math.max(0, monthlyLimit - quotaUsed)
+      : null;
+
+  const loadingMessage =
+    loadingStage === 1
+      ? 'AI が今週のデータを分析しています...'
+      : loadingStage === 2
+        ? 'もうしばらくかかります...'
+        : loadingStage === 3
+          ? '処理に時間がかかっています。ネットワーク状況を確認してください'
+          : 'タイムアウト目前です。中止して再試行できます';
+
+  const fetchQuota = useCallback(async () => {
+    if (!profile?.id || !supabase || !aiNarrativeUnlocked) {
+      setQuotaUsed(null);
+      return;
+    }
+    const monthStart = utcMonthStartISO(new Date());
+    const { count, error } = await supabase
+      .from('ai_usage_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', profile.id)
+      .eq('function_name', 'generate-weekly-report')
+      .eq('response_status', 200)
+      .gte('created_at', monthStart);
+    if (error) {
+      setQuotaUsed(null);
+      return;
+    }
+    setQuotaUsed(count ?? 0);
+  }, [profile?.id, aiNarrativeUnlocked]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchQuota();
+    }, [fetchQuota]),
+  );
+
+  // Load the rule-based report + any persisted narrative once the
+  // profile id is known. The narrative is loaded as a separate read
+  // because the screen renders the rule-based half even when the
+  // user is on Free.
   useEffect(() => {
+    if (!profile?.id) return;
+    let cancelled = false;
     (async () => {
-      if (!profile?.id) return;
       try {
         const r = await generateWeeklyReport(profile.id);
+        if (cancelled) return;
         setReport(r);
-      } catch (e) {
+        const persisted = await getNarrativeFromReport(profile.id, r.weekStart);
+        if (cancelled) return;
+        if (persisted) setNarrative(persisted);
+      } catch {
+        // silent — empty-state UI handles report===null
       } finally {
-        setLoading(false);
+        if (!cancelled) setReportLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [profile?.id]);
 
-  if (loading) {
+  // Cleanup in-flight generation + stage timers on unmount.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      for (const t of stageTimersRef.current) clearTimeout(t);
+      stageTimersRef.current = [];
+    };
+  }, []);
+
+  const handleGenerate = useCallback(async () => {
+    if (!profile?.id || !report) return;
+    if (generating) return;
+    if (quotaRemaining != null && quotaRemaining <= 0) {
+      setGenerateError(AI_ERROR_MESSAGE_BY_CODE.quota_exceeded);
+      return;
+    }
+
+    setGenerateError(null);
+    setGenerating(true);
+    setLoadingStage(1);
+
+    for (const t of stageTimersRef.current) clearTimeout(t);
+    stageTimersRef.current = [
+      setTimeout(() => setLoadingStage(2), LOADING_STAGE_2_MS),
+      setTimeout(() => setLoadingStage(3), LOADING_STAGE_3_MS),
+      setTimeout(() => setLoadingStage(4), LOADING_STAGE_4_MS),
+    ];
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const result = await generateAIWeeklyReport(
+        { weekStart: report.weekStart, reportData: report },
+        {
+          planStatus: sub.status,
+          signal: controller.signal,
+          cache: {
+            profileId: profile.id,
+            goalType: profile.goalType ?? null,
+          },
+        },
+      );
+      setNarrative(result);
+      // Persist locally so a cold start with the same week still
+      // shows the narrative without re-spending quota.
+      try {
+        await saveNarrativeToReport(profile.id, report.weekStart, result);
+      } catch {
+        // Persistence failure is non-fatal — the in-memory state
+        // already shows the narrative for this session.
+      }
+      // Optimistic badge advance; useFocusEffect will reconcile on
+      // next return-to-screen.
+      setQuotaUsed((prev) => (prev == null ? prev : prev + 1));
+    } catch (err) {
+      const code = err instanceof AIWeeklyReportError ? err.code : 'internal_error';
+      const message =
+        err instanceof AIWeeklyReportError
+          ? err.message
+          : AI_ERROR_MESSAGE_BY_CODE.internal_error;
+      // 'aborted' is user-initiated — don't surface as an error toast
+      // since the user already knows they cancelled.
+      if (code !== 'aborted') {
+        setGenerateError(message);
+      }
+    } finally {
+      for (const t of stageTimersRef.current) clearTimeout(t);
+      stageTimersRef.current = [];
+      abortRef.current = null;
+      setGenerating(false);
+    }
+  }, [
+    profile?.id,
+    profile?.goalType,
+    report,
+    generating,
+    quotaRemaining,
+    sub.status,
+  ]);
+
+  const handleCancel = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
+  // autoGenerate one-shot trigger. Skips when:
+  //   - already consumed (back-navigation / re-mount)
+  //   - the rule-based report hasn't loaded yet (no payload to send)
+  //   - the user already has a narrative for this week (cache hit
+  //     from the persisted layer; saving the round-trip)
+  //   - the user can't actually generate (Free tier — let the upgrade
+  //     banner do its job instead of bouncing them off a quota
+  //     error)
+  useEffect(() => {
+    if (!autoGenerateRequested) return;
+    if (autoGenerateConsumedRef.current) return;
+    if (!report || !aiNarrativeUnlocked) return;
+    if (narrative) {
+      autoGenerateConsumedRef.current = true;
+      return;
+    }
+    if (quotaRemaining != null && quotaRemaining <= 0) {
+      autoGenerateConsumedRef.current = true;
+      return;
+    }
+    autoGenerateConsumedRef.current = true;
+    void handleGenerate();
+  }, [
+    autoGenerateRequested,
+    report,
+    aiNarrativeUnlocked,
+    narrative,
+    quotaRemaining,
+    handleGenerate,
+  ]);
+
+  if (reportLoading) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={styles.loadingContainer}>
@@ -158,6 +384,52 @@ export default function WeeklyReportScreen() {
             <ScoreRing score={report.trainingScore} label="筋トレ" color={colors.accent} />
           </View>
         </Card>
+
+        {/* Phase 1.4 — AI narrative section. Plus-tier-and-up; Free
+            sees an upgrade promo Card that mirrors Phase 9.1's
+            session.tsx pattern. */}
+        {aiNarrativeUnlocked ? (
+          <AINarrativeCard
+            narrative={narrative}
+            generating={generating}
+            generateError={generateError}
+            quotaRemaining={quotaRemaining}
+            quotaLimit={monthlyLimit}
+            onGenerate={handleGenerate}
+            colors={colors}
+          />
+        ) : (
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/settings/subscription')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+          >
+            <Card>
+              <View style={styles.upgradeRow}>
+                <View
+                  style={[
+                    styles.upgradeIcon,
+                    {
+                      backgroundColor: colors.primary + '15',
+                      borderRadius: radius.full,
+                    },
+                  ]}
+                >
+                  <Ionicons name="sparkles" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.upgradeBody}>
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
+                    Plus で AI 週次要約
+                  </Text>
+                  <Text style={[styles.subInfo, { color: colors.textTertiary, marginTop: 4 }]}>
+                    運動・栄養・体重を統合した個別 insight を AI が生成します。
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              </View>
+            </Card>
+          </TouchableOpacity>
+        )}
 
         {/* Detail sections — gated for Plus+ */}
         {hasDetailAccess ? (
@@ -296,7 +568,140 @@ export default function WeeklyReportScreen() {
           </Card>
         )}
       </ScrollView>
+
+      {/* Loading overlay — shown while the EF call is in flight.
+          Mirrors the Phase 6 ai-menu pattern. */}
+      <RNModal visible={generating} transparent animationType="fade">
+        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View
+            style={[
+              styles.overlayCard,
+              { backgroundColor: colors.surface, borderRadius: radius.lg },
+            ]}
+          >
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.overlayText, { color: colors.textPrimary }]}>
+              {loadingMessage}
+            </Text>
+            <Button title="中止" onPress={handleCancel} variant="ghost" size="sm" />
+          </View>
+        </View>
+      </RNModal>
     </SafeAreaView>
+  );
+}
+
+// AI narrative card: composes the quota badge, the generate / regenerate
+// CTA, the persisted narrative blocks, and any error banner. Pulled
+// out so the main render's branching stays readable.
+function AINarrativeCard({
+  narrative,
+  generating,
+  generateError,
+  quotaRemaining,
+  quotaLimit,
+  onGenerate,
+  colors,
+}: {
+  narrative: WeeklyNarrative | null;
+  generating: boolean;
+  generateError: string | null;
+  quotaRemaining: number | null;
+  quotaLimit: number;
+  onGenerate: () => void;
+  colors: ReturnType<typeof getColors>;
+}) {
+  const noQuotaLeft = quotaRemaining != null && quotaRemaining <= 0;
+  return (
+    <Card>
+      <View style={styles.aiHeader}>
+        <Ionicons name="sparkles" size={18} color={colors.primary} />
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
+          AI 週次要約
+        </Text>
+        {quotaRemaining != null && quotaLimit > 0 && (
+          <Text style={[styles.quotaBadge, { color: colors.textTertiary }]}>
+            今月: 残り {quotaRemaining}/{quotaLimit}
+          </Text>
+        )}
+      </View>
+
+      {narrative ? (
+        <View style={styles.narrativeBody}>
+          <NarrativeBlock label="総括" body={narrative.overall} colors={colors} emphasis />
+          <NarrativeBlock label="トレーニング" body={narrative.sections.workout} colors={colors} />
+          <NarrativeBlock label="栄養" body={narrative.sections.nutrition} colors={colors} />
+          <NarrativeBlock label="体重" body={narrative.sections.weight} colors={colors} />
+          <NarrativeBlock
+            label="統合 insight"
+            body={narrative.sections.integration}
+            colors={colors}
+            emphasis
+          />
+        </View>
+      ) : (
+        <Text style={[styles.subInfo, { color: colors.textTertiary, marginTop: 0 }]}>
+          今週のデータをもとに、運動・栄養・体重を統合した個別 insight を AI が生成します。
+        </Text>
+      )}
+
+      {generateError && (
+        <View
+          style={[
+            styles.errorBanner,
+            { backgroundColor: colors.error + '15', borderRadius: radius.md },
+          ]}
+        >
+          <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
+          <Text style={[styles.errorText, { color: colors.error }]}>{generateError}</Text>
+        </View>
+      )}
+
+      <Button
+        title={
+          generating
+            ? '生成中...'
+            : narrative
+              ? '✨ 再生成'
+              : '✨ AI 要約を生成'
+        }
+        onPress={onGenerate}
+        variant="primary"
+        fullWidth
+        disabled={generating || noQuotaLeft}
+      />
+      {noQuotaLeft && (
+        <Text style={[styles.subInfo, { color: colors.textTertiary, textAlign: 'center', marginTop: 6 }]}>
+          今月の生成上限に達しました
+        </Text>
+      )}
+    </Card>
+  );
+}
+
+function NarrativeBlock({
+  label,
+  body,
+  colors,
+  emphasis = false,
+}: {
+  label: string;
+  body: string;
+  colors: ReturnType<typeof getColors>;
+  emphasis?: boolean;
+}) {
+  return (
+    <View style={styles.narrativeBlock}>
+      <Text
+        style={[
+          styles.narrativeLabel,
+          { color: emphasis ? colors.primary : colors.textSecondary },
+        ]}
+      >
+        {label}
+      </Text>
+      <Text style={[styles.narrativeText, { color: colors.textPrimary }]}>{body}</Text>
+    </View>
   );
 }
 
@@ -406,6 +811,72 @@ const styles = StyleSheet.create({
   },
   lockedText: {
     ...typography.bodySmall,
+    textAlign: 'center',
+  },
+  // AI narrative card styles
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  quotaBadge: {
+    ...typography.labelSmall,
+    marginLeft: 'auto',
+  },
+  narrativeBody: {
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  narrativeBlock: { gap: spacing.xs },
+  narrativeLabel: {
+    ...typography.labelSmall,
+    fontWeight: '600',
+  },
+  narrativeText: {
+    ...typography.bodyMedium,
+    lineHeight: 20,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  errorText: {
+    ...typography.bodySmall,
+    flex: 1,
+  },
+  // Upgrade banner (Free) styles, mirroring Phase 9.1 plate-step gate
+  upgradeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  upgradeIcon: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeBody: { flex: 1 },
+  // Loading overlay
+  overlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  overlayCard: {
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.xl,
+    minWidth: 240,
+  },
+  overlayText: {
+    ...typography.bodyMedium,
     textAlign: 'center',
   },
 });
