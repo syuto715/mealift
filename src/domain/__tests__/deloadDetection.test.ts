@@ -454,7 +454,7 @@ describe('fetchWeeklyVolumeMatricesForDeload', () => {
     const db = makeFakeAggregatorDb();
     // Reference: arbitrary Wed in May. Whatever TZ jest runs in, the
     // weekStart strings must round-trip through `new Date(y, m-1, d)`
-    // (local-noon) back to the same week's Monday's ISO start.
+    // (local-midnight) back to the same week's Monday.
     const out = await fetchWeeklyVolumeMatricesForDeload(
       'p1',
       undefined,
@@ -466,6 +466,32 @@ describe('fetchWeeklyVolumeMatricesForDeload', () => {
       const localMonday = new Date(y, m - 1, d, 0, 0, 0, 0);
       // Day-of-week 1 = Monday in JS Date.getDay() (0=Sun).
       expect(localMonday.getDay()).toBe(1);
+    }
+  });
+
+  // Codex review pass 1 / Important #3 — the prior TZ test only proves
+  // weekStart parses back to a Monday. It doesn't pin the COUPLING
+  // between the formatted weekStart string and the SQL boundary the
+  // aggregator emits, which is where the JST/PST boundary class bites.
+  // Specifically: weekStart must be the local-date that, when re-parsed
+  // as local-midnight and toISOString'd, equals the startIso the
+  // aggregator passed to SQL. Holds under any runtime TZ.
+  it('couples weekStart string to startIso — local-midnight(weekStart).toISOString() === startIso', async () => {
+    const db = makeFakeAggregatorDb();
+    const out = await fetchWeeklyVolumeMatricesForDeload(
+      'p1',
+      undefined,
+      db as unknown as Parameters<typeof fetchWeeklyVolumeMatricesForDeload>[2],
+      new Date(2026, 4, 12, 12, 0, 0, 0),
+    );
+    expect(out.length).toBe(db.calls.length);
+    for (let i = 0; i < out.length; i++) {
+      const ws = out[i].weekStart;
+      const [y, m, d] = ws.split('-').map((p) => parseInt(p, 10));
+      const expectedStartIso = new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
+      const expectedEndIso = new Date(y, m - 1, d + 7, 0, 0, 0, 0).toISOString();
+      expect(db.calls[i].startIso).toBe(expectedStartIso);
+      expect(db.calls[i].endIso).toBe(expectedEndIso);
     }
   });
 });

@@ -111,6 +111,15 @@ export interface DeloadRoutineItemInput {
 // `detectedAt` is overridable for tests / Phase 4.2 (which derives a
 // canonical instant before calling so the repository's unique index
 // collapses race-y screen mounts to one row).
+//
+// Defensive `?? 0` on missing keys: mirrors Phase 2.1's
+// summarizeVolumeGroups null-safe convention. A missing key suppresses
+// only that single muscle's trigger (it classifies as below_mev),
+// never the whole detector — at worst one muscle's vote is lost while
+// the other 8 still drive detection. Codex review pass 1 / Important #1
+// flagged this as potentially masking a producer contract violation;
+// rejected for consistency with Phase 2.1 and because the failure mode
+// is per-muscle suppression, not whole-detector silence.
 export function detectDeloadRecommendation(
   matrices: WeeklyVolumeMatrix[],
   detectedAt: string = new Date().toISOString(),
@@ -149,9 +158,16 @@ export function detectDeloadRecommendation(
 //     3 sets → 1, 1 set → 1 (clamp).
 //   - The literature treats deload weeks as ~50% volume; rounding up
 //     would creep above 50% on odd counts.
+//
+// Return type uses `Omit<T, 'targetSets'> & { targetSets: number }`
+// rather than plain `T[]`. Codex review pass 1 / Important #2 — the
+// function rewrites targetSets to a fresh number, so a `T` containing
+// a refinement on targetSets (e.g. literal type, readonly) would be
+// silently broken by `T[]`. The Omit-and-intersect contract is sound
+// and still preserves all the caller's other fields.
 export function generateDeloadRoutine<T extends DeloadRoutineItemInput>(
   items: T[],
-): T[] {
+): Array<Omit<T, 'targetSets'> & { targetSets: number }> {
   return items.map((item) => ({
     ...item,
     targetSets: Math.max(
