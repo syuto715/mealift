@@ -69,6 +69,20 @@ export interface FeatureFlags {
   // Pro-only differentiator. Free/Plus still see the volume
   // dashboard; only the deload trigger + push schedule are gated.
   autoDeload: boolean;
+  // Build 16 / Phase 5 (Feature G) — periodization preset library
+  // (Linear / Block / DUP, generic-named to avoid trademarks). The
+  // second Pro-only differentiator after autoDeload. Hardcoded
+  // template constants (Phase 5.1) are spawned into N routines via
+  // generatePeriodizedRoutine + createRoutine (Phase 5.2 — same
+  // fork-and-clone pattern as Phase 4.1's generateDeloadRoutine).
+  // Free/Plus see the AI menu generator and manual routine flows;
+  // only the curated multi-week presets are gated.
+  //
+  // §7.6 階層別ゲーティング表 (long-term-strategy.md:415) lists
+  // presets as Plus-included; Phase 5 deliberately diverges to Pro-
+  // only to mirror autoDeload's tier-differentiator role. Build 16+
+  // TODO 23 tracks the §7.6 table update.
+  periodizationPresets: boolean;
 }
 
 const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
@@ -112,6 +126,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     aiWeeklyReportLimit: 0,
     volumeDashboard: false,
     autoDeload: false,
+    periodizationPresets: false,
   },
   plus: {
     maxRoutines: Infinity,
@@ -144,6 +159,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     aiWeeklyReportLimit: 4,
     volumeDashboard: true,
     autoDeload: false,
+    periodizationPresets: false,
   },
   pro: {
     maxRoutines: Infinity,
@@ -176,6 +192,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     aiWeeklyReportLimit: 12,
     volumeDashboard: true,
     autoDeload: true,
+    periodizationPresets: true,
   },
 };
 

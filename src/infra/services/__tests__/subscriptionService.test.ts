@@ -193,6 +193,38 @@ describe('subscriptionService — production gating (__DEV__ = false)', () => {
     });
   });
 
+  describe('periodizationPresets (Build 16 / Feature G, Phase 5)', () => {
+    // Phase 5 sign-off — second Pro-only differentiator. Hardcoded
+    // Linear / Block / DUP preset library, spawned into N routines
+    // via generatePeriodizedRoutine + createRoutine (Phase 5.1 / 5.2).
+    // §7.6 long-term-strategy.md:415 lists presets as Plus-tier;
+    // Phase 5 deliberately diverges to Pro-only to mirror autoDeload.
+    // Build 16+ TODO 23 tracks the §7.6 table update.
+    it('locks periodization presets behind Pro (Plus is NOT enough)', () => {
+      expect(getFeaturesForTier('free').periodizationPresets).toBe(false);
+      expect(getFeaturesForTier('plus').periodizationPresets).toBe(false);
+      expect(getFeaturesForTier('pro').periodizationPresets).toBe(true);
+    });
+
+    it('FEATURE_MATRIX (auto-derived) treats Pro as the minimum tier', () => {
+      // The matrix derivation visits free → plus → pro and picks the
+      // first tier where the flag flips true. periodizationPresets
+      // only flips at pro, so the minimum-required-tier output must
+      // be 'pro'.
+      expect(FEATURE_MATRIX.periodizationPresets).toBe('pro');
+    });
+
+    it('hasFeature blocks free / plus / trial; admits pro', () => {
+      // Same trial-blocked-because-trial-is-Plus-equivalent semantics
+      // as autoDeload. Phase 4.2 lesson on trial-aware gating
+      // (Phase 9.1 origin) propagates here.
+      expect(hasFeature('periodizationPresets', 'free')).toBe(false);
+      expect(hasFeature('periodizationPresets', 'trial')).toBe(false);
+      expect(hasFeature('periodizationPresets', 'plus')).toBe(false);
+      expect(hasFeature('periodizationPresets', 'pro')).toBe(true);
+    });
+  });
+
   describe('oneRepMaxRecommendation (Build 15 / Feature 5-C, Phase 9.1)', () => {
     // Gate covers: Easy/Normal/Hard chip strip in session.tsx and the
     // plate_step_kg picker in settings/training-prefs.tsx. The §7.3
