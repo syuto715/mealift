@@ -264,6 +264,91 @@ export async function listExerciseSlugsByMuscles(
   return Array.from(slugs);
 }
 
+// Build 16 / Phase 3 (Feature D) / Phase 3.2 — sample fetcher for the
+// RPE bias SMA. Pulls the most-recent N hard sets (warmup excluded,
+// RPE present) along with the e1RM that was current at the time of
+// each set.
+//
+// e1RM resolution priority (per Phase 3 sign-off F12 — Phase 9.1
+// adjusted-formula values take precedence):
+//
+//   1. estimated_1rm row with formula='adjusted' and source_set_id =
+//      the set's id, if it exists. This is what Phase 9.1's
+//      computeRpeAdjustmentFactor inserts when one of the three RPE
+//      rules fires post-set.
+//   2. Otherwise, the most-recent non-adjusted estimated_1rm row for
+//      the same source_set_id (typically formula='avg' from the
+//      raw observation that always lands).
+//   3. NULL — sample dropped on the JS side via the
+//      backDeriveRpeFromWeight null guard. Happens for sets that
+//      pre-date the Phase 9.1 e1RM bookkeeping or where the
+//      observation insert failed silently.
+//
+// Soft-delete (v23) honored on workout_sets, workout_sessions, and
+// estimated_1rm. Profile scoping done via the session join, mirroring
+// every other user-private query in the file.
+//
+// Ordering: ORDER BY started_at DESC, set_number DESC so the LIMIT
+// truly takes the most-recent N sets. Without the set_number tiebreak,
+// two sets in the same session would surface in PRIMARY KEY order
+// (= insertion id), which is not necessarily lift-time order.
+//
+// The dbOverride parameter is the standard test seam (Phase 1.1 / 2.1
+// pattern); production callers omit it and let getDatabase() resolve.
+export async function fetchRecentSetsForBias(
+  profileId: string,
+  limit: number,
+  dbOverride?: SQLite.SQLiteDatabase,
+): Promise<
+  Array<{ weight: number; reps: number; actualRpe: number; e1rm: number | null }>
+> {
+  const db = dbOverride ?? (await getDatabase());
+
+  const rows = await db.getAllAsync<{
+    weight_kg: number | null;
+    reps: number | null;
+    rpe: number | null;
+    e1rm: number | null;
+  }>(
+    `SELECT
+       ws.weight_kg AS weight_kg,
+       ws.reps AS reps,
+       ws.rpe AS rpe,
+       (
+         SELECT e.e1rm_kg
+           FROM estimated_1rm e
+          WHERE e.source_set_id = ws.id
+            AND e.deleted_at IS NULL
+          ORDER BY CASE e.formula WHEN 'adjusted' THEN 0 ELSE 1 END,
+                   e.observed_at DESC
+          LIMIT 1
+       ) AS e1rm
+     FROM workout_sets ws
+     JOIN workout_sessions s ON s.id = ws.session_id
+     WHERE s.profile_id = ?
+       AND s.deleted_at IS NULL
+       AND ws.is_warmup = 0
+       AND ws.rpe IS NOT NULL
+       AND ws.weight_kg IS NOT NULL
+       AND ws.reps IS NOT NULL
+       AND ws.deleted_at IS NULL
+     ORDER BY s.started_at DESC, ws.set_number DESC
+     LIMIT ?`,
+    [profileId, limit],
+  );
+
+  // Map to the RpeBiasSample shape expected by computeRpeBias. We
+  // keep e1rm: null in the output instead of dropping rows here so
+  // the caller (or its test) can audit the raw count; the bias
+  // helper drops them via backDeriveRpeFromWeight's null guard.
+  return rows.map((r) => ({
+    weight: (r.weight_kg as number) ?? 0,
+    reps: (r.reps as number) ?? 0,
+    actualRpe: (r.rpe as number) ?? 0,
+    e1rm: r.e1rm,
+  }));
+}
+
 export async function getExerciseDefaultRestSeconds(exerciseId: string): Promise<number | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ default_rest_seconds: number | null }>(

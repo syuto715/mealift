@@ -37,6 +37,13 @@ import {
 } from '../../../src/constants/setPatterns';
 import { recommendNextSet } from '../../../src/domain/workoutRecommendation';
 import { parseTargetReps } from '../../../src/utils/parseTargetReps';
+import {
+  computeRpeBias,
+  applyBiasToRir,
+  BIAS_WINDOW_SIZE,
+  type RpeBiasResult,
+  type RpeBiasSample,
+} from '../../../src/domain/rpeBias';
 import { useSubscription } from '../../../src/hooks/useSubscription';
 import { getCurrentE1RM } from '../../../src/infra/repositories/oneRepMaxRepository';
 import { generateId } from '../../../src/utils/id';
@@ -195,15 +202,29 @@ const RecommendationStrip = React.memo(function RecommendationStrip(props: {
   e1rm: number | null;
   targetRepsRaw: string | null;
   plateStep: number;
+  // Phase 3.2 — pre-computed RPE bias for the user. The session-
+  // level state caches one bias per session (sub-ms aggregation;
+  // re-fetching per render would still be cheap, but caching keeps
+  // the chip strip a pure function of the props it gets). 0 when
+  // bias is in cold-start or recommendation is gated.
+  rpeBias: number;
   onApply: (weightKg: number, reps: number) => void;
   colors: ReturnType<typeof getColors>;
   gated: boolean;
 }) {
-  const { e1rm, targetRepsRaw, plateStep, onApply, colors, gated } = props;
+  const { e1rm, targetRepsRaw, plateStep, rpeBias, onApply, colors, gated } = props;
   const parsedTarget = useMemo(() => parseTargetReps(targetRepsRaw), [targetRepsRaw]);
+  // Baseline target RIR is 2 (= RPE ~8) per Build 15 5-C sign-off.
+  // Phase 3.2 sign-off F7 — fold the per-user bias in here so the
+  // weight nudges with the user's RPE drift without touching the
+  // RIR label on the chips.
+  const effectiveRir = useMemo(
+    () => applyBiasToRir(2, rpeBias),
+    [rpeBias],
+  );
   const recommendation = useMemo(
-    () => recommendNextSet(e1rm, parsedTarget, 2, plateStep),
-    [e1rm, parsedTarget, plateStep],
+    () => recommendNextSet(e1rm, parsedTarget, effectiveRir, plateStep),
+    [e1rm, parsedTarget, effectiveRir, plateStep],
   );
 
   if (gated) {
@@ -315,6 +336,48 @@ export default function SessionScreen() {
   // dev builds still bypass the gate.
   const sub = useSubscription();
   const recommendationGated = !sub.hasFeature('oneRepMaxRecommendation');
+
+  // Build 16 / Phase 3.2 (Feature D) — RPE bias state, fetched once
+  // per session. The aggregation is sub-ms, so re-fetching on every
+  // chip render would also be fine, but keeping it in state lets the
+  // RecommendationStrip stay a pure function of its props (memo
+  // works as intended). Only Plus+ tiers populate this; Free users
+  // never hit the chip strip code path so the default 0 is fine.
+  const [rpeBias, setRpeBias] = useState(0);
+  useEffect(() => {
+    if (!profile?.id || recommendationGated) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const samples = await workoutRepo.fetchRecentSetsForBias(
+          profile.id,
+          BIAS_WINDOW_SIZE,
+        );
+        if (cancelled) return;
+        // The fetch may include rows whose e1rm subquery returned
+        // null (no observation yet); coerce to RpeBiasSample shape
+        // and let computeRpeBias drop them via its null guard. The
+        // helper accepts any e1rm; null becomes "drop this sample".
+        const biasSamples: RpeBiasSample[] = samples.map((r) => ({
+          weight: r.weight,
+          reps: r.reps,
+          actualRpe: r.actualRpe,
+          // backDeriveRpeFromWeight returns null for e1rm <= 0; pass
+          // 0 so a null-e1rm row is dropped exactly the same way as
+          // a corrupt entry would be.
+          e1rm: r.e1rm ?? 0,
+        }));
+        const result: RpeBiasResult = computeRpeBias(biasSamples);
+        if (!cancelled) setRpeBias(result.bias);
+      } catch {
+        // Silent — bias defaults to 0, which means "no adjustment"
+        // and matches Build 15 5-C behavior exactly.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id, recommendationGated]);
 
   // Rest timer overlay state (Feature D)
   const [restTimerSettings, setRestTimerSettings] = useState<RestTimerSettings>(DEFAULT_REST_TIMER_SETTINGS);
@@ -1357,6 +1420,7 @@ export default function SessionScreen() {
                         e1rm={e1rmByExercise[exercise.exerciseId] ?? null}
                         targetRepsRaw={exercise.targetReps}
                         plateStep={profile?.plateStepKg ?? 2.5}
+                        rpeBias={rpeBias}
                         onApply={(weightKg, reps) =>
                           updateSet(exercise.exerciseId, set.id, {
                             weightKg,
