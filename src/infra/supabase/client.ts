@@ -1,4 +1,8 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import {
+  createClient,
+  processLock,
+  SupabaseClient,
+} from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, type AppStateStatus } from 'react-native';
 import { APP_CONFIG } from '../../constants/config';
@@ -19,10 +23,19 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 // rest of the app uses (zustand persist, the AI menu cache, etc.).
 // Build 16+ TODO 11 still tracks a possible MMKV migration; for now
 // uniformity with everything else in the project wins.
+// `lock: processLock` (Codex review pass 1) coordinates concurrent
+// auth operations so the cold-start `getSession()` in app/_layout.tsx
+// and the AppState=active `startAutoRefresh()` below don't both try
+// to consume the same single-use refresh token. Without it, the
+// refresh that loses the race fails and supabase-js emits SIGNED_OUT,
+// reproducing the original "logged out after restart" symptom via a
+// different path. processLock is re-exported from @supabase/auth-js
+// through supabase-js's wildcard export.
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         storage: AsyncStorage,
+        lock: processLock,
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: false,

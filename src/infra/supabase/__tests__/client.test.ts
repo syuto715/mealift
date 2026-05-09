@@ -18,6 +18,10 @@
 const mockCreateClient = jest.fn();
 const mockStartAutoRefresh = jest.fn();
 const mockStopAutoRefresh = jest.fn();
+// Sentinel — a jest.fn so reference equality holds across imports
+// without smuggling a non-mock-prefixed variable into the jest.mock
+// factory (babel hoisting rule). Phase 5 lesson, applied again.
+const mockProcessLock = jest.fn();
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: (...args: unknown[]) => {
@@ -29,6 +33,9 @@ jest.mock('@supabase/supabase-js', () => ({
       },
     };
   },
+  // Re-exported from @supabase/auth-js through supabase-js's wildcard
+  // export. Sentinel value for reference equality in the assertion.
+  processLock: mockProcessLock,
 }));
 
 // AsyncStorage import resolves to a sentinel object so the assertion
@@ -65,6 +72,10 @@ describe('supabase client (Phase 9.1.5 hotfix)', () => {
     mockStartAutoRefresh.mockClear();
     mockStopAutoRefresh.mockClear();
     mockAddEventListener.mockClear();
+    // Codex review nit — without this reset, the background-cold-start
+    // case below would leak its 'background' value to subsequent runs
+    // when the test order changes (e.g. parallel runner).
+    mockAppStateValue = 'active';
     jest.resetModules();
   });
 
@@ -80,6 +91,12 @@ describe('supabase client (Phase 9.1.5 hotfix)', () => {
         detectSessionInUrl: false,
       },
     });
+  });
+
+  it('passes processLock as the auth.lock so cold-start refresh races serialize', () => {
+    require('../client');
+    const [, , options] = mockCreateClient.mock.calls[0];
+    expect(options.auth.lock).toBe(mockProcessLock);
   });
 
   it('registers an AppState change listener at module load', () => {
