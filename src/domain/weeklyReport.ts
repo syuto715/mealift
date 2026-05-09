@@ -162,14 +162,18 @@ export async function getOrGenerateCurrentReport(
  *      so the unique (profile_id, week_start) index would delete the
  *      prior local row and insert a new id. Cloud sync would then
  *      orphan the previous server row instead of updating it.
- *      → Now: look up the existing row's id and reuse it (UPDATE
- *      path); only generate a new id on first insert.
+ *      → Now: ON CONFLICT(profile_id, week_start) DO UPDATE so the
+ *      existing row's id is preserved regardless of which writer
+ *      raced first.
  *
  *   2. Did not enqueue the write into sync_queue, so weekly reports
  *      never reached the cloud. The check-enqueue-sync audit doesn't
  *      catch this because it scans `src/infra/repositories/` only,
  *      and saveWeeklyReport lives in `src/domain/`.
- *      → Now: enqueueRowFromTable on every persist.
+ *      → Now: post-write SELECT for the canonical id, then enqueue
+ *      with that id so two concurrent first-saves both land on the
+ *      same row and both push the same id (Codex review pass 1
+ *      Critical #2 — the lookup-then-INSERT version was racy).
  *
  * The pre-existing function was effectively dead code (only called
  * by the new saveNarrativeToReport below), so this fix doesn't
@@ -182,24 +186,27 @@ export async function saveWeeklyReport(
   const db = await getDatabase();
   const now = new Date().toISOString();
 
-  const existing = await db.getFirstAsync<{ id: string }>(
+  const preExisting = await db.getFirstAsync<{ id: string }>(
     `SELECT id FROM weekly_reports
        WHERE profile_id = ? AND week_start = ? AND deleted_at IS NULL`,
     [profileId, report.weekStart],
   );
-  const id = existing?.id ?? generateId();
-  const operation = existing ? 'UPDATE' : 'INSERT';
+  // Best-guess id for the INSERT path. If a concurrent writer beat
+  // us in between this read and the write below, the ON CONFLICT
+  // handler keeps the existing row intact and we'll re-read the
+  // canonical id afterwards.
+  const insertId = preExisting?.id ?? generateId();
 
   await db.runAsync(
     `INSERT INTO weekly_reports
        (id, profile_id, week_start, week_end, data_json, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET
+     ON CONFLICT(profile_id, week_start) DO UPDATE SET
        week_end = excluded.week_end,
        data_json = excluded.data_json,
        updated_at = excluded.updated_at`,
     [
-      id,
+      insertId,
       profileId,
       report.weekStart,
       report.weekEnd,
@@ -208,12 +215,42 @@ export async function saveWeeklyReport(
       now,
     ],
   );
-  await enqueueRowFromTable('weekly_reports', id, operation);
+
+  // Re-read so the enqueue id matches whatever actually persisted.
+  // Under no contention this returns insertId; under contention this
+  // returns the winning concurrent writer's id.
+  const stored = await db.getFirstAsync<{ id: string }>(
+    `SELECT id FROM weekly_reports
+       WHERE profile_id = ? AND week_start = ? AND deleted_at IS NULL`,
+    [profileId, report.weekStart],
+  );
+  const storedId = stored?.id ?? insertId;
+  await enqueueRowFromTable(
+    'weekly_reports',
+    storedId,
+    preExisting ? 'UPDATE' : 'INSERT',
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Build 16 / Phase 1.1 — AI narrative helpers
 // ---------------------------------------------------------------------------
+
+// Codex review pass 1 / Critical #1 — `new Date('YYYY-MM-DD')` parses
+// as UTC midnight per the ISO 8601 spec, so users in negative offsets
+// (Americas) end up on the previous local day. generateWeeklyReport's
+// startOfWeek then snaps to the prior Monday and the narrative
+// attaches to the wrong week entirely. JST users (UTC+9) wouldn't
+// notice this, which is why it slipped past development.
+//
+// Fix: build a local-time Date at noon. Noon is well clear of DST
+// transitions in every commonly-used zone, so even on the rare day a
+// region shifts its clock the local Date stays inside the intended
+// calendar day.
+function parseISODateAsLocalNoon(weekStart: string): Date {
+  const [y, m, d] = weekStart.split('-').map((p) => Number.parseInt(p, 10));
+  return new Date(y, m - 1, d, 12, 0, 0, 0);
+}
 
 // Fetch the persisted report row for an exact week. Distinct from
 // getOrGenerateCurrentReport (which only handles "this week" and has
@@ -266,8 +303,12 @@ export async function saveNarrativeToReport(
   if (!report) {
     // First narrative for this week — generate fresh stats so the
     // saved row is self-contained instead of having a narrative
-    // attached to placeholder zeros.
-    report = await generateWeeklyReport(profileId, new Date(weekStart));
+    // attached to placeholder zeros. Use local-noon parsing to dodge
+    // the UTC-midnight timezone bug (see parseISODateAsLocalNoon).
+    report = await generateWeeklyReport(
+      profileId,
+      parseISODateAsLocalNoon(weekStart),
+    );
   }
   const stamped: WeeklyNarrative = {
     overall: narrative.overall,

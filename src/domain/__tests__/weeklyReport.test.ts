@@ -7,7 +7,9 @@
 // doesn't drag expo-sqlite / expo-crypto through Jest's transform.
 
 const mockGetDatabase = jest.fn();
-const mockEnqueue = jest.fn(async () => undefined);
+const mockEnqueue = jest.fn(
+  async (_table: string, _id: string, _op: string): Promise<void> => undefined,
+);
 let mockNextUuid = 0;
 
 jest.mock('../../infra/database/connection', () => ({
@@ -15,7 +17,8 @@ jest.mock('../../infra/database/connection', () => ({
 }));
 
 jest.mock('../../infra/repositories/syncRepository', () => ({
-  enqueueRowFromTable: (...args: unknown[]) => mockEnqueue(...args),
+  enqueueRowFromTable: (table: string, id: string, op: string) =>
+    mockEnqueue(table, id, op),
 }));
 
 jest.mock('../../utils/id', () => ({
@@ -108,11 +111,20 @@ function makeFakeDb(): {
           createdAt,
           updatedAt,
         ] = params as [string, string, string, string, string, string, string];
-        const existing = rows.find((r) => r.id === id);
-        if (existing) {
-          existing.week_end = weekEnd;
-          existing.data_json = dataJson;
-          existing.updated_at = updatedAt;
+        // ON CONFLICT(profile_id, week_start) — match by the unique
+        // index columns first so the test mirrors the production
+        // upsert semantics (id stays stable on UPDATE, even if the
+        // INSERT id differs from the existing row's id).
+        const existingByWeek = rows.find(
+          (r) =>
+            r.profile_id === profileId &&
+            r.week_start === weekStart &&
+            r.deleted_at === null,
+        );
+        if (existingByWeek) {
+          existingByWeek.week_end = weekEnd;
+          existingByWeek.data_json = dataJson;
+          existingByWeek.updated_at = updatedAt;
         } else {
           rows.push({
             id,
@@ -291,5 +303,41 @@ describe('saveNarrativeToReport / getNarrativeFromReport', () => {
     expect(rows[0].id).toBe(firstId);
     const stored = JSON.parse(rows[0].data_json) as WeeklyReportData;
     expect(stored.narrative?.overall).toBe('修正版の総括');
+  });
+
+  // Codex review pass 1 / Critical #1 + Important #3 — pin the
+  // local-noon parsing fix. Without it, weekStart='2026-05-04' would
+  // round-trip as '2026-04-27' for users in negative offsets because
+  // new Date('2026-05-04') is UTC midnight.
+  it('preserves the caller-supplied weekStart on first save regardless of timezone interpretation', async () => {
+    const { rows, db } = makeFakeDb();
+    mockGetDatabase.mockResolvedValue(db);
+    await saveNarrativeToReport('profile-1', '2026-05-04', NARRATIVE);
+    expect(rows).toHaveLength(1);
+    // The persisted row must reflect the caller's week, not a TZ-
+    // shifted snap to the prior Monday.
+    expect(rows[0].week_start).toBe('2026-05-04');
+    const stored = JSON.parse(rows[0].data_json) as WeeklyReportData;
+    expect(stored.weekStart).toBe('2026-05-04');
+  });
+
+  // Codex review pass 1 / Important #3 — pin the corrupt-JSON
+  // recovery path. fetchReportForWeek/getNarrativeFromReport both
+  // catch the parse failure and return null instead of throwing.
+  it('returns null when the row exists but data_json is corrupt', async () => {
+    const { rows, db } = makeFakeDb();
+    mockGetDatabase.mockResolvedValue(db);
+    rows.push({
+      id: 'corrupt-id',
+      profile_id: 'profile-1',
+      week_start: '2026-05-04',
+      week_end: '2026-05-10',
+      data_json: '{not-valid-json',
+      created_at: '2026-05-11T00:00:00Z',
+      updated_at: '2026-05-11T00:00:00Z',
+      deleted_at: null,
+    });
+    const got = await getNarrativeFromReport('profile-1', '2026-05-04');
+    expect(got).toBeNull();
   });
 });
