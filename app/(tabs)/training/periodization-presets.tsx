@@ -213,6 +213,11 @@ export default function PeriodizationPresetsScreen() {
           visible={spawnModalVisible}
           profileId={profile.id}
           template={selected}
+          // Codex review pass 1 / Critical — pass current entitlement
+          // so the modal can re-check on a live downgrade. The screen
+          // body's gate alone wouldn't unmount this modal because it's
+          // rendered as a sibling.
+          unlocked={unlocked}
           onSpawned={handleSpawned}
           onClose={() => setSpawnModalVisible(false)}
         />

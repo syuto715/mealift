@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+// useEffect imported for both the routine-fetch effect and the
+// Codex pass 1 / Critical auto-close-on-downgrade effect.
 import {
   View,
   Text,
@@ -56,6 +58,13 @@ interface Props {
   visible: boolean;
   profileId: string;
   template: PeriodizationTemplate | null;
+  // Codex review pass 1 / Critical — Pro entitlement re-checked
+  // inside the modal. Without this, a downgrade (RC listener fires
+  // mid-flow) would leave a stale modal able to persist routines
+  // for a user who just lost the feature. The screen-level gate
+  // alone isn't enough because the modal is rendered independently
+  // of the gate-controlled body.
+  unlocked: boolean;
   onSpawned: (createdCount: number) => void;
   onClose: () => void;
 }
@@ -66,6 +75,7 @@ export function PeriodizationSpawnConfirmModal({
   visible,
   profileId,
   template,
+  unlocked,
   onSpawned,
   onClose,
 }: Props) {
@@ -79,6 +89,18 @@ export function PeriodizationSpawnConfirmModal({
   const [mode, setMode] = useState<Mode>('pick');
   const [selectedRoutine, setSelectedRoutine] =
     useState<WorkoutRoutineWithItems | null>(null);
+
+  // Codex review pass 1 / Critical — auto-close on live downgrade.
+  // hasFeature is reactive to subscription state changes, so a
+  // RevenueCat-driven Pro→Plus transition while this modal is open
+  // flips `unlocked` to false. We bail out (parent's onClose
+  // resets visible→false) instead of leaving a half-finished spawn
+  // path armed.
+  useEffect(() => {
+    if (visible && !unlocked && mode !== 'spawning') {
+      onClose();
+    }
+  }, [visible, unlocked, mode, onClose]);
 
   useEffect(() => {
     if (!visible) {
@@ -114,6 +136,14 @@ export function PeriodizationSpawnConfirmModal({
 
   const handleConfirmSpawn = async () => {
     if (!template || !selectedRoutine) return;
+    // Codex review pass 1 / Critical — defensive gate-recheck right
+    // before persistence. Even with the auto-close useEffect above,
+    // a downgrade landing in the same render cycle as the user tap
+    // could otherwise still let the spawn fire.
+    if (!unlocked) {
+      onClose();
+      return;
+    }
     setMode('spawning');
     try {
       const outputs = spawnAllPeriodizedRoutines({
@@ -127,22 +157,63 @@ export function PeriodizationSpawnConfirmModal({
         })),
         template,
       });
-      // sort_order base = current epoch seconds. Later spawn batches
-      // get a larger base, keeping their group below previous ones in
-      // the list (ASC sort). Within a batch, +index for week order.
-      const sortBase = Math.floor(Date.now() / 1000);
+      // Codex review pass 1 / Important #1 — sort_order base uses
+      // millisecond Date.now() rather than epoch seconds. The prior
+      // second-granularity base could collide on consecutive spawns
+      // and let two batches interleave week-by-week (Block-12 has
+      // 12 routines × 1-second base = guaranteed overlap if the
+      // user spawned twice in the same second). Millisecond base
+      // gives 1ms/routine within a batch, so batches need ≥ N ms
+      // separation (trivial for human-driven taps).
+      const sortBase = Date.now();
       let created = 0;
-      for (let i = 0; i < outputs.length; i++) {
-        const out = outputs[i];
-        await createRoutine(profileId, out.name, out.items, sortBase + i);
-        created += 1;
+      try {
+        for (let i = 0; i < outputs.length; i++) {
+          const out = outputs[i];
+          await createRoutine(profileId, out.name, out.items, sortBase + i);
+          created += 1;
+        }
+      } catch (err) {
+        // Codex review pass 1 / Important #2 — partial-failure UX.
+        // Mid-loop failure leaves `created` routines persisted; the
+        // user gets an honest "X created, then failed" toast rather
+        // than a generic "create failed" that hides the partial
+        // state. We do NOT roll back: per kickoff §3 orphans are
+        // user-deletable, and a follow-up cleanup of just-spawned
+        // routines could itself fail and compound the mess.
+        if (created > 0) {
+          showToast(
+            `${created} 個まで作成しましたが、${created + 1} 個目で失敗しました`,
+            'error',
+          );
+        } else {
+          showToast(
+            'ピリオダイゼーション routine の作成に失敗しました',
+            'error',
+          );
+        }
+        setMode('confirm');
+        return;
       }
       onSpawned(created);
     } catch {
+      // spawnAllPeriodizedRoutines itself throwing — should not happen
+      // for a healthy template + base routine.
       showToast('ピリオダイゼーション routine の作成に失敗しました', 'error');
       setMode('confirm');
     }
   };
+
+  // Codex review pass 1 / Important #3 — warn the user when the
+  // selected base routine has set_pattern items (5×5 / トップ /
+  // ドロップ). Periodization templates overwrite targetSets +
+  // targetReps but preserve setPattern + patternConfig, which is
+  // an intentional v1 inconsistency (Phase 5.1 header comment).
+  // Surface a clear note in the confirm step so the user isn't
+  // surprised by a "5×5" routine that ends up logging 5×8.
+  const baseHasSetPattern = !!selectedRoutine?.items.some(
+    (it) => it.setPattern != null,
+  );
 
   const spawnCount = template
     ? template.id === 'dup'
@@ -237,6 +308,16 @@ export function PeriodizationSpawnConfirmModal({
             <Text style={[styles.confirmHint, { color: colors.textTertiary }]}>
               生成後、ルーティン一覧に [{template.id === 'dup' ? 'DUP W1 Heavy' : `${capitalize(template.id)} W1`}] のような名前で表示されます。
             </Text>
+            {baseHasSetPattern && (
+              <Text
+                style={[
+                  styles.warningText,
+                  { color: colors.warning, borderColor: colors.warning },
+                ]}
+              >
+                ⚠ ベースルーティンに 5×5 / トップ / ドロップなどのセット形式が含まれています。生成されるルーティンはセット数とレップ数のみプリセットに合わせて上書きされ、セット形式は維持されます。意図しない組み合わせになる場合は、ベースルーティンを「標準」に戻してから再実行してください。
+              </Text>
+            )}
           </View>
         )}
 
@@ -358,6 +439,14 @@ const styles = StyleSheet.create({
   confirmHint: {
     ...typography.bodySmall,
     marginTop: spacing.sm,
+    lineHeight: 18,
+  },
+  warningText: {
+    ...typography.bodySmall,
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    borderWidth: 1,
+    borderRadius: radius.sm,
     lineHeight: 18,
   },
   spawningText: {
