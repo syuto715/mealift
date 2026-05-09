@@ -60,13 +60,26 @@ interface ServerRow {
 
 // JSON columns ride as JSONB on the server; locally they're TEXT
 // (JSON-encoded). Translate at the boundary in both directions.
-function parseJsonArrayLocal(raw: string | undefined | null): unknown {
+//
+// Codex review pass 1 / Important #3 — both directions must enforce
+// "array or empty array". The pull side already does
+// (stringifyJsonArrayServer); the push side previously only
+// JSON.parsed and forwarded whatever shape came out, which let a
+// hand-edited local TEXT (e.g. `"x"`, `null`, `{}`) reach the server's
+// JSONB column as a non-array. Pull then potentially-collapsed it on
+// the way back, hiding the corruption from the user but leaving the
+// server state poisoned. parseJsonArrayLocal now Array.isArray-checks
+// and falls back to `[]` on anything else — symmetric with the pull
+// side's defense.
+function parseJsonArrayLocal(raw: string | undefined | null): unknown[] {
   if (!raw) return [];
+  let parsed: unknown;
   try {
-    return JSON.parse(raw);
+    parsed = JSON.parse(raw);
   } catch {
     return [];
   }
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function stringifyJsonArrayServer(raw: unknown): string {

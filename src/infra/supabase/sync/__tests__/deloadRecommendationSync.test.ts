@@ -39,3 +39,49 @@ runStandardSyncTests({
   expectedServerTable: 'user_deload_recommendations',
   expectedLocalTable: 'deload_recommendations',
 });
+
+// Codex review pass 1 / Important #3 — push side must enforce
+// "array or empty array" symmetric with the pull side. Non-array
+// local TEXT (hand-edited, sync race, future schema gap) must NOT
+// reach the server's JSONB column with the wrong shape.
+import { makeFakeDb, makeMockClient, makeQueueRow } from './testHelpers';
+
+describe('deloadRecommendationSync — JSON array enforcement (push)', () => {
+  const NON_ARRAY_CASES: Array<[string, unknown]> = [
+    ['null', null],
+    ['undefined', undefined],
+    ['empty string', ''],
+    ['JSON string scalar', '"x"'],
+    ['JSON object', '{"chest": true}'],
+    ['JSON null literal', 'null'],
+    ['malformed JSON', '{not-valid'],
+  ];
+  for (const [label, raw] of NON_ARRAY_CASES) {
+    it(`coerces non-array local source_week_starts (${label}) to [] before push`, async () => {
+      const { client, upsertCalls } = makeMockClient({ userId: 'u-1' });
+      const { db } = makeFakeDb();
+      await deloadRecommendationSync.pushOne(
+        client,
+        db,
+        makeQueueRow({
+          table: 'deload_recommendations',
+          recordId: 'dr-coerce',
+          operation: 'INSERT',
+          payload: {
+            id: 'dr-coerce',
+            profile_id: 'p1',
+            detected_at: '2026-05-10T12:00:00.000Z',
+            source_week_starts: raw,
+            affected_muscles: JSON.stringify(['chest']),
+          },
+        }),
+      );
+      expect(upsertCalls).toHaveLength(1);
+      const upserted = upsertCalls[0].payload;
+      expect(upserted.source_week_starts).toEqual([]);
+      // affected_muscles still parses cleanly so the server gets a
+      // mixed shape only on the corrupt column.
+      expect(upserted.affected_muscles).toEqual(['chest']);
+    });
+  }
+});

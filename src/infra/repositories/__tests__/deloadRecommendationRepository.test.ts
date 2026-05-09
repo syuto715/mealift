@@ -199,6 +199,10 @@ function makeFakeDb() {
             r.profile_id === profileId &&
             r.applied_at !== null &&
             r.completed_at === null &&
+            // Codex review pass 1 / Important #2 — mirror the
+            // production WHERE clause's dismissed_at guard so a
+            // corrupt applied+dismissed row stays untouched.
+            r.dismissed_at === null &&
             r.deleted_at === null,
         );
         if (!target) return { changes: 0, lastInsertRowId: 0 };
@@ -277,6 +281,46 @@ describe('createDeloadRecommendation', () => {
       'uuid-1',
       'UPDATE',
     );
+  });
+
+  // Codex review pass 1 / Important #1 — partial UNIQUE INDEX
+  // (WHERE deleted_at IS NULL). A soft-deleted row at the same
+  // (profile, detected_at) must NOT block a fresh insert: the
+  // detector might re-flag the same trigger after the user
+  // dismissed it.
+  it('allows re-create at the same (profile, detected_at) after soft-delete', async () => {
+    const db = makeFakeDb();
+    const first = await createDeloadRecommendation(
+      {
+        profileId: 'p1',
+        detectedAt: '2026-05-10T12:00:00.000Z',
+        sourceWeekStarts: [],
+        affectedMuscles: ['chest'],
+      },
+      db,
+    );
+    // Tombstone the original row directly.
+    const target = db.rows.find((r) => r.id === first.id)!;
+    target.deleted_at = '2026-05-11T00:00:00.000Z';
+
+    // Re-create at the same key — should succeed under the partial
+    // unique index, leaving the tombstone behind and creating a new
+    // live row.
+    const second = await createDeloadRecommendation(
+      {
+        profileId: 'p1',
+        detectedAt: '2026-05-10T12:00:00.000Z',
+        sourceWeekStarts: [],
+        affectedMuscles: ['back'],
+      },
+      db,
+    );
+    expect(second.id).not.toBe(first.id);
+    expect(db.rows).toHaveLength(2);
+    const liveRows = db.rows.filter((r) => r.deleted_at === null);
+    expect(liveRows).toHaveLength(1);
+    expect(liveRows[0].id).toBe(second.id);
+    expect(liveRows[0].affected_muscles).toBe(JSON.stringify(['back']));
   });
 
   it('partitions by profile — same detected_at + different profile is a separate row', async () => {
@@ -532,6 +576,35 @@ describe('markApplied / markDismissed / markCompleted', () => {
     await markCompleted('p1', created.id, db);
     const got = await getRecommendationById('p1', created.id, db);
     expect(got?.completedAt).toBeNull();
+    expect(mockEnqueue).not.toHaveBeenCalled();
+  });
+
+  // Codex review pass 1 / Important #2 — markCompleted must refuse
+  // a corrupt row that has both applied_at and dismissed_at set.
+  // Such a row violates the helper-enforced invariant; without the
+  // dismissed_at guard the helper would happily layer completed_at
+  // on top, fixing the corrupt state into the sync stream.
+  it('refuses to mark completed a corrupt row that is both applied and dismissed', async () => {
+    const db = makeFakeDb();
+    const created = await createDeloadRecommendation(
+      {
+        profileId: 'p1',
+        detectedAt: '2026-05-10T12:00:00.000Z',
+        sourceWeekStarts: [],
+        affectedMuscles: [],
+      },
+      db,
+    );
+    // Manually inject the corrupt state — sync race / hand edit /
+    // future schema gap could produce this.
+    const target = db.rows.find((r) => r.id === created.id)!;
+    target.applied_at = '2026-05-10T13:00:00.000Z';
+    target.applied_routine_id = 'routine-corrupt';
+    target.dismissed_at = '2026-05-10T13:30:00.000Z';
+    mockEnqueue.mockClear();
+
+    await markCompleted('p1', created.id, db);
+    expect(target.completed_at).toBeNull();
     expect(mockEnqueue).not.toHaveBeenCalled();
   });
 

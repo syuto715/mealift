@@ -60,9 +60,25 @@ export async function migrateV29(db: SQLite.SQLiteDatabase): Promise<void> {
        synced_at TEXT
      );`,
   );
+  // Codex review pass 1 / Important #1 — partial unique index keyed
+  // on (profile_id, detected_at) WHERE deleted_at IS NULL, matching
+  // the server migration's UNIQUE constraint. Without the partial
+  // qualifier, a soft-deleted row would still occupy the slot and
+  // ON CONFLICT(profile_id, detected_at) at re-create time would
+  // collide with the tombstone instead of inserting a new live row.
+  // The repository would then re-read with `deleted_at IS NULL`,
+  // find nothing, and silently no-op the sync enqueue.
+  //
+  // The DROP IF EXISTS is for forward-safety on dev installs that
+  // already ran v29 with the un-partial index — they get the index
+  // re-shaped on next migration. New devices just see the partial.
+  await db.execAsync(
+    `DROP INDEX IF EXISTS idx_deload_recommendations_profile_detected;`,
+  );
   await db.execAsync(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_deload_recommendations_profile_detected
-       ON deload_recommendations(profile_id, detected_at);`,
+       ON deload_recommendations(profile_id, detected_at)
+     WHERE deleted_at IS NULL;`,
   );
   await db.execAsync(
     `CREATE INDEX IF NOT EXISTS idx_deload_recommendations_profile_active

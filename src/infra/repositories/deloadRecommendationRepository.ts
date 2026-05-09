@@ -273,6 +273,13 @@ export async function markDismissed(
 
 // State transition: applied → completed. Only valid for already-
 // applied rows; the WHERE clause enforces that.
+//
+// Codex review pass 1 / Important #2 — also require dismissed_at
+// IS NULL so a corrupt row that somehow has both applied_at and
+// dismissed_at set (sync race / manual DB edit) doesn't get
+// further state layered on top. applied / dismissed are mutually
+// exclusive by the helper API; this guard keeps the invariant
+// from drifting if data shows up violating it.
 export async function markCompleted(
   profileId: string,
   id: string,
@@ -288,6 +295,7 @@ export async function markCompleted(
         AND profile_id = ?
         AND applied_at IS NOT NULL
         AND completed_at IS NULL
+        AND dismissed_at IS NULL
         AND deleted_at IS NULL`,
     [now, now, id, profileId],
   );
