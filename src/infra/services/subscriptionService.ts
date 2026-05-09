@@ -83,6 +83,20 @@ export interface FeatureFlags {
   // only to mirror autoDeload's tier-differentiator role. Build 16+
   // TODO 23 tracks the §7.6 table update.
   periodizationPresets: boolean;
+  // Build 16 / Phase 6 (Muscle Recovery Heatmap) — body-diagram
+  // visualization of per-muscle volume zone × recovery state.
+  // Third Pro-only differentiator. Activates Phase 2 (E)
+  // volumeLandmark + Phase 4 (F) deload data into a single visual
+  // surface. Hardcoded MUSCLE_RECOVERY_HOURS constant lookup table
+  // (src/constants/muscleRecoveryHours.ts) drives the recovery
+  // estimate; v2 may grow per-user customization.
+  //
+  // Internal label for tracking is "Muscle Recovery Heatmap" —
+  // build-15-design.md:1598 already uses letter L for the /onerm
+  // SEO calculator (Build 20+), so this feature carries no letter
+  // assignment to avoid collision. Build 16+ TODO 25 tracks the
+  // letter table reorganization.
+  muscleHeatmap: boolean;
 }
 
 const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
@@ -127,6 +141,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     volumeDashboard: false,
     autoDeload: false,
     periodizationPresets: false,
+    muscleHeatmap: false,
   },
   plus: {
     maxRoutines: Infinity,
@@ -160,6 +175,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     volumeDashboard: true,
     autoDeload: false,
     periodizationPresets: false,
+    muscleHeatmap: false,
   },
   pro: {
     maxRoutines: Infinity,
@@ -193,6 +209,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     volumeDashboard: true,
     autoDeload: true,
     periodizationPresets: true,
+    muscleHeatmap: true,
   },
 };
 

@@ -225,6 +225,30 @@ describe('subscriptionService — production gating (__DEV__ = false)', () => {
     });
   });
 
+  describe('muscleHeatmap (Build 16 / Phase 6 — Muscle Recovery Heatmap)', () => {
+    // Phase 6 sign-off — third Pro-only differentiator after
+    // autoDeload (Phase 4) and periodizationPresets (Phase 5). The
+    // heatmap activates Phase 2 (E) volumeLandmark + Phase 4 (F)
+    // deload data into a single body-diagram visualization. Hardcoded
+    // MUSCLE_RECOVERY_HOURS table drives the recovery estimate.
+    it('locks the heatmap behind Pro (Plus is NOT enough)', () => {
+      expect(getFeaturesForTier('free').muscleHeatmap).toBe(false);
+      expect(getFeaturesForTier('plus').muscleHeatmap).toBe(false);
+      expect(getFeaturesForTier('pro').muscleHeatmap).toBe(true);
+    });
+
+    it('FEATURE_MATRIX (auto-derived) treats Pro as the minimum tier', () => {
+      expect(FEATURE_MATRIX.muscleHeatmap).toBe('pro');
+    });
+
+    it('hasFeature blocks free / plus / trial; admits pro', () => {
+      expect(hasFeature('muscleHeatmap', 'free')).toBe(false);
+      expect(hasFeature('muscleHeatmap', 'trial')).toBe(false);
+      expect(hasFeature('muscleHeatmap', 'plus')).toBe(false);
+      expect(hasFeature('muscleHeatmap', 'pro')).toBe(true);
+    });
+  });
+
   describe('oneRepMaxRecommendation (Build 15 / Feature 5-C, Phase 9.1)', () => {
     // Gate covers: Easy/Normal/Hard chip strip in session.tsx and the
     // plate_step_kg picker in settings/training-prefs.tsx. The §7.3
