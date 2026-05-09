@@ -48,6 +48,15 @@ const MONTHLY_QUOTA: Record<string, number> = {
   pro: 12,
 };
 
+// 7-day trial window mirrors src/constants/pricing.ts TRIAL_DURATION_DAYS.
+const TRIAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+
+// 30-second deadline on the Gemini call. Phase 1 narrative target is
+// ~1500 tokens; flash-lite p99 lands ~10-15s, so 30s is comfortably
+// above that without leaving requests hanging on platform-default
+// timeouts (Codex review pass 1 / Critical #4).
+const GEMINI_TIMEOUT_MS = 30_000;
+
 const ALLOWED_GOAL_TYPES = ['cut', 'bulk', 'maintain', 'recomp'];
 
 const CORS_HEADERS = {
@@ -77,6 +86,88 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   });
+}
+
+// Codex review pass 1 / Critical #1 — server-side trial detection.
+// The client's hasFeature(feat, 'trial') returns true for Plus
+// features, but the EF was reading `profiles.plan` only and so
+// dropped trial users into the `free` quota → plus_required 402.
+// This helper mirrors src/infra/services/subscriptionService.ts
+// derivePlanSnapshot's priority order: paid plan > active trial >
+// free. Trial maps to 'plus' for quota purposes (matching what
+// hasFeature returns).
+type ProfileRow = {
+  plan?: string | null;
+  trial_started_at?: string | null;
+  plan_expires_at?: string | null;
+  plan_billing_cycle?: string | null;
+};
+
+function deriveEffectivePlan(
+  profile: ProfileRow | null,
+  now: Date,
+): 'free' | 'plus' | 'pro' {
+  if (!profile) return 'free';
+
+  // Paid plan in effect (expires_at in the future).
+  if (
+    profile.plan_expires_at &&
+    Date.parse(profile.plan_expires_at) > now.getTime()
+  ) {
+    return profile.plan === 'pro' ? 'pro' : 'plus';
+  }
+
+  // Active trial — maps to Plus quota.
+  if (profile.trial_started_at) {
+    const startedMs = Date.parse(profile.trial_started_at);
+    if (!Number.isNaN(startedMs)) {
+      const endsMs = startedMs + TRIAL_DURATION_MS;
+      if (endsMs > now.getTime()) return 'plus';
+    }
+  }
+
+  return 'free';
+}
+
+// Codex review pass 1 / Critical #3 — strict date validation. Regex
+// alone admits 2026-13-99 / non-Monday weekStart / weekEnd that's
+// not 6 days after weekStart. The canonical contract (Monday-anchored
+// weeks, Sunday end) needs to be enforced here so cache keys and
+// downstream sync stay consistent.
+
+// Parses a 'YYYY-MM-DD' string into UTC year/month/day, validates
+// that the resulting date round-trips (catches Feb 30 etc), and
+// returns the Date or null on failure.
+function parseISODateUTCStrict(s: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return null;
+  const y = Number.parseInt(m[1], 10);
+  const mo = Number.parseInt(m[2], 10);
+  const d = Number.parseInt(m[3], 10);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const date = new Date(Date.UTC(y, mo - 1, d));
+  // Round-trip check: Feb 30 becomes March 2, etc. — reject those.
+  if (
+    date.getUTCFullYear() !== y ||
+    date.getUTCMonth() !== mo - 1 ||
+    date.getUTCDate() !== d
+  ) {
+    return null;
+  }
+  return date;
+}
+
+// ISO weekday (1 = Monday, 7 = Sunday). Date.getUTCDay returns
+// 0 = Sunday, 1 = Monday, ..., 6 = Saturday — convert to ISO style.
+function isoWeekdayUTC(d: Date): number {
+  const js = d.getUTCDay();
+  return js === 0 ? 7 : js;
+}
+
+// Verify weekEnd is exactly 6 days after weekStart in UTC.
+function isSixDaySpan(weekStart: Date, weekEnd: Date): boolean {
+  const diffMs = weekEnd.getTime() - weekStart.getTime();
+  return diffMs === 6 * 24 * 60 * 60 * 1000;
 }
 
 function utcMonthStartISO(now: Date): string {
@@ -132,17 +223,66 @@ function isFiniteOrNull(x: unknown): x is number | null {
   return x === null || isFiniteNumber(x);
 }
 
+// Codex review pass 1 / Important #5 — closed-world validation.
+// Rejecting unknown keys keeps a future schema addition (say a free-
+// text "notes" field) from silently riding along into the prompt
+// without explicit security review. Allowlists live next to the
+// validator so they stay together when fields change.
+const ALLOWED_BODY_KEYS = new Set(['weekStart', 'reportData']);
+const ALLOWED_REPORT_KEYS = new Set([
+  'weekStart',
+  'weekEnd',
+  'weightStart',
+  'weightEnd',
+  'weightChange',
+  'avgCalories',
+  'avgProtein',
+  'avgFat',
+  'avgCarb',
+  'mealLogDays',
+  'workoutCount',
+  'totalVolume',
+  'totalCaloriesBurned',
+  'consistencyScore',
+  'nutritionScore',
+  'trainingScore',
+  'overallScore',
+]);
+
+function findUnknownKey(
+  obj: Record<string, unknown>,
+  allow: Set<string>,
+): string | null {
+  for (const k of Object.keys(obj)) {
+    if (!allow.has(k)) return k;
+  }
+  return null;
+}
+
 function validateRequestBody(body: unknown): GenerateRequestBody | string {
   if (!body || typeof body !== 'object') return 'invalid request body';
   const b = body as Record<string, unknown>;
 
+  const unknownTop = findUnknownKey(b, ALLOWED_BODY_KEYS);
+  if (unknownTop) return `unknown body field: ${unknownTop}`;
+
   if (typeof b.weekStart !== 'string' || !ISO_DATE_RE.test(b.weekStart)) {
     return 'weekStart must be a YYYY-MM-DD string';
   }
+  // Codex Critical #3 — enforce calendar validity + Monday anchor.
+  const weekStartDate = parseISODateUTCStrict(b.weekStart);
+  if (!weekStartDate) return 'weekStart is not a valid calendar date';
+  if (isoWeekdayUTC(weekStartDate) !== 1) {
+    return 'weekStart must be a Monday (ISO weekday 1)';
+  }
+
   if (!b.reportData || typeof b.reportData !== 'object') {
     return 'reportData must be an object';
   }
   const r = b.reportData as Record<string, unknown>;
+
+  const unknownInner = findUnknownKey(r, ALLOWED_REPORT_KEYS);
+  if (unknownInner) return `unknown reportData field: ${unknownInner}`;
 
   if (typeof r.weekStart !== 'string' || !ISO_DATE_RE.test(r.weekStart)) {
     return 'reportData.weekStart must be a YYYY-MM-DD string';
@@ -153,6 +293,12 @@ function validateRequestBody(body: unknown): GenerateRequestBody | string {
   if (r.weekStart !== b.weekStart) {
     // The two should match — caller is using weekStart as the cache key.
     return 'reportData.weekStart must match weekStart';
+  }
+  // Codex Critical #3 — weekEnd must be exactly 6 days after weekStart.
+  const weekEndDate = parseISODateUTCStrict(r.weekEnd);
+  if (!weekEndDate) return 'reportData.weekEnd is not a valid calendar date';
+  if (!isSixDaySpan(weekStartDate, weekEndDate)) {
+    return 'reportData.weekEnd must be exactly 6 days after weekStart';
   }
 
   if (!isFiniteOrNull(r.weightStart)) return 'reportData.weightStart must be number|null';
@@ -336,9 +482,12 @@ serve(async (req) => {
     userId = userData.user.id;
 
     // ---- 2. Plan tier lookup ----
+    // Trial / paid columns must be fetched here so deriveEffectivePlan
+    // sees the same priority order the client's derivePlanSnapshot
+    // uses (Codex review pass 1 / Critical #1).
     const { data: profile, error: profileError } = await adminClient
       .from('profiles')
-      .select('plan, goal_type')
+      .select('plan, goal_type, trial_started_at, plan_expires_at, plan_billing_cycle')
       .eq('id', userId)
       .maybeSingle();
     if (profileError) {
@@ -349,8 +498,12 @@ serve(async (req) => {
         500,
       );
     }
-    const plan = (profile?.plan as string) ?? 'free';
-    const monthlyLimit = MONTHLY_QUOTA[plan] ?? MONTHLY_QUOTA.free;
+    const nowForPlan = new Date();
+    const effectivePlan = deriveEffectivePlan(
+      profile as ProfileRow | null,
+      nowForPlan,
+    );
+    const monthlyLimit = MONTHLY_QUOTA[effectivePlan] ?? MONTHLY_QUOTA.free;
 
     // ---- 2b. Plus gate ----
     // Feature H is Plus-tier-and-up. Free users get a structured
@@ -359,7 +512,7 @@ serve(async (req) => {
     // confusing "quota exceeded".
     if (monthlyLimit <= 0) {
       responseStatus = 402;
-      errorMessage = `plus_required (plan=${plan})`;
+      errorMessage = `plus_required (plan=${effectivePlan})`;
       return jsonResponse(
         {
           error: 'plus_required',
@@ -390,7 +543,7 @@ serve(async (req) => {
     }
     if ((count ?? 0) >= monthlyLimit) {
       responseStatus = 429;
-      errorMessage = `quota exceeded (${count}/${monthlyLimit}, plan=${plan})`;
+      errorMessage = `quota exceeded (${count}/${monthlyLimit}, plan=${effectivePlan})`;
       return jsonResponse(
         {
           error: 'quota_exceeded',
@@ -398,7 +551,7 @@ serve(async (req) => {
           details: {
             used: count,
             limit: monthlyLimit,
-            plan,
+            plan: effectivePlan,
             resetAt: utcMonthEndISO(now),
           },
         },
@@ -438,25 +591,57 @@ serve(async (req) => {
     });
 
     // ---- 6. Call Gemini (§7.1 config) ----
-    const geminiResponse = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          // Slightly higher than generate-workout-menu (0.4) — narrative
-          // benefits from a touch more variety; structured JSON enforces
-          // the shape so creative drift can't escape the schema.
-          temperature: 0.5,
-          topK: 40,
-          topP: 0.95,
-          // Narrative is short by spec (~700 chars total). 2048 is a
-          // generous cap that still avoids long-form rambling.
-          maxOutputTokens: 2048,
+    // Codex review pass 1 / Critical #4 — explicit AbortController
+    // timeout. fetch alone has no deadline, so a hung Gemini would
+    // pin the EF until the platform default kicks in. AbortError is
+    // caught below and mapped to gemini_error 502.
+    const abortCtl = new AbortController();
+    const abortTimer = setTimeout(
+      () => abortCtl.abort(),
+      GEMINI_TIMEOUT_MS,
+    );
+    let geminiResponse: Response;
+    try {
+      geminiResponse = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            // Slightly higher than generate-workout-menu (0.4) —
+            // narrative benefits from a touch more variety;
+            // structured JSON enforces the shape so creative drift
+            // can't escape the schema.
+            temperature: 0.5,
+            topK: 40,
+            topP: 0.95,
+            // Narrative is short by spec (~700 chars total). 2048
+            // is a generous cap that still avoids long-form
+            // rambling.
+            maxOutputTokens: 2048,
+          },
+        }),
+        signal: abortCtl.signal,
+      });
+    } catch (e) {
+      const aborted = e instanceof Error && e.name === 'AbortError';
+      responseStatus = 502;
+      errorMessage = aborted
+        ? `gemini timeout after ${GEMINI_TIMEOUT_MS}ms`
+        : `gemini fetch failed: ${e instanceof Error ? e.message : String(e)}`;
+      return jsonResponse(
+        {
+          error: 'gemini_error',
+          message: aborted
+            ? 'AI 応答がタイムアウトしました。再試行してください'
+            : 'AI 応答の取得に失敗しました',
         },
-      }),
-    });
+        502,
+      );
+    } finally {
+      clearTimeout(abortTimer);
+    }
 
     if (!geminiResponse.ok) {
       responseStatus = 502;
@@ -467,7 +652,21 @@ serve(async (req) => {
       );
     }
 
-    const geminiData = await geminiResponse.json();
+    // Codex review pass 1 / Critical #4 — protect .json(). A 200
+    // with malformed body would otherwise propagate to the outer
+    // catch and surface as 500 internal_error, hiding what's
+    // actually a Gemini-side issue.
+    let geminiData: { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    try {
+      geminiData = await geminiResponse.json();
+    } catch {
+      responseStatus = 502;
+      errorMessage = 'gemini response body is not JSON';
+      return jsonResponse(
+        { error: 'gemini_error', message: 'AI 応答の解析に失敗しました' },
+        502,
+      );
+    }
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       responseStatus = 502;
