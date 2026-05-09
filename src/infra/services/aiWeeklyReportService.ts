@@ -16,6 +16,7 @@ import {
   type WeeklyNarrative,
   type WeeklyReportData,
 } from '../../types/weeklyReport';
+import { getPendingForTable } from '../repositories/syncRepository';
 
 // Build 16 / Phase 1 (Feature H) / Phase 1.3 — client wrapper around
 // the generate-weekly-report Edge Function.
@@ -96,6 +97,62 @@ function rethrowAsWeeklyReportError(err: unknown): never {
   );
 }
 
+// Codex review pass 1 / Important #1 — sync-lag drift guard.
+//
+// The cache key is computed from local state (profile.goalType,
+// reportData) but the EF reads server profile.goal_type. A user who
+// changes their goal locally and triggers generation before sync
+// drains would cache an EF response built from the OLD goal under a
+// key reflecting the NEW goal — permanent poisoning until TTL.
+//
+// Mitigation (mirrors aiWorkoutService.shouldBypassCache from
+// Phase 7 Codex pass 1): skip cache read AND write when the sync
+// queue has any pending write on `profiles`. Once sync drains,
+// future generations get a clean cache. A residual ~ms-scale race
+// remains between "queue drains" and "EF reads" — acceptable for
+// an opportunistic cache, would only fully close with an EF echo
+// of inputs (Build 16+).
+async function shouldBypassCache(): Promise<boolean> {
+  try {
+    const pending = await getPendingForTable('profiles', 1);
+    return pending.length > 0;
+  } catch {
+    // If sync_queue read itself fails, fail open (use cache) —
+    // we don't want a transient SQLite hiccup to silently disable
+    // caching for everyone.
+    return false;
+  }
+}
+
+// Codex review pass 1 / Important #2 — full 4-section shape
+// validation. Original guard checked only overall + sections.
+// integration; the contract requires all four sections (Phase 1.1
+// type spec). Server validateGeneratedNarrative already enforces
+// this on responses, so this client-side check defends against
+// future server regressions, hand-corrupted cache entries, and
+// development-time mocks that forget a section.
+function isValidNarrativeBody(value: unknown): value is {
+  overall: string;
+  sections: {
+    workout: string;
+    nutrition: string;
+    weight: string;
+    integration: string;
+  };
+} {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as { overall?: unknown; sections?: unknown };
+  if (typeof v.overall !== 'string' || v.overall.length === 0) return false;
+  if (!v.sections || typeof v.sections !== 'object') return false;
+  const s = v.sections as Record<string, unknown>;
+  for (const k of ['workout', 'nutrition', 'weight', 'integration']) {
+    if (typeof s[k] !== 'string' || (s[k] as string).length === 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // === Cache args ===
 // Optional caller-provided context. Without `cache.profileId` the
 // client-side cache is bypassed (e.g. unit tests). Without
@@ -131,9 +188,16 @@ export async function generateAIWeeklyReport(
   }
 
   // --- 2. Cache lookup ---
+  // Bypass entirely when sync queue has pending profiles writes
+  // (Codex review pass 1 / Important #1) so a local-vs-server goal
+  // mismatch can't poison the cache with the wrong narrative.
   let cacheHash: string | null = null;
   const cacheArgs = options.cache;
+  let cacheActive = false;
   if (cacheArgs) {
+    cacheActive = !(await shouldBypassCache());
+  }
+  if (cacheArgs && cacheActive) {
     cacheHash = buildCacheKey({
       weekStart: request.weekStart,
       goalType: cacheArgs.goalType,
@@ -168,12 +232,7 @@ export async function generateAIWeeklyReport(
       GeneratedNarrative
     >('generate-weekly-report', request, { signal: options.signal });
 
-    if (
-      !response ||
-      typeof response.overall !== 'string' ||
-      !response.sections ||
-      typeof response.sections.integration !== 'string'
-    ) {
+    if (!isValidNarrativeBody(response)) {
       throw new AIWeeklyReportError(
         'validation_failed',
         ERROR_MESSAGE_BY_CODE.validation_failed,
@@ -191,7 +250,10 @@ export async function generateAIWeeklyReport(
       cacheVersion: NARRATIVE_CACHE_VERSION,
     };
 
-    if (cacheArgs && cacheHash) {
+    // Cache write only when bypass is inactive (Codex review pass 1
+    // / Important #1) — never write a poisoned entry under a NEW
+    // local key while sync is still draining.
+    if (cacheArgs && cacheActive && cacheHash) {
       void setCached(cacheArgs.profileId, cacheHash, stamped);
     }
     return stamped;

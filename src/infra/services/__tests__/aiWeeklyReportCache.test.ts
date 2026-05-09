@@ -220,6 +220,54 @@ describe('getCached / setCached', () => {
     );
   });
 
+  // Codex review pass 1 / Important #2 — every required section
+  // must be present and non-empty. Original guard accepted a row
+  // missing workout/nutrition/weight as long as overall +
+  // integration were present.
+  const SECTION_KEYS = ['workout', 'nutrition', 'weight', 'integration'];
+  for (const missingKey of SECTION_KEYS) {
+    it(`treats entries missing the ${missingKey} section as expired and removes them`, async () => {
+      const storage = makeFakeStorage();
+      const sections: Record<string, string> = {
+        workout: 'w',
+        nutrition: 'n',
+        weight: 'wt',
+        integration: 'i',
+      };
+      delete sections[missingKey];
+      await storage.setItem(
+        'ai_weekly_report:cache:user-1:h',
+        JSON.stringify({
+          version: CACHE_VERSION,
+          createdAt: Date.now(),
+          data: {
+            overall: 'overall summary',
+            sections,
+            generatedAt: Date.now(),
+            cacheVersion: CACHE_VERSION,
+          },
+        }),
+      );
+      expect(await getCached('user-1', 'h', { storage })).toBeNull();
+      expect(storage.removeCalls).toContain(
+        'ai_weekly_report:cache:user-1:h',
+      );
+    });
+  }
+
+  it('keeps a fully-formed narrative through the validation gate', async () => {
+    const storage = makeFakeStorage();
+    await setCached('user-1', 'h', SAMPLE_NARRATIVE, { storage });
+    const got = await getCached('user-1', 'h', { storage });
+    expect(got).not.toBeNull();
+    expect(got?.sections.workout).toBe(SAMPLE_NARRATIVE.sections.workout);
+    expect(got?.sections.nutrition).toBe(SAMPLE_NARRATIVE.sections.nutrition);
+    expect(got?.sections.weight).toBe(SAMPLE_NARRATIVE.sections.weight);
+    expect(got?.sections.integration).toBe(
+      SAMPLE_NARRATIVE.sections.integration,
+    );
+  });
+
   it('falls back to a miss when storage.getItem rejects', async () => {
     const failing: CacheStorage = {
       async getItem() {

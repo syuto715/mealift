@@ -153,17 +153,29 @@ export async function getCached(
     return null;
   }
   // Structural sanity — empty narrative is no better than corrupt.
-  if (
-    !entry.data ||
-    typeof entry.data.overall !== 'string' ||
-    entry.data.overall.length === 0 ||
-    !entry.data.sections ||
-    typeof entry.data.sections.integration !== 'string'
-  ) {
+  // Codex review pass 1 / Important #2 — validate every required
+  // section, not just integration. The Phase 1.1 type contract
+  // declares all four sections required, so any cache entry missing
+  // one is treated as expired and self-heals on the next read.
+  if (!isStructurallyValidNarrative(entry.data)) {
     await safeRemove(storage, key);
     return null;
   }
   return entry.data;
+}
+
+function isStructurallyValidNarrative(data: unknown): data is WeeklyNarrative {
+  if (!data || typeof data !== 'object') return false;
+  const d = data as { overall?: unknown; sections?: unknown };
+  if (typeof d.overall !== 'string' || d.overall.length === 0) return false;
+  if (!d.sections || typeof d.sections !== 'object') return false;
+  const s = d.sections as Record<string, unknown>;
+  for (const k of ['workout', 'nutrition', 'weight', 'integration']) {
+    if (typeof s[k] !== 'string' || (s[k] as string).length === 0) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export async function setCached(

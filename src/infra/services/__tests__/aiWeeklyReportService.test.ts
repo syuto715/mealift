@@ -4,6 +4,16 @@
 // override.
 (global as unknown as { __DEV__: boolean }).__DEV__ = false;
 
+// Phase 1.3 Codex pass 1 / Important #1 — service now imports
+// syncRepository to detect pending profile writes and bypass the
+// cache. syncRepository transitively pulls expo-sqlite (an ESM
+// native module), so stub it at the boundary. Default behavior:
+// no pending writes (cache active); individual tests override via
+// getPendingForTable.mockResolvedValueOnce.
+jest.mock('../../repositories/syncRepository', () => ({
+  getPendingForTable: jest.fn(async () => []),
+}));
+
 // Stub the AsyncStorage native module the cache reaches for at module
 // scope. In-memory store keeps cache integration tests honest without
 // the polyfill chain.
@@ -375,4 +385,165 @@ describe('generateAIWeeklyReport — cache integration', () => {
     expect(t.hits).toBe(1);
     expect(t.misses).toBe(1);
   });
+});
+
+// Phase 1.3 Codex pass 1 / Important #1 — sync-lag drift bypass.
+describe('generateAIWeeklyReport — sync-bypass guard', () => {
+  const { getPendingForTable } = jest.requireMock(
+    '../../repositories/syncRepository',
+  ) as { getPendingForTable: jest.Mock };
+
+  beforeEach(() => {
+    getPendingForTable.mockReset();
+    getPendingForTable.mockImplementation(async () => []);
+  });
+
+  it('skips cache read when profiles has pending sync writes', async () => {
+    callEdgeFunction.mockResolvedValue(VALID_NARRATIVE);
+    // Prime the cache with a clean state.
+    await generateAIWeeklyReport(VALID_REQUEST, {
+      planStatus: PLUS_STATUS,
+      cache: CACHE_ARGS,
+    });
+    expect(callEdgeFunction).toHaveBeenCalledTimes(1);
+
+    // Now simulate a pending profile write — should bypass cache and
+    // call the EF again even though the entry exists.
+    callEdgeFunction.mockClear();
+    getPendingForTable.mockImplementation(async (table: string) =>
+      table === 'profiles' ? [{ id: 'pending-profile' }] : [],
+    );
+    await generateAIWeeklyReport(VALID_REQUEST, {
+      planStatus: PLUS_STATUS,
+      cache: CACHE_ARGS,
+    });
+    expect(callEdgeFunction).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips cache write while profiles is pending so a poisoned entry never lands', async () => {
+    callEdgeFunction.mockResolvedValue(VALID_NARRATIVE);
+    getPendingForTable.mockImplementation(async (table: string) =>
+      table === 'profiles' ? [{ id: 'pending-profile' }] : [],
+    );
+    // Generate while sync is pending — no cache write should land.
+    await generateAIWeeklyReport(VALID_REQUEST, {
+      planStatus: PLUS_STATUS,
+      cache: CACHE_ARGS,
+    });
+
+    // Sync now drained. A second call must still hit the EF (no
+    // cache entry was written during the pending window).
+    callEdgeFunction.mockClear();
+    getPendingForTable.mockImplementation(async () => []);
+    await generateAIWeeklyReport(VALID_REQUEST, {
+      planStatus: PLUS_STATUS,
+      cache: CACHE_ARGS,
+    });
+    expect(callEdgeFunction).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses cache normally when sync queue is clean', async () => {
+    callEdgeFunction.mockResolvedValue(VALID_NARRATIVE);
+    await generateAIWeeklyReport(VALID_REQUEST, {
+      planStatus: PLUS_STATUS,
+      cache: CACHE_ARGS,
+    });
+    callEdgeFunction.mockClear();
+    await generateAIWeeklyReport(VALID_REQUEST, {
+      planStatus: PLUS_STATUS,
+      cache: CACHE_ARGS,
+    });
+    expect(callEdgeFunction).not.toHaveBeenCalled();
+  });
+
+  it('fails open (cache active) when getPendingForTable itself throws', async () => {
+    callEdgeFunction.mockResolvedValue(VALID_NARRATIVE);
+    getPendingForTable.mockImplementation(async () => {
+      throw new Error('sqlite hiccup');
+    });
+    // First call: miss (no entry yet) → EF.
+    await generateAIWeeklyReport(VALID_REQUEST, {
+      planStatus: PLUS_STATUS,
+      cache: CACHE_ARGS,
+    });
+    callEdgeFunction.mockClear();
+    // Second call: should hit cache because we treat sync read failure
+    // as "no pending" (fail open) — see shouldBypassCache comment.
+    await generateAIWeeklyReport(VALID_REQUEST, {
+      planStatus: PLUS_STATUS,
+      cache: CACHE_ARGS,
+    });
+    expect(callEdgeFunction).not.toHaveBeenCalled();
+  });
+});
+
+// Phase 1.3 Codex pass 1 / Important #2 — full 4-section validation.
+describe('generateAIWeeklyReport — payload shape validation', () => {
+  const PARTIAL_PAYLOADS: Array<{ label: string; payload: unknown }> = [
+    {
+      label: 'missing workout section',
+      payload: {
+        overall: 'overall summary',
+        sections: {
+          nutrition: 'n',
+          weight: 'w',
+          integration: 'i',
+        },
+      },
+    },
+    {
+      label: 'missing nutrition section',
+      payload: {
+        overall: 'overall summary',
+        sections: {
+          workout: 'w',
+          weight: 'wt',
+          integration: 'i',
+        },
+      },
+    },
+    {
+      label: 'missing weight section',
+      payload: {
+        overall: 'overall summary',
+        sections: {
+          workout: 'w',
+          nutrition: 'n',
+          integration: 'i',
+        },
+      },
+    },
+    {
+      label: 'missing integration section',
+      payload: {
+        overall: 'overall summary',
+        sections: {
+          workout: 'w',
+          nutrition: 'n',
+          weight: 'wt',
+        },
+      },
+    },
+    {
+      label: 'empty-string section',
+      payload: {
+        overall: 'overall summary',
+        sections: {
+          workout: '',
+          nutrition: 'n',
+          weight: 'wt',
+          integration: 'i',
+        },
+      },
+    },
+  ];
+
+  for (const { label, payload } of PARTIAL_PAYLOADS) {
+    it(`rejects EF response with ${label} as validation_failed`, async () => {
+      callEdgeFunction.mockResolvedValueOnce(payload as never);
+      await expect(
+        generateAIWeeklyReport(VALID_REQUEST, { planStatus: PLUS_STATUS }),
+      ).rejects.toMatchObject({ code: 'validation_failed' });
+    });
+  }
 });
