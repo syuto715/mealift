@@ -1,6 +1,6 @@
 import type * as SQLite from 'expo-sqlite';
 import { getDatabase } from '../infra/database/connection';
-import { startOfWeek, endOfWeek, format, addDays } from 'date-fns';
+import { startOfWeek, addDays } from 'date-fns';
 
 // Build 16 / Phase 2 (Feature E) / Phase 2.1 — MEV/MAV/MRV volume
 // landmark domain layer.
@@ -210,13 +210,26 @@ export async function aggregateWeeklySetsByMuscle(
       ? parseISODateAsLocalNoon(weekStart)
       : weekStart;
   const monday = startOfWeek(refDate, { weekStartsOn: 1 });
-  const sunday = endOfWeek(refDate, { weekStartsOn: 1 });
-  const startStr = format(monday, 'yyyy-MM-dd');
-  // Half-open right boundary — same shape as the Phase 2 hotfix
-  // applied to weeklyReport's training query. started_at is an ISO
-  // timestamp; comparing to a 'YYYY-MM-DD' upper bound and a closed
-  // BETWEEN would miss late-evening sessions on Sunday.
-  const dayAfterEnd = format(addDays(sunday, 1), 'yyyy-MM-dd');
+  // Codex review pass 1 / Critical #1 — boundary-as-UTC-ISO.
+  //
+  // workout_sessions.started_at is persisted via Date.toISOString() —
+  // i.e. a UTC ISO timestamp ('YYYY-MM-DDTHH:MM:SS.sssZ'). The prior
+  // version compared that against `'YYYY-MM-DD'` strings derived from
+  // local-date formatting, which silently shifted the week boundary
+  // by the runtime's UTC offset:
+  //
+  //   - JST user (UTC+9) opens dashboard Monday 00:30 JST.
+  //   - That session is stored as Sunday 15:30 UTC.
+  //   - SQL filter `started_at >= '2026-05-04'` excludes it
+  //     ('2026-05-03T15:30…' < '2026-05-04' lexically).
+  //
+  // Fix: compute monday at local-00:00 and the next-monday at
+  // local-00:00, then convert to UTC ISO via toISOString(). The SQL
+  // now compares ISO-to-ISO, both in UTC, and the boundary still
+  // corresponds to the user's local week.
+  const nextMonday = addDays(monday, 7);
+  const startIso = monday.toISOString();
+  const endIso = nextMonday.toISOString();
 
   // Single SQL pass: join sets to their exercise, filter by the
   // session's started_at week + non-warmup + non-deleted, return
@@ -238,7 +251,7 @@ export async function aggregateWeeklySetsByMuscle(
         AND ws.deleted_at IS NULL
         AND e.deleted_at IS NULL
       GROUP BY e.primary_muscle`,
-    [profileId, startStr, dayAfterEnd],
+    [profileId, startIso, endIso],
   );
 
   const result: Record<VolumeGroup, number> = {

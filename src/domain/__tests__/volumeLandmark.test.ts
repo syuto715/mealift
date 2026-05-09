@@ -175,9 +175,17 @@ interface FakeSessionSetExercise {
 }
 
 function makeFakeDb(records: FakeSessionSetExercise[]) {
-  return {
-    async getAllAsync(_sql: string, params: unknown[]): Promise<FakeRow[]> {
-      const [profileId, startStr, dayAfterEnd] = params as [
+  // Codex review pass 1 / Important #2 — also pin the SQL text
+  // contract by recording every executed SQL so tests can assert
+  // the production query still includes the key clauses (started_at
+  // half-open interval, deleted_at filters, warmup filter,
+  // GROUP BY primary_muscle).
+  const sqlsExecuted: string[] = [];
+  const fake = {
+    sqlsExecuted,
+    async getAllAsync(sql: string, params: unknown[]): Promise<FakeRow[]> {
+      sqlsExecuted.push(sql);
+      const [profileId, startIso, endIso] = params as [
         string,
         string,
         string,
@@ -185,8 +193,8 @@ function makeFakeDb(records: FakeSessionSetExercise[]) {
       const filtered = records.filter(
         (r) =>
           r.session_profile_id === profileId &&
-          r.session_started_at >= startStr &&
-          r.session_started_at < dayAfterEnd &&
+          r.session_started_at >= startIso &&
+          r.session_started_at < endIso &&
           r.session_deleted_at === null &&
           r.set_is_warmup === 0 &&
           r.set_deleted_at === null &&
@@ -211,6 +219,7 @@ function makeFakeDb(records: FakeSessionSetExercise[]) {
       return { changes: 0 };
     },
   };
+  return fake;
 }
 
 function setRecord(
@@ -342,19 +351,85 @@ describe('aggregateWeeklySetsByMuscle', () => {
     expect(out.chest).toBe(0);
   });
 
-  it('respects the half-open week boundary (Sun 23:59 counts, Mon 00:00 next week does not)', async () => {
+  it('respects the half-open week boundary across ISO timestamps', async () => {
+    // The expected ISO bounds for a week reference of '2026-05-07'
+    // (a Wednesday) are derived from local-Monday 00:00 of that
+    // week: 2026-05-04T00:00 local → ISO; nextMonday 2026-05-11
+    // 00:00 local → ISO. Tests run under the runner's TZ (UTC in
+    // CI), so both bounds resolve to '...T00:00:00.000Z' and we
+    // can craft sample timestamps near those edges.
+    const monday = new Date(2026, 4, 4, 0, 0, 0, 0);
+    const nextMonday = new Date(2026, 4, 11, 0, 0, 0, 0);
+    // 1 ms inside the week — must count.
+    const insideStart = new Date(monday.getTime()).toISOString();
+    // 1 ms before next Monday — must count.
+    const insideEnd = new Date(nextMonday.getTime() - 1).toISOString();
+    // Exactly next Monday 00:00 — must NOT count.
+    const onNextMonday = nextMonday.toISOString();
+
     const records: FakeSessionSetExercise[] = [
-      // Mon morning (week 2026-05-04) — counts.
-      setRecord('chest_mid', '2026-05-04T06:00:00.000Z'),
-      // Sun late evening (last day of the week) — counts.
-      setRecord('chest_mid', '2026-05-10T23:59:00.000Z'),
-      // Mon next week 00:00 — must NOT count.
-      setRecord('chest_mid', '2026-05-11T00:00:00.000Z'),
+      setRecord('chest_mid', insideStart),
+      setRecord('chest_mid', insideEnd),
+      setRecord('chest_mid', onNextMonday),
     ];
     const db = makeFakeDb(records);
     mockGetDatabase.mockResolvedValue(db);
     const out = await aggregateWeeklySetsByMuscle('p1', '2026-05-07');
     expect(out.chest).toBe(2);
+  });
+
+  // Codex review pass 1 / Critical #1 regression — pre-fix the SQL
+  // compared 'YYYY-MM-DD' local-date strings against
+  // toISOString()-formatted started_at. JST users (UTC+9) lost
+  // sessions started Mon 00:00-08:59 local (= Sun 15:00-23:59 UTC).
+  // The fix uses local-monday-00:00 → toISOString() so SQL is
+  // ISO-vs-ISO and the boundary still matches the user's local week.
+  it('passes ISO timestamps (not YYYY-MM-DD) to SQL so UTC-stored started_at compares correctly', async () => {
+    const db = makeFakeDb([]);
+    mockGetDatabase.mockResolvedValue(db);
+    let observedStartParam = '';
+    let observedEndParam = '';
+    db.getAllAsync = async (_sql, params) => {
+      observedStartParam = (params as string[])[1];
+      observedEndParam = (params as string[])[2];
+      return [];
+    };
+    await aggregateWeeklySetsByMuscle('p1', '2026-05-04');
+    // ISO format always ends in 'Z' — a 'YYYY-MM-DD' would fail
+    // this match, regression-pinning the bug class.
+    expect(observedStartParam).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
+    expect(observedEndParam).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
+    // The two bounds are exactly 7 days apart.
+    const startMs = Date.parse(observedStartParam);
+    const endMs = Date.parse(observedEndParam);
+    expect(endMs - startMs).toBe(7 * 24 * 60 * 60 * 1000);
+  });
+
+  // Codex review pass 1 / Important #2 — the fake-DB tests above
+  // re-implement the filter logic in JS, so they pass even if the
+  // production SQL drifts. Pin the actual SQL text so a regression
+  // (e.g. dropped deleted_at filter, accidental `BETWEEN` swap,
+  // missing GROUP BY) shows up here.
+  it('emits SQL containing the documented half-open started_at + deleted_at + warmup filters + GROUP BY', async () => {
+    const db = makeFakeDb([]);
+    mockGetDatabase.mockResolvedValue(db);
+    await aggregateWeeklySetsByMuscle('p1', '2026-05-04');
+    expect(db.sqlsExecuted).toHaveLength(1);
+    const sql = db.sqlsExecuted[0];
+    // Half-open started_at interval, not BETWEEN.
+    expect(sql).toMatch(/s\.started_at\s*>=\s*\?/);
+    expect(sql).toMatch(/s\.started_at\s*<\s*\?/);
+    expect(sql).not.toMatch(/BETWEEN/i);
+    // Three deleted_at filters (session, set, exercise).
+    expect(sql.match(/deleted_at\s+IS\s+NULL/g)?.length ?? 0).toBe(3);
+    // Warmup excluded.
+    expect(sql).toMatch(/is_warmup\s*=\s*0/);
+    // Grouped by primary_muscle so JS reduction maps cleanly.
+    expect(sql).toMatch(/GROUP\s+BY\s+e\.primary_muscle/i);
   });
 
   it('excludes warmup sets (is_warmup=1)', async () => {
@@ -407,12 +482,13 @@ describe('aggregateWeeklySetsByMuscle', () => {
 
   // Phase 1.1 Codex pass 1 / Critical #1 lesson — pin the local-noon
   // parsing so a negative-offset user can't shift into the previous
-  // calendar week.
+  // calendar week. Now that the SQL params are ISO timestamps we
+  // verify the resolved ISO equals what local-monday-00:00 yields.
   it('uses local-noon parsing on YYYY-MM-DD strings to dodge UTC-midnight TZ bug', async () => {
-    let observedStartStr = '';
+    let observedStartIso = '';
     const db = {
       async getAllAsync(_sql: string, params: unknown[]) {
-        observedStartStr = params[1] as string;
+        observedStartIso = params[1] as string;
         return [] as FakeRow[];
       },
       async getFirstAsync() {
@@ -423,20 +499,20 @@ describe('aggregateWeeklySetsByMuscle', () => {
       },
     };
     mockGetDatabase.mockResolvedValue(db);
-    // 2026-05-04 is a Monday — startOfWeek(Monday-noon, weekStartsOn:1)
-    // must yield the same Monday, regardless of timezone. This would
-    // fail under the naive `new Date('2026-05-04')` approach in
-    // negative offsets because UTC midnight resolves to the previous
-    // Sunday.
+    // '2026-05-04' is a Monday. parseISODateAsLocalNoon makes it
+    // local-noon, startOfWeek snaps to local-Monday-00:00, and
+    // .toISOString() converts to UTC. The expected ISO equals the
+    // ISO of `new Date(2026, 4, 4, 0, 0, 0, 0)`.
     await aggregateWeeklySetsByMuscle('p1', '2026-05-04');
-    expect(observedStartStr).toBe('2026-05-04');
+    const expected = new Date(2026, 4, 4, 0, 0, 0, 0).toISOString();
+    expect(observedStartIso).toBe(expected);
   });
 
   it('accepts a Date directly for the reference week', async () => {
-    let observedStartStr = '';
+    let observedStartIso = '';
     const db = {
       async getAllAsync(_sql: string, params: unknown[]) {
-        observedStartStr = params[1] as string;
+        observedStartIso = params[1] as string;
         return [] as FakeRow[];
       },
       async getFirstAsync() {
@@ -447,12 +523,14 @@ describe('aggregateWeeklySetsByMuscle', () => {
       },
     };
     mockGetDatabase.mockResolvedValue(db);
-    // Reference: Wed 2026-05-06; week starts Mon 2026-05-04.
+    // Reference: Wed 2026-05-06; week starts Mon 2026-05-04
+    // (local). Same expected ISO as the previous case.
     await aggregateWeeklySetsByMuscle(
       'p1',
       new Date(2026, 4, 6, 12, 0, 0, 0),
     );
-    expect(observedStartStr).toBe('2026-05-04');
+    const expected = new Date(2026, 4, 4, 0, 0, 0, 0).toISOString();
+    expect(observedStartIso).toBe(expected);
   });
 
   it('accepts a dbOverride for tests (DI pattern)', async () => {

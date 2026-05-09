@@ -81,20 +81,19 @@ export async function generateWeeklyReport(
   // SQLITE_ERROR ("no such column"). The screen layer's try/catch
   // caught it and showed an empty state, but Phase 1.2's AI narrative
   // also consumed these stats — meaning every generated narrative
-  // saw workoutCount=0 / totalVolume=0. The fake DB used in
-  // weeklyReport.test.ts returns []  for getAllAsync regardless of
-  // SQL, so the bug never surfaced in CI.
+  // saw workoutCount=0 / totalVolume=0.
   //
-  // Two changes:
-  //   1. Switch the filter to `started_at`. ISO dates are 'YYYY-MM-DD'
-  //      while started_at is 'YYYY-MM-DDTHH:MM:SS.sssZ', so a
-  //      half-open `>= startStr AND < dayAfterEnd` interval picks
-  //      up every session inside the week without missing the last
-  //      day's late-evening rows.
-  //   2. Filter out soft-deleted rows (v23 added deleted_at across
-  //      all user-private tables — every other workoutRepository
-  //      query honors it; this one missed the migration).
-  const dayAfterEnd = format(addDays(weekEnd, 1), 'yyyy-MM-dd');
+  // Phase 2.1 Codex pass 1 / Critical #1 — same fix needed here:
+  // started_at is a UTC ISO timestamp via toISOString(), so comparing
+  // against a 'YYYY-MM-DD' local-date string silently shifts the week
+  // boundary by the runtime's UTC offset. JST users would have lost
+  // Monday 00:00-08:59 sessions and gained Sunday 15:00-23:59 sessions.
+  // Compute UTC-ISO bounds derived from local-monday 00:00, so the
+  // boundary still tracks the user's local week but the comparison
+  // is ISO-to-ISO.
+  const nextMonday = addDays(weekStart, 7);
+  const startIso = weekStart.toISOString();
+  const endIso = nextMonday.toISOString();
   const trainingRows = await db.getAllAsync<{
     session_count: number;
     total_volume: number;
@@ -110,7 +109,7 @@ export async function generateWeeklyReport(
        AND ws.started_at >= ?
        AND ws.started_at < ?
        AND ws.deleted_at IS NULL`,
-    [profileId, startStr, dayAfterEnd],
+    [profileId, startIso, endIso],
   );
 
   const training = trainingRows[0] ?? { session_count: 0, total_volume: 0, total_cal_burned: 0 };

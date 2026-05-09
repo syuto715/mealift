@@ -427,31 +427,19 @@ describe('generateWeeklyReport — training-stats schema (Phase 2 hotfix)', () =
   }
 
   it('uses started_at half-open intervals (sessions on the last day count, sessions on the next day do not)', async () => {
+    // Use local-time Date constructors so the fixtures are agnostic
+    // to the test runner's timezone (CI on JST exposed earlier
+    // hardcoded-UTC-ISO assumptions). Phase 2.1 Codex pass 1
+    // converted the SQL boundary to UTC ISO derived from local-
+    // monday-00:00; these fixtures must use the same convention.
+    const insideStart = new Date(2026, 4, 4, 6, 0, 0, 0).toISOString(); // Mon 06:00 local
+    const insideEnd = new Date(2026, 4, 10, 23, 59, 0, 0).toISOString(); // Sun 23:59 local (last hour)
+    const onNextMonday = new Date(2026, 4, 11, 0, 0, 0, 0).toISOString(); // next-Mon 00:00 local
+
     const sessions: Session[] = [
-      // Mon 06:00 — counts
-      {
-        id: 's1',
-        profile_id: 'p1',
-        started_at: '2026-05-04T06:00:00.000Z',
-        estimated_calories: 100,
-        deleted_at: null,
-      },
-      // Sun 23:59 — counts (last hour of the week)
-      {
-        id: 's2',
-        profile_id: 'p1',
-        started_at: '2026-05-10T23:59:00.000Z',
-        estimated_calories: 200,
-        deleted_at: null,
-      },
-      // Mon next week 00:00 — must NOT count
-      {
-        id: 's3',
-        profile_id: 'p1',
-        started_at: '2026-05-11T00:00:00.000Z',
-        estimated_calories: 999,
-        deleted_at: null,
-      },
+      { id: 's1', profile_id: 'p1', started_at: insideStart, estimated_calories: 100, deleted_at: null },
+      { id: 's2', profile_id: 'p1', started_at: insideEnd, estimated_calories: 200, deleted_at: null },
+      { id: 's3', profile_id: 'p1', started_at: onNextMonday, estimated_calories: 999, deleted_at: null },
     ];
     const sets: Set[] = [
       { session_id: 's1', weight_kg: 100, reps: 5 },
@@ -460,14 +448,15 @@ describe('generateWeeklyReport — training-stats schema (Phase 2 hotfix)', () =
     ];
     mockGetDatabase.mockResolvedValue(makeTrainingFakeDb(sessions, sets));
 
+    // Wed of the same week (any local time inside the week works).
     const report = await generateWeeklyReport(
       'p1',
-      new Date('2026-05-07T12:00:00Z'),
+      new Date(2026, 4, 6, 12, 0, 0, 0),
     );
     expect(report.workoutCount).toBe(2);
-    // s1 + s2 only: 100*5 + 60*10 = 1100; s3 (1100kg×reps from 80*5*N? = 400) excluded
+    // s1 + s2 only: 100*5 + 60*10 = 1100; s3 excluded.
     expect(report.totalVolume).toBe(1100);
-    // s1 100 + s2 200 = 300; s3 (999) excluded
+    // s1 100 + s2 200 = 300; s3 (999) excluded.
     expect(report.totalCaloriesBurned).toBe(300);
   });
 
@@ -476,14 +465,14 @@ describe('generateWeeklyReport — training-stats schema (Phase 2 hotfix)', () =
       {
         id: 's1',
         profile_id: 'p1',
-        started_at: '2026-05-04T06:00:00.000Z',
+        started_at: new Date(2026, 4, 4, 6, 0, 0, 0).toISOString(),
         estimated_calories: 100,
         deleted_at: null,
       },
       {
         id: 's2',
         profile_id: 'p1',
-        started_at: '2026-05-05T06:00:00.000Z',
+        started_at: new Date(2026, 4, 5, 6, 0, 0, 0).toISOString(),
         estimated_calories: 50,
         // Tombstone — must be excluded.
         deleted_at: '2026-05-06T00:00:00.000Z',
@@ -497,7 +486,7 @@ describe('generateWeeklyReport — training-stats schema (Phase 2 hotfix)', () =
 
     const report = await generateWeeklyReport(
       'p1',
-      new Date('2026-05-07T12:00:00Z'),
+      new Date(2026, 4, 6, 12, 0, 0, 0),
     );
     expect(report.workoutCount).toBe(1);
     expect(report.totalVolume).toBe(500);
