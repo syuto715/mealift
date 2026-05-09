@@ -216,9 +216,11 @@ export function VolumeLandmarkChart({
                   stroke={MARKER_COLOR}
                   strokeWidth={2}
                 />
-                {/* Numeric overlay near the marker. Anchored end/start
-                    based on which side of the bar has more room so the
-                    label doesn't get clipped at edges. */}
+                {/* Codex pass 1 / Important #2 — keep the Svg
+                    overlay number for visual immediacy, but the
+                    accessible numeric is in the value-side <Text>
+                    below. screen reader sees both the count and
+                    the zone label. */}
                 {!compact && (
                   <SvgText
                     x={setsPct > 90 ? 98 : setsPct + 2}
@@ -234,6 +236,20 @@ export function VolumeLandmarkChart({
               </Svg>
             </View>
             <View style={styles.valueContainer}>
+              {/* Codex pass 1 / Important #2 — current sets count
+                  rendered as accessible RN <Text> in both modes so
+                  screen readers and small-screen users see the
+                  primary metric, not just the SVG marker. */}
+              <Text
+                style={[
+                  styles.setsValue,
+                  compact && styles.setsValueCompact,
+                  { color: colors.textPrimary },
+                ]}
+                accessibilityLabel={`${s.labelJa} 今週 ${s.weeklySets}セット, ${zoneLabel}`}
+              >
+                {s.weeklySets} <Text style={[styles.setsUnit, { color: colors.textTertiary }]}>セット</Text>
+              </Text>
               <Text
                 style={[
                   styles.zoneLabel,
@@ -241,19 +257,7 @@ export function VolumeLandmarkChart({
                   { color: zoneColor },
                 ]}
               >
-                {zoneLabel}
-              </Text>
-              <Text
-                style={[
-                  styles.rangeLabel,
-                  { color: colors.textTertiary },
-                ]}
-              >
-                {/* Phase 2 sign-off F8 — single MAV value with the
-                    full range as supporting copy. */}
-                MAV {Math.round((lm.mavMin + lm.mavMax) / 2)}
-                {!compact &&
-                  ` (${lm.mavMin}-${lm.mavMax})`}
+                {zoneLabel} ・ MAV {Math.round((lm.mavMin + lm.mavMax) / 2)}
               </Text>
             </View>
           </View>
@@ -283,8 +287,11 @@ const styles = StyleSheet.create({
   rowCompact: {
     gap: spacing.xs,
   },
+  // Codex pass 1 / Important #3 — narrower containers (86 → 74 / 78)
+  // give back ~20px to the bar at 375px-class screens, so the
+  // 5-band + marker stay legible on iPhone SE / mini.
   labelContainer: {
-    width: 86,
+    width: 74,
   },
   label: {
     ...typography.labelMedium,
@@ -297,19 +304,27 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   valueContainer: {
-    width: 86,
+    width: 78,
     alignItems: 'flex-end',
+  },
+  setsValue: {
+    ...typography.labelMedium,
+    fontWeight: '700',
+  },
+  setsValueCompact: {
+    fontSize: 12,
+  },
+  setsUnit: {
+    ...typography.labelSmall,
+    fontSize: 10,
+    fontWeight: '400',
   },
   zoneLabel: {
     ...typography.labelSmall,
     fontWeight: '600',
+    marginTop: 1,
   },
   zoneLabelCompact: {
     fontSize: 10,
-  },
-  rangeLabel: {
-    ...typography.labelSmall,
-    fontSize: 9,
-    marginTop: 1,
   },
 });

@@ -47,31 +47,43 @@ export default function VolumeDashboardScreen() {
   const unlocked = sub.hasFeature('volumeDashboard');
 
   const [summaries, setSummaries] = useState<VolumeGroupSummary[] | null>(null);
+  // Codex review pass 1 / Important #4 — `loading` only flips true
+  // on the very first load. Subsequent useFocusEffect refetches
+  // keep the existing `summaries` painted while the new query is
+  // in flight, then atomically swap on success. Eliminates the
+  // full-screen spinner flash + SVG remount on every tab return.
   const [loading, setLoading] = useState(true);
 
-  const refetch = useCallback(async () => {
-    if (!profile?.id || !unlocked) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const setsByGroup = await aggregateWeeklySetsByMuscle(
-        profile.id,
-        new Date(),
-      );
-      setSummaries(summarizeVolumeGroups(setsByGroup));
-    } catch {
-      setSummaries(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [profile?.id, unlocked]);
-
+  // Codex review pass 1 / Critical #1 — useFocusEffect-driven
+  // refetch needs a cancellation guard so a slow query that
+  // resolves after the user has already left the screen / signed
+  // out can't overwrite fresh state on the next mount. Mirrors the
+  // pattern progress/index.tsx already uses for its preview.
   useFocusEffect(
     useCallback(() => {
-      void refetch();
-    }, [refetch]),
+      if (!profile?.id || !unlocked) {
+        setLoading(false);
+        return;
+      }
+      let cancelled = false;
+      (async () => {
+        try {
+          const setsByGroup = await aggregateWeeklySetsByMuscle(
+            profile.id,
+            new Date(),
+          );
+          if (cancelled) return;
+          setSummaries(summarizeVolumeGroups(setsByGroup));
+        } catch {
+          if (!cancelled) setSummaries(null);
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [profile?.id, unlocked]),
   );
 
   // Week label — same Mon-Sun ISO convention everything else uses.
@@ -111,7 +123,11 @@ export default function VolumeDashboardScreen() {
             <Text style={styles.upgradeBtnText}>プランを見る</Text>
           </TouchableOpacity>
         </View>
-      ) : loading ? (
+      ) : summaries === null && loading ? (
+        // Codex pass 1 / Important #4 — full-screen spinner only on
+        // the very first load. Subsequent refetches keep the prior
+        // chart painted (stale-while-revalidate UX) so the user
+        // doesn't see a blank flash on every tab return.
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
