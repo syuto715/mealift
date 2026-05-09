@@ -35,6 +35,12 @@ interface FakeSession {
 
 interface FakeE1rm {
   source_set_id: string;
+  // Codex review pass 1 / Critical #1 — estimated_1rm is profile-
+  // owned (v26 added the column). The query's correlated subquery
+  // joins on source_set_id AND profile_id; this fixture mirrors
+  // both columns so a "wrong-profile observation pointing at this
+  // user's set" regression can be caught.
+  profile_id: string;
   e1rm_kg: number;
   formula: 'adjusted' | 'avg' | 'brzycki' | 'epley';
   observed_at: string;
@@ -80,10 +86,15 @@ function makeFakeDb(world: FakeWorld): SQLiteDatabase {
 
       // Resolve e1rm via the same priority the SQL subquery applies:
       // adjusted-formula first, then most-recent observed_at among
-      // anything else. soft-deleted rows excluded.
-      const resolveE1rm = (setId: string): number | null => {
+      // anything else. soft-deleted rows excluded. Codex review pass
+      // 1 / Critical #1 — also enforce profile_id parity with the
+      // owning session so a cross-profile-poisoned row doesn't leak.
+      const resolveE1rm = (setId: string, profileIdScope: string): number | null => {
         const candidates = world.e1rms.filter(
-          (e) => e.source_set_id === setId && e.deleted_at === null,
+          (e) =>
+            e.source_set_id === setId &&
+            e.profile_id === profileIdScope &&
+            e.deleted_at === null,
         );
         if (candidates.length === 0) return null;
         candidates.sort((a, b) => {
@@ -111,7 +122,7 @@ function makeFakeDb(world: FakeWorld): SQLiteDatabase {
         weight_kg: ws.weight_kg,
         reps: ws.reps,
         rpe: ws.rpe,
-        e1rm: resolveE1rm(ws.id),
+        e1rm: resolveE1rm(ws.id, profileId),
       }));
       return rows as unknown as T[];
     }) as SQLiteDatabase['getAllAsync'],
@@ -155,9 +166,11 @@ function e1rm(
   e1rmKg: number,
   formula: FakeE1rm['formula'] = 'avg',
   observedAt = '2026-05-04T10:00:00.000Z',
+  profileId = 'p1',
 ): FakeE1rm {
   return {
     source_set_id: setId,
+    profile_id: profileId,
     e1rm_kg: e1rmKg,
     formula,
     observed_at: observedAt,
@@ -272,7 +285,10 @@ describe('fetchRecentSetsForBias', () => {
       set('s1', 'sess-1', { weight_kg: 70 }),
       set('s2', 'sess-2', { weight_kg: 200 }), // p2's heavy lift
     ];
-    const e1rms = [e1rm('s1', 100), e1rm('s2', 250)];
+    const e1rms = [
+      e1rm('s1', 100, 'avg', '2026-05-04T10:00:00.000Z', 'p1'),
+      e1rm('s2', 250, 'avg', '2026-05-04T10:00:00.000Z', 'p2'),
+    ];
     const db = makeFakeDb({ sets, sessions, e1rms });
     const out = await fetchRecentSetsForBias('p1', 10, db);
     expect(out).toHaveLength(1);
@@ -281,6 +297,53 @@ describe('fetchRecentSetsForBias', () => {
     const out2 = await fetchRecentSetsForBias('p2', 10, db);
     expect(out2).toHaveLength(1);
     expect(out2[0].weight).toBe(200);
+  });
+
+  // Codex review pass 1 / Critical #1 — the correlated subquery's
+  // estimated_1rm join must scope to the outer session's profile_id,
+  // not just match source_set_id. A corrupt or sync-poisoned
+  // observation row that points at another user's source_set_id
+  // would otherwise leak into this user's bias signal.
+  it('rejects estimated_1rm rows whose profile_id mismatches the session', async () => {
+    const sessions = [session('sess-1', 'p1', '2026-05-04T10:00:00.000Z')];
+    const sets = [set('s1', 'sess-1', { weight_kg: 80 })];
+    const e1rms: FakeE1rm[] = [
+      // Cross-profile poison: matches the right source_set_id but
+      // owned by a different user. Must NOT be selected.
+      {
+        source_set_id: 's1',
+        profile_id: 'p2',
+        e1rm_kg: 999,
+        formula: 'adjusted',
+        observed_at: '2026-05-04T10:00:00.000Z',
+        deleted_at: null,
+      },
+      // The correct row.
+      e1rm('s1', 100, 'avg', '2026-05-04T10:00:00.000Z', 'p1'),
+    ];
+    const db = makeFakeDb({ sets, sessions, e1rms });
+    const out = await fetchRecentSetsForBias('p1', 10, db);
+    expect(out[0].e1rm).toBe(100);
+  });
+
+  it('returns null e1rm when only a wrong-profile observation exists', async () => {
+    const sessions = [session('sess-1', 'p1', '2026-05-04T10:00:00.000Z')];
+    const sets = [set('s1', 'sess-1', { weight_kg: 80 })];
+    const e1rms: FakeE1rm[] = [
+      // Only a poisoned row exists — caller must see e1rm=null and
+      // computeRpeBias drops the sample, NOT 999 from the wrong user.
+      {
+        source_set_id: 's1',
+        profile_id: 'p2',
+        e1rm_kg: 999,
+        formula: 'adjusted',
+        observed_at: '2026-05-04T10:00:00.000Z',
+        deleted_at: null,
+      },
+    ];
+    const db = makeFakeDb({ sets, sessions, e1rms });
+    const out = await fetchRecentSetsForBias('p1', 10, db);
+    expect(out[0].e1rm).toBeNull();
   });
 
   it('prefers the adjusted-formula e1rm over the baseline (Phase 9.1 priority)', async () => {
@@ -323,6 +386,7 @@ describe('fetchRecentSetsForBias', () => {
       // Adjusted row tombstoned — must not win.
       {
         source_set_id: 's1',
+        profile_id: 'p1',
         e1rm_kg: 999,
         formula: 'adjusted',
         observed_at: '2026-05-04T10:00:00.000Z',

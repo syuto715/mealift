@@ -345,6 +345,15 @@ export default function SessionScreen() {
   // never hit the chip strip code path so the default 0 is fine.
   const [rpeBias, setRpeBias] = useState(0);
   useEffect(() => {
+    // Codex review pass 1 / Important #2 — reset to safe default
+    // whenever the dep tuple changes. The cancelled flag below
+    // already prevents an old async result from committing after a
+    // profile switch, but it doesn't clear the previously-cached
+    // value. Without this reset, a profile change or a Plus → Free
+    // mid-session downgrade would leave the chip strip rendering
+    // with the stale-profile bias until either a new fetch
+    // completed or the screen unmounted.
+    setRpeBias(0);
     if (!profile?.id || recommendationGated) return;
     let cancelled = false;
     (async () => {

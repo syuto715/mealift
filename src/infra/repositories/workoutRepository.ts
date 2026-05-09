@@ -318,6 +318,14 @@ export async function fetchRecentSetsForBias(
          SELECT e.e1rm_kg
            FROM estimated_1rm e
           WHERE e.source_set_id = ws.id
+            -- Codex review pass 1 / Critical #1 — defense in depth
+            -- against a corrupt or sync-poisoned estimated_1rm row
+            -- whose source_set_id happens to match another user's
+            -- set. estimated_1rm is profile-owned (v26 added the
+            -- column); the outer query is already profile-scoped via
+            -- workout_sessions, but the correlated subquery has to
+            -- repeat the scope or a stray row would slip in.
+            AND e.profile_id = s.profile_id
             AND e.deleted_at IS NULL
           ORDER BY CASE e.formula WHEN 'adjusted' THEN 0 ELSE 1 END,
                    e.observed_at DESC
