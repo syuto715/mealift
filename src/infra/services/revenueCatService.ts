@@ -9,6 +9,10 @@ import Purchases, {
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 import { updateProfile } from '../repositories/profileRepository';
 import { setTier } from './subscriptionService';
+import {
+  loadNotificationSettings,
+  syncNotifications,
+} from './notificationService';
 import { useProfileStore } from '../../stores/profileStore';
 import type { PlanBillingCycle } from '../../types/profile';
 
@@ -344,22 +348,48 @@ export async function applyCustomerInfoToProfile(
   }
 
   // 3. Supabase remote profile — used by edge functions for Pro gating.
-  if (!isSupabaseConfigured || !supabase) return;
-  try {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
-    if (!userId) return;
-    const subscriptionStatus =
-      plan === 'free' ? 'free' : activeEntitlement?.willRenew ? 'active' : 'expired';
-    await supabase
-      .from('profiles')
-      .update({
-        plan,
-        subscription_status: subscriptionStatus,
-        subscription_updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', userId);
-  } catch {
-    // Non-fatal — client retains the local plan state.
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (userId) {
+        const subscriptionStatus =
+          plan === 'free' ? 'free' : activeEntitlement?.willRenew ? 'active' : 'expired';
+        await supabase
+          .from('profiles')
+          .update({
+            plan,
+            subscription_status: subscriptionStatus,
+            subscription_updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId);
+      }
+    } catch {
+      // Non-fatal — client retains the local plan state.
+    }
   }
+
+  // 4. Build 16 / Phase 4.2 / Codex review pass 1 / Critical — re-sync
+  // owned notification schedules whenever entitlement state changes.
+  // Without this, every RC-driven plan change (purchase, restore,
+  // RC listener firing on subscription expiry, cold-start identify)
+  // would update profile state but NOT touch the schedules:
+  //   - Plus → Pro upgrade: bf-deload-check (Pro-only Mon push) never
+  //     gets scheduled until some unrelated later sync happens.
+  //   - Pro → Plus downgrade: stale bf-deload-check stays scheduled
+  //     forever because cancelAllOwnedNotifications never runs again
+  //     for the user.
+  // Funneling through syncNotifications here covers all 5 entry
+  // points (subscription.tsx purchase + restore + 3 _layout.tsx RC
+  // listeners). Fire-and-forget — schedule writes shouldn't block
+  // the calling UI flow.
+  void (async () => {
+    try {
+      const updatedProfile = useProfileStore.getState().profile;
+      const settings = await loadNotificationSettings();
+      await syncNotifications({ settings, profile: updatedProfile });
+    } catch {
+      // Non-fatal — next bootstrap or settings save re-syncs.
+    }
+  })();
 }

@@ -18,6 +18,7 @@ import {
 } from '../../infra/repositories/workoutRepository';
 import { markApplied } from '../../infra/repositories/deloadRecommendationRepository';
 import { generateDeloadRoutine } from '../../domain/deloadDetection';
+import { useUIStore } from '../../stores/uiStore';
 import type {
   WorkoutRoutineWithItems,
   SetPattern,
@@ -61,6 +62,7 @@ export function DeloadRoutinePickerModal({
 }: DeloadRoutinePickerModalProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
+  const showToast = useUIStore((s) => s.showToast);
 
   const [routines, setRoutines] = useState<WorkoutRoutineWithItems[] | null>(
     null,
@@ -109,12 +111,30 @@ export function DeloadRoutinePickerModal({
         `${routine.name}（デロード）`,
         deloadItems,
       );
-      await markApplied(profileId, recommendationId, newRoutine.id);
-      onApplied(newRoutine.id);
+      // Codex review pass 1 / Important #1 — markApplied returns
+      // false when the WHERE-clause guard refuses the transition
+      // (already-applied / already-dismissed / soft-deleted /
+      // wrong profile). Without checking, we'd happily report
+      // success and dismiss the banner even though the
+      // recommendation row was already in a terminal state on
+      // another device. Surface the failure as a toast + close so
+      // the user can re-fetch banner state on the next focus.
+      const transitioned = await markApplied(
+        profileId,
+        recommendationId,
+        newRoutine.id,
+      );
+      if (transitioned) {
+        onApplied(newRoutine.id);
+      } else {
+        showToast(
+          'すでに適用済みのため、ルーティンのみ作成しました',
+          'info',
+        );
+        onClose();
+      }
     } catch {
-      // Caller's onClose handler will fire from outside on failure;
-      // the user sees the modal stay up briefly, can re-tap, and the
-      // markApplied WHERE-clause guard makes a retry idempotent.
+      showToast('デロード適用に失敗しました', 'error');
       setApplying(false);
     }
   }

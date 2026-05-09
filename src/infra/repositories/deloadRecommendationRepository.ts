@@ -2,6 +2,10 @@ import type * as SQLite from 'expo-sqlite';
 import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
 import { enqueueRowFromTable } from './syncRepository';
+import {
+  VOLUME_GROUPS_ORDER,
+  type VolumeGroup,
+} from '../../domain/volumeLandmark';
 
 // Build 16 / Phase 4 (Feature F) / Phase 4.0 — repository for
 // auto-detected deload recommendations.
@@ -31,7 +35,12 @@ export interface DeloadRecommendation {
   profileId: string;
   detectedAt: string;
   sourceWeekStarts: string[];
-  affectedMuscles: string[];
+  // Codex review pass 1 / Important #3 — narrowed from `string[]` to
+  // `VolumeGroup[]`. The repo's parser validates against
+  // VOLUME_GROUPS_ORDER, so consumers (banner, picker modal) can
+  // safely index VOLUME_GROUP_LABEL_JA without a force-cast that
+  // would silently render `undefined` labels for poisoned rows.
+  affectedMuscles: VolumeGroup[];
   appliedAt: string | null;
   appliedRoutineId: string | null;
   completedAt: string | null;
@@ -47,7 +56,7 @@ export interface CreateDeloadRecommendationInput {
   // mounts to the same row via ON CONFLICT.
   detectedAt: string;
   sourceWeekStarts: string[];
-  affectedMuscles: string[];
+  affectedMuscles: VolumeGroup[];
 }
 
 interface RawRow {
@@ -70,7 +79,7 @@ function rowToRecommendation(row: RawRow): DeloadRecommendation {
     profileId: row.profile_id,
     detectedAt: row.detected_at,
     sourceWeekStarts: safeParseArray(row.source_week_starts),
-    affectedMuscles: safeParseArray(row.affected_muscles),
+    affectedMuscles: safeParseVolumeGroups(row.affected_muscles),
     appliedAt: row.applied_at,
     appliedRoutineId: row.applied_routine_id,
     completedAt: row.completed_at,
@@ -87,6 +96,30 @@ function safeParseArray(raw: string): string[] {
   try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+// Codex review pass 1 / Important #3 — affected_muscles is more
+// constrained than source_week_starts: every entry MUST be a valid
+// VolumeGroup key or the banner / picker would index
+// VOLUME_GROUP_LABEL_JA[…] = undefined and render an empty Japanese
+// label. We can't tighten safeParseArray globally (sourceWeekStarts
+// holds dates, not VolumeGroups), so a dedicated parser narrows the
+// type at the boundary.
+const VOLUME_GROUP_SET: ReadonlySet<string> = new Set(VOLUME_GROUPS_ORDER);
+function safeParseVolumeGroups(raw: string): VolumeGroup[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const out: VolumeGroup[] = [];
+    for (const x of parsed) {
+      if (typeof x === 'string' && VOLUME_GROUP_SET.has(x)) {
+        out.push(x as VolumeGroup);
+      }
+    }
+    return out;
   } catch {
     return [];
   }
@@ -221,12 +254,20 @@ export async function getRecommendationById(
 // row is already applied / dismissed — the banner UI shouldn't be
 // able to fire this twice in practice, but the guard keeps the
 // invariant from drifting.
+//
+// Returns true iff the row was actually transitioned. Phase 4.2 Codex
+// pass 1 / Important #1 — without a return value, the picker modal
+// could create a deload routine, call markApplied, see no error, and
+// show success even when the recommendation was already applied or
+// dismissed elsewhere (sync race, second device, prior tap). Caller
+// uses this signal to surface an error toast + reload state instead
+// of false-positive success.
 export async function markApplied(
   profileId: string,
   id: string,
   routineId: string,
   dbOverride?: SQLite.SQLiteDatabase,
-): Promise<void> {
+): Promise<boolean> {
   const db = dbOverride ?? (await getDatabase());
   const now = new Date().toISOString();
   const result = await db.runAsync(
@@ -243,7 +284,9 @@ export async function markApplied(
   );
   if (result.changes > 0) {
     await enqueueRowFromTable('deload_recommendations', id, 'UPDATE');
+    return true;
   }
+  return false;
 }
 
 // State transition: detected → dismissed. Mutually exclusive with

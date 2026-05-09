@@ -85,6 +85,12 @@ export default function VolumeDashboardScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!profile?.id || !unlocked) {
+        // Codex review pass 1 / Important #2 — also clear any prior
+        // active recommendation. Without this, an account swap from
+        // a Pro user (with an active banner) to a Plus user leaves
+        // the previous user's banner painted until something else
+        // mutates state.
+        setActiveRec(null);
         setLoading(false);
         return;
       }
@@ -138,7 +144,15 @@ export default function VolumeDashboardScreen() {
             setActiveRec(null);
           }
         } catch {
-          if (!cancelled) setSummaries(null);
+          // Codex review pass 1 / Important #2 — clear `activeRec`
+          // alongside `summaries` on a mid-fetch failure. Otherwise
+          // a partial fetch (active list resolved but matrices
+          // failed) could leave a banner from a stale user/profile
+          // painted on top of an empty chart.
+          if (!cancelled) {
+            setSummaries(null);
+            setActiveRec(null);
+          }
         } finally {
           if (!cancelled) setLoading(false);
         }
@@ -228,7 +242,13 @@ export default function VolumeDashboardScreen() {
 
           {activeRec && autoDeloadUnlocked && (
             <AutoDeloadBanner
-              affectedMuscles={activeRec.affectedMuscles as VolumeGroup[]}
+              // Codex review pass 1 / Important #3 — `affectedMuscles`
+              // is now narrowed to VolumeGroup[] at the repo
+              // boundary (safeParseVolumeGroups validates against
+              // VOLUME_GROUPS_ORDER), so this no longer needs a
+              // force-cast that would silently render undefined
+              // labels for poisoned synced rows.
+              affectedMuscles={activeRec.affectedMuscles}
               onApply={() => setPickerVisible(true)}
               onDismiss={handleDismiss}
             />

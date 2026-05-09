@@ -346,6 +346,40 @@ describe('createDeloadRecommendation', () => {
     expect(db.rows).toHaveLength(2);
     expect(new Set(db.rows.map((r) => r.id)).size).toBe(2);
   });
+
+  // Codex review pass 1 / Important #3 — affected_muscles is more
+  // constrained than source_week_starts: every entry MUST be a valid
+  // VolumeGroup key or the banner / picker UI will index
+  // VOLUME_GROUP_LABEL_JA[…] = undefined and silently render an empty
+  // Japanese label. Pin the safeParseVolumeGroups boundary so a
+  // poisoned synced row (hand-edit, schema drift, future producer)
+  // gets stripped to only the recognised muscles.
+  it('drops invalid VolumeGroup keys from affected_muscles on read', async () => {
+    const db = makeFakeDb();
+    const created = await createDeloadRecommendation(
+      {
+        profileId: 'p1',
+        detectedAt: '2026-05-10T12:00:00.000Z',
+        sourceWeekStarts: [],
+        affectedMuscles: ['chest'],
+      },
+      db,
+    );
+    // Inject a poisoned column directly — bypass the writer to
+    // simulate a corrupted synced row landing in SQLite.
+    const target = db.rows.find((r) => r.id === created.id)!;
+    target.affected_muscles = JSON.stringify([
+      'chest',
+      'not_a_muscle',
+      'back_lat', // primary_muscle key, NOT a VolumeGroup
+      42,
+      null,
+      'biceps',
+    ]);
+
+    const got = await getRecommendationById('p1', created.id, db);
+    expect(got?.affectedMuscles).toEqual(['chest', 'biceps']);
+  });
 });
 
 describe('getActiveRecommendations', () => {
@@ -378,7 +412,7 @@ describe('getActiveRecommendations', () => {
         profileId: 'p2',
         detectedAt: '2026-05-10T12:00:00.000Z',
         sourceWeekStarts: [],
-        affectedMuscles: ['legs_quad'],
+        affectedMuscles: ['quads'],
       },
       db,
     );
@@ -460,7 +494,7 @@ describe('getRecommendationById', () => {
 });
 
 describe('markApplied / markDismissed / markCompleted', () => {
-  it('moves detected → applied + enqueues UPDATE', async () => {
+  it('moves detected → applied + enqueues UPDATE + returns true', async () => {
     const db = makeFakeDb();
     const created = await createDeloadRecommendation(
       {
@@ -472,7 +506,8 @@ describe('markApplied / markDismissed / markCompleted', () => {
       db,
     );
     mockEnqueue.mockClear();
-    await markApplied('p1', created.id, 'routine-42', db);
+    const result = await markApplied('p1', created.id, 'routine-42', db);
+    expect(result).toBe(true);
     const got = await getRecommendationById('p1', created.id, db);
     expect(got?.appliedAt).not.toBeNull();
     expect(got?.appliedRoutineId).toBe('routine-42');
@@ -483,7 +518,7 @@ describe('markApplied / markDismissed / markCompleted', () => {
     );
   });
 
-  it('refuses to apply a row that is already applied (state machine guard)', async () => {
+  it('refuses to apply a row that is already applied (state machine guard) + returns false', async () => {
     const db = makeFakeDb();
     const created = await createDeloadRecommendation(
       {
@@ -497,7 +532,12 @@ describe('markApplied / markDismissed / markCompleted', () => {
     await markApplied('p1', created.id, 'routine-1', db);
     mockEnqueue.mockClear();
     // Second apply attempt — must be a no-op (no enqueue).
-    await markApplied('p1', created.id, 'routine-2', db);
+    // Codex review pass 1 / Important #1 — must also return false so
+    // the picker UI can distinguish "I just transitioned the state"
+    // from "the state was already terminal" and avoid a false-success
+    // toast.
+    const result = await markApplied('p1', created.id, 'routine-2', db);
+    expect(result).toBe(false);
     const got = await getRecommendationById('p1', created.id, db);
     expect(got?.appliedRoutineId).toBe('routine-1');
     expect(mockEnqueue).not.toHaveBeenCalled();
