@@ -527,14 +527,20 @@ export async function createRoutine(
     setPattern?: SetPattern | null;
     patternConfig?: string | null;
   }[],
+  // Build 16 / Phase 5.2 — optional sort_order so periodization
+  // spawn (Linear/Block/DUP × N routines) can lay the new rows out
+  // in week order rather than relying on the created_at DESC fallback
+  // which would surface the LATEST week first. Existing callers omit
+  // this and stay at 0 (legacy behavior preserved).
+  sortOrder = 0,
 ): Promise<WorkoutRoutine> {
   const db = await getDatabase();
   const id = generateId();
   const now = new Date().toISOString();
 
   await db.runAsync(
-    'INSERT INTO workout_routines (id, profile_id, name, sort_order, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)',
-    [id, profileId, name, now, now],
+    'INSERT INTO workout_routines (id, profile_id, name, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+    [id, profileId, name, sortOrder, now, now],
   );
   await enqueueRowFromTable('workout_routines', id, 'INSERT');
 
@@ -564,7 +570,7 @@ export async function createRoutine(
     profileId,
     name,
     description: null,
-    sortOrder: 0,
+    sortOrder,
     createdAt: now,
     updatedAt: now,
   };

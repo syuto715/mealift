@@ -22,6 +22,7 @@ import { radius } from '../../../src/theme/tokens';
 import { Card, Button, Badge, Modal, Input, SegmentedControl } from '../../../src/components/ui';
 import { VolumeChart } from '../../../src/components/training/VolumeChart';
 import { useProfileStore } from '../../../src/stores/profileStore';
+import { useSubscription } from '../../../src/hooks/useSubscription';
 import { MUSCLE_GROUPS, MUSCLE_GROUP_MAP } from '../../../src/constants/muscleGroups';
 import { EQUIPMENT_CATEGORIES, EquipmentKey } from '../../../src/constants/equipment';
 import { DEFAULT_TARGET_SETS, DEFAULT_TARGET_REPS } from '../../../src/constants/defaults';
@@ -72,6 +73,12 @@ export default function TrainingScreen() {
   const params = useLocalSearchParams<{ highlightRoutineId?: string }>();
   const highlightRoutineId = params.highlightRoutineId ?? null;
   const flashAnim = useRef(new Animated.Value(0)).current;
+
+  const sub = useSubscription();
+  // Build 16 / Phase 5.2 — Pro-only periodization preset CTA. Plus
+  // (and trial → Plus-equivalent) users don't see the button; they
+  // get the AI menu + manual creation paths only.
+  const periodizationUnlocked = sub.hasFeature('periodizationPresets');
 
   const [routines, setRoutines] = useState<WorkoutRoutineWithItems[]>([]);
   const [loading, setLoading] = useState(true);
@@ -404,6 +411,16 @@ export default function TrainingScreen() {
               variant="ghost"
               size="sm"
             />
+            {periodizationUnlocked && (
+              <Button
+                title="📅 ピリオダイゼーション"
+                onPress={() =>
+                  router.push('/(tabs)/training/periodization-presets')
+                }
+                variant="ghost"
+                size="sm"
+              />
+            )}
             <Button
               title="+ ルーティン作成"
               onPress={() => setShowCreateModal(true)}
