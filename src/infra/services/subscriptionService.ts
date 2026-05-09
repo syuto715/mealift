@@ -63,6 +63,12 @@ export interface FeatureFlags {
   // stays free elsewhere in the app, but the per-muscle landmark
   // chart is the gated surface.
   volumeDashboard: boolean;
+  // Build 16 / Phase 4 (Feature F) — auto-deload detection +
+  // recommendation banner + Pro weekly Monday push reminder.
+  // Pro-tier exclusive (Free + Plus both blocked) — the first
+  // Pro-only differentiator. Free/Plus still see the volume
+  // dashboard; only the deload trigger + push schedule are gated.
+  autoDeload: boolean;
 }
 
 const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
@@ -105,6 +111,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     aiWeeklyReport: false,
     aiWeeklyReportLimit: 0,
     volumeDashboard: false,
+    autoDeload: false,
   },
   plus: {
     maxRoutines: Infinity,
@@ -136,6 +143,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     aiWeeklyReport: true,
     aiWeeklyReportLimit: 4,
     volumeDashboard: true,
+    autoDeload: false,
   },
   pro: {
     maxRoutines: Infinity,
@@ -167,6 +175,7 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     aiWeeklyReport: true,
     aiWeeklyReportLimit: 12,
     volumeDashboard: true,
+    autoDeload: true,
   },
 };
 

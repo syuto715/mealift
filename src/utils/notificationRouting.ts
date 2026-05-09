@@ -9,10 +9,17 @@
 // getLastNotificationResponseAsync (cold start).
 
 // Allowlist of routes that may be reached via a notification tap.
-// Today only the weekly-report path needs it; new entries get added
-// here as more notifications grow data fields.
+// Each new push schedule adds its destination here; the allowlist is
+// the security boundary that stops a malformed / poisoned data
+// payload from deep-linking into arbitrary screens (e.g. settings,
+// auth callbacks).
+//
+// Build 16 / Phase 4.2 / Feature F — added volume-dashboard so the
+// new bf-deload-check Monday push (Pro tier) can deep-link into the
+// dashboard where the AutoDeloadBanner and detection hook live.
 export const ALLOWED_NOTIFICATION_ROUTES: ReadonlySet<string> = new Set([
   '/(tabs)/progress/weekly-report',
+  '/(tabs)/progress/volume-dashboard',
 ]);
 
 export interface NotificationRouteDecision {

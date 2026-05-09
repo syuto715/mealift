@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Profile } from '../../types/profile';
 import { TRIAL_DURATION_DAYS } from '../../constants/pricing';
+import { derivePlanSnapshot, hasFeature } from './subscriptionService';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -108,6 +109,14 @@ const ID_WEEKLY_REPORT = 'bf-weekly-report';
 const ID_TRAINING_PREFIX = 'bf-training-';
 const ID_TRIAL_ENDING = 'bf-trial-ending';
 const ID_TRIAL_ENDED = 'bf-trial-ended';
+// Build 16 / Phase 4 (Feature F) / Phase 4.2 — weekly Mon 09:00 push
+// for Pro users. Body is intentionally generic ("training planning")
+// per Phase 4 sign-off F11; the actual deload recommendation appears
+// as the in-app banner on volume-dashboard, not in the push body, so
+// users without active recommendations don't see misleading copy.
+// Tap data routes to volume-dashboard where the banner / detection
+// hook lives.
+const ID_DELOAD_CHECK = 'bf-deload-check';
 
 const TRAINING_IDS = [0, 1, 2, 3, 4, 5, 6].map((d) => `${ID_TRAINING_PREFIX}${d}`);
 
@@ -126,6 +135,7 @@ const SYNC_NOTIFICATION_IDS: readonly string[] = [
   ...TRAINING_IDS,
   ID_TRIAL_ENDING,
   ID_TRIAL_ENDED,
+  ID_DELOAD_CHECK,
 ] as const;
 
 export const KNOWN_NOTIFICATION_IDS = SYNC_NOTIFICATION_IDS;
@@ -435,6 +445,49 @@ async function _doSyncNotifications(
 
   // Step C — trial schedules from Profile.
   await _scheduleTrial(profile);
+
+  // Step D — Build 16 / Phase 4.2 / Feature F — Pro-only weekly
+  // Monday push for the auto-deload check. Plan derivation lives
+  // here (rather than at the call site) so any code path that
+  // funnels through syncNotifications — bootstrap, settings save,
+  // subscription tier change — automatically picks up the right
+  // schedule for the current plan. Upgrade flow → schedule appears
+  // next Monday; downgrade flow → cancelAllOwnedNotifications above
+  // already wiped the prior schedule, so simply not re-scheduling
+  // here removes it.
+  await _scheduleDeloadCheck(profile);
+}
+
+async function _scheduleDeloadCheck(profile: Profile | null): Promise<void> {
+  // Mirror _scheduleTrial's self-contained derivation. derivePlanSnapshot
+  // is the same path useSubscription uses, so this gate stays in lockstep
+  // with the in-app hasFeature() check the volume-dashboard banner relies
+  // on — no risk of the push schedule and the banner disagreeing about
+  // who's a Pro user.
+  if (!profile) return;
+  const snapshot = derivePlanSnapshot(profile);
+  if (!hasFeature('autoDeload', snapshot.status)) return;
+
+  try {
+    await _scheduleWeekly(
+      ID_DELOAD_CHECK,
+      '今週のトレーニング計画',
+      '今週もしっかりトレーニングしましょう。デロード推奨の有無はアプリで確認できます。',
+      // Mon = internal-day 1, expo-weekday 2.
+      toExpoWeekday(1),
+      { hour: 9, minute: 0 },
+      {
+        // notificationRouting.ts allowlist controls deep-link safety;
+        // params is empty because volume-dashboard reads the active
+        // recommendation itself rather than passing one through.
+        route: '/(tabs)/progress/volume-dashboard',
+        params: {},
+      },
+    );
+  } catch {
+    // Per-notification failures are non-fatal — same convention as the
+    // other Step B/C schedules above.
+  }
 }
 
 async function _scheduleTrial(profile: Profile | null): Promise<void> {

@@ -4,6 +4,7 @@ import {
   getFeaturesForTier,
   setTier,
   derivePlanSnapshot,
+  FEATURE_MATRIX,
   type PlanTier,
 } from '../subscriptionService';
 
@@ -160,6 +161,35 @@ describe('subscriptionService — production gating (__DEV__ = false)', () => {
       expect(hasFeature('volumeDashboard', 'trial')).toBe(true);
       expect(hasFeature('volumeDashboard', 'plus')).toBe(true);
       expect(hasFeature('volumeDashboard', 'pro')).toBe(true);
+    });
+  });
+
+  describe('autoDeload (Build 16 / Feature F, Phase 4)', () => {
+    // Phase 4 sign-off — first Pro-only differentiator. Free + Plus
+    // both blocked. Volume dashboard stays Plus; only the deload
+    // detection trigger + recommendation banner + Pro Monday push
+    // schedule are gated behind autoDeload.
+    it('locks auto-deload behind Pro (Plus is NOT enough)', () => {
+      expect(getFeaturesForTier('free').autoDeload).toBe(false);
+      expect(getFeaturesForTier('plus').autoDeload).toBe(false);
+      expect(getFeaturesForTier('pro').autoDeload).toBe(true);
+    });
+
+    it('FEATURE_MATRIX (auto-derived) treats Pro as the minimum tier', () => {
+      // The matrix derivation visits free → plus → pro and picks the
+      // first tier where the flag flips true. autoDeload only flips
+      // at pro, so the minimum-required-tier output must be 'pro'.
+      expect(FEATURE_MATRIX.autoDeload).toBe('pro');
+    });
+
+    it('hasFeature blocks free / plus / trial; admits pro', () => {
+      // Trial users get Plus-level access (statusToEffectiveTier),
+      // not Pro. So a trial user must NOT see auto-deload — they
+      // would have to upgrade past their trial to unlock it.
+      expect(hasFeature('autoDeload', 'free')).toBe(false);
+      expect(hasFeature('autoDeload', 'trial')).toBe(false);
+      expect(hasFeature('autoDeload', 'plus')).toBe(false);
+      expect(hasFeature('autoDeload', 'pro')).toBe(true);
     });
   });
 

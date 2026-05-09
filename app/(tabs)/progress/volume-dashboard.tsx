@@ -16,7 +16,10 @@ import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { Card } from '../../../src/components/ui';
 import { VolumeLandmarkChart } from '../../../src/components/training/VolumeLandmarkChart';
+import { AutoDeloadBanner } from '../../../src/components/training/AutoDeloadBanner';
+import { DeloadRoutinePickerModal } from '../../../src/components/training/DeloadRoutinePickerModal';
 import { useProfileStore } from '../../../src/stores/profileStore';
+import { useUIStore } from '../../../src/stores/uiStore';
 import { useSubscription } from '../../../src/hooks/useSubscription';
 import {
   aggregateWeeklySetsByMuscle,
@@ -24,6 +27,16 @@ import {
   type VolumeGroup,
   type VolumeGroupSummary,
 } from '../../../src/domain/volumeLandmark';
+import {
+  detectDeloadRecommendation,
+  fetchWeeklyVolumeMatricesForDeload,
+} from '../../../src/domain/deloadDetection';
+import {
+  getActiveRecommendations,
+  createDeloadRecommendation,
+  markDismissed,
+  type DeloadRecommendation,
+} from '../../../src/infra/repositories/deloadRecommendationRepository';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 
 // Build 16 / Phase 2 (Feature E) / Phase 2.2 — full-screen MEV/MAV/MRV
@@ -45,8 +58,18 @@ export default function VolumeDashboardScreen() {
   const profile = useProfileStore((s) => s.profile);
   const sub = useSubscription();
   const unlocked = sub.hasFeature('volumeDashboard');
+  // Build 16 / Phase 4.2 / Feature F — auto-deload is Pro-only.
+  // Plus users see the volume dashboard but never the banner /
+  // detection hook; Pro users see both layers.
+  const autoDeloadUnlocked = sub.hasFeature('autoDeload');
+  const showToast = useUIStore((s) => s.showToast);
 
   const [summaries, setSummaries] = useState<VolumeGroupSummary[] | null>(null);
+  // Build 16 / Phase 4.2 — active deload recommendation. null = not
+  // yet fetched; later set to recommendation row OR null when no
+  // active row exists. Drives the AutoDeloadBanner visibility.
+  const [activeRec, setActiveRec] = useState<DeloadRecommendation | null>(null);
+  const [pickerVisible, setPickerVisible] = useState(false);
   // Codex review pass 1 / Important #4 — `loading` only flips true
   // on the very first load. Subsequent useFocusEffect refetches
   // keep the existing `summaries` painted while the new query is
@@ -74,6 +97,46 @@ export default function VolumeDashboardScreen() {
           );
           if (cancelled) return;
           setSummaries(summarizeVolumeGroups(setsByGroup));
+
+          // Build 16 / Phase 4.2 — Pro-only deload detection. Runs
+          // after the volume aggregation so the banner doesn't paint
+          // before the chart it sits above. Sequence:
+          //   1. Read active recommendations from the repo. If one
+          //      exists already, just paint the banner.
+          //   2. Otherwise run the 4-week aggregator + detector. If
+          //      it fires, persist via createDeloadRecommendation
+          //      (Phase 4.0 stable-id ON CONFLICT keeps repeated
+          //      mounts collapsed to one row), then re-read so the
+          //      banner state reflects the canonical row.
+          if (autoDeloadUnlocked) {
+            const active = await getActiveRecommendations(profile.id);
+            if (cancelled) return;
+            if (active.length > 0) {
+              setActiveRec(active[0]);
+            } else {
+              const matrices = await fetchWeeklyVolumeMatricesForDeload(
+                profile.id,
+              );
+              if (cancelled) return;
+              const detected = detectDeloadRecommendation(matrices);
+              if (detected) {
+                const created = await createDeloadRecommendation({
+                  profileId: profile.id,
+                  detectedAt: detected.detectedAt,
+                  sourceWeekStarts: detected.sourceWeekStarts,
+                  affectedMuscles: detected.affectedMuscles,
+                });
+                if (cancelled) return;
+                setActiveRec(created);
+              } else {
+                setActiveRec(null);
+              }
+            }
+          } else {
+            // Plus users (or Pro users who downgraded) — clear any
+            // stale banner state.
+            setActiveRec(null);
+          }
         } catch {
           if (!cancelled) setSummaries(null);
         } finally {
@@ -83,8 +146,30 @@ export default function VolumeDashboardScreen() {
       return () => {
         cancelled = true;
       };
-    }, [profile?.id, unlocked]),
+    }, [profile?.id, unlocked, autoDeloadUnlocked]),
   );
+
+  const handleDismiss = useCallback(async () => {
+    if (!profile?.id || !activeRec) return;
+    const id = activeRec.id;
+    // Optimistic: hide banner immediately so the dismiss feels
+    // instant. The repository guard re-asserts mutual exclusion
+    // server-side; rolling back UI state is unnecessary because the
+    // dismissed-or-not state never affects subsequent volume data.
+    setActiveRec(null);
+    try {
+      await markDismissed(profile.id, id);
+    } catch {
+      // Non-fatal — the WHERE-clause guard makes a retry on next focus
+      // either succeed or no-op cleanly.
+    }
+  }, [profile?.id, activeRec]);
+
+  const handleApplied = useCallback(() => {
+    setPickerVisible(false);
+    setActiveRec(null);
+    showToast('デロードルーティンを作成しました', 'success');
+  }, [showToast]);
 
   // Week label — same Mon-Sun ISO convention everything else uses.
   // Computed from local time so the displayed range matches the user's
@@ -141,6 +226,14 @@ export default function VolumeDashboardScreen() {
             今週: {weekLabel}
           </Text>
 
+          {activeRec && autoDeloadUnlocked && (
+            <AutoDeloadBanner
+              affectedMuscles={activeRec.affectedMuscles as VolumeGroup[]}
+              onApply={() => setPickerVisible(true)}
+              onDismiss={handleDismiss}
+            />
+          )}
+
           <Card>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
               部位別週間セット数
@@ -171,6 +264,16 @@ export default function VolumeDashboardScreen() {
             </Text>
           </Card>
         </ScrollView>
+      )}
+
+      {profile?.id && activeRec && (
+        <DeloadRoutinePickerModal
+          visible={pickerVisible}
+          profileId={profile.id}
+          recommendationId={activeRec.id}
+          onApplied={handleApplied}
+          onClose={() => setPickerVisible(false)}
+        />
       )}
     </SafeAreaView>
   );

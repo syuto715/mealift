@@ -88,4 +88,24 @@ describe('decideNotificationRoute', () => {
     );
     expect(ALLOWED_NOTIFICATION_ROUTES.has('/random')).toBe(false);
   });
+
+  // Build 16 / Phase 4.2 / Feature F — bf-deload-check push deep-links
+  // into volume-dashboard where the AutoDeloadBanner + detection hook
+  // live. Allowlist must admit the path or the cold-start route would
+  // silently drop.
+  it('accepts the volume-dashboard route (Phase 4.2 / Feature F)', () => {
+    const result = decideNotificationRoute({
+      route: '/(tabs)/progress/volume-dashboard',
+    });
+    expect(result).toEqual({
+      route: '/(tabs)/progress/volume-dashboard',
+      params: {},
+    });
+  });
+
+  it('exposes volume-dashboard in the allowlist', () => {
+    expect(
+      ALLOWED_NOTIFICATION_ROUTES.has('/(tabs)/progress/volume-dashboard'),
+    ).toBe(true);
+  });
 });
