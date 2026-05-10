@@ -1,7 +1,71 @@
 import { getDatabase } from '../database/connection';
-import { Profile, ProfileInput, AdaptiveGoalSensitivity, PlanBillingCycle, PlateStep, PLATE_STEP_OPTIONS } from '../../types/profile';
+import {
+  Profile,
+  ProfileInput,
+  AdaptiveGoalSensitivity,
+  PlanBillingCycle,
+  PlateStep,
+  PLATE_STEP_OPTIONS,
+  WeeklyRatePct,
+  WEEKLY_RATE_PCT_OPTIONS,
+  MealPlan,
+  MEAL_PLAN_OPTIONS,
+  ProteinFactor,
+  PROTEIN_FACTOR_OPTIONS,
+  WeeklyDistribution,
+} from '../../types/profile';
 import { generateId } from '../../utils/id';
 import { enqueueRowFromTable } from './syncRepository';
+
+// v1.3.0 / Onboarding v2 / Phase A-3 — narrow row → typed value
+// helpers for the v30 onboarding columns. Same defensive-narrow
+// pattern Phase 6.1 established for safeParseVolumeGroups: if the
+// raw row value is outside the literal union (corrupt sync, manual
+// DB edit), return null rather than letting an invalid value
+// propagate into the UI.
+function narrowWeeklyRatePct(raw: unknown): WeeklyRatePct | null {
+  if (typeof raw !== 'number') return null;
+  return (WEEKLY_RATE_PCT_OPTIONS as readonly number[]).includes(raw)
+    ? (raw as WeeklyRatePct)
+    : null;
+}
+
+function narrowMealPlan(raw: unknown): MealPlan | null {
+  if (typeof raw !== 'string') return null;
+  return (MEAL_PLAN_OPTIONS as readonly string[]).includes(raw)
+    ? (raw as MealPlan)
+    : null;
+}
+
+function narrowProteinFactor(raw: unknown): ProteinFactor | null {
+  if (typeof raw !== 'number') return null;
+  return (PROTEIN_FACTOR_OPTIONS as readonly number[]).includes(raw)
+    ? (raw as ProteinFactor)
+    : null;
+}
+
+function narrowWeeklyDistribution(raw: unknown): WeeklyDistribution | null {
+  if (raw === 'even' || raw === 'cheat_days') return raw;
+  return null;
+}
+
+// JSON-array columns (meal_timings, cheat_days). Phase 4.1 + 6.1
+// safeParseArray pattern — return [] on parse failure / non-array.
+// null when the column itself is null (un-set onboarding step).
+function parseJsonArrayOrNull<T>(
+  raw: unknown,
+  itemPredicate: (x: unknown) => x is T,
+): T[] | null {
+  if (raw == null) return null;
+  if (typeof raw !== 'string') return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter(itemPredicate);
+  } catch {
+    return null;
+  }
+}
 
 function rowToProfile(row: Record<string, unknown>): Profile {
   return {
@@ -49,6 +113,26 @@ function rowToProfile(row: Record<string, unknown>): Profile {
         ? (raw as PlateStep)
         : 2.5;
     })(),
+    // v1.3.0 / Onboarding v2 / Phase A-3 — v30 column reads. Each
+    // narrows through the matching literal-union helper above so an
+    // out-of-domain server value can't poison the typed Profile.
+    nickname: (row.nickname as string | null) ?? null,
+    weeklyRatePct: narrowWeeklyRatePct(row.weekly_rate_pct),
+    mealPlan: narrowMealPlan(row.meal_plan),
+    mealTimings: parseJsonArrayOrNull(
+      row.meal_timings,
+      (x): x is string => typeof x === 'string',
+    ),
+    proteinFactor: narrowProteinFactor(row.protein_factor),
+    weeklyDistribution: narrowWeeklyDistribution(row.weekly_distribution),
+    cheatDays: parseJsonArrayOrNull(
+      row.cheat_days,
+      (x): x is number =>
+        typeof x === 'number' && Number.isInteger(x) && x >= 0 && x <= 6,
+    ),
+    onboardingStep: (row.onboarding_step as number | null) ?? 0,
+    onboardingStartedAt: (row.onboarding_started_at as string | null) ?? null,
+    estimatedTargetDate: (row.estimated_target_date as string | null) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
