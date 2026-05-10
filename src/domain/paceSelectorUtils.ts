@@ -21,9 +21,9 @@ import { ACHIEVEMENT_THRESHOLD_KG } from './onboardingCalc';
 // Sign-off § Schema 整合: schema CHECK is BETWEEN -1.5 AND 0.5, all
 // six values fit. Negative values = lose weight per week (% of body
 // weight). 0 = maintain. Positive = gain. The asymmetric range
-// (3 negative + 1 zero + 1 positive vs 5 weight-loss spec rates)
-// reflects the reality that aggressive bulks are rarer than
-// aggressive cuts in the JP fitness audience.
+// (4 negative + 1 zero + 1 positive) reflects the reality that
+// aggressive bulks are rarer than aggressive cuts in the JP fitness
+// audience.
 export const DEFAULT_PACE_OPTIONS = [
   -1.0,
   -0.7,
@@ -78,25 +78,39 @@ function decimalsOfRate(rate: number): number {
 // implicit in the "±0%/週" upper label.
 //
 // FP defense (Pattern 20): the naive `(currentWeight * rate / 100)
-// .toFixed(2)` path gets bitten by IEEE 754 — e.g. 70 × 0.25 = 17.5
-// is exact in FP, but /100 yields 0.17499...something which then
-// .toFixed(2) rounds DOWN to "0.17" rather than the algebraically
-// expected "0.18" (round half to +∞).
+// .toFixed(2)` path gets bitten by IEEE 754. Two distinct FP traps:
 //
-// Workaround: do the multiplication in 0.01-of-kg units (still
-// exact for the {-1.0, -0.7, -0.5, -0.25, 0, 0.25} × {whole-kg
-// weights} domain), Math.round the integer cents, then divide by
-// 100 only for display.
+//   1. Some rates aren't exact: 0.7 ≈ 0.6999999999999999... so
+//      `45 × -0.7 = -31.499999999999996` rather than the algebraic
+//      -31.5. The original Phase B-3 fix (Math.round of `cw × rate`)
+//      caught the 70 × 0.25 case but missed the -0.7 family because
+//      the FP noise pushed the intermediate JUST below the .5 tie,
+//      making Math.round drop to 31 → "0.31" instead of "0.32".
+//      Codex pass 1 brute-forced 30..200 in 0.1 steps and surfaced
+//      failures at currentWeight ∈ {45, 85, 165, 175} for rate=-0.7.
+//
+//   2. Even when `cw × rate` is exact (0.25 case), the subsequent
+//      `/100` introduces noise that toFixed(2) rounds down.
+//
+// Robust workaround: scale `rate` to integer percent-points first
+// (Math.round(rate × 100)) so the multiplier becomes exact, then
+// do all subsequent math in fixed-point integers up to the final
+// /100 → display step.
+//
+//   intRate = Math.round(rate × 100)        // 0.7 → 70 (exact)
+//   product = |cw × intRate|                 // 45 × 70 = 3150 (exact)
+//   centsKg = product / 100                  // 31.5 (exact in FP — sum of 2^-1)
+//   cents   = Math.round(centsKg)            // 32 (ties to +∞)
+//   kg      = cents / 100                    // 0.32 (exact)
 export function formatPaceSublabel(
   rate: number,
   currentWeight: number,
 ): string | null {
   if (!Number.isFinite(rate) || !Number.isFinite(currentWeight)) return null;
   if (rate === 0) return null;
-  // Math.round(70 × 0.25) = Math.round(17.5) = 18 (ties to +∞);
-  // /100 = 0.18. Pre-multiply preserves the exact algebraic
-  // intent before FP noise can erode it.
-  const cents = Math.round(Math.abs(currentWeight * rate));
+  const intRate = Math.round(rate * 100);
+  const product = Math.abs(currentWeight * intRate);
+  const cents = Math.round(product / 100);
   const kgPerWeek = cents / 100;
   const direction = rate > 0 ? '増' : '減';
   return `約 ${kgPerWeek.toFixed(2)} kg/週 ${direction}`;
@@ -108,6 +122,13 @@ export function formatPaceSublabel(
 // current. Reuses Phase A-4's ACHIEVEMENT_THRESHOLD_KG so the
 // "effectively at target" boundary is consistent across the
 // estimateTargetDate calc and the PaceSelector enable logic.
+//
+// Codex pass 1 / Important #2 — boundary `<=` (inclusive) matches
+// estimateTargetDate's "already arrived" check. The original `<`
+// (strict) made gap=0.5 read as 'decrease' here while the same gap
+// was already 'arrived' in the calc — user-visible contradiction
+// ("choose -0.5%/週 pace" + "estimated target date: today"). Both
+// paths now agree: gap=0.5kg → maintain + already-at-target.
 export function getDirection(
   currentWeight: number,
   targetWeight: number,
@@ -119,7 +140,7 @@ export function getDirection(
     return 'maintain';
   }
   const gap = targetWeight - currentWeight;
-  if (Math.abs(gap) < ACHIEVEMENT_THRESHOLD_KG) return 'maintain';
+  if (Math.abs(gap) <= ACHIEVEMENT_THRESHOLD_KG) return 'maintain';
   return gap < 0 ? 'decrease' : 'increase';
 }
 

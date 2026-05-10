@@ -98,6 +98,32 @@ describe('formatPaceSublabel', () => {
     expect(formatPaceSublabel(-0.5, 80)).toBe('約 0.40 kg/週 減');
   });
 
+  // Codex pass 1 / Important #1 — FP edges Codex surfaced via
+  // brute-force on the {-0.7} × {30..200 by 0.1} domain. The
+  // original integer-pre-multiply fix (Math.round(cw × rate)) caught
+  // 70 × 0.25 but missed these because 0.7 isn't exact in IEEE 754;
+  // the percent-points scaling fix (Math.round(rate × 100)) does.
+  it('rate=-0.7, currentWeight=45 → "約 0.32 kg/週 減" (FP edge)', () => {
+    // Naive: 45 × -0.7 = -31.499999999999996 → Math.round drops to 31 → "0.31".
+    // Algebraic: 0.315 → round half away from zero → "0.32".
+    expect(formatPaceSublabel(-0.7, 45)).toBe('約 0.32 kg/週 減');
+  });
+
+  it('rate=-0.7, currentWeight=85 → "約 0.60 kg/週 減" (FP edge)', () => {
+    // Algebraic: 0.595 → "0.60".
+    expect(formatPaceSublabel(-0.7, 85)).toBe('約 0.60 kg/週 減');
+  });
+
+  it('rate=-0.7, currentWeight=165 → "約 1.16 kg/週 減" (FP edge)', () => {
+    // Algebraic: 1.155 → "1.16".
+    expect(formatPaceSublabel(-0.7, 165)).toBe('約 1.16 kg/週 減');
+  });
+
+  it('rate=-0.7, currentWeight=175 → "約 1.23 kg/週 減" (FP edge)', () => {
+    // Algebraic: 1.225 → "1.23".
+    expect(formatPaceSublabel(-0.7, 175)).toBe('約 1.23 kg/週 減');
+  });
+
   it('returns null for non-finite inputs (defensive)', () => {
     expect(formatPaceSublabel(NaN, 70)).toBeNull();
     expect(formatPaceSublabel(-1.0, NaN)).toBeNull();
@@ -110,12 +136,15 @@ describe('formatPaceSublabel', () => {
 // ---------------------------------------------------------------------------
 
 describe('getDirection', () => {
-  it('target < current (gap >= 0.5kg) → decrease', () => {
+  it('target < current (gap > 0.5kg) → decrease', () => {
+    // Boundary changed from `<` to `<=` per Codex pass 1 #2;
+    // gap > 0.5 (strict) returns decrease, gap = 0.5 returns
+    // maintain (covered by the boundary-inclusive test below).
     expect(getDirection(70, 65)).toBe('decrease');
-    expect(getDirection(70, 69.4)).toBe('decrease'); // gap=0.6 ≥ 0.5
+    expect(getDirection(70, 69.4)).toBe('decrease'); // gap=0.6 > 0.5
   });
 
-  it('target > current (gap >= 0.5kg) → increase', () => {
+  it('target > current (gap > 0.5kg) → increase', () => {
     expect(getDirection(65, 70)).toBe('increase');
     expect(getDirection(70, 70.6)).toBe('increase');
   });
@@ -124,6 +153,14 @@ describe('getDirection', () => {
     expect(getDirection(70, 70)).toBe('maintain');
     expect(getDirection(70, 70.4)).toBe('maintain');
     expect(getDirection(70, 69.6)).toBe('maintain');
+  });
+
+  // Codex pass 1 / Important #2 — boundary now inclusive (<=) to
+  // match estimateTargetDate. At gap=exactly 0.5kg, both paths
+  // agree: "you're effectively there" / direction = maintain.
+  it('|target - current| === 0.5kg → maintain (boundary inclusive)', () => {
+    expect(getDirection(70, 70.5)).toBe('maintain');
+    expect(getDirection(70, 69.5)).toBe('maintain');
   });
 
   it('non-finite inputs return maintain (safest fallback)', () => {
