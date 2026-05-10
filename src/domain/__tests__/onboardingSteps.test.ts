@@ -1,0 +1,110 @@
+// v1.3.0 / Onboarding v2 / Phase A-6 — route↔step mapping +
+// platform-aware total steps. Pure helpers, no rendering.
+//
+// Mock react-native's Platform export so jest's CJS runtime can
+// import onboardingSteps without dragging the full module
+// (Build 15+ TODO 12 — missing jest-expo preset). Tests use the
+// `platformOverride` test seam exclusively, so the mock value is
+// only read when a caller forgets the override.
+jest.mock('react-native', () => ({
+  Platform: { OS: 'ios' },
+}));
+
+import {
+  ONBOARDING_ROUTES,
+  TOTAL_STEPS_DEFAULT,
+  TOTAL_STEPS_IOS_HEALTHKIT,
+  getStepForRoute,
+  getRouteByName,
+  getTotalStepsForPlatform,
+} from '../onboardingSteps';
+
+describe('ONBOARDING_ROUTES table integrity', () => {
+  it('contains 15 entries (welcome..healthkit including iOS-only)', () => {
+    expect(ONBOARDING_ROUTES).toHaveLength(15);
+  });
+
+  it('step numbers are 1..15 in declaration order', () => {
+    for (let i = 0; i < ONBOARDING_ROUTES.length; i++) {
+      expect(ONBOARDING_ROUTES[i].step).toBe(i + 1);
+    }
+  });
+
+  it('only welcome and complete have showBack=false', () => {
+    const noBack = ONBOARDING_ROUTES.filter((r) => !r.showBack).map(
+      (r) => r.name,
+    );
+    expect(noBack.sort()).toEqual(['complete', 'welcome']);
+  });
+
+  it('exactly one route is iosOnly (healthkit)', () => {
+    const iosOnly = ONBOARDING_ROUTES.filter((r) => r.iosOnly);
+    expect(iosOnly).toHaveLength(1);
+    expect(iosOnly[0].name).toBe('healthkit');
+  });
+
+  it('TOTAL_STEPS_DEFAULT excludes the iosOnly entry, IOS_HEALTHKIT includes it', () => {
+    expect(TOTAL_STEPS_DEFAULT).toBe(14);
+    expect(TOTAL_STEPS_IOS_HEALTHKIT).toBe(15);
+    expect(
+      ONBOARDING_ROUTES.filter((r) => !r.iosOnly).length,
+    ).toBe(TOTAL_STEPS_DEFAULT);
+    expect(ONBOARDING_ROUTES.length).toBe(TOTAL_STEPS_IOS_HEALTHKIT);
+  });
+});
+
+describe('getStepForRoute', () => {
+  it.each([
+    ['welcome', 1],
+    ['nickname', 2],
+    ['body-info', 3],
+    ['goal-summary', 6],
+    ['protein-target', 9],
+    ['complete', 13],
+    ['tier-preview', 14],
+    ['healthkit', 15],
+  ])('maps "%s" → %i', (route, expected) => {
+    expect(getStepForRoute(route)).toBe(expected);
+  });
+
+  it('returns null for unknown routes', () => {
+    expect(getStepForRoute('not-a-route')).toBeNull();
+    expect(getStepForRoute('')).toBeNull();
+    expect(getStepForRoute('settings')).toBeNull();
+  });
+});
+
+describe('getRouteByName', () => {
+  it('returns the full descriptor', () => {
+    const route = getRouteByName('healthkit');
+    expect(route).toEqual({
+      name: 'healthkit',
+      step: 15,
+      showBack: true,
+      iosOnly: true,
+    });
+  });
+
+  it('returns null for unknown route', () => {
+    expect(getRouteByName('not-a-route')).toBeNull();
+  });
+
+  it('welcome descriptor has showBack=false', () => {
+    expect(getRouteByName('welcome')?.showBack).toBe(false);
+  });
+});
+
+describe('getTotalStepsForPlatform', () => {
+  // platformOverride is the test seam; production reads Platform.OS.
+  it('returns 15 on iOS (HealthKit screen included)', () => {
+    expect(getTotalStepsForPlatform('ios')).toBe(15);
+  });
+
+  it('returns 14 on Android (no HealthKit)', () => {
+    expect(getTotalStepsForPlatform('android')).toBe(14);
+  });
+
+  it('returns 14 on web (default branch)', () => {
+    expect(getTotalStepsForPlatform('web')).toBe(14);
+  });
+});
