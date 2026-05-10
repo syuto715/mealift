@@ -67,7 +67,13 @@ const CARB_KCAL_PER_G = 4;
 // (defensive narrow at the helper boundary; the typed MealPlan
 // union prevents this at compile time but `mealPlan as MealPlan`
 // casts in calling code can still slip an unknown literal through).
-const FC_RATIOS: Record<MealPlan, { fat: number; carbs: number }> = {
+//
+// Phase B-4 — exported for reuse by mealPlanUtils.getMealPlanPFCHint
+// cross-check tests so the qualitative UX hints stay in lockstep
+// with the source-of-truth ratio table. Single source of truth
+// across calc + UI layers (Pattern 18). Same promotion pattern as
+// B-3 ACHIEVEMENT_THRESHOLD_KG.
+export const FC_RATIOS: Record<MealPlan, { fat: number; carbs: number }> = {
   balanced: { fat: 0.3, carbs: 0.7 },
   washoku: { fat: 0.2, carbs: 0.8 },
   high_protein: { fat: 0.4, carbs: 0.6 },
