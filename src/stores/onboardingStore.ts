@@ -130,6 +130,11 @@ export interface OnboardingActions {
   // would be ignored by the service's existing-row check anyway
   // and would just duplicate state.
   markStarted: () => void;
+
+  // Phase C-2 — Nickname screen [2] field setter. Updates the
+  // nickname AND bumps onboardingStep monotonically in one set()
+  // call so the two values stay consistent for nav-guard reads.
+  setNickname: (value: string) => void;
 }
 
 export type OnboardingState = OnboardingData & OnboardingActions;
@@ -353,4 +358,19 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   // onboardingStartedAt timestamp lands on the DB row.
   markStarted: () =>
     set((s) => ({ onboardingStep: Math.max(s.onboardingStep, 1) })),
+
+  // Phase C-2 — Nickname screen [2] field setter. Two reasons we
+  // ship a dedicated setter rather than reusing setField:
+  //   1. The atomic value-and-step write avoids a brief render
+  //      where step has advanced but nickname is still null
+  //      (would mis-trigger any nav-guard that reads both).
+  //   2. Step bump is monotonic max — a user who's already past
+  //      [2] and revisits via a back nav shouldn't regress.
+  //      setField doesn't carry that semantics, so a direct
+  //      `setField('nickname', ...)` would skip the bump.
+  setNickname: (value: string) =>
+    set((s) => ({
+      nickname: value,
+      onboardingStep: Math.max(s.onboardingStep, 2),
+    })),
 }));

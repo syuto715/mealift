@@ -28,15 +28,12 @@ import { useOnboardingStore } from '../../src/stores/onboardingStore';
 // abandonment-rate analytics still capture users who close the app
 // before reading the title (kickoff §C-1 confirmation 3).
 //
-// CTA target — Codex pass 1 / Critical fix — temporarily points to
-// the legacy `welcome-and-goal` combined screen rather than the
-// new flow's [2] `nickname`, because Phase C-2 hasn't shipped yet.
-// All three auth entry points (app/index.tsx, (auth)/login.tsx,
-// (auth)/register.tsx) route here on first signup, so a missing-
-// route push would brick the onboarding for production users.
-// Pattern 26 transitional bridge — flip this route to '/nickname'
-// in Phase C-2 and the legacy combined screen falls out of the
-// active path naturally.
+// CTA target — Phase C-2 flipped this to the new flow's [2]
+// `/nickname` screen. The C-1 stop-gap (legacy /welcome-and-goal)
+// is no longer reachable from this CTA. Pattern 26 transitional
+// bridges continue downstream — nickname's CTA still points at
+// the legacy /body-and-training combined screen until Phase C-3
+// ships /body-info.
 //
 // Patterns applied:
 //   #5  fail-fast on caller misuse + double-tap defense via isAdvancing
@@ -78,9 +75,7 @@ export default function WelcomeScreen() {
   const handleCtaPress = useCallback(() => {
     if (isAdvancing) return;
     setIsAdvancing(true);
-    // See header comment — CTA target is the legacy combined screen
-    // until Phase C-2 ships /nickname.
-    router.push('/(onboarding)/welcome-and-goal');
+    router.push('/(onboarding)/nickname');
   }, [isAdvancing]);
 
   return (

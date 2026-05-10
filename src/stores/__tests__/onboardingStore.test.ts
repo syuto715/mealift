@@ -565,3 +565,45 @@ describe('useOnboardingStore — markStarted (Phase C-1)', () => {
     expect(s1.onboardingStep).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 8. setNickname — Phase C-2 atomic value+step setter
+// ---------------------------------------------------------------------------
+
+describe('useOnboardingStore — setNickname (Phase C-2)', () => {
+  it('writes the value AND bumps onboardingStep 0 → 2 atomically', () => {
+    useOnboardingStore.getState().setNickname('しゅうと');
+    const s = useOnboardingStore.getState();
+    expect(s.nickname).toBe('しゅうと');
+    expect(s.onboardingStep).toBe(2);
+  });
+
+  it('preserves a higher onboardingStep (no regression)', () => {
+    // User mid-flow at step 6 edits their nickname via a back-nav.
+    // setNickname must NOT roll the cursor backward.
+    useOnboardingStore.getState().setField('onboardingStep', 6);
+    useOnboardingStore.getState().setNickname('updated');
+    const s = useOnboardingStore.getState();
+    expect(s.nickname).toBe('updated');
+    expect(s.onboardingStep).toBe(6);
+  });
+
+  it('accepts empty string (the screen handles validation)', () => {
+    // The setter is the dumb store hand; validation lives in
+    // nicknameValidation.ts. Nothing prevents an empty string here.
+    useOnboardingStore.getState().setNickname('');
+    expect(useOnboardingStore.getState().nickname).toBe('');
+  });
+
+  it('does NOT touch unrelated fields', () => {
+    const s0 = useOnboardingStore.getState();
+    s0.setField('mealPlan', 'high_protein');
+    s0.setField('weeklyRatePct', 0.25);
+
+    s0.setNickname('test');
+
+    const s1 = useOnboardingStore.getState();
+    expect(s1.mealPlan).toBe('high_protein');
+    expect(s1.weeklyRatePct).toBe(0.25);
+  });
+});
