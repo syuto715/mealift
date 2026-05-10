@@ -6,8 +6,8 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import {
   assertChartProps,
-  clampNonNegative,
   computeChartData,
+  computeSegmentWidths,
   formatChartAccessibilityLabel,
   formatWeightLabel,
   sanitizeChartProps,
@@ -48,12 +48,17 @@ const VIEWBOX_HEIGHT = 180;
 // Layout constants — derived from the 280 viewBox so changing
 // width prop only affects rendered scale, not internal proportions.
 const BAR_X = 12;
-const BAR_MAX_WIDTH = VIEWBOX_WIDTH - BAR_X * 2;
+// Codex pass 1 / Important #2 — reserve a right gutter so the
+// "199.9 kg" right-side label fits without clipping the viewBox
+// edge. 56 covers the worst-case JP weight label at fontSize 12
+// ("199.9 kg" ≈ 50 unit-widths) plus 6 unit breathing room.
+const RIGHT_LABEL_GUTTER = 56;
+const BAR_MAX_WIDTH = VIEWBOX_WIDTH - BAR_X - RIGHT_LABEL_GUTTER;
 const BAR_HEIGHT = 28;
 const CURRENT_BAR_Y = 30;
 const TARGET_BAR_Y = 96;
 // Inner segment labels only render when the segment is wide enough
-// to fit text without overflow — 44px gives space for "M 50.0".
+// to fit text without overflow — 44px gives space for "筋 50.0".
 const SEGMENT_LABEL_MIN_WIDTH = 44;
 
 export function BodyCompositionChart({
@@ -96,18 +101,21 @@ export function BodyCompositionChart({
   const currentBarWidth = (data.current.weightKg / maxWeight) * BAR_MAX_WIDTH;
   const targetBarWidth = (data.target.weightKg / maxWeight) * BAR_MAX_WIDTH;
 
-  // Per-bar segment widths — clamp non-negative so extreme inputs
-  // that drive a kg projection negative don't render pixel widths
-  // outside the bar bounds.
-  const currentMuscleWidth =
-    (clampNonNegative(data.current.muscleKg) / data.current.weightKg) *
-    currentBarWidth;
-  const currentFatWidth = currentBarWidth - currentMuscleWidth;
-  const targetMuscleWidth =
-    (clampNonNegative(data.target.muscleKg) /
-      Math.max(data.target.weightKg, 1)) *
-    targetBarWidth;
-  const targetFatWidth = targetBarWidth - targetMuscleWidth;
+  // Per-bar segment widths — Codex pass 1 / Critical fix —
+  // re-normalize against the clamped-mass sum so extreme inputs
+  // that drive a kg projection negative can't produce a Rect
+  // with negative width (undefined SVG behavior). See
+  // computeSegmentWidths for the rationale.
+  const currentSegments = computeSegmentWidths(
+    data.current.muscleKg,
+    data.current.fatKg,
+    currentBarWidth,
+  );
+  const targetSegments = computeSegmentWidths(
+    data.target.muscleKg,
+    data.target.fatKg,
+    targetBarWidth,
+  );
 
   const muscleColor = colors.protein;
   const fatColor = colors.fat;
@@ -144,8 +152,8 @@ export function BodyCompositionChart({
         <BarGroup
           x={BAR_X}
           y={CURRENT_BAR_Y}
-          muscleWidth={currentMuscleWidth}
-          fatWidth={currentFatWidth}
+          muscleWidth={currentSegments.muscleWidth}
+          fatWidth={currentSegments.fatWidth}
           muscleKg={data.current.muscleKg}
           fatKg={data.current.fatKg}
           muscleColor={muscleColor}
@@ -175,8 +183,8 @@ export function BodyCompositionChart({
         <BarGroup
           x={BAR_X}
           y={TARGET_BAR_Y}
-          muscleWidth={targetMuscleWidth}
-          fatWidth={targetFatWidth}
+          muscleWidth={targetSegments.muscleWidth}
+          fatWidth={targetSegments.fatWidth}
           muscleKg={data.target.muscleKg}
           fatKg={data.target.fatKg}
           muscleColor={muscleColor}

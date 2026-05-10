@@ -21,6 +21,7 @@ import {
   assertChartProps,
   clampNonNegative,
   computeChartData,
+  computeSegmentWidths,
   formatChartAccessibilityLabel,
   formatRateLabel,
   formatWeightLabel,
@@ -201,6 +202,31 @@ describe('formatChartAccessibilityLabel', () => {
     expect(label).toContain('±0%/週');
     expect(label).not.toContain('目標');
   });
+
+  // Codex pass 1 / Important #1 — direction must reuse
+  // ACHIEVEMENT_THRESHOLD_KG = 0.5 (inclusive) so the chart reads
+  // 維持 for the same gap that paceSelectorUtils.getDirection +
+  // estimateTargetDate already classify as 維持. Without this, a
+  // 70.0 → 70.4 user gets cross-screen contradiction.
+  it('|gap| <= 0.5kg reads 維持 (matches paceSelectorUtils + estimateTargetDate)', () => {
+    const nearMatch: ChartData = {
+      current: { weightKg: 70, muscleKg: 52.5, fatKg: 17.5 },
+      target: { weightKg: 70.4, muscleKg: 52.6, fatKg: 17.8 },
+    };
+    expect(formatChartAccessibilityLabel(nearMatch, 0)).toContain('維持');
+
+    const exactBoundary: ChartData = {
+      current: { weightKg: 70, muscleKg: 52.5, fatKg: 17.5 },
+      target: { weightKg: 70.5, muscleKg: 52.6, fatKg: 17.9 },
+    };
+    expect(formatChartAccessibilityLabel(exactBoundary, 0)).toContain('維持');
+
+    const justOverBoundary: ChartData = {
+      current: { weightKg: 70, muscleKg: 52.5, fatKg: 17.5 },
+      target: { weightKg: 70.6, muscleKg: 52.6, fatKg: 18.0 },
+    };
+    expect(formatChartAccessibilityLabel(justOverBoundary, 0)).toContain('増量');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -372,6 +398,68 @@ describe('clampNonNegative', () => {
     expect(clampNonNegative(NaN)).toBe(0);
     expect(clampNonNegative(Infinity)).toBe(0);
     expect(clampNonNegative(-Infinity)).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeSegmentWidths — Codex pass 1 / Critical regression guard
+// ---------------------------------------------------------------------------
+
+describe('computeSegmentWidths', () => {
+  it('non-extreme case: muscle + fat = barWidth, both non-negative', () => {
+    const out = computeSegmentWidths(50, 20, 280); // 70 kg total
+    expect(out.muscleWidth).toBeCloseTo(200, 5); // 50/70 * 280
+    expect(out.fatWidth).toBeCloseTo(80, 5); // 20/70 * 280
+    expect(out.muscleWidth + out.fatWidth).toBeCloseTo(280, 5);
+  });
+
+  it('extreme cut where targetFatKg goes negative — fat clamped to 0', () => {
+    // Regression — pre-fix this case produced fatWidth < 0 because
+    // `barWidth - muscleWidth` could go negative when muscleKg
+    // exceeded the bar's implied weight. The re-normalize approach
+    // floors fat at 0 and lets muscle fill the bar.
+    const out = computeSegmentWidths(50, -5, 280);
+    expect(out.fatWidth).toBe(0);
+    expect(out.muscleWidth).toBe(280);
+  });
+
+  it('both segments non-negative when muscle goes negative too', () => {
+    const out = computeSegmentWidths(-10, 30, 280);
+    expect(out.muscleWidth).toBe(0);
+    expect(out.fatWidth).toBe(280);
+  });
+
+  it('zero total returns zero-width segments (no division by zero)', () => {
+    expect(computeSegmentWidths(0, 0, 280)).toEqual({
+      muscleWidth: 0,
+      fatWidth: 0,
+    });
+    expect(computeSegmentWidths(-5, -5, 280)).toEqual({
+      muscleWidth: 0,
+      fatWidth: 0,
+    });
+  });
+
+  it('zero or negative barWidth returns zero-width segments', () => {
+    expect(computeSegmentWidths(50, 20, 0)).toEqual({
+      muscleWidth: 0,
+      fatWidth: 0,
+    });
+    expect(computeSegmentWidths(50, 20, -100)).toEqual({
+      muscleWidth: 0,
+      fatWidth: 0,
+    });
+  });
+
+  it('NaN inputs collapse to zero-width segments (defensive)', () => {
+    expect(computeSegmentWidths(NaN, 20, 280)).toEqual({
+      muscleWidth: 0,
+      fatWidth: 280,
+    });
+    expect(computeSegmentWidths(50, NaN, 280)).toEqual({
+      muscleWidth: 280,
+      fatWidth: 0,
+    });
   });
 });
 

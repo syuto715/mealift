@@ -1,4 +1,5 @@
 import {
+  ACHIEVEMENT_THRESHOLD_KG,
   type BodyCompositionForecast,
   DEFAULT_CURRENT_BODY_FAT_PCT,
   forecastBodyComposition,
@@ -107,9 +108,11 @@ function decimalsOfRate(rate: number): number {
 // abbreviated "P:F:C" forms).
 //
 // Three branches: maintain (no change), decrease, increase. The
-// thresholds match estimateTargetDate / paceSelectorUtils.getDirection
-// (ACHIEVEMENT_THRESHOLD_KG semantics, kept implicit here — chart
-// data already has rounded weights, so direct equality is fine).
+// gap threshold matches paceSelectorUtils.getDirection +
+// estimateTargetDate (ACHIEVEMENT_THRESHOLD_KG = 0.5kg inclusive).
+// Codex pass 1 / Important #1 fix — without this, a 70.0 → 70.4
+// user reads "増量" here while reading "維持" on the prior pace
+// screen, a cross-screen contradiction.
 export function formatChartAccessibilityLabel(
   data: ChartData,
   weeklyRatePct: number,
@@ -123,12 +126,13 @@ export function formatChartAccessibilityLabel(
     `(筋肉 ${formatWeightLabel(data.target.muscleKg)} / ` +
     `脂肪 ${formatWeightLabel(data.target.fatKg)})`;
 
+  const gap = data.target.weightKg - data.current.weightKg;
   const direction =
-    data.target.weightKg < data.current.weightKg
-      ? '減量'
-      : data.target.weightKg > data.current.weightKg
-        ? '増量'
-        : '維持';
+    Math.abs(gap) <= ACHIEVEMENT_THRESHOLD_KG
+      ? '維持'
+      : gap < 0
+        ? '減量'
+        : '増量';
 
   if (direction === '維持') {
     return `${currentLabel}、${formatRateLabel(weeklyRatePct)}で維持`;
@@ -235,6 +239,37 @@ export function sanitizeChartProps(input: ChartPropsCore): ChartPropsCore {
 export function clampNonNegative(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, value);
+}
+
+// === computeSegmentWidths ===
+//
+// Codex pass 1 / Critical fix — the original implementation derived
+// fatWidth as `barWidth - muscleWidth`, which produces a NEGATIVE
+// width when an extreme cut drives targetFatKg below zero
+// (targetMuscleKg ends up larger than targetWeightKg, so muscleWidth
+// > barWidth, so fatWidth < 0). SVG <Rect width=-N> is undefined
+// rendering.
+//
+// Re-normalize against the clamped-mass sum: both segments are
+// guaranteed non-negative, and they always fill the bar exactly.
+// For non-extreme cases (muscleKg + fatKg ≈ weightKg), this is
+// numerically equivalent to the previous formula.
+export function computeSegmentWidths(
+  muscleKg: number,
+  fatKg: number,
+  barWidth: number,
+): { muscleWidth: number; fatWidth: number } {
+  const muscleClamped = clampNonNegative(muscleKg);
+  const fatClamped = clampNonNegative(fatKg);
+  const total = muscleClamped + fatClamped;
+  if (total <= 0 || barWidth <= 0) {
+    return { muscleWidth: 0, fatWidth: 0 };
+  }
+  const muscleWidth = (muscleClamped / total) * barWidth;
+  return {
+    muscleWidth,
+    fatWidth: barWidth - muscleWidth,
+  };
 }
 
 // Re-export so the component can pull every chart helper from one
