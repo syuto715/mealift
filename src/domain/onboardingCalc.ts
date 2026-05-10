@@ -43,6 +43,16 @@ const MAX_WEEKS = 520;
 // arrived. Realistic given daily weight noise + Mifflin BMR rounding.
 const ACHIEVEMENT_THRESHOLD_KG = 0.5;
 
+// v1.3.0 / Onboarding v2 / Phase A-5 — onboardingStep value at
+// which the user has advanced past [8] protein-target. By this
+// point, every required calc input is user-set (gender / birthYear
+// / heightCm / currentWeightKg from [3], activityLevel from [4],
+// targetWeightKg / weeklyRatePct from [5], mealPlan from [6],
+// mealTimings from [7], proteinFactor from [8]). Used by:
+//   - calculateAll's trust-boundary guard (Phase A-4 Codex Important #1)
+//   - onboardingService's per-field gating threshold (Phase A-5)
+export const ONBOARDING_STEP_FULL_INPUT = 8;
+
 const PROTEIN_KCAL_PER_G = 4;
 const FAT_KCAL_PER_G = 9;
 const CARB_KCAL_PER_G = 4;

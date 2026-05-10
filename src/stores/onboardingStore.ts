@@ -13,7 +13,10 @@ import {
   calculateDailyTarget,
   estimateTargetDate,
   calculatePFCTargetsByMealPlan,
+  ONBOARDING_STEP_FULL_INPUT,
 } from '../domain/onboardingCalc';
+import { persistToProfile as onboardingServicePersist } from '../infra/services/onboardingService';
+import { useProfileStore } from './profileStore';
 
 // v1.3.0 / Onboarding v2 / Phase A-3 — onboardingStore extension.
 //
@@ -212,7 +215,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       s.targetWeightKg === null ||
       s.proteinFactor === null ||
       s.mealPlan === null ||
-      s.onboardingStep < 8
+      s.onboardingStep < ONBOARDING_STEP_FULL_INPUT
     ) {
       // Codex review pass 1 / Important #2 — clear cache when
       // inputs become incomplete (user navigated back, reset a
@@ -271,12 +274,18 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     });
   },
 
-  // Phase A-5 will swap this stub for an onboardingService call
-  // that writes the store snapshot to profiles via updateProfile.
-  // Returning a resolved Promise so callers' await chains work
-  // identically once the real implementation lands.
+  // Phase A-5 — actual logic. Delegates to onboardingService which
+  // builds the gated patch + calls updateProfile. profileId is read
+  // at call time from useProfileStore to avoid coupling the
+  // onboardingStore type to ProfileStore.
+  //
+  // No-op when no profile is loaded (e.g., during pre-auth boot).
+  // Phase A-6 / B / C screen-trigger wiring will guarantee a profile
+  // exists before invoking; this guard is defense-in-depth.
   persistToProfile: async () => {
-    // TODO Phase A-5: call onboardingService.persistOnboarding(get())
+    const profileId = useProfileStore.getState().profile?.id;
+    if (!profileId) return;
+    await onboardingServicePersist(get(), profileId);
   },
 
   // Hydrate the store from an existing Profile row. Used by Build
