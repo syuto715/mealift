@@ -41,7 +41,12 @@ const MAX_WEEKS = 520;
 
 // Achievement tolerance: weight within ±0.5 kg of target counts as
 // arrived. Realistic given daily weight noise + Mifflin BMR rounding.
-const ACHIEVEMENT_THRESHOLD_KG = 0.5;
+//
+// Phase B-3 — exported for reuse by paceSelectorUtils.getDirection,
+// which needs the same "is the user effectively at target" semantic
+// to decide whether the user is in maintain / decrease / increase
+// mode. Single source of truth across the calc + UI layers.
+export const ACHIEVEMENT_THRESHOLD_KG = 0.5;
 
 // v1.3.0 / Onboarding v2 / Phase A-5 — onboardingStep value at
 // which the user has advanced past [8] protein-target. By this
