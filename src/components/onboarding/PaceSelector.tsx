@@ -46,6 +46,15 @@ interface PaceSelectorProps {
   currentWeight: number;
   targetWeight: number;
   options?: readonly number[];
+  // Phase C-5 / Codex pass 1 — caller-driven disable override.
+  // When provided, replaces the default getDirection-based
+  // auto-disable. Use case: goalType='recomp' (target ≈ current →
+  // direction='maintain') wants the [-0.25, 0, 0.25] subset
+  // ENABLED despite the maintain direction, contradicting the
+  // default behavior. Pass `disabledOptions=[]` to enable all
+  // entries in `options`; pass a non-empty list to selectively
+  // disable.
+  disabledOptions?: readonly number[];
   testID?: string;
 }
 
@@ -55,6 +64,7 @@ export function PaceSelector({
   currentWeight,
   targetWeight,
   options = DEFAULT_PACE_OPTIONS,
+  disabledOptions,
   testID,
 }: PaceSelectorProps) {
   const scheme = useColorScheme() ?? 'light';
@@ -77,6 +87,9 @@ export function PaceSelector({
   });
 
   const direction = getDirection(safe.currentWeight, safe.targetWeight);
+  const disabledSet = disabledOptions
+    ? new Set(disabledOptions)
+    : null;
 
   return (
     <View style={styles.container} testID={testID}>
@@ -89,7 +102,13 @@ export function PaceSelector({
       >
         {safe.options.map((rate) => {
           const selected = safe.value === rate;
-          const disabled = isOptionDisabled(rate, direction);
+          // Codex pass 1 / Phase C-5 — caller-driven disable
+          // override takes precedence over the default direction-
+          // based logic. When disabledOptions is provided (even
+          // empty), the parent owns the disable decision entirely.
+          const disabled = disabledSet
+            ? disabledSet.has(rate)
+            : isOptionDisabled(rate, direction);
           const label = formatPaceLabel(rate);
           const sublabel = formatPaceSublabel(rate, safe.currentWeight);
           return (

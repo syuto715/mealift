@@ -161,6 +161,13 @@ export default function CompleteScreen() {
       // This aligns with Apple subscription guidelines and retention patterns
       // where an explicit opt-in drives higher conversion than an automatic
       // countdown the user didn't choose.
+      // Codex pass 1 / Phase C-5 Important #2 fix — mirror the
+      // completionPatch v2 fields into the hydratedProfile so the
+      // in-memory store sees the same values that just landed in
+      // the DB. Without this, profileStore.setProfile would still
+      // carry the legacy createProfile result (nickname=null,
+      // weeklyRatePct=null) until the next app boot reads from
+      // DB. Touches the same conditional shape as the DB patch.
       const hydratedProfile = {
         ...profile,
         targetCalories,
@@ -168,6 +175,10 @@ export default function CompleteScreen() {
         targetFatG: macros.fatG,
         targetCarbG: macros.carbG,
         onboardingCompleted: true,
+        ...(onboarding.nickname ? { nickname: onboarding.nickname } : {}),
+        ...(onboarding.weeklyRatePct != null
+          ? { weeklyRatePct: onboarding.weeklyRatePct }
+          : {}),
       };
       setProfile(hydratedProfile);
 

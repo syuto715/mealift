@@ -235,6 +235,19 @@ describe('filterPaceOptionsForGoalType', () => {
       0.25,
     ]);
   });
+
+  // Codex pass 1 / Sign-off violation fix regression — recomp's
+  // contract demands all 3 of -0.25, 0, +0.25 selectable.
+  // PaceSelector's `disabledOptions` prop is the integration
+  // mechanism the screen uses to enable this; here we pin the
+  // helper-level consistency rule so a future regression in
+  // either layer surfaces a test failure.
+  it('recomp contract: all 3 filtered rates pass isGoalTypeConsistent', () => {
+    const recompRates = filterPaceOptionsForGoalType('recomp');
+    for (const rate of recompRates) {
+      expect(isGoalTypeConsistent('recomp', 70, 70, rate)).toBe(true);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

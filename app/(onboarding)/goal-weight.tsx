@@ -90,12 +90,32 @@ export default function GoalWeightScreen() {
   // the slider thumb has a sane initial position — user must
   // explicitly move it (which fires setTargetWeightKg with the
   // chosen value) for the field to actually become non-null.
-  const targetSliderValue = targetWeightKg ?? currentWeightKg;
+  // Codex pass 1 / Important #1 — clamp to C-5 range so a legacy
+  // body-and-training edit that wrote 25kg (legacy allows >=20)
+  // doesn't surface as "slider 30.0 / label 25.0" contradictory
+  // UI on revisit. All downstream consumers (delta label,
+  // PaceSelector, calculateGoalSummary) read from the clamped
+  // value to stay internally consistent.
+  const rawTarget = targetWeightKg ?? currentWeightKg;
+  const targetSliderValue = Math.max(
+    TARGET_WEIGHT_KG_MIN,
+    Math.min(TARGET_WEIGHT_KG_MAX, rawTarget),
+  );
 
   const paceOptions = useMemo(
     () => filterPaceOptionsForGoalType(goalType),
     [goalType],
   );
+
+  // Codex pass 1 / Sign-off violation fix — recomp's contract is
+  // `[-0.25, 0, 0.25]` selectable, but PaceSelector's default
+  // auto-disable derives direction from currentWeight/targetWeight.
+  // For recomp target ≈ current → direction='maintain', auto-
+  // disabling the non-zero options. Drive the disable state
+  // explicitly: empty list for recomp (no disable beyond the
+  // option-filter restriction), and undefined for other goalTypes
+  // so the default direction logic applies.
+  const paceDisabledOverride = goalType === 'recomp' ? [] : undefined;
 
   // Cross-field consistency — independently of the per-field
   // validators, the screen needs all three to line up. Used by
@@ -127,10 +147,10 @@ export default function GoalWeightScreen() {
     if (targetWeightKg == null || weeklyRatePct == null) return null;
     return calculateGoalSummary(
       currentWeightKg,
-      targetWeightKg,
+      targetSliderValue,
       weeklyRatePct,
     );
-  }, [currentWeightKg, targetWeightKg, weeklyRatePct]);
+  }, [currentWeightKg, targetSliderValue, targetWeightKg, weeklyRatePct]);
 
   // Auto-coordinate weeklyRatePct when goalType changes — drop
   // an inconsistent rate to null so the user re-selects from the
@@ -288,19 +308,23 @@ export default function GoalWeightScreen() {
             label="目標体重"
             testID="goal-weight-target"
           />
-          <Text
-            style={[styles.deltaLabel, { color: colors.textSecondary }]}
-            accessibilityLiveRegion="polite"
-          >
-            現在 {currentWeightKg.toFixed(1)} kg →{' '}
-            目標 {targetSliderValue.toFixed(1)} kg（
-            {direction === 'cut'
-              ? '減量'
-              : direction === 'bulk'
-                ? '増量'
-                : '維持'}
-            ）
-          </Text>
+          {/* Codex pass 1 / Nits — drop accessibilityLiveRegion to
+              avoid per-tick chatter (slider's own adjustable role
+              announces value changes), and hide the delta label
+              until targetWeightKg is non-null so the pre-touch
+              copy doesn't read like a real maintain choice. */}
+          {targetWeightKg != null && (
+            <Text style={[styles.deltaLabel, { color: colors.textSecondary }]}>
+              現在 {currentWeightKg.toFixed(1)} kg →{' '}
+              目標 {targetSliderValue.toFixed(1)} kg（
+              {direction === 'cut'
+                ? '減量'
+                : direction === 'bulk'
+                  ? '増量'
+                  : '維持'}
+              ）
+            </Text>
+          )}
         </View>
 
         {/* Weekly rate — B-3 PaceSelector */}
@@ -314,6 +338,7 @@ export default function GoalWeightScreen() {
             currentWeight={currentWeightKg}
             targetWeight={targetSliderValue}
             options={paceOptions}
+            disabledOptions={paceDisabledOverride}
             testID="goal-weight-pace"
           />
         </View>
