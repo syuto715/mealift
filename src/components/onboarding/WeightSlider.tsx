@@ -15,10 +15,11 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import {
   assertSliderProps,
-  clampWeight,
+  decimalsForStep,
   formatWeight,
   isValidWeight,
-  roundToStep,
+  quantizeToGrid,
+  sanitizeValue,
 } from '../../domain/weightSliderUtils';
 
 // v1.3.0 / Onboarding v2 / Phase B-2 — hybrid weight input.
@@ -68,21 +69,26 @@ export function WeightSlider({
   const [draft, setDraft] = useState('');
   const [draftError, setDraftError] = useState<string | null>(null);
 
-  // Mount-time guard. assertSliderProps is pure + tested; throwing
-  // here surfaces programming errors (e.g., min=200 max=30) at
-  // component mount rather than during slider interaction.
-  assertSliderProps({ value, min, max, step });
+  // Codex review pass 1 / Design call #1 — assert in __DEV__ to
+  // surface caller misuse early; sanitize in production so a single
+  // bad prop doesn't crash the onboarding screen.
+  if (__DEV__) {
+    assertSliderProps({ value, min, max, step });
+  }
+  const safeValue = sanitizeValue(value, min, max);
+  const decimals = decimalsForStep(step);
 
   const commit = (raw: number) => {
-    const quantized = roundToStep(clampWeight(raw, min, max), step);
-    onChange(quantized);
+    // Codex review pass 1 / Critical — quantize relative to min so
+    // offset bounds (e.g. min=30.1, step=0.5) don't snap below min.
+    onChange(quantizeToGrid(raw, min, max, step));
   };
 
-  const decrement = () => commit(value - step);
-  const increment = () => commit(value + step);
+  const decrement = () => commit(safeValue - step);
+  const increment = () => commit(safeValue + step);
 
   const openEdit = () => {
-    setDraft(value.toFixed(step < 1 ? 1 : 0));
+    setDraft(safeValue.toFixed(decimals));
     setDraftError(null);
     setEditing(true);
   };
@@ -109,7 +115,7 @@ export function WeightSlider({
     setDraftError(null);
   };
 
-  const formatted = formatWeight(value, step < 1 ? 1 : 0);
+  const formatted = formatWeight(safeValue, decimals);
 
   return (
     <View style={styles.container} testID={testID}>
@@ -138,7 +144,7 @@ export function WeightSlider({
         minimumValue={min}
         maximumValue={max}
         step={step}
-        value={value}
+        value={safeValue}
         onValueChange={commit}
         minimumTrackTintColor={colors.primary}
         maximumTrackTintColor={colors.surfaceSecondary}
@@ -147,7 +153,7 @@ export function WeightSlider({
         accessibilityValue={{
           min,
           max,
-          now: value,
+          now: safeValue,
           text: formatted,
         }}
         accessibilityLabel={label ?? '体重'}
@@ -157,12 +163,12 @@ export function WeightSlider({
       <View style={styles.stepRow}>
         <TouchableOpacity
           onPress={decrement}
-          disabled={value <= min}
+          disabled={safeValue <= min}
           style={[
             styles.stepBtn,
             {
               backgroundColor: colors.surfaceSecondary,
-              opacity: value <= min ? 0.4 : 1,
+              opacity: safeValue <= min ? 0.4 : 1,
             },
           ]}
           accessibilityRole="button"
@@ -175,16 +181,16 @@ export function WeightSlider({
         <Text
           style={[styles.stepLabel, { color: colors.textTertiary }]}
         >
-          {step.toFixed(step < 1 ? 1 : 0)} kg
+          {step.toFixed(decimals)} kg
         </Text>
         <TouchableOpacity
           onPress={increment}
-          disabled={value >= max}
+          disabled={safeValue >= max}
           style={[
             styles.stepBtn,
             {
               backgroundColor: colors.surfaceSecondary,
-              opacity: value >= max ? 0.4 : 1,
+              opacity: safeValue >= max ? 0.4 : 1,
             },
           ]}
           accessibilityRole="button"

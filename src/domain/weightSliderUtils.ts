@@ -83,6 +83,16 @@ export function isValidWeight(
 // Convenience for the WeightSlider component to surface programming
 // errors immediately at mount rather than silently degrading. Pure
 // so the helper test exercises the bounds-validation logic.
+//
+// Codex review pass 1 / Important #2 — also asserts value is in
+// [min, max]. Without this check a parent passing value=250 with
+// max=200 would render "250.0 kg" in the label while the native
+// slider capped at 200, divergent UX.
+//
+// Codex review pass 1 / Design call #1 — caller (component) gates
+// the throw behind __DEV__ AND sanitizes via sanitizeValue in
+// production, so a bad-prop scenario crashes in dev (catch early)
+// but degrades gracefully in user-facing builds.
 export function assertSliderProps(input: {
   value: number;
   min: number;
@@ -104,4 +114,69 @@ export function assertSliderProps(input: {
       `WeightSlider: value must be finite (got value=${input.value})`,
     );
   }
+  if (input.value < input.min || input.value > input.max) {
+    throw new Error(
+      `WeightSlider: value must be in [${input.min}, ${input.max}] (got value=${input.value})`,
+    );
+  }
+}
+
+// === sanitizeValue ===
+
+// Production-safe value coercion. Pairs with the __DEV__-gated
+// assertSliderProps: dev catches the misuse with a throw; production
+// renders a usable widget instead of a crash. Uses clampWeight's
+// bounds-clamp; non-finite values fall back to `min`.
+export function sanitizeValue(
+  value: number,
+  min: number,
+  max: number,
+): number {
+  if (!Number.isFinite(value)) return min;
+  if (min >= max) return min; // degenerate bounds — return min as least-bad
+  return clampWeight(value, min, max);
+}
+
+// === quantizeToGrid ===
+
+// Min-relative quantization. Codex review pass 1 / Critical — the
+// previous `roundToStep(value, step)` anchored to 0 broke for offset
+// mins (e.g. min=30.1, step=0.5 → roundToStep(30.1, 0.5) = 30 < min).
+// The native slider's step behavior is min-relative, so JS arithmetic
+// must match.
+//
+// Pipeline: clamp → snap-to-grid relative to min → re-clamp (rounding
+// could push the upper edge past max).
+export function quantizeToGrid(
+  value: number,
+  min: number,
+  max: number,
+  step: number,
+): number {
+  const clamped = clampWeight(value, min, max);
+  const offset = clamped - min;
+  const snapped = min + roundToStep(offset, step);
+  return clampWeight(snapped, min, max);
+}
+
+// === decimalsForStep ===
+
+// Derive display precision from step so the label / modal draft / step
+// readout match the granularity. Codex review pass 1 / Important #1 —
+// previous hard-coded `step < 1 ? 1 : 0` rendered 72.25 (step=0.25)
+// as "72.3", losing 0.05 on every edit-confirm round trip.
+//
+// step >= 1 → 0 decimals (integer copy)
+// 0.1 → 1; 0.5 → 1; 0.25 → 2; 0.01 → 2
+// Defensive: non-finite step falls back to 0 (assertSliderProps would
+// have already thrown in __DEV__; this is the production path).
+export function decimalsForStep(step: number): number {
+  if (!Number.isFinite(step) || step >= 1) return 0;
+  // toFixed(10) gives the full decimal expansion at the precision
+  // limit relevant for slider granularity; trim trailing zeros to
+  // collapse FP noise (0.1 → '0.1000000000' → '0.1').
+  const trimmed = step.toFixed(10).replace(/0+$/, '');
+  const dot = trimmed.indexOf('.');
+  if (dot < 0) return 0;
+  return Math.min(10, trimmed.length - dot - 1);
 }

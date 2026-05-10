@@ -10,6 +10,9 @@ import {
   formatWeight,
   isValidWeight,
   assertSliderProps,
+  sanitizeValue,
+  quantizeToGrid,
+  decimalsForStep,
 } from '../weightSliderUtils';
 
 // ---------------------------------------------------------------------------
@@ -157,5 +160,121 @@ describe('assertSliderProps', () => {
     expect(() =>
       assertSliderProps({ ...validInput, value: Infinity }),
     ).toThrow(/value must be finite/);
+  });
+
+  // Codex review pass 1 / Important #2 — also asserts value range.
+  // Previously a parent could pass value=250 with max=200 and the
+  // component would happily render "250.0 kg" while the native
+  // slider capped at 200.
+  it('throws on value below min', () => {
+    expect(() =>
+      assertSliderProps({ ...validInput, value: 20 }),
+    ).toThrow(/value must be in/);
+  });
+
+  it('throws on value above max', () => {
+    expect(() =>
+      assertSliderProps({ ...validInput, value: 250 }),
+    ).toThrow(/value must be in/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sanitizeValue — production-safe coercion (Codex pass 1 design call #1)
+// ---------------------------------------------------------------------------
+
+describe('sanitizeValue', () => {
+  it('returns the value unchanged when within bounds', () => {
+    expect(sanitizeValue(70, 30, 200)).toBe(70);
+  });
+
+  it('clamps out-of-range values', () => {
+    expect(sanitizeValue(20, 30, 200)).toBe(30);
+    expect(sanitizeValue(250, 30, 200)).toBe(200);
+  });
+
+  it('falls back to min for non-finite values (any sign)', () => {
+    // sanitizeValue short-circuits on !Number.isFinite, so both
+    // Infinity and -Infinity collapse to min (not to max). NaN
+    // also returns min. The fallback choice is "least bad" —
+    // assertSliderProps would have already thrown in __DEV__.
+    expect(sanitizeValue(NaN, 30, 200)).toBe(30);
+    expect(sanitizeValue(Infinity, 30, 200)).toBe(30);
+    expect(sanitizeValue(-Infinity, 30, 200)).toBe(30);
+  });
+
+  it('returns min as least-bad fallback for degenerate bounds', () => {
+    // min >= max would throw in clampWeight; sanitizeValue
+    // pre-empts and returns min directly so production doesn't
+    // crash on a __DEV__-only-detected misuse.
+    expect(sanitizeValue(70, 100, 100)).toBe(100);
+    expect(sanitizeValue(70, 200, 30)).toBe(200);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// quantizeToGrid — Codex pass 1 / Critical (min-relative quantization)
+// ---------------------------------------------------------------------------
+
+describe('quantizeToGrid', () => {
+  it('snaps to grid relative to min, not 0', () => {
+    // Critical fix: previously roundToStep(30.1, 0.5) = 30 < min.
+    // quantizeToGrid quantizes the offset (raw - min), so 30.1 stays
+    // at 30.1 (it IS the min, on the grid).
+    expect(quantizeToGrid(30.1, 30.1, 100, 0.5)).toBe(30.1);
+    // 30.4 → offset 0.3 → snap to 0.5 → 30.6
+    expect(quantizeToGrid(30.4, 30.1, 100, 0.5)).toBeCloseTo(30.6, 5);
+    // 30.2 → offset 0.1 → snap to 0 → 30.1 (back at min)
+    expect(quantizeToGrid(30.2, 30.1, 100, 0.5)).toBeCloseTo(30.1, 5);
+  });
+
+  it('clamps to bounds after snap (upper edge regression)', () => {
+    // step=0.5 max=100; raw=99.9 → offset 99.9 → snap to 100 → over max
+    // Re-clamp brings it back to 100.
+    expect(quantizeToGrid(99.9, 30, 100, 0.5)).toBe(100);
+    // raw above max clamps first: clampWeight(150, 30, 100) = 100, snap=100, clamp=100
+    expect(quantizeToGrid(150, 30, 100, 0.5)).toBe(100);
+  });
+
+  it('clamps to min for raw below min', () => {
+    expect(quantizeToGrid(20, 30, 100, 0.5)).toBe(30);
+  });
+
+  it('integer-step grid behaves identically to roundToStep at min=0', () => {
+    expect(quantizeToGrid(72.7, 0, 100, 1)).toBe(73);
+    expect(quantizeToGrid(72.4, 0, 100, 1)).toBe(72);
+  });
+
+  it('preserves FP-clean output for the common 0.1 step', () => {
+    expect(quantizeToGrid(72.30000000000001, 30, 200, 0.1)).toBe(72.3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// decimalsForStep — Codex pass 1 / Important #1
+// ---------------------------------------------------------------------------
+
+describe('decimalsForStep', () => {
+  it('common Mealift granularities', () => {
+    expect(decimalsForStep(1)).toBe(0);
+    expect(decimalsForStep(0.5)).toBe(1);
+    expect(decimalsForStep(0.1)).toBe(1);
+    expect(decimalsForStep(0.25)).toBe(2);
+    expect(decimalsForStep(0.01)).toBe(2);
+  });
+
+  it('returns 0 for step >= 1 (integer copy)', () => {
+    expect(decimalsForStep(1)).toBe(0);
+    expect(decimalsForStep(2)).toBe(0);
+    expect(decimalsForStep(5)).toBe(0);
+  });
+
+  it('caps at 10 decimals for sub-precision steps', () => {
+    expect(decimalsForStep(0.0000000001)).toBe(10);
+  });
+
+  it('returns 0 for non-finite step (defensive)', () => {
+    expect(decimalsForStep(NaN)).toBe(0);
+    expect(decimalsForStep(Infinity)).toBe(0);
   });
 });
