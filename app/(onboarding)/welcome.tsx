@@ -17,10 +17,10 @@ import { useOnboardingStore } from '../../src/stores/onboardingStore';
 // v1.3.0 / Onboarding v2 / Phase C-1 — Welcome screen [1].
 //
 // First touch in the new 13-screen flow. Static greeting + 「始める」
-// CTA forwards to nickname [2]. ProgressHeader is auto-injected by
-// (onboarding)/_layout (Phase A-6) — `welcome` is in
-// ONBOARDING_ROUTES with showBack=false, so the header reads
-// "1/14" with no back arrow.
+// CTA. ProgressHeader is auto-injected by (onboarding)/_layout
+// (Phase A-6) — `welcome` is in ONBOARDING_ROUTES with showBack=false,
+// so the header reads "1/{14|15}" (15 on iOS due to HealthKit) with
+// no back arrow.
 //
 // On mount: markStarted() bumps onboardingStep to 1, then
 // persistToProfile fires so the service writes the set-once
@@ -28,16 +28,26 @@ import { useOnboardingStore } from '../../src/stores/onboardingStore';
 // abandonment-rate analytics still capture users who close the app
 // before reading the title (kickoff §C-1 confirmation 3).
 //
+// CTA target — Codex pass 1 / Critical fix — temporarily points to
+// the legacy `welcome-and-goal` combined screen rather than the
+// new flow's [2] `nickname`, because Phase C-2 hasn't shipped yet.
+// All three auth entry points (app/index.tsx, (auth)/login.tsx,
+// (auth)/register.tsx) route here on first signup, so a missing-
+// route push would brick the onboarding for production users.
+// Pattern 26 transitional bridge — flip this route to '/nickname'
+// in Phase C-2 and the legacy combined screen falls out of the
+// active path naturally.
+//
 // Patterns applied:
-//   #5  fail-fast on caller misuse + double-tap defense via isPending
-//   #10 cancellation guard in the persist useEffect (active flag)
+//   #5  fail-fast on caller misuse + double-tap defense via isAdvancing
 //   #11 color + non-color redundant encoding — primary CTA carries
 //       both background hue and bold label text
-//   #12 conditional accessibilityRole — CTA radio role + a11y label,
-//       hero icon hidden from screen reader
+//   #12 conditional accessibilityRole — header role on title;
+//       hero icon hidden from screen reader (decorative)
 //   #26 transitional layout gate — the layout-level ProgressHeader
 //       gating is owned by shouldRenderLayoutHeader (A-6); this
-//       screen is in the post-legacy set so the header renders.
+//       screen renders the shared header. The CTA → legacy bridge
+//       is also Pattern 26 (incremental migration, not big-bang).
 
 const HERO_ICON: React.ComponentProps<typeof Ionicons>['name'] = 'barbell';
 const TITLE = 'ようこそ Mealift へ';
@@ -52,27 +62,25 @@ export default function WelcomeScreen() {
   const [isAdvancing, setIsAdvancing] = useState(false);
 
   useEffect(() => {
-    let active = true;
     markStarted();
-    void (async () => {
-      try {
-        await persistToProfile();
-      } catch {
-        // Silent — service-level error logging handles details, and
-        // the next screen's submit will retry the persist. Crashing
-        // here would block the user from advancing past Welcome.
-      }
-      if (!active) return;
-    })();
-    return () => {
-      active = false;
-    };
+    persistToProfile().catch((err) => {
+      // Codex pass 1 / Important — non-blocking but NOT silent.
+      // onboardingService.persistToProfile throws on
+      // profileId-required / profile-not-found / id-mismatch but
+      // doesn't log. Without surfacing it here, a startedAt write
+      // failure would vanish entirely. Crashing the screen is
+      // wrong (user can't advance past Welcome); console.warn keeps
+      // the UI alive but leaves a footprint for telemetry / debug.
+      console.warn('[onboarding/welcome] persistToProfile failed', err);
+    });
   }, [markStarted, persistToProfile]);
 
   const handleCtaPress = useCallback(() => {
     if (isAdvancing) return;
     setIsAdvancing(true);
-    router.push('/(onboarding)/nickname');
+    // See header comment — CTA target is the legacy combined screen
+    // until Phase C-2 ships /nickname.
+    router.push('/(onboarding)/welcome-and-goal');
   }, [isAdvancing]);
 
   return (
@@ -87,8 +95,13 @@ export default function WelcomeScreen() {
               styles.heroIconBg,
               { backgroundColor: colors.primary + '15' },
             ]}
+            // Codex pass 1 / Nit — `accessibilityElementsHidden` is
+            // iOS-only; `importantForAccessibility="no-hide-descendants"`
+            // hides the icon and its descendants on Android too,
+            // giving the same decorative-only behavior across
+            // platforms.
             accessibilityElementsHidden
-            importantForAccessibility="no"
+            importantForAccessibility="no-hide-descendants"
           >
             <Ionicons name={HERO_ICON} size={48} color={colors.primary} />
           </View>
