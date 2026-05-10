@@ -17,8 +17,29 @@ import Svg, {
 import { getColors } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
-import type { VolumeGroup, VolumeZone } from '../../domain/volumeLandmark';
-import type { RecoveryState } from '../../domain/recovery';
+import {
+  VOLUME_GROUP_LABEL_JA,
+  type VolumeGroup,
+  type VolumeZone,
+} from '../../domain/volumeLandmark';
+import type { RecoveryState, RecoveryStateLabel } from '../../domain/recovery';
+
+// Codex review pass 1 / Critical #2 — rich accessibilityLabel that
+// surfaces the heatmap's actual data (state + percentage + deload
+// flag) to screen readers, not just the muscle name.
+const STATE_LABEL_JA: Record<RecoveryStateLabel, string> = {
+  unstimulated: '未刺激',
+  recovering: '回復中',
+  partial: '一部回復',
+  recovered: '回復済',
+};
+
+const ZONE_LABEL_JA: Record<VolumeZone, string> = {
+  below_mev: 'ボリューム不足',
+  mev_to_mav: 'ボリューム適正',
+  mav_to_mrv: 'ボリューム適正',
+  above_mrv: 'ボリューム超過',
+};
 
 // Build 16 / Phase 6 (Muscle Recovery Heatmap) / Phase 6.2 — SVG
 // body diagram component.
@@ -108,9 +129,11 @@ export function MuscleBodyDiagram({
     return volumeByGroup?.[group];
   };
 
-  const silhouetteFill = scheme === 'dark' ? '#21262D' : '#F1F3F5';
-  const silhouetteStroke =
-    scheme === 'dark' ? '#30363D' : '#D1D5DB';
+  // Codex review pass 1 / Nit #2 — read silhouette neutrals from the
+  // theme tokens rather than hardcoding hex values that happen to
+  // match. Now any future palette tweak ripples through automatically.
+  const silhouetteFill = colors.surfaceSecondary;
+  const silhouetteStroke = colors.border;
 
   return (
     <View style={styles.container}>
@@ -179,6 +202,7 @@ export function MuscleBodyDiagram({
 
           {currentSide === 'front' ? (
             <FrontMuscles
+              recoveryByGroup={recoveryByGroup}
               fillFor={fillFor}
               zoneFor={zoneFor}
               deloadSet={deloadSet}
@@ -188,6 +212,7 @@ export function MuscleBodyDiagram({
             />
           ) : (
             <BackMuscles
+              recoveryByGroup={recoveryByGroup}
               fillFor={fillFor}
               zoneFor={zoneFor}
               deloadSet={deloadSet}
@@ -296,6 +321,7 @@ function Silhouette({ fill, stroke }: { fill: string; stroke: string }) {
 // ---------------------------------------------------------------------------
 
 interface MusclePartsProps {
+  recoveryByGroup: Record<VolumeGroup, RecoveryState>;
   fillFor: (group: VolumeGroup) => string;
   zoneFor: (group: VolumeGroup) => VolumeZone | undefined;
   deloadSet: Set<VolumeGroup>;
@@ -311,7 +337,6 @@ function FrontMuscles(props: MusclePartsProps) {
       {/* Chest — single rounded rect spanning the upper torso */}
       <MuscleGroupShape
         group="chest"
-        fill={fillFor('chest')}
         onPress={onMusclePress}
         labelX={100}
         labelY={92}
@@ -323,7 +348,6 @@ function FrontMuscles(props: MusclePartsProps) {
       {/* Shoulder mid (front portion) — ovals at the deltoid front */}
       <MuscleGroupShape
         group="shoulder_mid"
-        fill={fillFor('shoulder_mid')}
         onPress={onMusclePress}
         labelX={56}
         labelY={78}
@@ -336,7 +360,6 @@ function FrontMuscles(props: MusclePartsProps) {
       {/* Biceps — front of upper arms */}
       <MuscleGroupShape
         group="biceps"
-        fill={fillFor('biceps')}
         onPress={onMusclePress}
         labelX={51}
         labelY={120}
@@ -349,7 +372,6 @@ function FrontMuscles(props: MusclePartsProps) {
       {/* Quads — front of upper legs */}
       <MuscleGroupShape
         group="quads"
-        fill={fillFor('quads')}
         onPress={onMusclePress}
         labelX={80}
         labelY={235}
@@ -373,7 +395,6 @@ function BackMuscles(props: MusclePartsProps) {
       {/* Lats / back — large rounded shape spanning upper torso */}
       <MuscleGroupShape
         group="back"
-        fill={fillFor('back')}
         onPress={onMusclePress}
         labelX={100}
         labelY={115}
@@ -385,7 +406,6 @@ function BackMuscles(props: MusclePartsProps) {
       {/* Shoulder mid (rear portion) */}
       <MuscleGroupShape
         group="shoulder_mid"
-        fill={fillFor('shoulder_mid')}
         onPress={onMusclePress}
         labelX={56}
         labelY={78}
@@ -398,7 +418,6 @@ function BackMuscles(props: MusclePartsProps) {
       {/* Triceps — back of upper arms */}
       <MuscleGroupShape
         group="triceps"
-        fill={fillFor('triceps')}
         onPress={onMusclePress}
         labelX={51}
         labelY={120}
@@ -411,7 +430,6 @@ function BackMuscles(props: MusclePartsProps) {
       {/* Glutes — top of legs */}
       <MuscleGroupShape
         group="glutes"
-        fill={fillFor('glutes')}
         onPress={onMusclePress}
         labelX={100}
         labelY={203}
@@ -423,7 +441,6 @@ function BackMuscles(props: MusclePartsProps) {
       {/* Hamstrings — back of upper legs */}
       <MuscleGroupShape
         group="hamstrings"
-        fill={fillFor('hamstrings')}
         onPress={onMusclePress}
         labelX={80}
         labelY={250}
@@ -436,7 +453,6 @@ function BackMuscles(props: MusclePartsProps) {
       {/* Calves — lower legs */}
       <MuscleGroupShape
         group="calves"
-        fill={fillFor('calves')}
         onPress={onMusclePress}
         labelX={80}
         labelY={325}
@@ -454,9 +470,11 @@ function BackMuscles(props: MusclePartsProps) {
 // volume-zone secondary indicator + the active-deload overlay.
 // ---------------------------------------------------------------------------
 
+// Codex review pass 1 / Nit #3 — drop the unused `fill` prop.
+// MuscleGroupShape derives every visual state from its other inputs;
+// `fill` was a no-op prop sites passed redundantly.
 interface MuscleGroupShapeProps extends MusclePartsProps {
   group: VolumeGroup;
-  fill: string;
   onPress?: (group: VolumeGroup) => void;
   labelX: number;
   labelY: number;
@@ -465,6 +483,7 @@ interface MuscleGroupShapeProps extends MusclePartsProps {
 
 function MuscleGroupShape({
   group,
+  recoveryByGroup,
   zoneFor,
   deloadSet,
   volumeColor,
@@ -476,18 +495,66 @@ function MuscleGroupShape({
 }: MuscleGroupShapeProps) {
   const zone = zoneFor(group);
   const deloadActive = deloadSet.has(group);
+  const recovery = recoveryByGroup[group];
+  const state = recovery?.state ?? 'unstimulated';
+  const pct = recovery?.recoveryPct ?? 100;
+
+  // Codex review pass 1 / Critical #2 — rich accessibilityLabel.
+  // Screen-reader users were getting only the muscle name; the heatmap's
+  // primary information (state + percentage + deload flag) was visual-
+  // only. Build a full sentence so a tap announcement carries the data.
+  const stateLabelJa = STATE_LABEL_JA[state];
+  let a11yLabel = `${VOLUME_GROUP_LABEL_JA[group]}: ${stateLabelJa}`;
+  if (state !== 'unstimulated') {
+    a11yLabel += ` ${Math.round(pct)}%`;
+  }
+  if (zone) {
+    a11yLabel += `、${ZONE_LABEL_JA[zone]}`;
+  }
+  if (deloadActive) {
+    a11yLabel += '、デロード推奨中';
+  }
+
+  // Codex review pass 1 / Critical #1 — only assert button role +
+  // onPress when the parent supplied a press handler. A non-
+  // interactive consumer (e.g., a static preview) was getting 9
+  // announced "buttons" that did nothing.
+  const interactive = onPress !== undefined;
 
   return (
     <G
       onPress={onPress ? () => onPress(group) : undefined}
-      accessibilityLabel={GROUP_LABEL_JA[group]}
-      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityRole={interactive ? 'button' : 'image'}
     >
       {children}
+      {/*
+        Codex review pass 1 / Important #1 — non-color cue.
+        Render the recovery percentage as text overlay on each muscle
+        when a state is present (skip 'unstimulated' since that has no
+        meaningful percentage). This duplicates the color information
+        in textual form so red/green-blind users can still read the
+        state, and gives sighted users the precise percent at a glance
+        rather than estimating from the band color alone.
+      */}
+      {state !== 'unstimulated' && (
+        <SvgText
+          x={labelX}
+          y={labelY}
+          fontSize={9}
+          fontWeight="bold"
+          fill={colors.textPrimary}
+          textAnchor="middle"
+          stroke={colors.surface}
+          strokeWidth={0.5}
+        >
+          {`${Math.round(pct)}%`}
+        </SvgText>
+      )}
       {zone && (
         <Circle
-          cx={labelX}
-          cy={labelY}
+          cx={labelX + 18}
+          cy={labelY - 3}
           r={4}
           fill={volumeColor[zone]}
           stroke={colors.surface}
@@ -496,8 +563,8 @@ function MuscleGroupShape({
       )}
       {deloadActive && (
         <SvgText
-          x={labelX + 8}
-          y={labelY + 4}
+          x={labelX - 18}
+          y={labelY + 1}
           fontSize={11}
           fill={colors.error}
           fontWeight="bold"
@@ -508,18 +575,6 @@ function MuscleGroupShape({
     </G>
   );
 }
-
-const GROUP_LABEL_JA: Record<VolumeGroup, string> = {
-  chest: '大胸筋',
-  back: '広背筋',
-  shoulder_mid: '三角筋(中部)',
-  biceps: '上腕二頭筋',
-  triceps: '上腕三頭筋',
-  quads: '大腿四頭筋',
-  hamstrings: 'ハムストリングス',
-  glutes: '大臀筋',
-  calves: 'カーフ',
-};
 
 // ---------------------------------------------------------------------------
 // Legend dot
