@@ -127,13 +127,30 @@ export default function CompleteScreen() {
         equipment: onboarding.equipment,
       });
 
-      await updateProfileRepo(profile.id, {
+      // Phase C-2 transitional bridge integrity — Codex flagged
+      // that users coming through the C-1/C-2 → legacy pipeline
+      // would otherwise lose their v2 nickname (legacy createProfile
+      // signature pre-dates Onboarding v2 fields). Preserve it
+      // here as a 1-field augmentation to the existing patch;
+      // additional v2 fields (mealPlan, weeklyRatePct, etc) are
+      // null at this point in the C-2 cutover because their
+      // collecting screens aren't reachable yet via the legacy
+      // path. Phase D will replace this whole legacy completion
+      // path with the new flow's [12] complete screen and
+      // onboardingService.persistToProfile, at which point this
+      // patch reverts to the original (v2 fields flow through the
+      // service path).
+      const completionPatch: Partial<typeof profile> = {
         targetCalories,
         targetProteinG: macros.proteinG,
         targetFatG: macros.fatG,
         targetCarbG: macros.carbG,
         onboardingCompleted: true,
-      });
+      };
+      if (onboarding.nickname) {
+        completionPatch.nickname = onboarding.nickname;
+      }
+      await updateProfileRepo(profile.id, completionPatch);
 
       // NOTE: No auto-grant of Plus trial here. Trials are now user-initiated
       // via the "7日間無料トライアルで試す" button on the subscription screen.

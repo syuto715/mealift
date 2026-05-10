@@ -33,18 +33,33 @@ export type NicknameValidationResult =
 // candidates aren't worth the false-negative risk.
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F]/;
 
+// Codex pass 1 / Important fix — count user-visible characters,
+// not UTF-16 code units. JS string.length counts code units, so
+// `🍱`.length === 2 and an 11-emoji nickname falsely trips
+// too_long. Spread-iterator counts code points: handles surrogate
+// pairs (most emoji) correctly. Doesn't fully respect grapheme
+// clusters with ZWJ sequences (👨‍👩‍👧‍👦 counts as 4 code points,
+// not 1 grapheme), but the failure mode is now "user can fit
+// MORE than 20 graphemes" rather than "rejected at 11 emoji" —
+// strictly better for the JP sticker audience.
+function countCodePoints(s: string): number {
+  return [...s].length;
+}
+
 export function validateNickname(input: string): NicknameValidationResult {
   if (typeof input !== 'string') {
     return { valid: false, reason: 'empty' };
   }
   const trimmed = input.trim();
-  if (trimmed.length < NICKNAME_MIN_LENGTH) {
+  const codePoints = countCodePoints(trimmed);
+  if (codePoints < NICKNAME_MIN_LENGTH) {
     return { valid: false, reason: 'empty' };
   }
-  // Length check operates on the trimmed string. The TextInput
-  // also enforces maxLength={NICKNAME_MAX_LENGTH} as a hard hardware
-  // gate, so this branch mostly catches programmatic / paste edges.
-  if (trimmed.length > NICKNAME_MAX_LENGTH) {
+  // Length check operates on user-visible code points (see
+  // countCodePoints). The TextInput's maxLength prop counts UTF-16
+  // code units, so it kicks in earlier than this domain check —
+  // that's a known mismatch the Phase E QA pass will revisit.
+  if (codePoints > NICKNAME_MAX_LENGTH) {
     return { valid: false, reason: 'too_long' };
   }
   if (CONTROL_CHAR_RE.test(trimmed)) {

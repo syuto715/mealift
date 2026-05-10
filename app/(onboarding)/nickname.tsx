@@ -80,21 +80,17 @@ export default function NicknameScreen() {
 
   // Mount-time pre-fill: if the store has no nickname yet, hydrate
   // from existing profile so a returning user sees their current
-  // value. Pattern 10 cancellation guard against strict-mode dev
-  // double-fire — `cancelled` flag short-circuits the second mount's
-  // setState chain.
+  // value. No cancellation guard — there's no async boundary, so
+  // the only effect of strict-mode dev double-mount is a redundant
+  // setNickname write of the same value (idempotent).
   useEffect(() => {
-    let cancelled = false;
     if (storeNickname == null) {
       const initial = getInitialNickname(profile);
-      if (!cancelled && initial.length > 0) {
+      if (initial.length > 0) {
         setValue(initial);
         setNickname(initial);
       }
     }
-    return () => {
-      cancelled = true;
-    };
     // Intentionally only run on mount — re-running when profile
     // changes mid-flow would clobber an in-progress edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -35,6 +35,35 @@ describe('validateNickname — happy paths', () => {
     });
   });
 
+  // Codex pass 1 / Important regression — JS string.length counts
+  // UTF-16 code units, so `🍱`.repeat(11) has length 22 and would
+  // falsely trip too_long. countCodePoints uses spread-iterator
+  // counting which respects surrogate pairs.
+  it('11 emoji passes despite UTF-16 length=22 (code-point counting)', () => {
+    const elevenEmoji = '🍱'.repeat(11);
+    expect(elevenEmoji.length).toBe(22); // pin the FP gotcha
+    expect(validateNickname(elevenEmoji)).toEqual({
+      valid: true,
+      sanitized: elevenEmoji,
+    });
+  });
+
+  it('20 emoji passes (exact code-point boundary)', () => {
+    const twentyEmoji = '🍱'.repeat(20);
+    expect(validateNickname(twentyEmoji)).toEqual({
+      valid: true,
+      sanitized: twentyEmoji,
+    });
+  });
+
+  it('21 emoji rejected as too_long (boundary + 1)', () => {
+    const twentyOneEmoji = '🍱'.repeat(21);
+    expect(validateNickname(twentyOneEmoji)).toEqual({
+      valid: false,
+      reason: 'too_long',
+    });
+  });
+
   it('leading + trailing whitespace gets trimmed (sanitized != raw)', () => {
     expect(validateNickname('  しゅうと  ')).toEqual({
       valid: true,
@@ -167,8 +196,12 @@ describe('getInitialNickname', () => {
   });
 
   it('profile with empty-string nickname → falls through to displayName', () => {
-    // Empty-string nickname is "user cleared it" semantics — the
-    // helper treats it the same as null and falls through.
+    // Codex pass 1 / Nit fix — empty-string nickname is "no usable
+    // nickname present" (validation forbids submitting empty), so
+    // the helper treats it the same as null and falls through.
+    // Not "user wants empty" semantics — the screen rejects empty
+    // submissions, so a DB row with nickname=='' is corrupt /
+    // legacy-import data, not user intent.
     expect(
       getInitialNickname({
         nickname: '',
