@@ -14,6 +14,7 @@ import {
   type PFCLevel,
   MEAL_PLAN_OPTIONS,
   assertMealPlanCardProps,
+  formatPFCAccessibilityLabel,
   getMealPlanDescription,
   getMealPlanIcon,
   getMealPlanLabel,
@@ -89,7 +90,14 @@ export function MealPlanCard({
             ]}
             accessibilityRole="radio"
             accessibilityState={{ selected }}
-            accessibilityLabel={`${label} ${description}`}
+            // Codex pass 1 / Important #1 — the visible PFC badges
+            // are accessibilityElementsHidden (single-card focus
+            // model), so we have to bake the qualitative info into
+            // the parent label so screen-reader users get the same
+            // signal sighted users do.
+            accessibilityLabel={
+              `${label} ${description} ${formatPFCAccessibilityLabel(plan)}`
+            }
             testID={testID ? `${testID}-option-${plan}` : undefined}
           >
             <Text style={styles.icon}>{icon}</Text>

@@ -1,5 +1,4 @@
 import { type MealPlan, MEAL_PLAN_OPTIONS } from '../types/profile';
-import { FC_RATIOS } from './onboardingCalc';
 
 // v1.3.0 / Onboarding v2 / Phase B-4 — pure helpers for the
 // MealPlanCard component.
@@ -15,6 +14,9 @@ import { FC_RATIOS } from './onboardingCalc';
 //       re-exported from profile.ts (A-3 deliverable, single source).
 //   #18 single source of truth — qualitative PFC hint hand-mapped from
 //       UX intent, but cross-checked against FC_RATIOS ordering in tests.
+//       (Test imports FC_RATIOS directly from onboardingCalc to avoid
+//       coupling this render helper to the SQLite-pulling calc module —
+//       Codex pass 1 / Important #2.)
 //   #25 pure-helper extraction — the component file owns no logic.
 //   #28 __DEV__ assert + production sanitize hybrid.
 
@@ -169,11 +171,29 @@ export function sanitizeMealPlanCardProps(
   };
 }
 
-// === FC_RATIOS re-export passthrough for tests ===
+// === formatPFCAccessibilityLabel ===
 //
-// Tests in __tests__/mealPlanUtils.test.ts cross-check that the
-// qualitative carb/fat hints don't contradict the FC_RATIOS ordering
-// (e.g., washoku.fat=0.20 < low_carb.fat=0.65 implies hint.fat 'low' <
-// 'high'). Re-exporting here keeps the test surface entirely on
-// mealPlanUtils so the test file's import block stays focused.
-export { FC_RATIOS };
+// Codex pass 1 / Important #1 — VoiceOver / TalkBack users couldn't
+// see the visible PFC hint badges because the badges are
+// accessibilityElementsHidden (the parent card claims a single label).
+// Appending the qualitative info to the card's accessibilityLabel
+// preserves the single-card focus model while exposing the same
+// signal sighted users get from the badge column.
+//
+// JP screen-reader UX note: iOS VoiceOver reads "P" as "ピー" by
+// default which would garble the macro. Spelling out タンパク質 /
+// 脂質 / 糖質 + 低/中/高 produces the cleanest reading.
+const PFC_ACCESSIBILITY_LEVEL: Record<PFCLevel, string> = {
+  low: '低',
+  mid: '中',
+  high: '高',
+};
+
+export function formatPFCAccessibilityLabel(plan: MealPlan): string {
+  const hint = PFC_HINTS[plan];
+  return (
+    `タンパク質${PFC_ACCESSIBILITY_LEVEL[hint.protein]} ` +
+    `脂質${PFC_ACCESSIBILITY_LEVEL[hint.fat]} ` +
+    `糖質${PFC_ACCESSIBILITY_LEVEL[hint.carb]}`
+  );
+}

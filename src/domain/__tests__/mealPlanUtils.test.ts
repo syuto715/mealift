@@ -3,10 +3,15 @@
 // TODO 12 (no jest-expo / RNTL preset); the component's logic is
 // covered through these helpers.
 //
-// mealPlanUtils imports onboardingCalc (for FC_RATIOS) which imports
-// workoutRepository which pulls in expo-sqlite. Mock the DB-side
-// imports so jest's CJS runtime doesn't choke on the ESM SQLite
-// module — same pattern Phase 6.0 muscleRecoveryHours.test.ts and
+// FC_RATIOS is the canonical fat/carb ratio table; we import it
+// here directly from onboardingCalc to cross-check the qualitative
+// PFC hints. mealPlanUtils itself does NOT depend on onboardingCalc
+// (Codex pass 1 / Important #2 — keeping the render helper free of
+// SQLite-pulling imports). The test file pays the DB-mock cost
+// because it bridges the two layers; the production layer doesn't.
+//
+// onboardingCalc → workoutRepository → expo-sqlite chain, hence the
+// CJS shims — same pattern Phase 6.0 muscleRecoveryHours.test.ts and
 // Phase B-3 paceSelectorUtils.test.ts established.
 jest.mock('../../infra/database/connection', () => ({
   getDatabase: jest.fn(),
@@ -15,6 +20,7 @@ jest.mock('../../utils/id', () => ({ generateId: () => 'stub-id' }));
 
 import {
   MEAL_PLAN_OPTIONS,
+  type PFCLevel,
   getMealPlanLabel,
   getMealPlanDescription,
   getMealPlanIcon,
@@ -22,8 +28,9 @@ import {
   isValidMealPlan,
   assertMealPlanCardProps,
   sanitizeMealPlanCardProps,
-  FC_RATIOS,
+  formatPFCAccessibilityLabel,
 } from '../mealPlanUtils';
+import { FC_RATIOS } from '../onboardingCalc';
 
 // ---------------------------------------------------------------------------
 // MEAL_PLAN_OPTIONS — sign-off pin
@@ -136,38 +143,60 @@ describe('getMealPlanPFCHint', () => {
   // Pattern 18 cross-check: keep the qualitative hints in lockstep
   // with FC_RATIOS so any future onboardingCalc ratio retune that
   // changes the *ordering* of plans surfaces as a test failure here.
-  // We only assert *unambiguous* relative orderings — the hint table
-  // is UX-intent-driven (e.g., balanced is mid/mid/mid even though
-  // its carb ratio is numerically 0.7), so we don't pin per-plan
-  // levels against absolute FC thresholds.
-  it('hint.fat ordering preserves FC_RATIOS.fat ordering for unambiguous pairs', () => {
-    // washoku has the lowest fat ratio (0.20); low_carb has the
-    // highest (0.65). The qualitative hint must reflect that:
-    //   washoku.fat ('low') < low_carb.fat ('high').
-    expect(FC_RATIOS.washoku.fat).toBeLessThan(FC_RATIOS.low_carb.fat);
-    const fatLevelOrder: Record<'low' | 'mid' | 'high', number> = {
-      low: 0,
-      mid: 1,
-      high: 2,
-    };
-    expect(
-      fatLevelOrder[getMealPlanPFCHint('washoku').fat],
-    ).toBeLessThan(fatLevelOrder[getMealPlanPFCHint('low_carb').fat]);
+  //
+  // Codex pass 1 / Important #3 — the original cross-check only
+  // pinned the two extreme pairs (washoku vs low_carb), leaving
+  // many plausible regressions uncaught (e.g., flipping
+  // balanced.fat from 'mid' to 'high' would still pass with just
+  // the endpoint check). The expanded loop iterates over every
+  // unordered pair with a strict FC_RATIOS difference and asserts
+  // the qualitative bucket ordering is monotonic — ties are
+  // allowed because the 3-bucket low/mid/high resolution can't
+  // distinguish all 5 numeric ratios.
+  const LEVEL_ORDER: Record<PFCLevel, number> = {
+    low: 0,
+    mid: 1,
+    high: 2,
+  };
+
+  it('hint.fat ordering is monotonic with FC_RATIOS.fat across all pairs', () => {
+    for (const a of MEAL_PLAN_OPTIONS) {
+      for (const b of MEAL_PLAN_OPTIONS) {
+        if (a === b) continue;
+        if (FC_RATIOS[a].fat < FC_RATIOS[b].fat) {
+          expect(
+            LEVEL_ORDER[getMealPlanPFCHint(a).fat],
+          ).toBeLessThanOrEqual(
+            LEVEL_ORDER[getMealPlanPFCHint(b).fat],
+          );
+        }
+      }
+    }
   });
 
-  it('hint.carb ordering preserves FC_RATIOS.carbs ordering for unambiguous pairs', () => {
-    // washoku has the highest carb ratio (0.80); low_carb the lowest
-    // (0.35). Qualitative hint must mirror: washoku 'high' >
-    // low_carb 'low'.
-    expect(FC_RATIOS.washoku.carbs).toBeGreaterThan(FC_RATIOS.low_carb.carbs);
-    const carbLevelOrder: Record<'low' | 'mid' | 'high', number> = {
-      low: 0,
-      mid: 1,
-      high: 2,
-    };
-    expect(
-      carbLevelOrder[getMealPlanPFCHint('washoku').carb],
-    ).toBeGreaterThan(carbLevelOrder[getMealPlanPFCHint('low_carb').carb]);
+  it('hint.carb ordering is monotonic with FC_RATIOS.carbs across all pairs', () => {
+    for (const a of MEAL_PLAN_OPTIONS) {
+      for (const b of MEAL_PLAN_OPTIONS) {
+        if (a === b) continue;
+        if (FC_RATIOS[a].carbs < FC_RATIOS[b].carbs) {
+          expect(
+            LEVEL_ORDER[getMealPlanPFCHint(a).carb],
+          ).toBeLessThanOrEqual(
+            LEVEL_ORDER[getMealPlanPFCHint(b).carb],
+          );
+        }
+      }
+    }
+  });
+
+  it('endpoint pairs use distinct buckets (not all collapsed to mid)', () => {
+    // Sanity guard — monotonicity alone allows the trivial
+    // all-'mid' table to pass. Pin the extremes so the cross-check
+    // can't be silently weakened.
+    expect(getMealPlanPFCHint('washoku').fat).toBe('low');
+    expect(getMealPlanPFCHint('low_carb').fat).toBe('high');
+    expect(getMealPlanPFCHint('washoku').carb).toBe('high');
+    expect(getMealPlanPFCHint('low_carb').carb).toBe('low');
   });
 
   it('every plan in MEAL_PLAN_OPTIONS has a PFC hint', () => {
@@ -180,6 +209,41 @@ describe('getMealPlanPFCHint', () => {
       expect(['low', 'mid', 'high']).toContain(hint.protein);
       expect(['low', 'mid', 'high']).toContain(hint.fat);
       expect(['low', 'mid', 'high']).toContain(hint.carb);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatPFCAccessibilityLabel — Codex pass 1 / Important #1
+// ---------------------------------------------------------------------------
+
+describe('formatPFCAccessibilityLabel', () => {
+  it('spells out macro names + level so VoiceOver reads cleanly', () => {
+    // iOS VoiceOver reads "P" as "ピー" by default; spelling out
+    // タンパク質 / 脂質 / 糖質 + 低/中/高 is the only safe form.
+    expect(formatPFCAccessibilityLabel('balanced')).toBe(
+      'タンパク質中 脂質中 糖質中',
+    );
+    expect(formatPFCAccessibilityLabel('washoku')).toBe(
+      'タンパク質中 脂質低 糖質高',
+    );
+    expect(formatPFCAccessibilityLabel('high_protein')).toBe(
+      'タンパク質高 脂質中 糖質低',
+    );
+    expect(formatPFCAccessibilityLabel('low_carb')).toBe(
+      'タンパク質高 脂質高 糖質低',
+    );
+    expect(formatPFCAccessibilityLabel('fasting')).toBe(
+      'タンパク質中 脂質中 糖質中',
+    );
+  });
+
+  it('produces non-empty output for every plan', () => {
+    for (const plan of MEAL_PLAN_OPTIONS) {
+      const label = formatPFCAccessibilityLabel(plan);
+      expect(label).toMatch(/タンパク質/);
+      expect(label).toMatch(/脂質/);
+      expect(label).toMatch(/糖質/);
     }
   });
 });
