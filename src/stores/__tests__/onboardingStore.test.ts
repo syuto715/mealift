@@ -290,6 +290,28 @@ describe('useOnboardingStore — prefillFromProfile', () => {
     expect(s.dailyCalorieTarget).toBeNull();
     expect(s.pfcTargets).toBeNull();
   });
+
+  // Codex review pass 1 / Important #1 — parseDateOrNull defense.
+  // A malformed ISO string from sync poison / manual edit would
+  // yield Invalid Date, which still satisfies `Date | null` and
+  // breaks downstream formatting. Drop to null on bad input.
+  it('drops malformed estimatedTargetDate ISO to null (Invalid Date defense)', () => {
+    const p: Profile = {
+      ...makeFullProfile(),
+      estimatedTargetDate: 'not-an-iso' as unknown as Profile['estimatedTargetDate'],
+    };
+    useOnboardingStore.getState().prefillFromProfile(p);
+    expect(useOnboardingStore.getState().estimatedTargetDate).toBeNull();
+  });
+
+  it('drops empty-string estimatedTargetDate to null', () => {
+    const p: Profile = {
+      ...makeFullProfile(),
+      estimatedTargetDate: '' as unknown as Profile['estimatedTargetDate'],
+    };
+    useOnboardingStore.getState().prefillFromProfile(p);
+    expect(useOnboardingStore.getState().estimatedTargetDate).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

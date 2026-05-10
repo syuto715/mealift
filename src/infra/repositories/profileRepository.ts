@@ -23,36 +23,55 @@ import { enqueueRowFromTable } from './syncRepository';
 // raw row value is outside the literal union (corrupt sync, manual
 // DB edit), return null rather than letting an invalid value
 // propagate into the UI.
-function narrowWeeklyRatePct(raw: unknown): WeeklyRatePct | null {
+// Codex review pass 1 / Important #3 — narrow helpers exported
+// for direct unit testing (uncovered before this fix). The actual
+// Profile shaping path still goes through rowToProfile.
+export function narrowWeeklyRatePct(raw: unknown): WeeklyRatePct | null {
   if (typeof raw !== 'number') return null;
   return (WEEKLY_RATE_PCT_OPTIONS as readonly number[]).includes(raw)
     ? (raw as WeeklyRatePct)
     : null;
 }
 
-function narrowMealPlan(raw: unknown): MealPlan | null {
+export function narrowMealPlan(raw: unknown): MealPlan | null {
   if (typeof raw !== 'string') return null;
   return (MEAL_PLAN_OPTIONS as readonly string[]).includes(raw)
     ? (raw as MealPlan)
     : null;
 }
 
-function narrowProteinFactor(raw: unknown): ProteinFactor | null {
+export function narrowProteinFactor(raw: unknown): ProteinFactor | null {
   if (typeof raw !== 'number') return null;
   return (PROTEIN_FACTOR_OPTIONS as readonly number[]).includes(raw)
     ? (raw as ProteinFactor)
     : null;
 }
 
-function narrowWeeklyDistribution(raw: unknown): WeeklyDistribution | null {
+export function narrowWeeklyDistribution(raw: unknown): WeeklyDistribution | null {
   if (raw === 'even' || raw === 'cheat_days') return raw;
   return null;
 }
 
-// JSON-array columns (meal_timings, cheat_days). Phase 4.1 + 6.1
-// safeParseArray pattern — return [] on parse failure / non-array.
-// null when the column itself is null (un-set onboarding step).
-function parseJsonArrayOrNull<T>(
+// JSON-array columns (meal_timings, cheat_days). Phase 4.1 + 4.2 +
+// 6.1 safeParseArray pattern — return null when the column itself
+// is null (un-set onboarding step), null on parse failure / non-
+// array, and FILTER (not reject) item-level corruption.
+//
+// Codex review pass 1 / Important #2 (REJECT, design choice):
+// Filter-vs-reject for item-level corruption is the existing
+// codebase convention (Phase 4.2 safeParseVolumeGroups,
+// Phase 4.0 safeParseArray). Trade-off:
+//   - Filter (current): partially-valid array → user sees the valid
+//     items, can re-pick the missing ones. Sync poison drops one
+//     muscle / meal slot, the rest survive.
+//   - Reject (rejected here): one bad item → return null → user
+//     re-picks the entire field. Forces them to redo their work
+//     on every sync drift.
+// Filter wins on UX cost; the silent-drop concern is mitigated by
+// the surrounding *_OPTIONS validation Codex flagged separately
+// (any out-of-domain literal-union value is dropped at the typed
+// narrow* helpers above, not here).
+export function parseJsonArrayOrNull<T>(
   raw: unknown,
   itemPredicate: (x: unknown) => x is T,
 ): T[] | null {
@@ -195,6 +214,21 @@ export async function updateProfile(id: string, updates: Partial<Profile>): Prom
     planExpiresAt: 'plan_expires_at',
     notificationsSubmissionEnabled: 'notifications_submission_enabled',
     plateStepKg: 'plate_step_kg',
+    // v1.3.0 / Onboarding v2 / Phase A-3 Codex pass 1 / Critical —
+    // every v30 column wired into the write path. Without these
+    // entries, Profile's typed v2 fields could be passed through
+    // updateProfile and silently dropped at the SQL layer (the
+    // type system says writable, the runtime persists nothing).
+    nickname: 'nickname',
+    weeklyRatePct: 'weekly_rate_pct',
+    mealPlan: 'meal_plan',
+    mealTimings: 'meal_timings',
+    proteinFactor: 'protein_factor',
+    weeklyDistribution: 'weekly_distribution',
+    cheatDays: 'cheat_days',
+    onboardingStep: 'onboarding_step',
+    onboardingStartedAt: 'onboarding_started_at',
+    estimatedTargetDate: 'estimated_target_date',
   };
 
   const BOOL_KEYS = new Set([
@@ -202,11 +236,22 @@ export async function updateProfile(id: string, updates: Partial<Profile>): Prom
     'adaptiveGoalEnabled',
     'notificationsSubmissionEnabled',
   ]);
+  // JSON-array columns serialize back to TEXT for storage. The
+  // narrow*-then-parse pair on the read side (rowToProfile) plus
+  // JSON.stringify here keeps the SQLite TEXT ↔ Postgres jsonb
+  // boundary consistent.
+  const JSON_ARRAY_KEYS = new Set(['mealTimings', 'cheatDays']);
   for (const [key, column] of Object.entries(fieldMap)) {
     if (key in updates) {
       fields.push(`${column} = ?`);
       const val = (updates as Record<string, unknown>)[key];
-      values.push(BOOL_KEYS.has(key) ? (val ? 1 : 0) : (val as string | number | null));
+      if (BOOL_KEYS.has(key)) {
+        values.push(val ? 1 : 0);
+      } else if (JSON_ARRAY_KEYS.has(key)) {
+        values.push(val == null ? null : JSON.stringify(val));
+      } else {
+        values.push(val as string | number | null);
+      }
     }
   }
 

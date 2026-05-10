@@ -151,6 +151,18 @@ const INITIAL_STATE: OnboardingData = {
   pfcTargets: null,
 };
 
+// Codex review pass 1 / Important #1 — Invalid Date guard for the
+// store's runtime cache. Profile carries ISO strings; new Date(...)
+// on a malformed string returns Invalid Date which still satisfies
+// `Date | null` at the type level. Phase 6.1 established the same
+// regex defense at the SQL boundary; this layer is the secondary
+// belt-and-suspenders for the in-memory cache.
+function parseDateOrNull(iso: string | null): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 export const useOnboardingStore = create<OnboardingState>((set) => ({
   ...INITIAL_STATE,
 
@@ -217,9 +229,13 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
       weeklyDistribution: profile.weeklyDistribution,
       cheatDays: profile.cheatDays,
       onboardingStep: profile.onboardingStep,
-      estimatedTargetDate: profile.estimatedTargetDate
-        ? new Date(profile.estimatedTargetDate)
-        : null,
+      // Codex review pass 1 / Important #1 — defensive Date
+      // reconstruction. A malformed ISO string from sync poison
+      // / manual edit would yield `Invalid Date` (NaN getTime),
+      // which still satisfies `Date | null` and would break later
+      // formatting / comparison code (Phase 6.1 lesson). Drop to
+      // null on bad input.
+      estimatedTargetDate: parseDateOrNull(profile.estimatedTargetDate),
       // bmr / tdee / dailyCalorieTarget / pfcTargets are NOT
       // serialized in profiles — recomputed by calculateAll on
       // first prefill-aware screen mount.
