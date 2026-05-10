@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ScrollView,
   View,
@@ -69,18 +69,40 @@ export default function MuscleHeatmapScreen() {
   const [loading, setLoading] = useState(true);
   const [side, setSide] = useState<'front' | 'back'>('front');
   const [selectedGroup, setSelectedGroup] = useState<VolumeGroup | null>(null);
+  // Codex review pass 1 / Critical — track the profile id from the
+  // previous focus run so a Pro→Pro account swap clears stale data
+  // BEFORE the new fetch starts. Without this, the previous user's
+  // heatmap stays visible (and tappable through to their detail
+  // modal) during the in-flight Promise.all on the new profile.
+  const prevProfileIdRef = useRef<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       if (!profile?.id || !unlocked) {
-        // Codex review pass 1 / Phase 5.2 lesson — clear stale state
-        // when leaving the gated path so an account swap or
-        // downgrade doesn't keep the previous user's data painted.
         setData(null);
         setSelectedGroup(null);
         setLoading(false);
+        prevProfileIdRef.current = null;
         return;
       }
+      // Profile-swap defense (Critical fix) — clear immediately on a
+      // profile change, not after the new fetch resolves.
+      if (
+        prevProfileIdRef.current !== null &&
+        prevProfileIdRef.current !== profile.id
+      ) {
+        setData(null);
+        setSelectedGroup(null);
+      }
+      prevProfileIdRef.current = profile.id;
+      // Codex review pass 1 / Important — flip loading=true at every
+      // fetch start so a transition from lock-state (unlocked false→true)
+      // or a refetch after a previous failure doesn't leave the
+      // empty-state "データの取得に失敗しました" copy painted during
+      // the in-flight Promise.all. Render gate is (loading && data === null);
+      // when stale data IS painted (same-profile refocus), loading=true
+      // simply runs alongside it as silent stale-while-revalidate.
+      setLoading(true);
       let cancelled = false;
       (async () => {
         try {
