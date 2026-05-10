@@ -8,6 +8,12 @@ import type {
   WeeklyDistribution,
   MacroKey,
 } from '../types/profile';
+import { calculateBMR, calculateTDEE, calculateAge } from '../domain/calories';
+import {
+  calculateDailyTarget,
+  estimateTargetDate,
+  calculatePFCTargetsByMealPlan,
+} from '../domain/onboardingCalc';
 
 // v1.3.0 / Onboarding v2 / Phase A-3 — onboardingStore extension.
 //
@@ -163,7 +169,7 @@ function parseDateOrNull(iso: string | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export const useOnboardingStore = create<OnboardingState>((set) => ({
+export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   ...INITIAL_STATE,
 
   // Build 14/15 bulk setters
@@ -178,15 +184,60 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
   setField: (field, value) =>
     set({ [field]: value } as Partial<OnboardingData>),
 
-  // Phase A-4 will swap this stub for actual onboardingCalc imports.
-  // Keeping it as a no-op (rather than throwing) so screens that
-  // call it during A-3 development don't crash; the cache fields
-  // simply stay null until A-4 lands.
+  // Phase A-4 — actual logic. Reads the user's collected v2 fields
+  // from store state and populates the 5 cache fields. The required
+  // v2 fields are the ones the user explicitly chooses (weeklyRatePct,
+  // targetWeightKg, proteinFactor, mealPlan); the existing
+  // gender/birthYear/height/weight/activity defaults are populated
+  // from the body-info / activity-level screens before [10] fires
+  // calculateAll, so we trust those.
+  //
+  // No-op when any required v2 field is still null — calling
+  // calculateAll mid-flow shouldn't crash; the cache stays at its
+  // last computed state (or the INITIAL_STATE null if never
+  // calculated). UI guards against rendering pre-calculation cache
+  // via null checks.
   calculateAll: () => {
-    // TODO Phase A-4: read currentWeightKg / weeklyRatePct / etc
-    // from get() and call calculateBMR / calculateTDEE /
-    // calculateDailyTarget / estimateTargetDate /
-    // calculatePFCTargetsByMealPlan; then set the cache fields.
+    const s = get();
+    if (
+      s.weeklyRatePct === null ||
+      s.targetWeightKg === null ||
+      s.proteinFactor === null ||
+      s.mealPlan === null
+    ) {
+      return;
+    }
+    const age = calculateAge(s.birthYear);
+    // Mifflin-St Jeor returns a real number; round at the cache
+    // boundary so downstream UI / persisted Profile see integer
+    // calories the way the rest of the app expects.
+    const bmr = Math.round(
+      calculateBMR(s.currentWeightKg, s.heightCm, age, s.gender),
+    );
+    const tdee = calculateTDEE(bmr, s.activityLevel);
+    const dailyCalorieTarget = calculateDailyTarget({
+      currentWeight: s.currentWeightKg,
+      weeklyRatePct: s.weeklyRatePct,
+      tdee,
+    });
+    const { date: estimatedTargetDate } = estimateTargetDate({
+      currentWeight: s.currentWeightKg,
+      targetWeight: s.targetWeightKg,
+      weeklyRatePct: s.weeklyRatePct,
+    });
+    const pfcTargets = calculatePFCTargetsByMealPlan({
+      dailyCalorie: dailyCalorieTarget,
+      currentWeight: s.currentWeightKg,
+      proteinFactor: s.proteinFactor,
+      mealPlan: s.mealPlan,
+    });
+    set({
+      bmr,
+      tdee,
+      dailyCalorieTarget,
+      estimatedTargetDate,
+      pfcTargets,
+    });
   },
 
   // Phase A-5 will swap this stub for an onboardingService call

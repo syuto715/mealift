@@ -1,3 +1,13 @@
+// Phase A-4 — onboardingStore now imports onboardingCalc which
+// imports workoutRepository (for suggestProteinFactor's
+// getRecentSessionCount). Mock the DB-side imports so jest's CJS
+// runtime doesn't pull expo-sqlite. Same defensive boundary as
+// the other domain-level test files.
+jest.mock('../../infra/database/connection', () => ({
+  getDatabase: jest.fn(),
+}));
+jest.mock('../../utils/id', () => ({ generateId: () => 'stub-id' }));
+
 import { useOnboardingStore } from '../onboardingStore';
 import type { Profile } from '../../types/profile';
 
@@ -139,22 +149,76 @@ describe('useOnboardingStore — setField (generic type-safe)', () => {
 // 3. calculateAll / persistToProfile — A-3 stubs (no-op)
 // ---------------------------------------------------------------------------
 
-describe('useOnboardingStore — A-4 / A-5 stubs', () => {
-  it('calculateAll exists and is callable as a no-op', () => {
-    // Phase A-4 will replace the body; for A-3 the stub must at
-    // least be reachable without throwing.
-    expect(() => useOnboardingStore.getState().calculateAll()).not.toThrow();
-  });
-
-  it('calculateAll does NOT populate cache fields in A-3 (stub guarantee)', () => {
+describe('useOnboardingStore — calculateAll (Phase A-4 wired) + persistToProfile stub', () => {
+  it('calculateAll is no-op when required v2 fields are null', () => {
+    // Initial state has weeklyRatePct=null etc — calculateAll should
+    // bail without populating cache rather than crashing on a null
+    // weeklyRatePct dereference.
     useOnboardingStore.getState().calculateAll();
-    expect(useOnboardingStore.getState().bmr).toBeNull();
-    expect(useOnboardingStore.getState().tdee).toBeNull();
-    expect(useOnboardingStore.getState().dailyCalorieTarget).toBeNull();
-    expect(useOnboardingStore.getState().pfcTargets).toBeNull();
+    const s = useOnboardingStore.getState();
+    expect(s.bmr).toBeNull();
+    expect(s.tdee).toBeNull();
+    expect(s.dailyCalorieTarget).toBeNull();
+    expect(s.pfcTargets).toBeNull();
+    expect(s.estimatedTargetDate).toBeNull();
   });
 
-  it('persistToProfile returns a resolved Promise (callable as await)', async () => {
+  it('calculateAll populates all 5 cache fields when all v2 inputs are set', () => {
+    const s = useOnboardingStore.getState();
+    // Build 14/15 defaults: male / 1995 / 170cm / 70kg / moderate.
+    s.setField('targetWeightKg', 65);
+    s.setField('weeklyRatePct', -0.5);
+    s.setField('proteinFactor', 1.6);
+    s.setField('mealPlan', 'balanced');
+    s.calculateAll();
+    const after = useOnboardingStore.getState();
+    expect(after.bmr).not.toBeNull();
+    expect(after.tdee).not.toBeNull();
+    expect(after.dailyCalorieTarget).not.toBeNull();
+    expect(after.pfcTargets).not.toBeNull();
+    expect(after.estimatedTargetDate).toBeInstanceOf(Date);
+    // BMR / TDEE numerical sanity for default body inputs.
+    expect(after.bmr).toBeGreaterThan(1000);
+    expect(after.bmr).toBeLessThan(2500);
+    expect(after.tdee).toBeGreaterThan((after.bmr ?? 0) - 1);
+    // pfcTargets is a 3-key Record (Phase 6 #8 defensive shape).
+    expect(Object.keys(after.pfcTargets ?? {}).sort()).toEqual([
+      'carbs',
+      'fat',
+      'protein',
+    ]);
+  });
+
+  it('calculateAll output deterministic for fixed inputs', () => {
+    // Seed the same inputs twice; the cache must match. Pin against
+    // a future calculator drift (rounding, formula change).
+    const s = useOnboardingStore.getState();
+    s.setField('currentWeightKg', 70);
+    s.setField('heightCm', 170);
+    s.setField('birthYear', 1995);
+    s.setField('gender', 'male');
+    s.setField('activityLevel', 'moderate');
+    s.setField('targetWeightKg', 65);
+    s.setField('weeklyRatePct', -0.5);
+    s.setField('proteinFactor', 1.6);
+    s.setField('mealPlan', 'balanced');
+    s.calculateAll();
+    const first = {
+      bmr: useOnboardingStore.getState().bmr,
+      tdee: useOnboardingStore.getState().tdee,
+      dailyCalorieTarget: useOnboardingStore.getState().dailyCalorieTarget,
+      pfcTargets: useOnboardingStore.getState().pfcTargets,
+    };
+    s.calculateAll();
+    expect(useOnboardingStore.getState().bmr).toBe(first.bmr);
+    expect(useOnboardingStore.getState().tdee).toBe(first.tdee);
+    expect(useOnboardingStore.getState().dailyCalorieTarget).toBe(
+      first.dailyCalorieTarget,
+    );
+    expect(useOnboardingStore.getState().pfcTargets).toEqual(first.pfcTargets);
+  });
+
+  it('persistToProfile returns a resolved Promise (A-5 stub still in place)', async () => {
     await expect(
       useOnboardingStore.getState().persistToProfile(),
     ).resolves.toBeUndefined();
