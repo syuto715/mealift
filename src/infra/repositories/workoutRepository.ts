@@ -8,6 +8,11 @@ import { insertE1RMObservation } from './oneRepMaxRepository';
 import { computeRpeAdjustmentFactor } from '../../domain/rpeAdjustment';
 import { parseTargetReps } from '../../utils/parseTargetReps';
 import {
+  mapPrimaryMuscleToVolumeGroup,
+  VOLUME_GROUPS_ORDER,
+  type VolumeGroup,
+} from '../../domain/volumeLandmark';
+import {
   Exercise,
   ExerciseType,
   SetPattern,
@@ -356,6 +361,99 @@ export async function fetchRecentSetsForBias(
     e1rm: r.e1rm,
   }));
 }
+
+// ---------------------------------------------------------------------------
+// fetchLastTrainedByMuscle (Build 16 / Phase 6.1 — Muscle Recovery Heatmap)
+// ---------------------------------------------------------------------------
+//
+// Returns the most recent working-set (is_warmup=0) timestamp per
+// VolumeGroup for `profileId`, with `null` for muscles the user has
+// never trained. The heatmap (Phase 6.2/6.3) feeds this into
+// computeRecoveryState (Phase 6.1 domain) to render the body diagram.
+//
+// SQL pattern: same JOIN structure as fetchRecentSetsForBias and
+// aggregateWeeklySetsByMuscle (Phase 2.1 / 3.2 lineage).
+//   - Soft-delete filtered on workout_sessions, workout_sets, and
+//     exercises (Phase 2.1 audits convention).
+//   - profile scoped via the session join (Phase 3.2 cross-profile
+//     leak fix pattern).
+//   - is_warmup=0 (warm-up sets don't drive recovery debt).
+//   - primary_muscle IS NOT NULL filter at the SQL layer + a second
+//     pass via mapPrimaryMuscleToVolumeGroup in JS to fold sub-area
+//     primary_muscles (chest_upper / chest_mid / chest_lower) into
+//     their parent VolumeGroup. The null-mapped 11 fine-grained
+//     primary_muscles (back_mid, shoulder_front, etc — TODO 18) are
+//     dropped here and never appear in the heatmap.
+//
+// Return shape: Record<VolumeGroup, Date | null> with all 9 keys
+// populated. The `Date | null` value carries the per-group MAX
+// started_at (parsed via new Date(isoString)) or null when the user
+// has no qualifying set for that muscle. Caller passes this straight
+// to summarizeRecovery.
+//
+// dbOverride is the standard Phase 1.1 / 2.1 / 3.2 test seam.
+export async function fetchLastTrainedByMuscle(
+  profileId: string,
+  dbOverride?: SQLite.SQLiteDatabase,
+): Promise<Record<VolumeGroup, Date | null>> {
+  const db = dbOverride ?? (await getDatabase());
+
+  const rows = await db.getAllAsync<{
+    primary_muscle: string;
+    last_iso: string;
+  }>(
+    `SELECT e.primary_muscle AS primary_muscle,
+            MAX(s.started_at) AS last_iso
+       FROM workout_sets ws
+       JOIN workout_sessions s ON s.id = ws.session_id
+       JOIN exercises e ON e.id = ws.exercise_id
+      WHERE s.profile_id = ?
+        AND s.deleted_at IS NULL
+        AND ws.deleted_at IS NULL
+        AND ws.is_warmup = 0
+        AND e.deleted_at IS NULL
+        AND e.primary_muscle IS NOT NULL
+      GROUP BY e.primary_muscle`,
+    [profileId],
+  );
+
+  // Initialize the 9-group result with nulls so muscles the user has
+  // never trained still land in the output (caller would otherwise
+  // have to defensively handle missing keys, mirror of Phase 4.1
+  // safeParseVolumeGroups defense). Aggregation across sub-area
+  // primary_muscles happens in JS because the SQL GROUP BY operates
+  // on the 20-key primary_muscle taxonomy.
+  const result: Record<VolumeGroup, Date | null> = {
+    chest: null,
+    back: null,
+    shoulder_mid: null,
+    biceps: null,
+    triceps: null,
+    quads: null,
+    hamstrings: null,
+    glutes: null,
+    calves: null,
+  };
+
+  for (const row of rows) {
+    const group = mapPrimaryMuscleToVolumeGroup(row.primary_muscle);
+    if (group === null) continue; // back_mid / core_abs etc — out of taxonomy
+    if (!row.last_iso) continue;
+    const candidate = new Date(row.last_iso);
+    if (Number.isNaN(candidate.getTime())) continue;
+    const current = result[group];
+    if (current === null || candidate.getTime() > current.getTime()) {
+      result[group] = candidate;
+    }
+  }
+
+  return result;
+}
+
+// Re-export for downstream consumers (Phase 6.2/6.3 UI imports the
+// type directly from this module rather than reaching into volumeLandmark).
+export { VOLUME_GROUPS_ORDER };
+export type { VolumeGroup };
 
 export async function getExerciseDefaultRestSeconds(exerciseId: string): Promise<number | null> {
   const db = await getDatabase();
