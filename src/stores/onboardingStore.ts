@@ -199,14 +199,45 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   // via null checks.
   calculateAll: () => {
     const s = get();
+    // Codex review pass 1 / Important #1 — also gate on
+    // onboardingStep so the placeholder legacy defaults
+    // (birthYear=1995, heightCm=170, etc — INITIAL_STATE
+    // scaffolding) can't silently flow into a "computed plan".
+    // By onboardingStep >= 8 the user has advanced past the
+    // body-info / activity-level / goal-weight / meal-plan /
+    // protein-target screens, all of which populate the
+    // legacy + v2 inputs.
     if (
       s.weeklyRatePct === null ||
       s.targetWeightKg === null ||
       s.proteinFactor === null ||
-      s.mealPlan === null
+      s.mealPlan === null ||
+      s.onboardingStep < 8
     ) {
+      // Codex review pass 1 / Important #2 — clear cache when
+      // inputs become incomplete (user navigated back, reset a
+      // field, etc). Without this clear, the cache could describe
+      // inputs the store no longer carries — UI gating on cache
+      // null vs computed needs the cache to track the inputs.
+      set({
+        bmr: null,
+        tdee: null,
+        dailyCalorieTarget: null,
+        estimatedTargetDate: null,
+        pfcTargets: null,
+      });
       return;
     }
+    // Locals carry the post-narrow types so the calc helpers
+    // receive non-null inputs. The early-return above already
+    // guarantees these are non-null; re-bind for TS narrowing
+    // (TypeScript doesn't narrow object property accesses
+    // through aggregated boolean conditions).
+    const weeklyRatePct = s.weeklyRatePct;
+    const targetWeightKg = s.targetWeightKg;
+    const proteinFactor = s.proteinFactor;
+    const mealPlan = s.mealPlan;
+
     const age = calculateAge(s.birthYear);
     // Mifflin-St Jeor returns a real number; round at the cache
     // boundary so downstream UI / persisted Profile see integer
@@ -217,19 +248,19 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     const tdee = calculateTDEE(bmr, s.activityLevel);
     const dailyCalorieTarget = calculateDailyTarget({
       currentWeight: s.currentWeightKg,
-      weeklyRatePct: s.weeklyRatePct,
+      weeklyRatePct,
       tdee,
     });
     const { date: estimatedTargetDate } = estimateTargetDate({
       currentWeight: s.currentWeightKg,
-      targetWeight: s.targetWeightKg,
-      weeklyRatePct: s.weeklyRatePct,
+      targetWeight: targetWeightKg,
+      weeklyRatePct,
     });
     const pfcTargets = calculatePFCTargetsByMealPlan({
       dailyCalorie: dailyCalorieTarget,
       currentWeight: s.currentWeightKg,
-      proteinFactor: s.proteinFactor,
-      mealPlan: s.mealPlan,
+      proteinFactor,
+      mealPlan,
     });
     set({
       bmr,

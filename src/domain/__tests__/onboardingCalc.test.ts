@@ -53,9 +53,9 @@ describe('calculateDailyTarget', () => {
   });
 
   it('bulk (rate>0) adds a kcal surplus to tdee', () => {
-    // 70kg × +0.25%/week = +0.175 kg/week × 7700 / 7 = +192.5 → round to 193
-    // 2500 + 193 = 2693 (Math.round of 2692.5 → 2693 with banker rounding;
-    // JS Math.round goes 2693 here)
+    // 70kg × +0.25%/week = +0.175 kg/week × 7700 / 7 = +192.5 →
+    // Math.round(192.5) = 193 (JS rounds half toward +∞, NOT
+    // banker's rounding). 2500 + 193 = 2693.
     const out = calculateDailyTarget({
       currentWeight: 70,
       weeklyRatePct: 0.25,
@@ -318,18 +318,19 @@ describe('predictBodyComposition', () => {
   });
 
   it('cut + 2.2 g/kg → fat ratio 0.85 (85% fat = athlete tier)', () => {
-    // -5kg × 0.85 = -4.25 fat, -0.75 muscle (in mathematical theory).
-    // FP arithmetic: 1 - 0.85 = 0.15000000000000002 (not exact),
-    // so -5 × 0.15... = -0.7500000000000001, and Math.round of
-    // -7.500000000000001 = -8 (the fractional is slightly more
-    // than 0.5 below zero, so it rounds down). muscleMassChange
-    // = -0.8 from the actual implementation.
+    // -5kg × 0.15 (exact muscle ratio from
+    // COMPOSITION_BY_PROTEIN_FACTOR lookup) = -0.75. Math.round of
+    // -7.5 = -7 (JS rounds ties toward +∞), so muscleMassChange
+    // = -0.7. Codex review pass 1 fix — the original
+    // implementation derived muscle as `1 - fatRatio` which hit
+    // FP noise (0.15000000000000002) and produced -0.8; the
+    // pre-computed muscle ratio in the lookup table dodges that.
     const out = predictBodyComposition({
       currentWeight: 70,
       targetWeight: 65,
       proteinFactor: 2.2,
     });
-    expect(out.muscleMassChange).toBe(-0.8);
+    expect(out.muscleMassChange).toBe(-0.7);
   });
 
   it('cut + 3.0 g/kg → fat ratio 0.90 (max muscle preservation)', () => {

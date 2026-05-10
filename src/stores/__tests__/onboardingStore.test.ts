@@ -151,9 +151,6 @@ describe('useOnboardingStore — setField (generic type-safe)', () => {
 
 describe('useOnboardingStore — calculateAll (Phase A-4 wired) + persistToProfile stub', () => {
   it('calculateAll is no-op when required v2 fields are null', () => {
-    // Initial state has weeklyRatePct=null etc — calculateAll should
-    // bail without populating cache rather than crashing on a null
-    // weeklyRatePct dereference.
     useOnboardingStore.getState().calculateAll();
     const s = useOnboardingStore.getState();
     expect(s.bmr).toBeNull();
@@ -163,13 +160,37 @@ describe('useOnboardingStore — calculateAll (Phase A-4 wired) + persistToProfi
     expect(s.estimatedTargetDate).toBeNull();
   });
 
-  it('calculateAll populates all 5 cache fields when all v2 inputs are set', () => {
+  // Codex pass 1 / Important #1 — onboardingStep guard pins the
+  // legacy-fields-trustworthy boundary. v2 fields can be set (e.g.
+  // by direct setField in a test or a programmatic path) but the
+  // user hasn't actually advanced past [8] protein-target, so legacy
+  // body fields are still INITIAL_STATE placeholders. calculateAll
+  // must refuse to compute on placeholder data.
+  it('calculateAll refuses to compute when onboardingStep < 8 (placeholder-data defense)', () => {
+    const s = useOnboardingStore.getState();
+    s.setField('targetWeightKg', 65);
+    s.setField('weeklyRatePct', -0.5);
+    s.setField('proteinFactor', 1.6);
+    s.setField('mealPlan', 'balanced');
+    // onboardingStep stays at 0 (INITIAL_STATE).
+    s.calculateAll();
+    const after = useOnboardingStore.getState();
+    expect(after.bmr).toBeNull();
+    expect(after.tdee).toBeNull();
+    expect(after.dailyCalorieTarget).toBeNull();
+    expect(after.pfcTargets).toBeNull();
+  });
+
+  it('calculateAll populates all 5 cache fields when v2 inputs set + onboardingStep >= 8', () => {
     const s = useOnboardingStore.getState();
     // Build 14/15 defaults: male / 1995 / 170cm / 70kg / moderate.
     s.setField('targetWeightKg', 65);
     s.setField('weeklyRatePct', -0.5);
     s.setField('proteinFactor', 1.6);
     s.setField('mealPlan', 'balanced');
+    // Simulate user reaching [8] protein-target (advancing through
+    // [3] body / [4] activity / [5] goal-weight / [6] meal-plan).
+    s.setField('onboardingStep', 8);
     s.calculateAll();
     const after = useOnboardingStore.getState();
     expect(after.bmr).not.toBeNull();
@@ -177,11 +198,9 @@ describe('useOnboardingStore — calculateAll (Phase A-4 wired) + persistToProfi
     expect(after.dailyCalorieTarget).not.toBeNull();
     expect(after.pfcTargets).not.toBeNull();
     expect(after.estimatedTargetDate).toBeInstanceOf(Date);
-    // BMR / TDEE numerical sanity for default body inputs.
     expect(after.bmr).toBeGreaterThan(1000);
     expect(after.bmr).toBeLessThan(2500);
     expect(after.tdee).toBeGreaterThan((after.bmr ?? 0) - 1);
-    // pfcTargets is a 3-key Record (Phase 6 #8 defensive shape).
     expect(Object.keys(after.pfcTargets ?? {}).sort()).toEqual([
       'carbs',
       'fat',
@@ -190,8 +209,6 @@ describe('useOnboardingStore — calculateAll (Phase A-4 wired) + persistToProfi
   });
 
   it('calculateAll output deterministic for fixed inputs', () => {
-    // Seed the same inputs twice; the cache must match. Pin against
-    // a future calculator drift (rounding, formula change).
     const s = useOnboardingStore.getState();
     s.setField('currentWeightKg', 70);
     s.setField('heightCm', 170);
@@ -202,6 +219,7 @@ describe('useOnboardingStore — calculateAll (Phase A-4 wired) + persistToProfi
     s.setField('weeklyRatePct', -0.5);
     s.setField('proteinFactor', 1.6);
     s.setField('mealPlan', 'balanced');
+    s.setField('onboardingStep', 10);
     s.calculateAll();
     const first = {
       bmr: useOnboardingStore.getState().bmr,
@@ -216,6 +234,47 @@ describe('useOnboardingStore — calculateAll (Phase A-4 wired) + persistToProfi
       first.dailyCalorieTarget,
     );
     expect(useOnboardingStore.getState().pfcTargets).toEqual(first.pfcTargets);
+  });
+
+  // Codex pass 1 / Important #2 — stale cache clear. After a
+  // successful calculateAll, if the user navigates back and clears
+  // a v2 field, calculateAll must clear the cache so downstream UI
+  // doesn't render derived values for inputs the store no longer
+  // carries.
+  it('calculateAll clears cache when inputs become incomplete', () => {
+    const s = useOnboardingStore.getState();
+    // Seed full inputs + compute.
+    s.setField('targetWeightKg', 65);
+    s.setField('weeklyRatePct', -0.5);
+    s.setField('proteinFactor', 1.6);
+    s.setField('mealPlan', 'balanced');
+    s.setField('onboardingStep', 10);
+    s.calculateAll();
+    expect(useOnboardingStore.getState().bmr).not.toBeNull();
+    // User navigates back, clears a required v2 field.
+    s.setField('mealPlan', null);
+    s.calculateAll();
+    const after = useOnboardingStore.getState();
+    expect(after.bmr).toBeNull();
+    expect(after.tdee).toBeNull();
+    expect(after.dailyCalorieTarget).toBeNull();
+    expect(after.estimatedTargetDate).toBeNull();
+    expect(after.pfcTargets).toBeNull();
+  });
+
+  it('calculateAll clears cache when onboardingStep regresses below 8', () => {
+    const s = useOnboardingStore.getState();
+    s.setField('targetWeightKg', 65);
+    s.setField('weeklyRatePct', -0.5);
+    s.setField('proteinFactor', 1.6);
+    s.setField('mealPlan', 'balanced');
+    s.setField('onboardingStep', 10);
+    s.calculateAll();
+    expect(useOnboardingStore.getState().bmr).not.toBeNull();
+    // Reset progress (e.g., user goes back several screens).
+    s.setField('onboardingStep', 5);
+    s.calculateAll();
+    expect(useOnboardingStore.getState().bmr).toBeNull();
   });
 
   it('persistToProfile returns a resolved Promise (A-5 stub still in place)', async () => {

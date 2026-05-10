@@ -60,16 +60,27 @@ const FC_RATIOS: Record<MealPlan, { fat: number; carbs: number }> = {
   fasting: { fat: 0.35, carbs: 0.65 },
 };
 
-// predictBodyComposition fat ratio per protein factor (Mealift
+// predictBodyComposition composition per protein factor (Mealift
 // original mapping, sign-off § 8.6). Higher protein → more
 // muscle-preservation during cut / muscle-prioritized gain during
-// bulk. Numbers pinned by sign-off; do not edit without
-// re-running the user testing.
-const FAT_RATIO_BY_PROTEIN_FACTOR: Record<number, number> = {
-  1.0: 0.6,
-  1.6: 0.75,
-  2.2: 0.85,
-  3.0: 0.9,
+// bulk. Numbers pinned by sign-off; do not edit without re-running
+// the user testing.
+//
+// Codex review pass 1 (Phase A-4) — store exact muscle ratios
+// rather than computing `1 - fatRatio` at runtime. The subtraction
+// hits IEEE 754 FP noise: `1 - 0.85 = 0.15000000000000002`, so
+// `currentWeight × (1 - 0.85) × 10` becomes -7.5...01 and
+// JS Math.round rounds it to -8 (one off from the algebraic -7.5
+// answer). Pre-computing the muscle ratio ensures the displayed
+// number matches the obvious algebraic result.
+const COMPOSITION_BY_PROTEIN_FACTOR: Record<
+  number,
+  { fat: number; muscle: number }
+> = {
+  1.0: { fat: 0.6, muscle: 0.4 },
+  1.6: { fat: 0.75, muscle: 0.25 },
+  2.2: { fat: 0.85, muscle: 0.15 },
+  3.0: { fat: 0.9, muscle: 0.1 },
 };
 
 // ---------------------------------------------------------------------------
@@ -201,12 +212,15 @@ export function predictBodyComposition(input: {
 
   // Lookup over the 4 supported protein factors; out-of-domain
   // inputs degrade to the linear formula (sign-off § 8.6 baseline).
-  const fatRatio =
-    FAT_RATIO_BY_PROTEIN_FACTOR[input.proteinFactor] ??
-    0.6 + (input.proteinFactor - 1.0) * 0.15;
+  // Muscle ratio uses the same lookup to dodge `1 - fatRatio` FP
+  // noise (see COMPOSITION_BY_PROTEIN_FACTOR comment above).
+  const composition = COMPOSITION_BY_PROTEIN_FACTOR[input.proteinFactor];
+  const fatRatio = composition?.fat ?? 0.6 + (input.proteinFactor - 1.0) * 0.15;
+  const muscleRatio =
+    composition?.muscle ?? 0.4 - (input.proteinFactor - 1.0) * 0.15;
 
   const fatChange = totalKgChange * fatRatio;
-  const muscleChange = totalKgChange * (1 - fatRatio);
+  const muscleChange = totalKgChange * muscleRatio;
 
   // Body-fat percentage delta is approximate — the 0.5 attenuation
   // keeps the displayed value conservative (real fat-pct movement
