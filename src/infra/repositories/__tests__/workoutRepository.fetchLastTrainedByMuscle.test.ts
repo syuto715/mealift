@@ -305,4 +305,53 @@ describe('fetchLastTrainedByMuscle', () => {
     expect(out.chest).toBeNull();
     expect(out.biceps).toEqual(new Date('2026-05-09T10:00:00.000Z'));
   });
+
+  // Codex review pass 1 / Important #2 — non-canonical-but-parseable
+  // ISO strings (no Z, space separator) get parsed as LOCAL time by
+  // JS Date, which would reintroduce TZ-dependent state into the
+  // heatmap. The defensive regex must reject these before the Date
+  // constructor sees them.
+  it('rejects ISO strings without trailing Z (would parse as local time)', async () => {
+    const tzPoisonDb = {
+      getAllAsync: (async <T,>(): Promise<T[]> => {
+        return [
+          // No 'Z' suffix — JS Date treats this as local time.
+          { primary_muscle: 'chest_mid', last_iso: '2026-05-09T10:00:00' },
+          { primary_muscle: 'arms_biceps', last_iso: '2026-05-09T10:00:00.000Z' },
+        ] as T[];
+      }) as SQLiteDatabase['getAllAsync'],
+    } as unknown as SQLiteDatabase;
+    const out = await fetchLastTrainedByMuscle('p1', tzPoisonDb);
+    expect(out.chest).toBeNull();
+    expect(out.biceps).toEqual(new Date('2026-05-09T10:00:00.000Z'));
+  });
+
+  it('rejects ISO strings with space separator (non-canonical)', async () => {
+    const tzPoisonDb = {
+      getAllAsync: (async <T,>(): Promise<T[]> => {
+        return [
+          // SQL "datetime('now')" yields this format — would also be
+          // local-time interpreted by JS Date.
+          { primary_muscle: 'chest_mid', last_iso: '2026-05-09 10:00:00' },
+        ] as T[];
+      }) as SQLiteDatabase['getAllAsync'],
+    } as unknown as SQLiteDatabase;
+    const out = await fetchLastTrainedByMuscle('p1', tzPoisonDb);
+    expect(out.chest).toBeNull();
+  });
+
+  it('accepts the no-millisecond canonical UTC ISO form', async () => {
+    // Date.prototype.toISOString always emits ms, but the regex also
+    // admits the no-ms canonical form for robustness against any
+    // upstream that doesn't include them.
+    const db = {
+      getAllAsync: (async <T,>(): Promise<T[]> => {
+        return [
+          { primary_muscle: 'chest_mid', last_iso: '2026-05-09T10:00:00Z' },
+        ] as T[];
+      }) as SQLiteDatabase['getAllAsync'],
+    } as unknown as SQLiteDatabase;
+    const out = await fetchLastTrainedByMuscle('p1', db);
+    expect(out.chest).toEqual(new Date('2026-05-09T10:00:00Z'));
+  });
 });

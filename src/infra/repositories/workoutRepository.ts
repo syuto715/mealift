@@ -9,7 +9,6 @@ import { computeRpeAdjustmentFactor } from '../../domain/rpeAdjustment';
 import { parseTargetReps } from '../../utils/parseTargetReps';
 import {
   mapPrimaryMuscleToVolumeGroup,
-  VOLUME_GROUPS_ORDER,
   type VolumeGroup,
 } from '../../domain/volumeLandmark';
 import {
@@ -439,6 +438,16 @@ export async function fetchLastTrainedByMuscle(
     const group = mapPrimaryMuscleToVolumeGroup(row.primary_muscle);
     if (group === null) continue; // back_mid / core_abs etc — out of taxonomy
     if (!row.last_iso) continue;
+    // Codex review pass 1 / Important #2 — defensive UTC-ISO shape
+    // check before Date parsing. workout_sessions.started_at is
+    // always written via Date.toISOString() (UTC, ends in Z), but a
+    // corrupted / hand-edited row could yield a string like
+    // "2026-05-09 10:00:00" or "2026-05-09T10:00:00" that JS Date
+    // happily parses as LOCAL time, undercutting the UTC contract
+    // and reintroducing TZ-dependent state into a heatmap that's
+    // supposed to be locale-stable. Drop anything that doesn't
+    // match the canonical Date.toISOString() shape.
+    if (!ISO_UTC_RE.test(row.last_iso)) continue;
     const candidate = new Date(row.last_iso);
     if (Number.isNaN(candidate.getTime())) continue;
     const current = result[group];
@@ -450,10 +459,10 @@ export async function fetchLastTrainedByMuscle(
   return result;
 }
 
-// Re-export for downstream consumers (Phase 6.2/6.3 UI imports the
-// type directly from this module rather than reaching into volumeLandmark).
-export { VOLUME_GROUPS_ORDER };
-export type { VolumeGroup };
+// Canonical UTC ISO matched by Date.prototype.toISOString. Accepts
+// both the millisecond-bearing form (default toISOString output) and
+// the no-millisecond form (theoretical, but valid ISO 8601 + UTC).
+const ISO_UTC_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 
 export async function getExerciseDefaultRestSeconds(exerciseId: string): Promise<number | null> {
   const db = await getDatabase();

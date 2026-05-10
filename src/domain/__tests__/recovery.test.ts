@@ -40,17 +40,23 @@ describe('computeRecoveryState — special paths', () => {
     expect(r.hoursSinceLastTrained).toBeNull();
   });
 
-  it('recoveryHours = 0 → recovered, 100% (defensive divide-by-zero)', () => {
-    const r = computeRecoveryState(hoursAgo(1), NOW, 0);
+  it('recoveryHours = 0 → recovered, 100% with real elapsed hours preserved (defensive divide-by-zero)', () => {
+    // Codex review pass 1 / Important #1 — hoursSinceLastTrained
+    // must reflect actual elapsed time even when recoveryHours
+    // is degenerate. UI surfaces the elapsed value as "Nh前" copy;
+    // hardcoding 0 would render "0時間前" for a muscle the user
+    // actually trained 10h ago.
+    const r = computeRecoveryState(hoursAgo(10), NOW, 0);
     expect(r.state).toBe('recovered');
     expect(r.recoveryPct).toBe(100);
-    expect(r.hoursSinceLastTrained).toBe(0);
+    expect(r.hoursSinceLastTrained).toBeCloseTo(10, 5);
   });
 
-  it('recoveryHours < 0 → recovered, 100% (defensive)', () => {
-    const r = computeRecoveryState(hoursAgo(1), NOW, -5);
+  it('recoveryHours < 0 → recovered, 100% with elapsed hours preserved', () => {
+    const r = computeRecoveryState(hoursAgo(5), NOW, -5);
     expect(r.state).toBe('recovered');
     expect(r.recoveryPct).toBe(100);
+    expect(r.hoursSinceLastTrained).toBeCloseTo(5, 5);
   });
 
   it('clock skew (lastTrained > now) → recovering, 0%, 0 hours', () => {

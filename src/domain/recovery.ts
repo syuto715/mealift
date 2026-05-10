@@ -76,23 +76,28 @@ export function computeRecoveryState(
     };
   }
 
-  // Defensive: if a caller passes a degenerate recovery window, treat
-  // the muscle as instantly recovered. Avoids divide-by-zero and
-  // hides any future MUSCLE_RECOVERY_HOURS drift to 0.
-  if (recoveryHours <= 0) {
-    return {
-      hoursSinceLastTrained: 0,
-      recoveryPct: 100,
-      state: 'recovered',
-    };
-  }
-
   const diffMs = now.getTime() - lastTrained.getTime();
   // Clock-skew guard: a future-dated lastTrained (sync race / device
   // clock drift) would otherwise produce a negative recoveryPct that
   // clamps weirdly. Floor to 0 hours = "just trained" — the most
   // conservative reading.
   const hoursSince = diffMs <= 0 ? 0 : diffMs / HOUR_MS;
+
+  // Codex review pass 1 / Important #1 — defensive recoveryHours≤0
+  // path now preserves the real elapsed hours rather than stamping
+  // 0. The previous branch was hiding the actual time-since-last-
+  // trained from the UI ("120時間前" copy would show "0時間前" for
+  // a muscle that just happened to lose its recovery-window value).
+  // recoveryPct still locks at 100 because the formula would divide
+  // by zero; only the displayed elapsed-hours value is corrected.
+  if (recoveryHours <= 0) {
+    return {
+      hoursSinceLastTrained: hoursSince,
+      recoveryPct: 100,
+      state: 'recovered',
+    };
+  }
+
   const recoveryPct = Math.min(100, Math.max(0, (hoursSince / recoveryHours) * 100));
 
   let state: RecoveryStateLabel;
