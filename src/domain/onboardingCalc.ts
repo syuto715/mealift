@@ -257,6 +257,87 @@ export function predictBodyComposition(input: {
 }
 
 // ---------------------------------------------------------------------------
+// 4b. forecastBodyComposition (Phase B-5 extension of #4)
+// ---------------------------------------------------------------------------
+
+export interface BodyCompositionSnapshot {
+  weightKg: number;
+  muscleKg: number;
+  fatKg: number;
+}
+
+export interface BodyCompositionForecast {
+  current: BodyCompositionSnapshot;
+  target: BodyCompositionSnapshot;
+}
+
+// Sign-off § Phase B-5 §1 — when the caller doesn't know the user's
+// actual body fat percentage (e.g., onboarding [10] motivation
+// screen, before any HealthKit pull or self-report), the forecast
+// assumes 25% as a typical-adult default. Rationale:
+//   - [10] runs after gender input but before any body-comp
+//     measurement, so we'd still need to assume *something*.
+//   - The chart is qualitative (relative bars), not a medical
+//     forecast. A wider documented assumption beats a misleadingly
+//     specific gender-based one.
+//   - Caller can override via input.currentBodyFatPct when known.
+export const DEFAULT_CURRENT_BODY_FAT_PCT = 25;
+
+// predictBodyComposition (#4) returns *deltas* with mixed units
+// (bodyFatChange in %, muscleMassChange in kg) — useful for the
+// "+1.5 kg muscle / -3.0 kg fat" copy line on [10] motivation, but
+// not enough for a stacked-bar chart that wants absolute current
+// and target compositions in symmetric kg units.
+//
+// forecastBodyComposition fills that gap: same composition table
+// (Pattern 18 — single source of truth via COMPOSITION_BY_PROTEIN_
+// FACTOR), but produces absolute snapshots for both endpoints.
+//
+// Test cross-check (Phase B-5 / Pattern 18) — the muscle delta
+// returned here MUST equal predictBodyComposition's
+// muscleMassChange to 1 decimal, otherwise the two helpers have
+// drifted and the chart contradicts the copy line.
+export function forecastBodyComposition(input: {
+  currentWeight: number;
+  targetWeight: number;
+  proteinFactor: number;
+  currentBodyFatPct?: number;
+}): BodyCompositionForecast {
+  const currentBfPct = input.currentBodyFatPct ?? DEFAULT_CURRENT_BODY_FAT_PCT;
+  const currentFatKg = (input.currentWeight * currentBfPct) / 100;
+  const currentMuscleKg = input.currentWeight - currentFatKg;
+
+  // Identical fallback shape to predictBodyComposition (#4) so the
+  // two helpers stay numerically consistent for out-of-domain
+  // proteinFactor values.
+  const composition = COMPOSITION_BY_PROTEIN_FACTOR[input.proteinFactor];
+  const fatRatio = composition?.fat ?? 0.6 + (input.proteinFactor - 1.0) * 0.15;
+  const muscleRatio =
+    composition?.muscle ?? 0.4 - (input.proteinFactor - 1.0) * 0.15;
+
+  const totalKgChange = input.targetWeight - input.currentWeight;
+  const targetFatKg = currentFatKg + totalKgChange * fatRatio;
+  const targetMuscleKg = currentMuscleKg + totalKgChange * muscleRatio;
+
+  return {
+    current: {
+      weightKg: input.currentWeight,
+      muscleKg: round1(currentMuscleKg),
+      fatKg: round1(currentFatKg),
+    },
+    target: {
+      weightKg: input.targetWeight,
+      muscleKg: round1(targetMuscleKg),
+      fatKg: round1(targetFatKg),
+    },
+  };
+}
+
+function round1(v: number): number {
+  return Math.round(v * 10) / 10;
+}
+
+// ---------------------------------------------------------------------------
 // 5. suggestProteinFactor — workout-frequency-driven recommendation
 // ---------------------------------------------------------------------------
 
