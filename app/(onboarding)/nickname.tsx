@@ -148,11 +148,12 @@ export default function NicknameScreen() {
     } catch (err) {
       console.warn('[onboarding/nickname] persistToProfile failed', err);
     }
-    // Phase C-3 transitional bridge — flip this to '/body-info'
-    // when the new flow's [3] screen ships. body-and-training is
-    // the closest legacy semantic match (covers legacy [3][4]
-    // combined).
-    router.push('/(onboarding)/body-and-training');
+    // Phase C-3 flipped this to the new flow's [3] /body-info
+    // screen. The C-2 stop-gap (legacy /body-and-training) is no
+    // longer reachable from this CTA. body-info itself still
+    // bridges to /body-and-training until Phase C-4 ships
+    // /activity (Pattern 26 transitional chain continues).
+    router.push('/(onboarding)/body-info');
   }, [isAdvancing, persistToProfile, setNickname, value]);
 
   const inputBorderColor = errorMessage

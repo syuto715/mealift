@@ -607,3 +607,62 @@ describe('useOnboardingStore — setNickname (Phase C-2)', () => {
     expect(s1.weeklyRatePct).toBe(0.25);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 9. Body info actions — Phase C-3 atomic value+step setters
+// ---------------------------------------------------------------------------
+
+describe('useOnboardingStore — body-info actions (Phase C-3)', () => {
+  it('setGender writes value AND bumps step 0 → 3 atomically', () => {
+    useOnboardingStore.getState().setGender('female');
+    const s = useOnboardingStore.getState();
+    expect(s.gender).toBe('female');
+    expect(s.onboardingStep).toBe(3);
+  });
+
+  it('setBirthYear writes value AND bumps step 0 → 3 atomically', () => {
+    useOnboardingStore.getState().setBirthYear(1985);
+    const s = useOnboardingStore.getState();
+    expect(s.birthYear).toBe(1985);
+    expect(s.onboardingStep).toBe(3);
+  });
+
+  it('setHeightCm writes value AND bumps step', () => {
+    useOnboardingStore.getState().setHeightCm(175.5);
+    const s = useOnboardingStore.getState();
+    expect(s.heightCm).toBe(175.5);
+    expect(s.onboardingStep).toBe(3);
+  });
+
+  it('setCurrentWeightKg writes value AND bumps step', () => {
+    useOnboardingStore.getState().setCurrentWeightKg(68.5);
+    const s = useOnboardingStore.getState();
+    expect(s.currentWeightKg).toBe(68.5);
+    expect(s.onboardingStep).toBe(3);
+  });
+
+  it('preserves a higher onboardingStep (no regression on revisit)', () => {
+    // User is at step 7 and edits body-info via back-nav; step
+    // must NOT regress.
+    useOnboardingStore.getState().setField('onboardingStep', 7);
+    useOnboardingStore.getState().setGender('other');
+    useOnboardingStore.getState().setBirthYear(2000);
+    useOnboardingStore.getState().setHeightCm(180);
+    useOnboardingStore.getState().setCurrentWeightKg(80);
+    expect(useOnboardingStore.getState().onboardingStep).toBe(7);
+  });
+
+  it('all 4 actions independent — none clobber the others', () => {
+    const s0 = useOnboardingStore.getState();
+    s0.setGender('male');
+    s0.setBirthYear(1990);
+    s0.setHeightCm(173);
+    s0.setCurrentWeightKg(72);
+    const s1 = useOnboardingStore.getState();
+    expect(s1.gender).toBe('male');
+    expect(s1.birthYear).toBe(1990);
+    expect(s1.heightCm).toBe(173);
+    expect(s1.currentWeightKg).toBe(72);
+    expect(s1.onboardingStep).toBe(3);
+  });
+});

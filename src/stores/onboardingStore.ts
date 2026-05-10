@@ -135,6 +135,17 @@ export interface OnboardingActions {
   // nickname AND bumps onboardingStep monotonically in one set()
   // call so the two values stay consistent for nav-guard reads.
   setNickname: (value: string) => void;
+
+  // Phase C-3 — Body info screen [3] field setters. Each writes
+  // its field AND bumps onboardingStep monotonically to 3. The
+  // screen calls them per-input (slider / segmented control /
+  // TextInput onChangeText) so partial input still pins the step
+  // cursor — a user who types their birth year then closes the
+  // app should resume on [3], not [2].
+  setGender: (value: Gender) => void;
+  setBirthYear: (value: number) => void;
+  setHeightCm: (value: number) => void;
+  setCurrentWeightKg: (value: number) => void;
 }
 
 export type OnboardingState = OnboardingData & OnboardingActions;
@@ -372,5 +383,32 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     set((s) => ({
       nickname: value,
       onboardingStep: Math.max(s.onboardingStep, 2),
+    })),
+
+  // Phase C-3 — Body info screen [3] field setters. Each carries
+  // the same atomic value+step semantics as setNickname (C-2),
+  // pinning the cursor at >=3 so partial input survives a mid-
+  // screen close. Per-field setters (rather than one bulk
+  // `setBodyInfo`) so the slider can fire on every drag-tick
+  // without forcing the screen to re-bundle all four values.
+  setGender: (value) =>
+    set((s) => ({
+      gender: value,
+      onboardingStep: Math.max(s.onboardingStep, 3),
+    })),
+  setBirthYear: (value) =>
+    set((s) => ({
+      birthYear: value,
+      onboardingStep: Math.max(s.onboardingStep, 3),
+    })),
+  setHeightCm: (value) =>
+    set((s) => ({
+      heightCm: value,
+      onboardingStep: Math.max(s.onboardingStep, 3),
+    })),
+  setCurrentWeightKg: (value) =>
+    set((s) => ({
+      currentWeightKg: value,
+      onboardingStep: Math.max(s.onboardingStep, 3),
     })),
 }));
