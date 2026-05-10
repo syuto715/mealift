@@ -143,13 +143,12 @@ export default function ActivityScreen() {
     } catch (err) {
       console.warn('[onboarding/activity] persistToProfile failed', err);
     }
-    // Phase C-5 transitional bridge — flip to '/goal-weight' when
-    // the new flow's [5] ships. body-and-training is the closest
-    // legacy semantic match (covers the [3][4] combined inputs);
-    // recon confirmed complete.tsx preserves both activityLevel +
-    // trainingDaysPerWeek (lines 124-125), so the bridge has
-    // integrity without C-2-style hardening.
-    router.push('/(onboarding)/body-and-training');
+    // Phase C-5 flipped this to the new flow's [5] /goal-weight
+    // screen. The C-4 stop-gap (legacy /body-and-training) is no
+    // longer reachable from this CTA. goal-weight itself still
+    // bridges to /body-and-training until Phase D ships
+    // /goal-summary (Pattern 26 transitional chain continues).
+    router.push('/(onboarding)/goal-weight');
   }, [allValid, hasInteracted, isAdvancing, persistToProfile]);
 
   return (

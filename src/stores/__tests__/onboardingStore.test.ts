@@ -712,3 +712,62 @@ describe('useOnboardingStore — activity actions (Phase C-4)', () => {
     expect(s1.mealPlan).toBe('washoku');
   });
 });
+
+// ---------------------------------------------------------------------------
+// 11. Goal weight actions — Phase C-5 atomic value+step setters
+// ---------------------------------------------------------------------------
+
+describe('useOnboardingStore — goal-weight actions (Phase C-5)', () => {
+  it('setTargetWeightKg writes value AND bumps step 0 → 5', () => {
+    useOnboardingStore.getState().setTargetWeightKg(65);
+    const s = useOnboardingStore.getState();
+    expect(s.targetWeightKg).toBe(65);
+    expect(s.onboardingStep).toBe(5);
+  });
+
+  it('setTargetWeightKg accepts null (direction-change reset path)', () => {
+    useOnboardingStore.getState().setTargetWeightKg(65);
+    useOnboardingStore.getState().setTargetWeightKg(null);
+    expect(useOnboardingStore.getState().targetWeightKg).toBeNull();
+  });
+
+  it('setGoalType writes value AND bumps step 0 → 5', () => {
+    useOnboardingStore.getState().setGoalType('bulk');
+    const s = useOnboardingStore.getState();
+    expect(s.goalType).toBe('bulk');
+    expect(s.onboardingStep).toBe(5);
+  });
+
+  it('setWeeklyRatePct writes value AND bumps step 0 → 5', () => {
+    useOnboardingStore.getState().setWeeklyRatePct(-0.5);
+    const s = useOnboardingStore.getState();
+    expect(s.weeklyRatePct).toBe(-0.5);
+    expect(s.onboardingStep).toBe(5);
+  });
+
+  it('setWeeklyRatePct accepts null (auto-coordination reset path)', () => {
+    useOnboardingStore.getState().setWeeklyRatePct(-0.5);
+    useOnboardingStore.getState().setWeeklyRatePct(null);
+    expect(useOnboardingStore.getState().weeklyRatePct).toBeNull();
+  });
+
+  it('preserves a higher onboardingStep (no regression on revisit)', () => {
+    useOnboardingStore.getState().setField('onboardingStep', 9);
+    useOnboardingStore.getState().setGoalType('recomp');
+    useOnboardingStore.getState().setTargetWeightKg(72);
+    useOnboardingStore.getState().setWeeklyRatePct(0);
+    expect(useOnboardingStore.getState().onboardingStep).toBe(9);
+  });
+
+  it('3 actions independent — none clobber the others', () => {
+    const s0 = useOnboardingStore.getState();
+    s0.setGoalType('cut');
+    s0.setTargetWeightKg(65);
+    s0.setWeeklyRatePct(-0.5);
+    const s1 = useOnboardingStore.getState();
+    expect(s1.goalType).toBe('cut');
+    expect(s1.targetWeightKg).toBe(65);
+    expect(s1.weeklyRatePct).toBe(-0.5);
+    expect(s1.onboardingStep).toBe(5);
+  });
+});

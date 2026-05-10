@@ -127,19 +127,20 @@ export default function CompleteScreen() {
         equipment: onboarding.equipment,
       });
 
-      // Phase C-2 transitional bridge integrity — Codex flagged
-      // that users coming through the C-1/C-2 → legacy pipeline
-      // would otherwise lose their v2 nickname (legacy createProfile
-      // signature pre-dates Onboarding v2 fields). Preserve it
-      // here as a 1-field augmentation to the existing patch;
-      // additional v2 fields (mealPlan, weeklyRatePct, etc) are
-      // null at this point in the C-2 cutover because their
+      // Phase C-* transitional bridge integrity — preserve v2
+      // fields collected on the new flow screens that legacy
+      // createProfile's pre-Onboarding-v2 signature doesn't
+      // accept. Each conditional matches the Phase C kickoff
+      // for that screen:
+      //   - nickname (C-2)
+      //   - weeklyRatePct (C-5) — null until user reaches /
+      //     goal-weight; written when present.
+      // Other v2 fields (mealPlan, proteinFactor, mealTimings,
+      // etc.) are still null at this cutover point because their
       // collecting screens aren't reachable yet via the legacy
-      // path. Phase D will replace this whole legacy completion
-      // path with the new flow's [12] complete screen and
-      // onboardingService.persistToProfile, at which point this
-      // patch reverts to the original (v2 fields flow through the
-      // service path).
+      // path. Phase D replaces this completion path entirely
+      // and these conditionals revert (v2 fields flow through
+      // onboardingService.persistToProfile).
       const completionPatch: Partial<typeof profile> = {
         targetCalories,
         targetProteinG: macros.proteinG,
@@ -149,6 +150,9 @@ export default function CompleteScreen() {
       };
       if (onboarding.nickname) {
         completionPatch.nickname = onboarding.nickname;
+      }
+      if (onboarding.weeklyRatePct != null) {
+        completionPatch.weeklyRatePct = onboarding.weeklyRatePct;
       }
       await updateProfileRepo(profile.id, completionPatch);
 

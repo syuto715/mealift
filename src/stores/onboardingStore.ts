@@ -152,6 +152,15 @@ export interface OnboardingActions {
   // back-nav revisit doesn't regress the cursor.
   setActivityLevel: (value: ActivityLevel) => void;
   setTrainingDaysPerWeek: (value: number) => void;
+
+  // Phase C-5 — Goal weight + pace screen [5] field setters.
+  // Three intertwined fields written via three independent
+  // setters so per-input changes (B-2 slider tick, segmented
+  // tap, B-3 radio tap) update store without re-bundling.
+  // Step bumps to 5 monotonically.
+  setTargetWeightKg: (value: number | null) => void;
+  setGoalType: (value: GoalType) => void;
+  setWeeklyRatePct: (value: WeeklyRatePct | null) => void;
 }
 
 export type OnboardingState = OnboardingData & OnboardingActions;
@@ -431,5 +440,29 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     set((s) => ({
       trainingDaysPerWeek: value,
       onboardingStep: Math.max(s.onboardingStep, 4),
+    })),
+
+  // Phase C-5 — Goal weight + pace screen [5] field setters.
+  // setTargetWeightKg accepts null because back-nav direction
+  // changes (e.g., user revisits C-3 and lowers currentWeight
+  // below their stored targetWeight) can invalidate a previously
+  // chosen target; the screen sets null to force re-selection
+  // rather than carrying a stale inconsistent value.
+  // setWeeklyRatePct accepts null for the same reason — a
+  // direction flip changes which rates are legal.
+  setTargetWeightKg: (value) =>
+    set((s) => ({
+      targetWeightKg: value,
+      onboardingStep: Math.max(s.onboardingStep, 5),
+    })),
+  setGoalType: (value) =>
+    set((s) => ({
+      goalType: value,
+      onboardingStep: Math.max(s.onboardingStep, 5),
+    })),
+  setWeeklyRatePct: (value) =>
+    set((s) => ({
+      weeklyRatePct: value,
+      onboardingStep: Math.max(s.onboardingStep, 5),
     })),
 }));
