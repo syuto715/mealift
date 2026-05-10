@@ -157,7 +157,12 @@ describe('buildProfilePatch — partial-state gating', () => {
     expect(patch.proteinFactor).toBeUndefined();
   });
 
-  it('step=12 produces full patch with all v2 fields', () => {
+  it('step=12 produces full patch with v2 fields + recomputed PFC bundle', () => {
+    // Codex review pass 1 / Important — buildProfilePatch derives
+    // PFC + estimatedTargetDate from the snapshot inputs, NOT from
+    // the (potentially stale) store cache. Verify the patch carries
+    // values computed from the snapshot, not whatever values the
+    // test happens to plant in the cache fields.
     const patch = buildProfilePatch({
       store: makeStore({
         onboardingStep: 12,
@@ -169,20 +174,23 @@ describe('buildProfilePatch — partial-state gating', () => {
         activityLevel: 'moderate',
         targetWeightKg: 65,
         weeklyRatePct: -0.5,
-        estimatedTargetDate: new Date('2026-12-01T00:00:00.000Z'),
+        // Cache fields are intentionally bogus / out-of-sync — the
+        // service should ignore them and recompute from the inputs.
+        estimatedTargetDate: new Date('2099-01-01T00:00:00.000Z'),
+        bmr: 99999,
+        tdee: 99999,
+        dailyCalorieTarget: 99999,
+        pfcTargets: { protein: 999, fat: 999, carbs: 999 },
         mealPlan: 'balanced',
         mealTimings: ['breakfast', 'lunch', 'dinner'],
         proteinFactor: 1.6,
         weeklyDistribution: 'cheat_days',
         cheatDays: [0, 6],
-        bmr: 1700,
-        tdee: 2635,
-        dailyCalorieTarget: 2250,
-        pfcTargets: { protein: 112, fat: 60, carbs: 280 },
       }),
       existing: makeExistingProfile(),
       now: NOW,
     });
+    // Non-derived fields pass through:
     expect(patch.nickname).toBe('シュート');
     expect(patch.activityLevel).toBe('moderate');
     expect(patch.targetWeightKg).toBe(65);
@@ -192,11 +200,22 @@ describe('buildProfilePatch — partial-state gating', () => {
     expect(patch.proteinFactor).toBe(1.6);
     expect(patch.weeklyDistribution).toBe('cheat_days');
     expect(patch.cheatDays).toEqual([0, 6]);
-    // PFC cache → persisted target columns
-    expect(patch.targetCalories).toBe(2250);
+    // Derived fields recomputed from snapshot, not from stale cache:
+    // BMR (Mifflin male, age=31, 70kg, 170cm) = 1612.5 → 1613
+    // TDEE = 1613 × 1.55 (moderate) = 2500.15 → 2500
+    // dailyCalorieTarget = 2500 + (-385 from -0.5%) = 2115
+    // proteinG = 70 × 1.6 = 112; proteinKcal = 448
+    // remaining = 1667; balanced fat 30% / carbs 70%
+    // fatG = 1667 × 0.30 / 9 → 56; carbsG = 1667 × 0.70 / 4 → 292
+    expect(patch.targetCalories).toBe(2115);
     expect(patch.targetProteinG).toBe(112);
-    expect(patch.targetFatG).toBe(60);
-    expect(patch.targetCarbG).toBe(280);
+    expect(patch.targetFatG).toBe(56);
+    expect(patch.targetCarbG).toBe(292);
+    // estimatedTargetDate recomputed (NOT 2099-01-01).
+    expect(patch.estimatedTargetDate).not.toBe('2099-01-01T00:00:00.000Z');
+    expect(patch.estimatedTargetDate).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
   });
 
   it('step=5 with stale step >= 8 store fields skips them (trust boundary)', () => {
@@ -290,34 +309,146 @@ describe('buildProfilePatch — JSON-array fields', () => {
 // 3. buildProfilePatch — service-managed fields
 // ---------------------------------------------------------------------------
 
-describe('buildProfilePatch — Date → ISO 8601 boundary', () => {
-  it('Date → toISOString roundtrip (Phase A-1 schema = TEXT, not INTEGER ms)', () => {
-    const target = new Date('2026-12-01T00:00:00.000Z');
+describe('buildProfilePatch — Date → ISO 8601 boundary (recomputed from snapshot)', () => {
+  it('estimatedTargetDate recomputed from snapshot inputs, ignoring store cache (Codex pass 1 stale-cache fix)', () => {
+    // Plant a deliberately-wrong cache value; the service must
+    // ignore it and recompute from currentWeight/targetWeight/rate.
     const patch = buildProfilePatch({
       store: makeStore({
         onboardingStep: 5,
+        currentWeightKg: 70,
         targetWeightKg: 65,
         weeklyRatePct: -0.5,
-        estimatedTargetDate: target,
+        // Bogus stale cache:
+        estimatedTargetDate: new Date('2099-12-31T00:00:00.000Z'),
       }),
       existing: makeExistingProfile(),
       now: NOW,
     });
-    expect(patch.estimatedTargetDate).toBe('2026-12-01T00:00:00.000Z');
+    expect(patch.estimatedTargetDate).not.toBe('2099-12-31T00:00:00.000Z');
+    expect(patch.estimatedTargetDate).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
   });
 
-  it('null estimatedTargetDate stays null', () => {
+  it('estimatedTargetDate is null at step >= 5 when targetWeightKg / weeklyRatePct are unset', () => {
+    // Step gate is met but the inputs needed for the calc aren't.
+    // patch still records the field as null (write-through to clear).
     const patch = buildProfilePatch({
       store: makeStore({
         onboardingStep: 5,
-        targetWeightKg: 65,
-        weeklyRatePct: -0.5,
-        estimatedTargetDate: null,
+        targetWeightKg: null,
+        weeklyRatePct: null,
       }),
       existing: makeExistingProfile(),
       now: NOW,
     });
     expect(patch.estimatedTargetDate).toBeNull();
+  });
+});
+
+describe('buildProfilePatch — Codex pass 1 stale-cache resistance (Important)', () => {
+  // Tests that pin the new "service-side recompute" invariant:
+  // setField mutating an input AFTER calculateAll fired must NOT
+  // result in stale derived values landing in the patch.
+
+  it('PFC bundle recomputed when proteinFactor changes after calculateAll', () => {
+    // Imagine: user reaches [8] proteinFactor=2.2, calculateAll fires
+    // (cache populated for 2.2), user navigates back to [8] and
+    // changes to 1.6, then persistToProfile fires WITHOUT a fresh
+    // calculateAll. Cache still reflects 2.2; service must use 1.6.
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 8,
+        gender: 'male',
+        birthYear: 1995,
+        heightCm: 170,
+        currentWeightKg: 70,
+        activityLevel: 'moderate',
+        targetWeightKg: 65,
+        weeklyRatePct: -0.5,
+        mealPlan: 'balanced',
+        proteinFactor: 1.6, // Snapshot reflects 1.6
+        // Stale cache reflecting earlier 2.2 selection
+        pfcTargets: { protein: 154, fat: 50, carbs: 280 }, // 70×2.2=154
+        dailyCalorieTarget: 2115,
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    // Recomputed protein from snapshot (1.6 × 70 = 112), NOT cached 154
+    expect(patch.targetProteinG).toBe(112);
+    // F/C also recomputed because dailyCalorie & remaining differ
+    expect(patch.targetFatG).toBe(56);
+    expect(patch.targetCarbG).toBe(292);
+  });
+
+  it('PFC bundle null when cache is null but inputs are populated (calculateAll never fired)', () => {
+    // Coverage gap from Codex review: step >= 8 with all snapshot
+    // inputs set but ALL cache fields null (calculateAll didn't
+    // fire / failed). Service should still emit a valid patch with
+    // the bundle present (recomputed), not skip due to null cache.
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 8,
+        gender: 'male',
+        birthYear: 1995,
+        heightCm: 170,
+        currentWeightKg: 70,
+        activityLevel: 'moderate',
+        targetWeightKg: 65,
+        weeklyRatePct: -0.5,
+        mealPlan: 'balanced',
+        proteinFactor: 1.6,
+        // All cache null (calculateAll never ran):
+        bmr: null,
+        tdee: null,
+        dailyCalorieTarget: null,
+        estimatedTargetDate: null,
+        pfcTargets: null,
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.targetCalories).toBe(2115);
+    expect(patch.targetProteinG).toBe(112);
+    expect(patch.targetFatG).toBe(56);
+    expect(patch.targetCarbG).toBe(292);
+    // Also recomputes estimatedTargetDate.
+    expect(patch.estimatedTargetDate).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
+  });
+
+  it('PFC bundle persisted ATOMICALLY (cannot persist only half)', () => {
+    // Codex flag: targetCalories and pfcTargets had independent
+    // null checks in the original code. Refactor unifies them so a
+    // future cache-coherence break can't write only one half.
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 8,
+        gender: 'male',
+        birthYear: 1995,
+        heightCm: 170,
+        currentWeightKg: 70,
+        activityLevel: 'moderate',
+        targetWeightKg: 65,
+        weeklyRatePct: -0.5,
+        mealPlan: 'balanced',
+        proteinFactor: 1.6,
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    // All four target columns either all populated or all absent.
+    const hasCalories = patch.targetCalories !== undefined;
+    const hasProtein = patch.targetProteinG !== undefined;
+    const hasFat = patch.targetFatG !== undefined;
+    const hasCarb = patch.targetCarbG !== undefined;
+    expect(hasCalories).toBe(true);
+    expect(hasProtein).toBe(true);
+    expect(hasFat).toBe(true);
+    expect(hasCarb).toBe(true);
   });
 });
 

@@ -2,8 +2,15 @@ import {
   getProfile,
   updateProfile,
 } from '../repositories/profileRepository';
-import type { Profile } from '../../types/profile';
+import type { Profile, MacroKey } from '../../types/profile';
 import type { OnboardingData } from '../../stores/onboardingStore';
+import { calculateBMR, calculateTDEE, calculateAge } from '../../domain/calories';
+import {
+  calculateDailyTarget,
+  estimateTargetDate,
+  calculatePFCTargetsByMealPlan,
+  ONBOARDING_STEP_FULL_INPUT,
+} from '../../domain/onboardingCalc';
 
 // v1.3.0 / Onboarding v2 / Phase A-5 — service layer that finalizes
 // the onboardingStore snapshot to profiles via updateProfile.
@@ -71,6 +78,74 @@ const FIELD_STEP_THRESHOLDS = {
 // Phase A-1 sign-off: v1.3.0 onboarding completes with version=2.
 const ONBOARDING_VERSION_V2 = 2;
 
+// Codex review pass 1 / Important — derive cache values from the
+// snapshot at write time rather than reading from store.bmr / tdee /
+// dailyCalorieTarget / estimatedTargetDate / pfcTargets. setField
+// doesn't invalidate cache; without this layer, the chain
+// "calculateAll once → user navigates back → setField changes a calc
+// input → persist immediately" would write stale derived values.
+// Recomputing here makes correctness a service invariant rather than
+// a UI-ordering invariant. Tests pin both the populated-cache match
+// and the stale-cache resistance.
+//
+// Returns null fields when the matching screen hasn't been reached
+// (step < 5 → no estimatedTargetDate; step < 8 → no PFC targets);
+// callers gate on the presence of values.
+interface DerivedSnapshotCache {
+  estimatedTargetDateIso: string | null;
+  targetCalories: number | null;
+  pfcTargets: Record<MacroKey, number> | null;
+}
+
+function deriveCacheFromSnapshot(store: OnboardingData): DerivedSnapshotCache {
+  let estimatedTargetDateIso: string | null = null;
+  let targetCalories: number | null = null;
+  let pfcTargets: Record<MacroKey, number> | null = null;
+
+  // step >= 5: estimatedTargetDate from currentWeight + targetWeight + weeklyRatePct
+  if (
+    store.onboardingStep >= 5 &&
+    store.targetWeightKg !== null &&
+    store.weeklyRatePct !== null
+  ) {
+    const { date } = estimateTargetDate({
+      currentWeight: store.currentWeightKg,
+      targetWeight: store.targetWeightKg,
+      weeklyRatePct: store.weeklyRatePct,
+    });
+    estimatedTargetDateIso = date.toISOString();
+  }
+
+  // step >= 8 (full input): targetCalories + pfcTargets atomically
+  // computed together so a stale-cache scenario can't persist only
+  // half of the bundle.
+  if (
+    store.onboardingStep >= ONBOARDING_STEP_FULL_INPUT &&
+    store.weeklyRatePct !== null &&
+    store.proteinFactor !== null &&
+    store.mealPlan !== null
+  ) {
+    const age = calculateAge(store.birthYear);
+    const bmr = Math.round(
+      calculateBMR(store.currentWeightKg, store.heightCm, age, store.gender),
+    );
+    const tdee = calculateTDEE(bmr, store.activityLevel);
+    targetCalories = calculateDailyTarget({
+      currentWeight: store.currentWeightKg,
+      weeklyRatePct: store.weeklyRatePct,
+      tdee,
+    });
+    pfcTargets = calculatePFCTargetsByMealPlan({
+      dailyCalorie: targetCalories,
+      currentWeight: store.currentWeightKg,
+      proteinFactor: store.proteinFactor,
+      mealPlan: store.mealPlan,
+    });
+  }
+
+  return { estimatedTargetDateIso, targetCalories, pfcTargets };
+}
+
 export interface BuildProfilePatchInput {
   store: OnboardingData;
   existing: Profile | null;
@@ -104,15 +179,21 @@ export function buildProfilePatch(
   if (step >= FIELD_STEP_THRESHOLDS.activityLevel) {
     patch.activityLevel = store.activityLevel;
   }
+  // Codex review pass 1 / Important — derive estimatedTargetDate +
+  // PFC bundle from the snapshot at write time, not from the
+  // (potentially stale) store cache. See deriveCacheFromSnapshot
+  // header for rationale.
+  const derived = deriveCacheFromSnapshot(store);
+
   if (step >= FIELD_STEP_THRESHOLDS.targetWeightKg) {
     patch.targetWeightKg = store.targetWeightKg;
     patch.weeklyRatePct = store.weeklyRatePct;
-    // estimatedTargetDate boundary: Date → ISO string. The store
-    // cache holds Date for in-memory use; persistence requires
-    // ISO 8601 UTC per Phase A-1 schema (TEXT, not INTEGER).
-    patch.estimatedTargetDate = store.estimatedTargetDate
-      ? store.estimatedTargetDate.toISOString()
-      : null;
+    // estimatedTargetDate boundary: Date → ISO string. Phase A-1
+    // schema is TEXT (not INTEGER); parseDateOrNull on the read
+    // side already expects ISO. Always write a value at step >= 5:
+    // null when targetWeightKg / weeklyRatePct aren't set yet
+    // (the screen submit still triggers a write to record progress).
+    patch.estimatedTargetDate = derived.estimatedTargetDateIso;
   }
   if (step >= FIELD_STEP_THRESHOLDS.mealPlan) {
     patch.mealPlan = store.mealPlan;
@@ -122,16 +203,15 @@ export function buildProfilePatch(
   }
   if (step >= FIELD_STEP_THRESHOLDS.proteinFactor) {
     patch.proteinFactor = store.proteinFactor;
-    // PFC cache → persisted target columns. calculateAll only
-    // populates these when all v2 inputs are set, so reading them
-    // at step >= 8 guarantees they reflect the user's choices.
-    if (store.dailyCalorieTarget !== null) {
-      patch.targetCalories = store.dailyCalorieTarget;
-    }
-    if (store.pfcTargets !== null) {
-      patch.targetProteinG = store.pfcTargets.protein;
-      patch.targetFatG = store.pfcTargets.fat;
-      patch.targetCarbG = store.pfcTargets.carbs;
+    // PFC bundle persisted ATOMICALLY — both null or both populated.
+    // deriveCacheFromSnapshot only emits non-null values when every
+    // input is set, so a partial bundle (targetCalories without
+    // pfcTargets) can't slip through.
+    if (derived.targetCalories !== null && derived.pfcTargets !== null) {
+      patch.targetCalories = derived.targetCalories;
+      patch.targetProteinG = derived.pfcTargets.protein;
+      patch.targetFatG = derived.pfcTargets.fat;
+      patch.targetCarbG = derived.pfcTargets.carbs;
     }
   }
   if (step >= FIELD_STEP_THRESHOLDS.weeklyDistribution) {
