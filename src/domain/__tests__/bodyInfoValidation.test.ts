@@ -112,7 +112,7 @@ describe('getMaxBirthYear', () => {
 });
 
 describe('validateBirthYear', () => {
-  const now = new Date('2026-05-10');
+  const now = new Date(2026, 4, 10);
 
   it('accepts a typical adult year', () => {
     expect(validateBirthYear(1995, now)).toEqual({
@@ -162,6 +162,17 @@ describe('validateBirthYear', () => {
       reason: 'not_integer',
     });
     expect(validateBirthYear(Infinity, now)).toEqual({
+      valid: false,
+      reason: 'not_integer',
+    });
+  });
+
+  // Codex pass 1 / Critical #2 regression — the body-info screen
+  // writes NaN to store on partial / empty input. The validator
+  // must reject NaN so the CTA stays disabled rather than reading
+  // a stale prior valid year.
+  it('NaN input (partial-text screen state) flags not_integer', () => {
+    expect(validateBirthYear(NaN, now)).toEqual({
       valid: false,
       reason: 'not_integer',
     });
@@ -262,7 +273,7 @@ describe('validateCurrentWeightKg', () => {
 // ---------------------------------------------------------------------------
 
 describe('isAllInputsValid', () => {
-  const now = new Date('2026-05-10');
+  const now = new Date(2026, 4, 10);
   const valid = ['male' as const, 1995, 170, 70] as const;
 
   it('returns true when all four pass their narrow checks', () => {

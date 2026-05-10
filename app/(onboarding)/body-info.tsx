@@ -91,11 +91,25 @@ export default function BodyInfoScreen() {
   const birthYear = useOnboardingStore((s) => s.birthYear);
   const heightCm = useOnboardingStore((s) => s.heightCm);
   const currentWeightKg = useOnboardingStore((s) => s.currentWeightKg);
+  const onboardingStep = useOnboardingStore((s) => s.onboardingStep);
   const setGender = useOnboardingStore((s) => s.setGender);
   const setBirthYear = useOnboardingStore((s) => s.setBirthYear);
   const setHeightCm = useOnboardingStore((s) => s.setHeightCm);
   const setCurrentWeightKg = useOnboardingStore((s) => s.setCurrentWeightKg);
   const persistToProfile = useOnboardingStore((s) => s.persistToProfile);
+
+  // Codex pass 1 / Critical #1 — INITIAL_STATE seeds Build 14/15
+  // legacy placeholders (male / 1995 / 170 / 70) into store, so a
+  // user landing on this screen for the first time would see
+  // isAllInputsValid=true against scaffold defaults and could
+  // submit without touching anything. Gate the CTA on
+  // onboardingStep >= 3 — every field setter atomically bumps the
+  // step monotonically to 3, so this proxies "user has touched at
+  // least one field this session." On a back-nav revisit the step
+  // is already past 3 and the CTA enables without re-touch — same
+  // UX the kickoff §B-style "returning user pre-fill" pattern
+  // assumes elsewhere.
+  const hasInteracted = onboardingStep >= 3;
 
   const [birthYearText, setBirthYearText] = useState<string>(() =>
     birthYear ? String(birthYear) : '',
@@ -150,10 +164,16 @@ export default function BodyInfoScreen() {
       // the keyboardType="number-pad" hint.
       const digits = text.replace(/[^0-9]/g, '').slice(0, 4);
       setBirthYearText(digits);
-      const parsed = digits.length === 4 ? Number.parseInt(digits, 10) : NaN;
-      if (Number.isFinite(parsed)) {
-        setBirthYear(parsed);
-      }
+      // Codex pass 1 / Critical #2 — always sync to store so the
+      // visible input never diverges from the validated value.
+      // For partial input (length < 4) we still write a number so
+      // the validator can flag it as too_old/too_young rather than
+      // letting a stale full-year value sit in store while the
+      // user sees an incomplete field. NaN for empty input
+      // collapses to the not_integer branch, disabling the CTA.
+      const parsed =
+        digits.length === 0 ? NaN : Number.parseInt(digits, 10);
+      setBirthYear(parsed);
     },
     [setBirthYear],
   );
@@ -178,7 +198,7 @@ export default function BodyInfoScreen() {
   const handleSubmit = useCallback(async () => {
     if (isAdvancing) return;
     setTouched({ birthYear: true, height: true, weight: true });
-    if (!allValid) return;
+    if (!allValid || !hasInteracted) return;
     setIsAdvancing(true);
     try {
       await persistToProfile();
@@ -191,7 +211,7 @@ export default function BodyInfoScreen() {
     // already preserves all 4 body-info fields, so the bridge has
     // integrity verified at recon (no C-2-style nickname-loss).
     router.push('/(onboarding)/body-and-training');
-  }, [allValid, isAdvancing, persistToProfile]);
+  }, [allValid, hasInteracted, isAdvancing, persistToProfile]);
 
   return (
     <KeyboardAvoidingView
@@ -402,7 +422,7 @@ export default function BodyInfoScreen() {
           variant="primary"
           size="lg"
           fullWidth
-          disabled={!allValid || isAdvancing}
+          disabled={!allValid || !hasInteracted || isAdvancing}
           testID="body-info-cta"
         />
       </View>
