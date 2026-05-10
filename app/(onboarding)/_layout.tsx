@@ -8,6 +8,7 @@ import {
   getRouteByName,
   getStepForRoute,
   getTotalStepsForPlatform,
+  shouldRenderLayoutHeader,
 } from '../../src/domain/onboardingSteps';
 
 // v1.3.0 / Onboarding v2 / Phase A-6 — onboarding stack with the
@@ -16,8 +17,13 @@ import {
 // useSegments() returns the path segments for the active route;
 // the last segment is the route file name (e.g. 'welcome',
 // 'goal-summary'). We look it up in ONBOARDING_ROUTES to derive
-// step number + showBack flag. Routes outside the table fall
-// back to step=1 / showBack=true.
+// step number + showBack flag.
+//
+// Codex review pass 1 / Important — gating logic lives in
+// shouldRenderLayoutHeader (src/domain/onboardingSteps.ts) so the
+// boundary is unit-testable. Legacy screens that own their own
+// header (Phase D-X removes them or rewrites them to delegate)
+// skip the layout-level ProgressHeader to avoid duplicate UI.
 
 export default function OnboardingLayout() {
   const scheme = useColorScheme() ?? 'light';
@@ -29,17 +35,24 @@ export default function OnboardingLayout() {
   const totalSteps = getTotalStepsForPlatform();
   const showBack = route?.showBack ?? true;
 
+  // Render ProgressHeader only for routes whose screen does NOT
+  // own its own header. New flow screens (Phase D-X) will all
+  // delegate; legacy screens still in the tree skip it.
+  const renderHeader = shouldRenderLayoutHeader(currentRoute);
+
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.background }]}
       edges={['top']}
     >
-      <ProgressHeader
-        currentStep={step}
-        totalSteps={totalSteps}
-        showBack={showBack}
-        onBack={() => router.back()}
-      />
+      {renderHeader && (
+        <ProgressHeader
+          currentStep={step}
+          totalSteps={totalSteps}
+          showBack={showBack}
+          onBack={() => router.back()}
+        />
+      )}
       <View style={styles.content}>
         <Stack
           screenOptions={{

@@ -78,3 +78,35 @@ export function getTotalStepsForPlatform(
   const os = platformOverride ?? Platform.OS;
   return os === 'ios' ? TOTAL_STEPS_IOS_HEALTHKIT : TOTAL_STEPS_DEFAULT;
 }
+
+// Codex review pass 1 / Important — transitional gate for the
+// legacy Build 14/15 screens that own their own header / back
+// button. Phase A-1 only deleted goal/body/training (truly dead
+// code); welcome-and-goal + body-and-training are still mounted
+// (load-bearing, deferred to Phase D-X), and complete + healthkit
+// are in this table but their CURRENT implementations also own
+// their UI. Rendering the layout-level ProgressHeader on top would
+// duplicate the back button + dot row.
+//
+// Phase D-X removes welcome-and-goal + body-and-training files and
+// rewrites complete + healthkit to delegate header rendering to
+// the layout. After that, this set shrinks to empty and the gate
+// can be removed entirely.
+const LEGACY_OWN_HEADER_ROUTES: ReadonlySet<string> = new Set([
+  'welcome-and-goal',
+  'body-and-training',
+  'complete',
+  'healthkit',
+]);
+
+// Returns true when the layout should render the shared
+// ProgressHeader for `routeName`. False when:
+//   - the route isn't in ONBOARDING_ROUTES (unknown route, would
+//     fall back to step=1 / 1-of-15 which is misleading)
+//   - the route is currently a legacy own-header implementation
+//     (rendering ProgressHeader on top would duplicate UI)
+export function shouldRenderLayoutHeader(routeName: string): boolean {
+  if (getRouteByName(routeName) === null) return false;
+  if (LEGACY_OWN_HEADER_ROUTES.has(routeName)) return false;
+  return true;
+}

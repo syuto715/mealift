@@ -6,12 +6,13 @@
 // in react-native (which jest's CJS runtime can't currently parse —
 // Build 15+ TODO 12 tracks the missing jest-expo preset).
 
-// Kickoff §A-6 §3 sign-off: 50% progress is the threshold at which
-// back navigation switches from immediate to confirm-via-dialog.
-// Below this point, the user has invested little enough that an
-// accidental tap costs almost nothing to redo. Above, the
-// AbandonDialog body promises the in-progress data is preserved
-// (Phase A-5 incremental save).
+// Kickoff §A-6 §3 sign-off: at or above 50% progress, back
+// navigation switches from immediate to confirm-via-dialog
+// (boundary inclusive — the right after the halfway screen submits
+// the dialog kicks in). Below this point, the user has invested
+// little enough that an accidental tap costs almost nothing to
+// redo. Above, the AbandonDialog body promises the in-progress
+// data is preserved (Phase A-5 incremental save).
 export const ABANDON_THRESHOLD = 0.5;
 
 export function shouldShowAbandonDialog(

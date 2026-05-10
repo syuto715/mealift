@@ -17,6 +17,7 @@ import {
   getStepForRoute,
   getRouteByName,
   getTotalStepsForPlatform,
+  shouldRenderLayoutHeader,
 } from '../onboardingSteps';
 
 describe('ONBOARDING_ROUTES table integrity', () => {
@@ -91,6 +92,41 @@ describe('getRouteByName', () => {
 
   it('welcome descriptor has showBack=false', () => {
     expect(getRouteByName('welcome')?.showBack).toBe(false);
+  });
+});
+
+describe('shouldRenderLayoutHeader', () => {
+  // Codex review pass 1 / Important — the layout gates ProgressHeader
+  // on this helper to avoid duplicate UI on legacy own-header screens
+  // (welcome-and-goal / body-and-training / complete / healthkit
+  // CURRENTLY mounted have their own back button + progress UI).
+  // Phase D-X shrinks this gate to empty.
+
+  it('returns false for routes outside ONBOARDING_ROUTES (legacy combined screens)', () => {
+    // welcome-and-goal / body-and-training are not in the table at all
+    expect(shouldRenderLayoutHeader('welcome-and-goal')).toBe(false);
+    expect(shouldRenderLayoutHeader('body-and-training')).toBe(false);
+    expect(shouldRenderLayoutHeader('not-a-route')).toBe(false);
+    expect(shouldRenderLayoutHeader('')).toBe(false);
+  });
+
+  it('returns false for in-table-but-legacy-own-header routes', () => {
+    // complete + healthkit are in the post-Phase-D-X table but the
+    // CURRENT implementations own their own UI; layout must not
+    // double up.
+    expect(shouldRenderLayoutHeader('complete')).toBe(false);
+    expect(shouldRenderLayoutHeader('healthkit')).toBe(false);
+  });
+
+  it('returns true for non-legacy routes in the table', () => {
+    // Phase D-X screens — once mounted, the layout will render the
+    // shared header.
+    expect(shouldRenderLayoutHeader('welcome')).toBe(true);
+    expect(shouldRenderLayoutHeader('nickname')).toBe(true);
+    expect(shouldRenderLayoutHeader('body-info')).toBe(true);
+    expect(shouldRenderLayoutHeader('goal-summary')).toBe(true);
+    expect(shouldRenderLayoutHeader('protein-target')).toBe(true);
+    expect(shouldRenderLayoutHeader('tier-preview')).toBe(true);
   });
 });
 
