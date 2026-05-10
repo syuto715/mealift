@@ -50,10 +50,18 @@ async function addColumnIfMissing(
     await db.execAsync(
       `ALTER TABLE profiles ADD COLUMN ${column} ${definition};`,
     );
-  } catch {
-    // Race / column already exists in some other path — safe to
-    // ignore. The pre-check via PRAGMA table_info already covers
-    // the common case; this catch handles a parallel migrator.
+  } catch (err) {
+    // Codex review pass 1 / Important #1 — narrow the swallow.
+    // Only the "duplicate column name" race (parallel migrator,
+    // recovered after-failure replay) is safe to ignore. Every
+    // other failure (missing table, locked DB, malformed SQL,
+    // transient I/O) MUST propagate so connection.ts doesn't
+    // advance PRAGMA user_version to 30 on a partial migration.
+    // Pin the v26 convention's broader swallow as a Build 16+
+    // TODO for retroactive tightening.
+    const msg = String((err as { message?: unknown })?.message ?? err);
+    if (/duplicate column/i.test(msg)) return;
+    throw err;
   }
 }
 
@@ -92,7 +100,20 @@ export async function migrateV30(db: SQLite.SQLiteDatabase): Promise<void> {
   // resume. 0 = not started. Existing Build 14/15 users with
   // onboarding_completed=true get auto-set to durationWeeks complete
   // by app/index.tsx onboarding redirect (Phase E-1).
-  await addColumnIfMissing(db, cols, 'onboarding_step', 'INTEGER DEFAULT 0');
+  //
+  // Codex review pass 1 / Important #2 — NOT NULL DEFAULT 0 on the
+  // SQLite path matches the Postgres mirror's NOT NULL DEFAULT 0.
+  // SQLite's ALTER TABLE ADD COLUMN supports NOT NULL when paired
+  // with DEFAULT (the DEFAULT fills existing rows). Without this,
+  // a future buggy local write that left the column NULL would
+  // diverge from the server contract and break upsert when
+  // profileSync starts carrying this field.
+  await addColumnIfMissing(
+    db,
+    cols,
+    'onboarding_step',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
   // onboarding_started_at: ISO 8601 UTC timestamp; null until [1] tap.
   await addColumnIfMissing(db, cols, 'onboarding_started_at', 'TEXT');
   // estimated_target_date: ISO 8601 UTC timestamp; calculated cache

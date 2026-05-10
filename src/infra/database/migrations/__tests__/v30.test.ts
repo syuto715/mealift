@@ -113,12 +113,15 @@ describe('migrateV30 — column shape', () => {
     ).toBe(true);
   });
 
-  it('onboarding_step is INTEGER with DEFAULT 0', async () => {
+  it('onboarding_step is INTEGER NOT NULL DEFAULT 0 (matches Postgres mirror)', async () => {
+    // Codex review pass 1 / Important #2 — NOT NULL alignment with
+    // Postgres prevents future client/server contract drift. SQLite
+    // accepts NOT NULL on ADD COLUMN when paired with DEFAULT.
     const db = makeMockDb();
     await migrateV30(db as unknown as SQLiteDatabase);
     expect(
       db.state.executedSql.some((s) =>
-        /onboarding_step\s+INTEGER\s+DEFAULT\s+0/.test(s),
+        /onboarding_step\s+INTEGER\s+NOT\s+NULL\s+DEFAULT\s+0/.test(s),
       ),
     ).toBe(true);
   });
@@ -156,5 +159,58 @@ describe('migrateV30 — idempotency', () => {
         (c) => !['nickname', 'meal_plan', 'protein_factor'].includes(c),
       ).sort(),
     );
+  });
+});
+
+describe('migrateV30 — error propagation (Codex pass 1 / Important #1)', () => {
+  // The narrowed catch only swallows the "duplicate column" race;
+  // every other failure must propagate so connection.ts doesn't
+  // advance PRAGMA user_version on a partial migration.
+  it('swallows a "duplicate column" race error (parallel migrator after-state)', async () => {
+    const failingDb = {
+      execAsync: async (sql: string) => {
+        if (sql.includes('ADD COLUMN nickname')) {
+          throw new Error('duplicate column name: nickname');
+        }
+      },
+      getAllAsync: async (sql: string) => {
+        if (sql.includes('PRAGMA table_info')) return [];
+        return [];
+      },
+    };
+    // Should NOT throw — the duplicate-column message is the
+    // race-recovery path.
+    await expect(
+      migrateV30(failingDb as unknown as SQLiteDatabase),
+    ).resolves.toBeUndefined();
+  });
+
+  it('propagates non-race ALTER errors (locked DB, missing table, etc)', async () => {
+    const failingDb = {
+      execAsync: async (sql: string) => {
+        if (sql.includes('ADD COLUMN nickname')) {
+          throw new Error('database is locked');
+        }
+      },
+      getAllAsync: async (sql: string) => {
+        if (sql.includes('PRAGMA table_info')) return [];
+        return [];
+      },
+    };
+    await expect(
+      migrateV30(failingDb as unknown as SQLiteDatabase),
+    ).rejects.toThrow(/database is locked/);
+  });
+
+  it('propagates "no such table" error (profiles missing)', async () => {
+    const failingDb = {
+      execAsync: async () => {
+        throw new Error('no such table: profiles');
+      },
+      getAllAsync: async () => [],
+    };
+    await expect(
+      migrateV30(failingDb as unknown as SQLiteDatabase),
+    ).rejects.toThrow(/no such table/);
   });
 });
