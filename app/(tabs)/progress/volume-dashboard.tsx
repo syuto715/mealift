@@ -62,6 +62,10 @@ export default function VolumeDashboardScreen() {
   // Plus users see the volume dashboard but never the banner /
   // detection hook; Pro users see both layers.
   const autoDeloadUnlocked = sub.hasFeature('autoDeload');
+  // Build 16 / Phase 6.3 — heatmap CTA is Pro-only. Plus users
+  // never see the link; the heatmap screen has its own defense-in-
+  // depth lock state for deep-link visitors.
+  const heatmapUnlocked = sub.hasFeature('muscleHeatmap');
   const showToast = useUIStore((s) => s.showToast);
 
   const [summaries, setSummaries] = useState<VolumeGroupSummary[] | null>(null);
@@ -270,6 +274,40 @@ export default function VolumeDashboardScreen() {
             )}
           </Card>
 
+          {heatmapUnlocked && (
+            // Build 16 / Phase 6.3 — Pro-only CTA into the muscle
+            // recovery heatmap. Sits between the volume chart and
+            // the landmark legend so users see it after digesting
+            // their weekly volume but before scrolling away.
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/progress/muscle-heatmap')}
+              style={[
+                styles.heatmapCta,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="部位別回復ヒートマップを開く"
+            >
+              <View style={styles.heatmapCtaText}>
+                <Text
+                  style={[styles.heatmapCtaTitle, { color: colors.textPrimary }]}
+                >
+                  💪 部位別回復ヒートマップ
+                </Text>
+                <Text
+                  style={[styles.heatmapCtaDesc, { color: colors.textSecondary }]}
+                >
+                  各部位の最終トレーニング時刻と推定回復度を Body Diagram で確認
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={colors.textTertiary}
+              />
+            </TouchableOpacity>
+          )}
+
           <Card>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
               ランドマークについて
@@ -399,6 +437,27 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     textAlign: 'center',
     paddingVertical: spacing.lg,
+  },
+  heatmapCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: spacing.sm,
+  },
+  heatmapCtaText: {
+    flex: 1,
+    gap: 2,
+  },
+  heatmapCtaTitle: {
+    ...typography.titleSmall,
+    fontWeight: '600',
+  },
+  heatmapCtaDesc: {
+    ...typography.bodySmall,
+    lineHeight: 18,
   },
   legendList: {
     gap: spacing.md,
