@@ -205,12 +205,12 @@ export default function BodyInfoScreen() {
     } catch (err) {
       console.warn('[onboarding/body-info] persistToProfile failed', err);
     }
-    // Phase C-4 transitional bridge — flip this to '/activity' when
-    // C-4 ships. body-and-training is the closest legacy semantic
-    // match (covers legacy [3][4] inputs combined). complete.tsx
-    // already preserves all 4 body-info fields, so the bridge has
-    // integrity verified at recon (no C-2-style nickname-loss).
-    router.push('/(onboarding)/body-and-training');
+    // Phase C-4 flipped this to the new flow's [4] /activity
+    // screen. The C-3 stop-gap (legacy /body-and-training) is no
+    // longer reachable from this CTA. activity itself still
+    // bridges to /body-and-training until Phase C-5 ships
+    // /goal-weight (Pattern 26 transitional chain continues).
+    router.push('/(onboarding)/activity');
   }, [allValid, hasInteracted, isAdvancing, persistToProfile]);
 
   return (

@@ -146,6 +146,12 @@ export interface OnboardingActions {
   setBirthYear: (value: number) => void;
   setHeightCm: (value: number) => void;
   setCurrentWeightKg: (value: number) => void;
+
+  // Phase C-4 — Activity screen [4] field setters. Same atomic
+  // value+step semantics as C-3. Bumps to 4 monotonically so a
+  // back-nav revisit doesn't regress the cursor.
+  setActivityLevel: (value: ActivityLevel) => void;
+  setTrainingDaysPerWeek: (value: number) => void;
 }
 
 export type OnboardingState = OnboardingData & OnboardingActions;
@@ -410,5 +416,20 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     set((s) => ({
       currentWeightKg: value,
       onboardingStep: Math.max(s.onboardingStep, 3),
+    })),
+
+  // Phase C-4 — Activity screen [4] field setters. Same atomic
+  // semantics as C-3, bumping to step 4 on each per-field change
+  // so the hasInteracted gate (Pattern 18 補強) flips true the
+  // moment a user touches anything on the screen.
+  setActivityLevel: (value) =>
+    set((s) => ({
+      activityLevel: value,
+      onboardingStep: Math.max(s.onboardingStep, 4),
+    })),
+  setTrainingDaysPerWeek: (value) =>
+    set((s) => ({
+      trainingDaysPerWeek: value,
+      onboardingStep: Math.max(s.onboardingStep, 4),
     })),
 }));

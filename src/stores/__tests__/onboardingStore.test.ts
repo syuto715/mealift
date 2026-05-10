@@ -666,3 +666,49 @@ describe('useOnboardingStore — body-info actions (Phase C-3)', () => {
     expect(s1.onboardingStep).toBe(3);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 10. Activity actions — Phase C-4 atomic value+step setters
+// ---------------------------------------------------------------------------
+
+describe('useOnboardingStore — activity actions (Phase C-4)', () => {
+  it('setActivityLevel writes value AND bumps step 0 → 4 atomically', () => {
+    useOnboardingStore.getState().setActivityLevel('active');
+    const s = useOnboardingStore.getState();
+    expect(s.activityLevel).toBe('active');
+    expect(s.onboardingStep).toBe(4);
+  });
+
+  it('setTrainingDaysPerWeek writes value AND bumps step 0 → 4 atomically', () => {
+    useOnboardingStore.getState().setTrainingDaysPerWeek(5);
+    const s = useOnboardingStore.getState();
+    expect(s.trainingDaysPerWeek).toBe(5);
+    expect(s.onboardingStep).toBe(4);
+  });
+
+  it('preserves a higher onboardingStep (no regression on revisit)', () => {
+    useOnboardingStore.getState().setField('onboardingStep', 8);
+    useOnboardingStore.getState().setActivityLevel('sedentary');
+    useOnboardingStore.getState().setTrainingDaysPerWeek(0);
+    expect(useOnboardingStore.getState().onboardingStep).toBe(8);
+  });
+
+  it('all 5 activity-level values pass through the setter', () => {
+    const levels = ['sedentary', 'light', 'moderate', 'active', 'very_active'] as const;
+    for (const level of levels) {
+      useOnboardingStore.getState().setActivityLevel(level);
+      expect(useOnboardingStore.getState().activityLevel).toBe(level);
+    }
+  });
+
+  it('does NOT touch unrelated fields', () => {
+    const s0 = useOnboardingStore.getState();
+    s0.setField('nickname', 'persisting');
+    s0.setField('mealPlan', 'washoku');
+    s0.setActivityLevel('active');
+    s0.setTrainingDaysPerWeek(6);
+    const s1 = useOnboardingStore.getState();
+    expect(s1.nickname).toBe('persisting');
+    expect(s1.mealPlan).toBe('washoku');
+  });
+});
