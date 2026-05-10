@@ -119,6 +119,17 @@ export interface OnboardingActions {
   persistToProfile: () => Promise<void>;
   prefillFromProfile: (profile: Profile) => void;
   reset: () => void;
+
+  // Phase C-1 — Welcome screen mount triggers this to bump
+  // onboardingStep past 0 (the INITIAL_STATE sentinel) so the
+  // service's monotonic step max can flow the first non-zero
+  // value through to the DB. The DB-side set-once for
+  // onboardingStartedAt is handled by the service's
+  // buildProfilePatch (line ~237) — markStarted intentionally
+  // does NOT track startedAt in the store, since the store value
+  // would be ignored by the service's existing-row check anyway
+  // and would just duplicate state.
+  markStarted: () => void;
 }
 
 export type OnboardingState = OnboardingData & OnboardingActions;
@@ -333,4 +344,13 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     }),
 
   reset: () => set({ ...INITIAL_STATE }),
+
+  // Phase C-1 — Welcome screen [1] mount handler. Bumps
+  // onboardingStep monotonically (max with existing value, so a
+  // user who's already past [1] doesn't regress on a screen revisit).
+  // The Welcome screen calls this in useEffect on mount, then awaits
+  // persistToProfile so the service's set-once
+  // onboardingStartedAt timestamp lands on the DB row.
+  markStarted: () =>
+    set((s) => ({ onboardingStep: Math.max(s.onboardingStep, 1) })),
 }));

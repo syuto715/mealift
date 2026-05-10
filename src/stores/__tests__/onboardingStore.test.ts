@@ -520,3 +520,48 @@ describe('useOnboardingStore — Build 14/15 bulk setters preserved', () => {
     expect(s.targetDate).toBe('2026-12-31');
   });
 });
+
+// ---------------------------------------------------------------------------
+// 7. markStarted — Phase C-1 Welcome screen mount handler
+// ---------------------------------------------------------------------------
+
+describe('useOnboardingStore — markStarted (Phase C-1)', () => {
+  it('first call from INITIAL_STATE bumps onboardingStep 0 → 1', () => {
+    const s0 = useOnboardingStore.getState();
+    expect(s0.onboardingStep).toBe(0);
+    s0.markStarted();
+    expect(useOnboardingStore.getState().onboardingStep).toBe(1);
+  });
+
+  it('preserves a higher onboardingStep (no regression)', () => {
+    // User is mid-flow at step 5 and re-opens the app, landing back
+    // on Welcome via deep-link or testing harness. markStarted must
+    // NOT roll the progress cursor backward.
+    useOnboardingStore.getState().setField('onboardingStep', 5);
+    useOnboardingStore.getState().markStarted();
+    expect(useOnboardingStore.getState().onboardingStep).toBe(5);
+  });
+
+  it('idempotent: calling twice from step 0 leaves step at 1', () => {
+    useOnboardingStore.getState().markStarted();
+    useOnboardingStore.getState().markStarted();
+    expect(useOnboardingStore.getState().onboardingStep).toBe(1);
+  });
+
+  it('does NOT touch unrelated fields', () => {
+    // Pre-populate a few fields so we can verify markStarted is
+    // truly narrow (only onboardingStep changes).
+    const s0 = useOnboardingStore.getState();
+    s0.setField('nickname', 'syuto');
+    s0.setField('mealPlan', 'washoku');
+    s0.setField('weeklyRatePct', -0.5);
+
+    s0.markStarted();
+
+    const s1 = useOnboardingStore.getState();
+    expect(s1.nickname).toBe('syuto');
+    expect(s1.mealPlan).toBe('washoku');
+    expect(s1.weeklyRatePct).toBe(-0.5);
+    expect(s1.onboardingStep).toBe(1);
+  });
+});
