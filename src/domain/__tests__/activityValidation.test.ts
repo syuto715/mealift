@@ -150,6 +150,19 @@ describe('validateTrainingDaysPerWeek', () => {
       reason: 'not_integer',
     });
   });
+
+  // Codex pass 1 / Critical regression — legacy
+  // body-and-training clamps `trainingDays` to >=1 on submit. C-4
+  // explicitly allows 0 ("never trains" — walking-only users).
+  // The bridge guard in body-and-training preserves store-set 0
+  // when fromNewFlow=true; this test pins the validator's accept
+  // of 0 so a future change can't silently re-impose a >=1 floor.
+  it('explicitly accepts 0 (never-trains case, distinct from legacy >=1)', () => {
+    expect(validateTrainingDaysPerWeek(0)).toEqual({
+      valid: true,
+      sanitized: 0,
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

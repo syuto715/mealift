@@ -124,9 +124,27 @@ export default function BodyAndTrainingScreen() {
       targetWeightKg: targetWeight,
       targetBodyFatPct: null,
     });
+    // Phase C-4 bridge integrity (Codex pass 1 / Critical) —
+    // when the user reached this legacy screen via the new
+    // /(onboarding)/activity bridge (onboardingStep >= 4), the
+    // store already carries C-4-collected activityLevel +
+    // trainingDaysPerWeek values that this screen's coarse 4-
+    // bucket segments would otherwise destroy:
+    //   - trainingDaysToActivityLevel collapses 5/6/7 → 'active',
+    //     so a C-4 'very_active' choice would never survive.
+    //   - Math.max(1, days) clamps a C-4 selection of 0 to 1.
+    // Detect the new-flow origin and preserve the C-4 values;
+    // legacy users (no new flow) keep the original segment-
+    // derived behavior. Phase D removes the legacy screen
+    // entirely and this guard goes with it.
+    const fromNewFlow = store.onboardingStep >= 4;
     store.setTraining({
-      activityLevel: trainingDaysToActivityLevel(days),
-      trainingDaysPerWeek: Math.max(1, days),
+      activityLevel: fromNewFlow
+        ? store.activityLevel
+        : trainingDaysToActivityLevel(days),
+      trainingDaysPerWeek: fromNewFlow
+        ? store.trainingDaysPerWeek
+        : Math.max(1, days),
       equipment: 'gym',
       targetDate: null,
     });

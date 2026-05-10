@@ -312,8 +312,15 @@ export default function ActivityScreen() {
           </View>
         </View>
 
-        {/* Maintenance kcal feedback (Pattern 11 + 18) */}
-        {maintenanceKcal != null && (
+        {/* Maintenance kcal feedback (Pattern 11 + 18) —
+            Codex pass 1 / Important fix — also gate on
+            hasInteracted so a fresh INITIAL_STATE user doesn't
+            see a concrete "維持カロリー: 2,341" derived from
+            scaffold defaults (male/1995/170/70/moderate are all
+            valid placeholders) before they've confirmed any
+            input is actually theirs. Same Pattern 18 補強
+            reasoning C-3 used for its CTA gate. */}
+        {hasInteracted && maintenanceKcal != null && (
           <View
             style={[
               styles.feedbackBox,
