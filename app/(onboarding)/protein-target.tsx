@@ -106,6 +106,14 @@ export default function ProteinTargetScreen() {
   // + unmount-while-awaiting both surface here. The async
   // suggestProteinFactor returns FALLBACK on error (never throws),
   // so this is purely about race protection for setState.
+  //
+  // Codex pass 1 / Sign-off violation fix — restored kickoff §3
+  // auto-prefill: when the async result resolves AND the store
+  // still has proteinFactor=null (no user tap during the fetch
+  // window), pre-fill with the suggested value. Reads
+  // useOnboardingStore.getState() at resolve time rather than
+  // closure-capturing the initial state, so a user tap between
+  // mount and resolve correctly wins over the suggestion.
   useEffect(() => {
     if (profileId == null) return undefined;
     let cancelled = false;
@@ -114,6 +122,11 @@ export default function ProteinTargetScreen() {
         const result = await suggestProteinFactor(profileId);
         if (cancelled) return;
         setSuggestion(result.suggested);
+        const liveState = useOnboardingStore.getState();
+        if (liveState.proteinFactor == null) {
+          liveState.setProteinFactor(result.suggested);
+          liveState.calculateAll();
+        }
       } catch (err) {
         console.warn(
           '[onboarding/protein-target] suggestProteinFactor failed',
@@ -125,6 +138,25 @@ export default function ProteinTargetScreen() {
       cancelled = true;
     };
   }, [profileId]);
+
+  // Codex pass 1 / Important fix — refresh the calculateAll cache
+  // on mount so a back-nav from a downstream screen (where a
+  // prerequisite like mealPlan / weeklyRatePct / activityLevel
+  // was edited) doesn't leave stale dailyCalorieTarget / pfcTargets
+  // showing in the feedback box. Prerequisite setters intentionally
+  // do NOT chain calculateAll (they're written by their own
+  // screens), so this screen owns the "refresh on focus" semantic
+  // since it's the first place where the cache is rendered.
+  useEffect(() => {
+    const liveState = useOnboardingStore.getState();
+    if (liveState.onboardingStep >= 9) {
+      liveState.calculateAll();
+    }
+    // Run only on mount — calculateAll is idempotent for
+    // unchanged inputs, so the redundant fire on initial render
+    // is cheap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSelectFactor = useCallback(
     (factor: ProteinFactor) => {
@@ -259,35 +291,12 @@ export default function ProteinTargetScreen() {
             window between setProteinFactor and calculateAll
             committing — Pattern 24 prevents a half-rendered
             "target kcal but no PFC" frame. */}
-        {showFeedback && (
-          <View
-            style={[
-              styles.feedbackBox,
-              {
-                backgroundColor: colors.surfaceSecondary,
-                borderColor: colors.border,
-              },
-            ]}
-            accessibilityLiveRegion="polite"
-            accessibilityLabel={
-              `目標 ${dailyCalorieTarget} キロカロリー、` +
-              `タンパク質 ${pfcTargets!.protein} グラム、` +
-              `脂質 ${pfcTargets!.fat} グラム、` +
-              `糖質 ${pfcTargets!.carbs} グラム`
-            }
-          >
-            <Text
-              style={[styles.feedbackKcal, { color: colors.textPrimary }]}
-            >
-              目標 {dailyCalorieTarget!.toLocaleString('ja-JP')} kcal/日
-            </Text>
-            <Text
-              style={[styles.feedbackPfc, { color: colors.textSecondary }]}
-            >
-              P {pfcTargets!.protein}g / F {pfcTargets!.fat}g / C{' '}
-              {pfcTargets!.carbs}g
-            </Text>
-          </View>
+        {showFeedback && dailyCalorieTarget !== null && pfcTargets !== null && (
+          <FeedbackBox
+            dailyCalorieTarget={dailyCalorieTarget}
+            pfcTargets={pfcTargets}
+            colors={colors}
+          />
         )}
       </ScrollView>
 
@@ -302,6 +311,51 @@ export default function ProteinTargetScreen() {
           testID="protein-target-cta"
         />
       </View>
+    </View>
+  );
+}
+
+// === FeedbackBox ===
+//
+// Extracted sub-component so the parent can do a single
+// non-null check at the gate (showFeedback && dailyCalorieTarget
+// !== null && pfcTargets !== null) and pass non-null params,
+// avoiding ! assertions in the JSX body. Codex pass 1 Nit fix.
+
+interface FeedbackBoxProps {
+  dailyCalorieTarget: number;
+  pfcTargets: { protein: number; fat: number; carbs: number };
+  colors: ReturnType<typeof getColors>;
+}
+
+function FeedbackBox({
+  dailyCalorieTarget,
+  pfcTargets,
+  colors,
+}: FeedbackBoxProps) {
+  return (
+    <View
+      style={[
+        styles.feedbackBox,
+        {
+          backgroundColor: colors.surfaceSecondary,
+          borderColor: colors.border,
+        },
+      ]}
+      accessibilityLiveRegion="polite"
+      accessibilityLabel={
+        `目標 ${dailyCalorieTarget} キロカロリー、` +
+        `タンパク質 ${pfcTargets.protein} グラム、` +
+        `脂質 ${pfcTargets.fat} グラム、` +
+        `糖質 ${pfcTargets.carbs} グラム`
+      }
+    >
+      <Text style={[styles.feedbackKcal, { color: colors.textPrimary }]}>
+        目標 {dailyCalorieTarget.toLocaleString('ja-JP')} kcal/日
+      </Text>
+      <Text style={[styles.feedbackPfc, { color: colors.textSecondary }]}>
+        P {pfcTargets.protein}g / F {pfcTargets.fat}g / C {pfcTargets.carbs}g
+      </Text>
     </View>
   );
 }

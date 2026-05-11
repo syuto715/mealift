@@ -142,11 +142,32 @@ export default function CompleteScreen() {
       // screens haven't shipped yet. Phase D-N replaces this
       // completion path entirely and these conditionals revert
       // (v2 fields flow through onboardingService.persistToProfile).
+      // Phase D-4 / Codex pass 1 Critical fix — when the v2
+      // calculateAll cache is populated (user reached step >= 9
+      // ONBOARDING_STEP_FULL_INPUT on /protein-target), use those
+      // values directly. The legacy `targetCalories` recompute
+      // above derives from goalType-based multipliers and ignores
+      // weeklyRatePct / mealPlan / proteinFactor — so a user who
+      // saw a specific PFC plan on [8] would otherwise land with
+      // legacy-overwritten values in the DB. Pattern 24 atomic-
+      // bundle read: either all 4 v2 cache fields populated or
+      // we fall through to legacy.
+      const v2CachePopulated =
+        onboarding.dailyCalorieTarget !== null &&
+        onboarding.pfcTargets !== null;
       const completionPatch: Partial<typeof profile> = {
-        targetCalories,
-        targetProteinG: macros.proteinG,
-        targetFatG: macros.fatG,
-        targetCarbG: macros.carbG,
+        targetCalories: v2CachePopulated
+          ? onboarding.dailyCalorieTarget
+          : targetCalories,
+        targetProteinG: v2CachePopulated
+          ? onboarding.pfcTargets!.protein
+          : macros.proteinG,
+        targetFatG: v2CachePopulated
+          ? onboarding.pfcTargets!.fat
+          : macros.fatG,
+        targetCarbG: v2CachePopulated
+          ? onboarding.pfcTargets!.carbs
+          : macros.carbG,
         onboardingCompleted: true,
       };
       if (onboarding.nickname) {
@@ -180,10 +201,18 @@ export default function CompleteScreen() {
       // DB. Touches the same conditional shape as the DB patch.
       const hydratedProfile = {
         ...profile,
-        targetCalories,
-        targetProteinG: macros.proteinG,
-        targetFatG: macros.fatG,
-        targetCarbG: macros.carbG,
+        targetCalories: v2CachePopulated
+          ? onboarding.dailyCalorieTarget!
+          : targetCalories,
+        targetProteinG: v2CachePopulated
+          ? onboarding.pfcTargets!.protein
+          : macros.proteinG,
+        targetFatG: v2CachePopulated
+          ? onboarding.pfcTargets!.fat
+          : macros.fatG,
+        targetCarbG: v2CachePopulated
+          ? onboarding.pfcTargets!.carbs
+          : macros.carbG,
         onboardingCompleted: true,
         ...(onboarding.nickname ? { nickname: onboarding.nickname } : {}),
         ...(onboarding.weeklyRatePct != null

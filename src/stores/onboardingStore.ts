@@ -217,7 +217,11 @@ const INITIAL_STATE: OnboardingData = {
   cheatDays: null,
   onboardingStep: 0,
   // Cache fields — recomputed by calculateAll on each transition;
-  // null until [10] motivation screen fires the calc.
+  // null until step >= ONBOARDING_STEP_FULL_INPUT (currently 9,
+  // post D-2 route-renumbering). The /protein-target screen [8]
+  // is the first place this cache is rendered to the user; the
+  // [10] motivation screen + [10.5] goal-summary read the same
+  // cache for their kcal/PFC display.
   bmr: null,
   tdee: null,
   dailyCalorieTarget: null,

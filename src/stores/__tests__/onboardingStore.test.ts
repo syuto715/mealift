@@ -962,4 +962,26 @@ describe('useOnboardingStore — calculateAll firing on protein-target (Phase D-
     expect(after.tdee).toBeNull();
     expect(after.estimatedTargetDate).toBeNull();
   });
+
+  // Codex pass 1 / Critical regression — pin that the v2 cache
+  // chain produces values DIFFERENT from the legacy completion
+  // path's computed result, so the complete.tsx priority fix
+  // (use v2 cache when populated, fall back to legacy) actually
+  // matters. If they happened to coincide, the Critical wouldn't
+  // be observable in production. The deltaPerDay (cut at -0.5%/wk)
+  // applied by calculateDailyTarget should make calculateAll's
+  // dailyCalorieTarget LESS than the underlying TDEE.
+  it('v2 cache dailyCalorieTarget reflects weeklyRatePct delta (cut < TDEE)', () => {
+    const s = useOnboardingStore.getState();
+    s.setField('targetWeightKg', 65);
+    s.setField('weeklyRatePct', -0.5);
+    s.setField('mealPlan', 'balanced');
+    s.setProteinFactor(1.6);
+    s.calculateAll();
+    const after = useOnboardingStore.getState();
+    expect(after.tdee).not.toBeNull();
+    expect(after.dailyCalorieTarget).not.toBeNull();
+    // Cut goal at -0.5%/wk → target < TDEE.
+    expect(after.dailyCalorieTarget!).toBeLessThan(after.tdee!);
+  });
 });
