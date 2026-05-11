@@ -58,21 +58,33 @@ import {
 // Service-managed fields (onboardingStep, onboardingStartedAt,
 // onboardingVersion, target* PFC cache outputs) are NOT in this
 // table — they go through dedicated logic in buildProfilePatch.
+//
+// Codex pass 1 / Phase D-2 sign-off violation fix — every input
+// field's threshold = its collecting screen's step number per
+// ONBOARDING_ROUTES (src/domain/onboardingSteps.ts:28). The 5
+// downstream-of-mealPlan thresholds were originally aligned with
+// an earlier route numbering that didn't include the goal-summary
+// step (step 6, read-only); inserting it shifted every following
+// input by +1, but this table wasn't updated. The pre-fix gap
+// meant a returning user with prefilled mealPlan/mealTimings/etc.
+// could leak those values into the DB on a step-N persist BEFORE
+// reaching the corresponding screen. Each row below now matches
+// the route table.
 const FIELD_STEP_THRESHOLDS = {
-  nickname: 2,
-  gender: 3,
-  birthYear: 3,
-  heightCm: 3,
-  currentWeightKg: 3,
-  activityLevel: 4,
-  targetWeightKg: 5,
-  weeklyRatePct: 5,
-  estimatedTargetDate: 5,
-  mealPlan: 6,
-  mealTimings: 7,
-  proteinFactor: 8,
-  weeklyDistribution: 9,
-  cheatDays: 9,
+  nickname: 2,        // /nickname
+  gender: 3,          // /body-info
+  birthYear: 3,       // /body-info
+  heightCm: 3,        // /body-info
+  currentWeightKg: 3, // /body-info
+  activityLevel: 4,   // /activity
+  targetWeightKg: 5,  // /goal-weight
+  weeklyRatePct: 5,   // /goal-weight
+  estimatedTargetDate: 5, // /goal-weight (derived)
+  mealPlan: 7,        // /meal-plan (was 6, off by 1)
+  mealTimings: 8,     // /meal-timing (was 7, off by 1)
+  proteinFactor: 9,   // /protein-target (was 8, off by 1)
+  weeklyDistribution: 10, // /weekly-distrib (was 9, off by 1)
+  cheatDays: 10,      // /weekly-distrib (was 9, off by 1)
 } as const;
 
 // Phase A-1 sign-off: v1.3.0 onboarding completes with version=2.
@@ -116,7 +128,8 @@ function deriveCacheFromSnapshot(store: OnboardingData): DerivedSnapshotCache {
     estimatedTargetDateIso = date.toISOString();
   }
 
-  // step >= 8 (full input): targetCalories + pfcTargets atomically
+  // step >= ONBOARDING_STEP_FULL_INPUT (= 9 post Codex pass 1 / D-2
+  // route renumbering): targetCalories + pfcTargets atomically
   // computed together so a stale-cache scenario can't persist only
   // half of the bundle.
   if (

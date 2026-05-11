@@ -259,9 +259,12 @@ describe('buildProfilePatch — JSON-array fields', () => {
     // updateProfile's JSON_ARRAY_KEYS path stringifies; here we
     // verify the patch holds the raw array (boundary lives in
     // updateProfile).
+    // Phase D-2 threshold fix — mealTimings now gates at step 8
+    // (was 7) since goal-summary inserted step 6, pushing every
+    // downstream input by +1.
     const patch = buildProfilePatch({
       store: makeStore({
-        onboardingStep: 7,
+        onboardingStep: 8,
         gender: 'male',
         birthYear: 1995,
         heightCm: 170,
@@ -281,7 +284,7 @@ describe('buildProfilePatch — JSON-array fields', () => {
   it('mealTimings empty array is preserved (distinguishes "set but empty" from "unset")', () => {
     const patch = buildProfilePatch({
       store: makeStore({
-        onboardingStep: 7,
+        onboardingStep: 8,
         mealPlan: 'balanced',
         mealTimings: [],
       }),
@@ -294,7 +297,7 @@ describe('buildProfilePatch — JSON-array fields', () => {
   it('mealTimings null stays null (unset)', () => {
     const patch = buildProfilePatch({
       store: makeStore({
-        onboardingStep: 7,
+        onboardingStep: 8,
         mealPlan: 'balanced',
         mealTimings: null,
       }),
@@ -302,6 +305,51 @@ describe('buildProfilePatch — JSON-array fields', () => {
       now: NOW,
     });
     expect(patch.mealTimings).toBeNull();
+  });
+
+  // Codex pass 1 / Phase D-2 sign-off violation regression — every
+  // v2 input field's threshold must match its collecting screen's
+  // step number per ONBOARDING_ROUTES. Pre-fix, mealPlan gated at
+  // step 6 (goal-summary) instead of 7 (meal-plan), so a prefilled
+  // mealPlan could leak into the DB on a goal-summary persist
+  // before the user reached the meal-plan screen. Same off-by-one
+  // affected mealTimings (8 vs 7), proteinFactor (9 vs 8),
+  // weeklyDistribution (10 vs 9), cheatDays (10 vs 9).
+  it('mealPlan at step=6 (goal-summary) is NOT persisted (stale-prefill defense)', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 6,
+        mealPlan: 'balanced', // simulating prefilled value
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.mealPlan).toBeUndefined();
+  });
+
+  it('mealPlan at step=7 (meal-plan reached) IS persisted', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 7,
+        mealPlan: 'balanced',
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.mealPlan).toBe('balanced');
+  });
+
+  it('mealTimings at step=7 is NOT persisted (boundary regression)', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 7,
+        mealPlan: 'balanced',
+        mealTimings: ['breakfast'],
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.mealTimings).toBeUndefined();
   });
 });
 
@@ -353,13 +401,16 @@ describe('buildProfilePatch — Codex pass 1 stale-cache resistance (Important)'
   // result in stale derived values landing in the patch.
 
   it('PFC bundle recomputed when proteinFactor changes after calculateAll', () => {
-    // Imagine: user reaches [8] proteinFactor=2.2, calculateAll fires
-    // (cache populated for 2.2), user navigates back to [8] and
-    // changes to 1.6, then persistToProfile fires WITHOUT a fresh
-    // calculateAll. Cache still reflects 2.2; service must use 1.6.
+    // Imagine: user reaches protein-target with proteinFactor=2.2,
+    // calculateAll fires (cache populated for 2.2), user navigates
+    // back to protein-target and changes to 1.6, then persistToProfile
+    // fires WITHOUT a fresh calculateAll. Cache still reflects 2.2;
+    // service must use 1.6.
+    // Phase D-2 threshold fix — ONBOARDING_STEP_FULL_INPUT is now 9
+    // (was 8) since goal-summary inserted step 6.
     const patch = buildProfilePatch({
       store: makeStore({
-        onboardingStep: 8,
+        onboardingStep: 9,
         gender: 'male',
         birthYear: 1995,
         heightCm: 170,
@@ -384,13 +435,14 @@ describe('buildProfilePatch — Codex pass 1 stale-cache resistance (Important)'
   });
 
   it('PFC bundle null when cache is null but inputs are populated (calculateAll never fired)', () => {
-    // Coverage gap from Codex review: step >= 8 with all snapshot
-    // inputs set but ALL cache fields null (calculateAll didn't
-    // fire / failed). Service should still emit a valid patch with
-    // the bundle present (recomputed), not skip due to null cache.
+    // Coverage gap from Codex review: step >= ONBOARDING_STEP_FULL_INPUT
+    // (= 9 post Phase D-2 fix) with all snapshot inputs set but
+    // ALL cache fields null (calculateAll didn't fire / failed).
+    // Service should still emit a valid patch with the bundle
+    // present (recomputed), not skip due to null cache.
     const patch = buildProfilePatch({
       store: makeStore({
-        onboardingStep: 8,
+        onboardingStep: 9,
         gender: 'male',
         birthYear: 1995,
         heightCm: 170,
@@ -424,9 +476,11 @@ describe('buildProfilePatch — Codex pass 1 stale-cache resistance (Important)'
     // Codex flag: targetCalories and pfcTargets had independent
     // null checks in the original code. Refactor unifies them so a
     // future cache-coherence break can't write only one half.
+    // Phase D-2 threshold fix — step bumped to 9 (= new
+    // ONBOARDING_STEP_FULL_INPUT).
     const patch = buildProfilePatch({
       store: makeStore({
-        onboardingStep: 8,
+        onboardingStep: 9,
         gender: 'male',
         birthYear: 1995,
         heightCm: 170,

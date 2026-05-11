@@ -166,7 +166,7 @@ describe('useOnboardingStore — calculateAll (Phase A-4 wired) + persistToProfi
   // user hasn't actually advanced past [8] protein-target, so legacy
   // body fields are still INITIAL_STATE placeholders. calculateAll
   // must refuse to compute on placeholder data.
-  it('calculateAll refuses to compute when onboardingStep < 8 (placeholder-data defense)', () => {
+  it('calculateAll refuses to compute when onboardingStep < ONBOARDING_STEP_FULL_INPUT (placeholder-data defense)', () => {
     const s = useOnboardingStore.getState();
     s.setField('targetWeightKg', 65);
     s.setField('weeklyRatePct', -0.5);
@@ -181,16 +181,18 @@ describe('useOnboardingStore — calculateAll (Phase A-4 wired) + persistToProfi
     expect(after.pfcTargets).toBeNull();
   });
 
-  it('calculateAll populates all 5 cache fields when v2 inputs set + onboardingStep >= 8', () => {
+  it('calculateAll populates all 5 cache fields when v2 inputs set + onboardingStep >= ONBOARDING_STEP_FULL_INPUT', () => {
     const s = useOnboardingStore.getState();
     // Build 14/15 defaults: male / 1995 / 170cm / 70kg / moderate.
     s.setField('targetWeightKg', 65);
     s.setField('weeklyRatePct', -0.5);
     s.setField('proteinFactor', 1.6);
     s.setField('mealPlan', 'balanced');
-    // Simulate user reaching [8] protein-target (advancing through
-    // [3] body / [4] activity / [5] goal-weight / [6] meal-plan).
-    s.setField('onboardingStep', 8);
+    // Simulate user reaching protein-target (= step 9 per
+    // ONBOARDING_ROUTES; advancing through [3] body / [4] activity
+    // / [5] goal-weight / [6] goal-summary / [7] meal-plan / [8]
+    // meal-timing).
+    s.setField('onboardingStep', 9);
     s.calculateAll();
     const after = useOnboardingStore.getState();
     expect(after.bmr).not.toBeNull();
@@ -262,7 +264,7 @@ describe('useOnboardingStore — calculateAll (Phase A-4 wired) + persistToProfi
     expect(after.pfcTargets).toBeNull();
   });
 
-  it('calculateAll clears cache when onboardingStep regresses below 8', () => {
+  it('calculateAll clears cache when onboardingStep regresses below ONBOARDING_STEP_FULL_INPUT', () => {
     const s = useOnboardingStore.getState();
     s.setField('targetWeightKg', 65);
     s.setField('weeklyRatePct', -0.5);
