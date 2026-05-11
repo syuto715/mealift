@@ -142,12 +142,12 @@ export default function WeeklyDistribScreen() {
     } catch (err) {
       console.warn('[onboarding/weekly-distrib] persistToProfile failed', err);
     }
-    // Phase D-6 transitional bridge — flip to '/motivation' when
-    // D-6 ships. body-and-training is the precedent target;
-    // legacy screen doesn't touch weeklyDistribution / cheatDays
-    // and complete.tsx now preserves both via the conditional
-    // patch added in this commit.
-    router.push('/(onboarding)/body-and-training');
+    // Phase D-6 flipped this to the new flow's [10] /motivation
+    // screen. The D-5 stop-gap (legacy /body-and-training) is
+    // no longer reachable from this CTA. motivation itself
+    // still bridges to /body-and-training until Phase D-7 ships
+    // /progress-preview.
+    router.push('/(onboarding)/motivation');
   }, [
     allValid,
     cheatDays,
