@@ -220,12 +220,13 @@ export default function GoalWeightScreen() {
     } catch (err) {
       console.warn('[onboarding/goal-weight] persistToProfile failed', err);
     }
-    // Phase D-1 transitional bridge — flip to '/goal-summary'
-    // when the new flow's [5.5] ships. body-and-training is the
-    // closest legacy semantic match; weeklyRatePct hardening in
-    // complete.tsx preserves the C-5 choice end-to-end through
-    // the legacy completion path.
-    router.push('/(onboarding)/body-and-training');
+    // Phase D-1 flipped this to the new flow's [5.5]
+    // /goal-summary screen. The C-5 stop-gap (legacy
+    // /body-and-training) is no longer reachable from this CTA.
+    // goal-summary itself still bridges to /body-and-training
+    // until Phase D-2 ships /meal-plan (Pattern 26 chain
+    // continues).
+    router.push('/(onboarding)/goal-summary');
   }, [allValid, hasInteracted, isAdvancing, persistToProfile]);
 
   const direction = getDirection(currentWeightKg, targetSliderValue);
