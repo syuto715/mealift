@@ -127,18 +127,18 @@ export default function CompleteScreen() {
         equipment: onboarding.equipment,
       });
 
-      // Phase C-* transitional bridge integrity — preserve v2
-      // fields collected on the new flow screens that legacy
+      // Phase C-* / D-* transitional bridge integrity — preserve
+      // v2 fields collected on the new flow screens that legacy
       // createProfile's pre-Onboarding-v2 signature doesn't
-      // accept. Each conditional matches the Phase C kickoff
-      // for that screen:
+      // accept. Each conditional matches the Phase kickoff for
+      // that screen:
       //   - nickname (C-2)
-      //   - weeklyRatePct (C-5) — null until user reaches /
-      //     goal-weight; written when present.
-      // Other v2 fields (mealPlan, proteinFactor, mealTimings,
-      // etc.) are still null at this cutover point because their
-      // collecting screens aren't reachable yet via the legacy
-      // path. Phase D replaces this completion path entirely
+      //   - weeklyRatePct (C-5)
+      //   - mealPlan (D-2)
+      // Remaining v2 fields (proteinFactor, mealTimings,
+      // weeklyDistribution, cheatDays) are still null at this
+      // cutover because their collecting screens haven't shipped
+      // yet. Phase D-N replaces this completion path entirely
       // and these conditionals revert (v2 fields flow through
       // onboardingService.persistToProfile).
       const completionPatch: Partial<typeof profile> = {
@@ -153,6 +153,9 @@ export default function CompleteScreen() {
       }
       if (onboarding.weeklyRatePct != null) {
         completionPatch.weeklyRatePct = onboarding.weeklyRatePct;
+      }
+      if (onboarding.mealPlan) {
+        completionPatch.mealPlan = onboarding.mealPlan;
       }
       await updateProfileRepo(profile.id, completionPatch);
 
@@ -179,6 +182,7 @@ export default function CompleteScreen() {
         ...(onboarding.weeklyRatePct != null
           ? { weeklyRatePct: onboarding.weeklyRatePct }
           : {}),
+        ...(onboarding.mealPlan ? { mealPlan: onboarding.mealPlan } : {}),
       };
       setProfile(hydratedProfile);
 

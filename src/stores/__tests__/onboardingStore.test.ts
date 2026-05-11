@@ -771,3 +771,55 @@ describe('useOnboardingStore — goal-weight actions (Phase C-5)', () => {
     expect(s1.onboardingStep).toBe(5);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 12. Meal plan action — Phase D-2 atomic value+step setter
+// ---------------------------------------------------------------------------
+
+describe('useOnboardingStore — setMealPlan (Phase D-2)', () => {
+  it('writes value AND bumps step 0 → 7 atomically', () => {
+    useOnboardingStore.getState().setMealPlan('washoku');
+    const s = useOnboardingStore.getState();
+    expect(s.mealPlan).toBe('washoku');
+    expect(s.onboardingStep).toBe(7);
+  });
+
+  it('all 5 plans pass through the setter', () => {
+    const plans = [
+      'balanced',
+      'washoku',
+      'high_protein',
+      'low_carb',
+      'fasting',
+    ] as const;
+    for (const plan of plans) {
+      useOnboardingStore.getState().setMealPlan(plan);
+      expect(useOnboardingStore.getState().mealPlan).toBe(plan);
+    }
+  });
+
+  it('preserves a higher onboardingStep (no regression on revisit)', () => {
+    useOnboardingStore.getState().setField('onboardingStep', 10);
+    useOnboardingStore.getState().setMealPlan('high_protein');
+    expect(useOnboardingStore.getState().onboardingStep).toBe(10);
+  });
+
+  it('idempotent — same plan twice produces same snapshot', () => {
+    useOnboardingStore.getState().setMealPlan('washoku');
+    const snap1 = useOnboardingStore.getState();
+    useOnboardingStore.getState().setMealPlan('washoku');
+    const snap2 = useOnboardingStore.getState();
+    expect(snap2.mealPlan).toBe(snap1.mealPlan);
+    expect(snap2.onboardingStep).toBe(snap1.onboardingStep);
+  });
+
+  it('does NOT touch unrelated fields', () => {
+    const s0 = useOnboardingStore.getState();
+    s0.setField('nickname', 'syuto');
+    s0.setField('weeklyRatePct', -0.5);
+    s0.setMealPlan('balanced');
+    const s1 = useOnboardingStore.getState();
+    expect(s1.nickname).toBe('syuto');
+    expect(s1.weeklyRatePct).toBe(-0.5);
+  });
+});

@@ -161,6 +161,13 @@ export interface OnboardingActions {
   setTargetWeightKg: (value: number | null) => void;
   setGoalType: (value: GoalType) => void;
   setWeeklyRatePct: (value: WeeklyRatePct | null) => void;
+
+  // Phase D-2 — Meal plan screen [6] field setter. Single radio
+  // selection from MEAL_PLAN_OPTIONS, bumps step to 7
+  // monotonically. INITIAL_STATE.mealPlan is null so the screen's
+  // CTA gates on non-null without needing a per-screen
+  // hasInteracted sentinel.
+  setMealPlan: (value: MealPlan) => void;
 }
 
 export type OnboardingState = OnboardingData & OnboardingActions;
@@ -464,5 +471,15 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     set((s) => ({
       weeklyRatePct: value,
       onboardingStep: Math.max(s.onboardingStep, 5),
+    })),
+
+  // Phase D-2 — Meal plan screen [6] field setter. Note the
+  // step bump goes to 7 (not 6) because the new flow's [6] is
+  // `goal-summary` (step 6 per ONBOARDING_ROUTES); meal-plan
+  // is route step 7.
+  setMealPlan: (value) =>
+    set((s) => ({
+      mealPlan: value,
+      onboardingStep: Math.max(s.onboardingStep, 7),
     })),
 }));

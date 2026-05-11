@@ -178,11 +178,12 @@ export default function GoalSummaryScreen() {
     if (isAdvancing) return;
     if (summary == null) return;
     setIsAdvancing(true);
-    // Phase D-2 transitional bridge — flip to '/meal-plan' when
-    // D-2 ships. body-and-training is the existing legacy bridge
-    // target; D-1 adds no v2 fields so no integrity patch is
-    // needed in complete.tsx for this commit.
-    router.push('/(onboarding)/body-and-training');
+    // Phase D-2 flipped this to the new flow's [6] /meal-plan
+    // screen. The D-1 stop-gap (legacy /body-and-training) is
+    // no longer reachable from this CTA. meal-plan itself still
+    // bridges to /body-and-training until Phase D-3 ships
+    // /meal-timing (Pattern 26 chain continues).
+    router.push('/(onboarding)/meal-plan');
   }, [isAdvancing, summary]);
 
   if (summary == null) {
