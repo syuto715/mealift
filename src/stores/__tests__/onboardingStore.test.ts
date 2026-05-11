@@ -869,3 +869,97 @@ describe('useOnboardingStore — setMealTimings (Phase D-3)', () => {
     expect(s1.mealPlan).toBe('washoku');
   });
 });
+
+// ---------------------------------------------------------------------------
+// 14. Protein factor action — Phase D-4 atomic value+step setter
+//     (calculateAll trust boundary milestone)
+// ---------------------------------------------------------------------------
+
+describe('useOnboardingStore — setProteinFactor (Phase D-4)', () => {
+  it('writes value AND bumps step 0 → 9 atomically', () => {
+    useOnboardingStore.getState().setProteinFactor(1.6);
+    const s = useOnboardingStore.getState();
+    expect(s.proteinFactor).toBe(1.6);
+    expect(s.onboardingStep).toBe(9);
+  });
+
+  it('all 4 factors pass through', () => {
+    const factors = [1.0, 1.6, 2.2, 3.0] as const;
+    for (const f of factors) {
+      useOnboardingStore.getState().setProteinFactor(f);
+      expect(useOnboardingStore.getState().proteinFactor).toBe(f);
+    }
+  });
+
+  it('preserves a higher onboardingStep (no regression on revisit)', () => {
+    useOnboardingStore.getState().setField('onboardingStep', 12);
+    useOnboardingStore.getState().setProteinFactor(2.2);
+    expect(useOnboardingStore.getState().onboardingStep).toBe(12);
+  });
+
+  it('idempotent — same value twice', () => {
+    useOnboardingStore.getState().setProteinFactor(1.6);
+    const before = useOnboardingStore.getState().onboardingStep;
+    useOnboardingStore.getState().setProteinFactor(1.6);
+    expect(useOnboardingStore.getState().onboardingStep).toBe(before);
+    expect(useOnboardingStore.getState().proteinFactor).toBe(1.6);
+  });
+
+  it('does NOT touch unrelated fields', () => {
+    const s0 = useOnboardingStore.getState();
+    s0.setField('nickname', 'syuto');
+    s0.setMealTimings(['breakfast']);
+    s0.setProteinFactor(2.2);
+    const s1 = useOnboardingStore.getState();
+    expect(s1.nickname).toBe('syuto');
+    expect(s1.mealTimings).toEqual(['breakfast']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 15. calculateAll trust-boundary integration — Phase D-4 milestone
+// ---------------------------------------------------------------------------
+
+describe('useOnboardingStore — calculateAll firing on protein-target (Phase D-4)', () => {
+  it('setProteinFactor + calculateAll populates PFC bundle atomically (Pattern 24)', () => {
+    const s = useOnboardingStore.getState();
+    // Build 14/15 defaults seed body-info inputs. Pre-set the
+    // v2 fields up to the protein-target screen.
+    s.setField('targetWeightKg', 65);
+    s.setField('weeklyRatePct', -0.5);
+    s.setField('mealPlan', 'balanced');
+    // Step bumps to 9 here; calculateAll's full-input gate
+    // (ONBOARDING_STEP_FULL_INPUT) now reads as 9.
+    s.setProteinFactor(1.6);
+    s.calculateAll();
+    const after = useOnboardingStore.getState();
+    // Pattern 24 atomic bundle — all 4 fields set together.
+    expect(after.dailyCalorieTarget).not.toBeNull();
+    expect(after.pfcTargets).not.toBeNull();
+    expect(after.pfcTargets!.protein).toBeGreaterThan(0);
+    expect(after.pfcTargets!.fat).toBeGreaterThan(0);
+    expect(after.pfcTargets!.carbs).toBeGreaterThan(0);
+    expect(after.estimatedTargetDate).toBeInstanceOf(Date);
+  });
+
+  it('PFC bundle cleared when prior input regresses to null (Pattern 24 inverse)', () => {
+    const s = useOnboardingStore.getState();
+    s.setField('targetWeightKg', 65);
+    s.setField('weeklyRatePct', -0.5);
+    s.setField('mealPlan', 'balanced');
+    s.setProteinFactor(1.6);
+    s.calculateAll();
+    expect(useOnboardingStore.getState().dailyCalorieTarget).not.toBeNull();
+    // Back-nav scenario — user clears their mealPlan.
+    s.setField('mealPlan', null);
+    s.calculateAll();
+    const after = useOnboardingStore.getState();
+    // Atomic invalidation — Pattern 24 says all 4 fields drop
+    // together when any input becomes invalid.
+    expect(after.dailyCalorieTarget).toBeNull();
+    expect(after.pfcTargets).toBeNull();
+    expect(after.bmr).toBeNull();
+    expect(after.tdee).toBeNull();
+    expect(after.estimatedTargetDate).toBeNull();
+  });
+});

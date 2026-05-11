@@ -175,6 +175,15 @@ export interface OnboardingActions {
   // submissions). Bumps step to 8 per the route table /
   // FIELD_STEP_THRESHOLDS alignment from D-2.
   setMealTimings: (values: readonly string[]) => void;
+
+  // Phase D-4 — Protein target screen [8] field setter. Bumping
+  // onboardingStep to 9 here trips ONBOARDING_STEP_FULL_INPUT
+  // (D-2 alignment), which is the trust-boundary at which
+  // calculateAll's cache compute begins firing. The setter
+  // doesn't call calculateAll directly — that's the screen's
+  // responsibility post-set (so the cache reflects the new
+  // value, not a stale render-cycle snapshot).
+  setProteinFactor: (value: ProteinFactor) => void;
 }
 
 export type OnboardingState = OnboardingData & OnboardingActions;
@@ -499,5 +508,14 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     set((s) => ({
       mealTimings: [...values],
       onboardingStep: Math.max(s.onboardingStep, 8),
+    })),
+
+  // Phase D-4 — Protein target screen [8] field setter. Step bump
+  // to 9 monotonically. The screen calls calculateAll AFTER this
+  // setter so the cache compute sees the updated value.
+  setProteinFactor: (value) =>
+    set((s) => ({
+      proteinFactor: value,
+      onboardingStep: Math.max(s.onboardingStep, 9),
     })),
 }));

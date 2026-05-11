@@ -136,12 +136,12 @@ export default function CompleteScreen() {
       //   - weeklyRatePct (C-5)
       //   - mealPlan (D-2)
       //   - mealTimings (D-3)
-      // Remaining v2 fields (proteinFactor, weeklyDistribution,
-      // cheatDays) are still null at this cutover because their
-      // collecting screens haven't shipped yet. Phase D-N
-      // replaces this completion path entirely and these
-      // conditionals revert (v2 fields flow through
-      // onboardingService.persistToProfile).
+      //   - proteinFactor (D-4)
+      // Remaining v2 fields (weeklyDistribution, cheatDays) are
+      // still null at this cutover because their collecting
+      // screens haven't shipped yet. Phase D-N replaces this
+      // completion path entirely and these conditionals revert
+      // (v2 fields flow through onboardingService.persistToProfile).
       const completionPatch: Partial<typeof profile> = {
         targetCalories,
         targetProteinG: macros.proteinG,
@@ -160,6 +160,9 @@ export default function CompleteScreen() {
       }
       if (onboarding.mealTimings && onboarding.mealTimings.length > 0) {
         completionPatch.mealTimings = onboarding.mealTimings;
+      }
+      if (onboarding.proteinFactor != null) {
+        completionPatch.proteinFactor = onboarding.proteinFactor;
       }
       await updateProfileRepo(profile.id, completionPatch);
 
@@ -189,6 +192,9 @@ export default function CompleteScreen() {
         ...(onboarding.mealPlan ? { mealPlan: onboarding.mealPlan } : {}),
         ...(onboarding.mealTimings && onboarding.mealTimings.length > 0
           ? { mealTimings: onboarding.mealTimings }
+          : {}),
+        ...(onboarding.proteinFactor != null
+          ? { proteinFactor: onboarding.proteinFactor }
           : {}),
       };
       setProfile(hydratedProfile);
