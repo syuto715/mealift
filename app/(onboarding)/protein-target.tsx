@@ -191,12 +191,12 @@ export default function ProteinTargetScreen() {
         err,
       );
     }
-    // Phase D-5 transitional bridge — flip to '/weekly-distrib'
-    // when D-5 ships. body-and-training is the precedent target;
-    // legacy screen doesn't touch proteinFactor + complete.tsx
-    // now preserves it via the conditional patch added in this
-    // commit.
-    router.push('/(onboarding)/body-and-training');
+    // Phase D-5 flipped this to the new flow's [9]
+    // /weekly-distrib screen. The D-4 stop-gap (legacy
+    // /body-and-training) is no longer reachable from this CTA.
+    // weekly-distrib itself still bridges to /body-and-training
+    // until Phase D-6 ships /motivation.
+    router.push('/(onboarding)/weekly-distrib');
   }, [allValid, isAdvancing, persistToProfile]);
 
   return (

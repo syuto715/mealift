@@ -184,6 +184,16 @@ export interface OnboardingActions {
   // responsibility post-set (so the cache reflects the new
   // value, not a stale render-cycle snapshot).
   setProteinFactor: (value: ProteinFactor) => void;
+
+  // Phase D-5 — Weekly distribution screen [9] field setters.
+  // setWeeklyDistribution couples to cheatDays: switching to
+  // 'even' resets cheatDays to null (the array is meaningless
+  // without cheat_days mode). Step bumps to 10 monotonically.
+  // weeklyDistribution / cheatDays don't feed the calculateAll
+  // cache chain (PFC bundle depends on mealPlan + proteinFactor),
+  // so no auto-trigger is wired from these setters.
+  setWeeklyDistribution: (value: WeeklyDistribution) => void;
+  setCheatDays: (values: readonly number[]) => void;
 }
 
 export type OnboardingState = OnboardingData & OnboardingActions;
@@ -521,5 +531,24 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     set((s) => ({
       proteinFactor: value,
       onboardingStep: Math.max(s.onboardingStep, 9),
+    })),
+
+  // Phase D-5 — Weekly distribution screen [9] field setters.
+  // setWeeklyDistribution couples to cheatDays: switching to
+  // 'even' makes the cheat-day array meaningless, so we clear
+  // it. Switching to 'cheat_days' preserves any existing array
+  // (a back-nav round-trip shouldn't blow away the user's
+  // earlier picks). Step bumps to 10 per ONBOARDING_ROUTES
+  // (weekly-distrib step 10).
+  setWeeklyDistribution: (value) =>
+    set((s) => ({
+      weeklyDistribution: value,
+      cheatDays: value === 'even' ? null : s.cheatDays,
+      onboardingStep: Math.max(s.onboardingStep, 10),
+    })),
+  setCheatDays: (values) =>
+    set((s) => ({
+      cheatDays: [...values],
+      onboardingStep: Math.max(s.onboardingStep, 10),
     })),
 }));

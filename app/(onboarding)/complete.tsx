@@ -137,11 +137,12 @@ export default function CompleteScreen() {
       //   - mealPlan (D-2)
       //   - mealTimings (D-3)
       //   - proteinFactor (D-4)
-      // Remaining v2 fields (weeklyDistribution, cheatDays) are
-      // still null at this cutover because their collecting
-      // screens haven't shipped yet. Phase D-N replaces this
-      // completion path entirely and these conditionals revert
-      // (v2 fields flow through onboardingService.persistToProfile).
+      //   - weeklyDistribution + cheatDays (D-5)
+      // D-5 completes the input layer — every v2 input field
+      // now has a preservation conditional. Phase D-8 replaces
+      // this whole completion path with the new flow's [12]
+      // complete screen and onboardingService.persistToProfile,
+      // at which point ALL of these conditionals revert.
       // Phase D-4 / Codex pass 1 Critical fix — when the v2
       // calculateAll cache is populated (user reached step >= 9
       // ONBOARDING_STEP_FULL_INPUT on /protein-target), use those
@@ -185,6 +186,15 @@ export default function CompleteScreen() {
       if (onboarding.proteinFactor != null) {
         completionPatch.proteinFactor = onboarding.proteinFactor;
       }
+      if (onboarding.weeklyDistribution != null) {
+        completionPatch.weeklyDistribution = onboarding.weeklyDistribution;
+      }
+      // cheatDays gated on length > 0 to mirror the mealTimings
+      // pattern — an inadvertent empty array shouldn't clobber a
+      // prior valid DB value.
+      if (onboarding.cheatDays && onboarding.cheatDays.length > 0) {
+        completionPatch.cheatDays = onboarding.cheatDays;
+      }
       await updateProfileRepo(profile.id, completionPatch);
 
       // NOTE: No auto-grant of Plus trial here. Trials are now user-initiated
@@ -224,6 +234,12 @@ export default function CompleteScreen() {
           : {}),
         ...(onboarding.proteinFactor != null
           ? { proteinFactor: onboarding.proteinFactor }
+          : {}),
+        ...(onboarding.weeklyDistribution != null
+          ? { weeklyDistribution: onboarding.weeklyDistribution }
+          : {}),
+        ...(onboarding.cheatDays && onboarding.cheatDays.length > 0
+          ? { cheatDays: onboarding.cheatDays }
           : {}),
       };
       setProfile(hydratedProfile);

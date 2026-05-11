@@ -985,3 +985,79 @@ describe('useOnboardingStore — calculateAll firing on protein-target (Phase D-
     expect(after.dailyCalorieTarget!).toBeLessThan(after.tdee!);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 16. Weekly distribution + cheat days — Phase D-5 actions
+// ---------------------------------------------------------------------------
+
+describe('useOnboardingStore — weekly distribution actions (Phase D-5)', () => {
+  it('setWeeklyDistribution writes value AND bumps step 0 → 10', () => {
+    useOnboardingStore.getState().setWeeklyDistribution('cheat_days');
+    const s = useOnboardingStore.getState();
+    expect(s.weeklyDistribution).toBe('cheat_days');
+    expect(s.onboardingStep).toBe(10);
+  });
+
+  it('setWeeklyDistribution to even resets cheatDays to null', () => {
+    const s = useOnboardingStore.getState();
+    s.setField('cheatDays', [1, 3]);
+    s.setWeeklyDistribution('even');
+    expect(useOnboardingStore.getState().cheatDays).toBeNull();
+  });
+
+  it('setWeeklyDistribution to cheat_days preserves existing cheatDays', () => {
+    const s = useOnboardingStore.getState();
+    s.setField('cheatDays', [1, 3]);
+    s.setWeeklyDistribution('cheat_days');
+    expect(useOnboardingStore.getState().cheatDays).toEqual([1, 3]);
+  });
+
+  it('setCheatDays writes value AND bumps step 0 → 10', () => {
+    useOnboardingStore.getState().setCheatDays([1, 3, 5]);
+    const s = useOnboardingStore.getState();
+    expect(s.cheatDays).toEqual([1, 3, 5]);
+    expect(s.onboardingStep).toBe(10);
+  });
+
+  it('setCheatDays spreads to mutable copy (defensive immutability)', () => {
+    const source = [1, 3] as const;
+    useOnboardingStore.getState().setCheatDays(source);
+    const stored = useOnboardingStore.getState().cheatDays;
+    expect(stored).toEqual(source);
+    stored?.push(5);
+    expect(source).toEqual([1, 3]);
+  });
+
+  it('preserves a higher onboardingStep (no regression on revisit)', () => {
+    useOnboardingStore.getState().setField('onboardingStep', 13);
+    useOnboardingStore.getState().setWeeklyDistribution('even');
+    expect(useOnboardingStore.getState().onboardingStep).toBe(13);
+  });
+
+  // Pattern 26 facet 3 — D-5 fields don't feed the PFC bundle,
+  // so calculateAll's cache is independent of weeklyDistribution
+  // / cheatDays. Pin the idempotency: setting these fields and
+  // re-firing calculateAll produces the same cache values.
+  it('D-5 setters do not affect calculateAll cache (idempotency pin)', () => {
+    const s = useOnboardingStore.getState();
+    s.setField('targetWeightKg', 65);
+    s.setField('weeklyRatePct', -0.5);
+    s.setField('mealPlan', 'balanced');
+    s.setProteinFactor(1.6);
+    s.calculateAll();
+    const before = {
+      bmr: useOnboardingStore.getState().bmr,
+      tdee: useOnboardingStore.getState().tdee,
+      dailyCalorieTarget: useOnboardingStore.getState().dailyCalorieTarget,
+      pfcTargets: useOnboardingStore.getState().pfcTargets,
+    };
+    s.setWeeklyDistribution('cheat_days');
+    s.setCheatDays([2, 5]);
+    s.calculateAll();
+    const after = useOnboardingStore.getState();
+    expect(after.bmr).toBe(before.bmr);
+    expect(after.tdee).toBe(before.tdee);
+    expect(after.dailyCalorieTarget).toBe(before.dailyCalorieTarget);
+    expect(after.pfcTargets).toEqual(before.pfcTargets);
+  });
+});

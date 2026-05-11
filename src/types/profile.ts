@@ -59,6 +59,26 @@ export const MEAL_TIMING_OPTIONS: readonly MealTiming[] = [
 ];
 
 export type WeeklyDistribution = 'even' | 'cheat_days';
+export const WEEKLY_DISTRIBUTION_OPTIONS: readonly WeeklyDistribution[] = [
+  'even',
+  'cheat_days',
+];
+
+// Phase D-5 — weekday index for the cheat_days array. Origin
+// matches profiles.cheatDays column comment (line 120 above):
+// 0=Sun .. 6=Sat. JS Date.getDay() returns the same convention,
+// so any future "is today a cheat day?" lookup reads directly
+// without remapping.
+export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export const DAY_OF_WEEK_OPTIONS: readonly DayOfWeek[] = [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+];
 
 // PFC keys for the calculated-target cache. Phase 6.1 lesson —
 // `Record<MacroKey, V>` enforces full-shape on construction so
