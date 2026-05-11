@@ -17,6 +17,7 @@ import { BodyCompositionChart } from '../../src/components/onboarding/BodyCompos
 import { useOnboardingStore } from '../../src/stores/onboardingStore';
 import {
   aggregateOnboardingSummary,
+  findEarliestInvalidRoute,
   formatCaloriesLabel,
   formatDeltaLabel,
 } from '../../src/domain/goalSummaryAggregator';
@@ -112,22 +113,58 @@ export default function GoalSummaryScreen() {
     weeklyRatePct,
   ]);
 
-  // Mount-time sanity + step bump (Pattern 22 monotonic).
-  // If the aggregator returns null (any prior input invalid), we
-  // can't render a meaningful summary — redirect to /welcome and
-  // let the auth flow re-route through the full sequence.
+  // Sanity redirect — Codex pass 1 / Critical fix — watches the
+  // summary value across mount AND post-mount edits. The original
+  // one-shot useEffect([]) left a hole where an edit-link back-nav
+  // that nulled weeklyRatePct (per C-5 auto-coordination) would
+  // strand the user on a blank fallback container without
+  // redirecting. findEarliestInvalidRoute picks the precise edit
+  // surface to land on (Codex pass 1 / Important #1) so the user
+  // doesn't replay from /welcome.
   useEffect(() => {
-    if (summary == null) {
-      router.replace('/(onboarding)/welcome');
+    if (summary != null) return;
+    if (targetWeightKg == null || weeklyRatePct == null) {
+      // The aggregator inputs already missing the C-5 fields —
+      // route to /goal-weight directly.
+      router.replace('/(onboarding)/goal-weight');
       return;
     }
-    if (onboardingStep < 6) {
+    const dest = findEarliestInvalidRoute({
+      gender,
+      birthYear,
+      heightCm,
+      currentWeightKg,
+      activityLevel,
+      trainingDaysPerWeek,
+      targetWeightKg,
+      goalType,
+      weeklyRatePct,
+      proteinFactor,
+    });
+    router.replace(dest ?? '/(onboarding)/welcome');
+  }, [
+    activityLevel,
+    birthYear,
+    currentWeightKg,
+    gender,
+    goalType,
+    heightCm,
+    proteinFactor,
+    summary,
+    targetWeightKg,
+    trainingDaysPerWeek,
+    weeklyRatePct,
+  ]);
+
+  // Step bump (Pattern 22 monotonic). Separate from the sanity
+  // effect so the redirect path doesn't run a stray setField on
+  // the way out.
+  useEffect(() => {
+    if (summary != null && onboardingStep < 6) {
       setField('onboardingStep', 6);
     }
-    // Only run on mount; summary changes via edit-link back-nav
-    // re-evaluate naturally via the dependency-free closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [summary == null]);
 
   const handleEditGoalWeight = useCallback(() => {
     router.push('/(onboarding)/goal-weight');
@@ -195,11 +232,24 @@ export default function GoalSummaryScreen() {
               {summary.schedule.weeklyRatePct}% ペース
             </Text>
           )}
+          {/* Codex pass 1 / Important #2 — recomp is a distinct
+              direction from maintain. The calorie section can
+              show a non-zero delta for recomp users (slight
+              cut/bulk allowed), so the weight-card copy needs to
+              differentiate or it'll contradict the kcal section
+              right below. */}
           {summary.schedule == null && summary.weight.direction === 'maintain' && (
             <Text
               style={[styles.secondaryValue, { color: colors.textSecondary }]}
             >
               現状維持を継続
+            </Text>
+          )}
+          {summary.schedule == null && summary.weight.direction === 'recomp' && (
+            <Text
+              style={[styles.secondaryValue, { color: colors.textSecondary }]}
+            >
+              体重を維持しながら体組成を改善
             </Text>
           )}
         </SummarySection>
@@ -235,19 +285,23 @@ export default function GoalSummaryScreen() {
           </Text>
         </SummarySection>
 
-        {/* Section 3: 体組成予測 (B-5 chart preview) */}
+        {/* Section 3: 体組成予測 (B-5 chart preview)
+            Codex pass 1 / Nit #2 — soften edit label + note copy.
+            The edit button currently routes back to /goal-weight
+            (proteinFactor is owned by [8] which hasn't shipped),
+            so "前提を編集" overstated the affordance. */}
         <SummarySection
           icon="body-outline"
           title="体組成予測 ★"
           onEdit={handleEditGoalWeight}
-          editLabel="体組成予測の前提を編集"
+          editLabel="目標体重を見直す"
           colors={colors}
         >
           {summary.bodyComposition.proteinFactorIsDefault && (
             <Text
               style={[styles.previewNote, { color: colors.textTertiary }]}
             >
-              目安です。タンパク質目標を設定するとより正確になります
+              タンパク質設定前の仮計算です
             </Text>
           )}
           <View style={styles.chartWrap}>

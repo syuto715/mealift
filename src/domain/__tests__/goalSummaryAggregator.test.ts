@@ -13,6 +13,7 @@ import {
   type AggregatorInputs,
   DEFAULT_PROTEIN_FACTOR_FALLBACK,
   aggregateOnboardingSummary,
+  findEarliestInvalidRoute,
   formatCaloriesLabel,
   formatDeltaLabel,
 } from '../goalSummaryAggregator';
@@ -96,7 +97,11 @@ describe('aggregateOnboardingSummary', () => {
     expect(out!.schedule).not.toBeNull();
   });
 
-  it('recomp case: direction=maintain (per goalType), schedule=null', () => {
+  // Codex pass 1 / Important #2 — direction now distinguishes
+  // recomp from maintain so the summary card copy can stay in
+  // sync with the calorie section (recomp users can see a
+  // non-zero deltaPerDay even though weight is stable).
+  it('recomp case: direction=recomp (distinct from maintain)', () => {
     const out = aggregateOnboardingSummary({
       ...baseCut,
       targetWeightKg: 70,
@@ -104,9 +109,16 @@ describe('aggregateOnboardingSummary', () => {
       weeklyRatePct: 0,
     });
     expect(out).not.toBeNull();
-    // direction follows goalType for cut/bulk and falls through to
-    // maintain for both 'maintain' and 'recomp' (per aggregator
-    // logic — the display layer differentiates via goalType label).
+    expect(out!.weight.direction).toBe('recomp');
+  });
+
+  it('maintain case: direction=maintain (distinct from recomp)', () => {
+    const out = aggregateOnboardingSummary({
+      ...baseCut,
+      targetWeightKg: 70,
+      goalType: 'maintain',
+      weeklyRatePct: 0,
+    });
     expect(out!.weight.direction).toBe('maintain');
   });
 
@@ -258,6 +270,66 @@ describe('aggregateOnboardingSummary — Pattern 18 SSoT cross-check', () => {
     expect(out.calories.deltaPerDay).toBe(
       out.calories.target - out.calories.maintenance,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// findEarliestInvalidRoute — Codex pass 1 / Important #1 fix
+// ---------------------------------------------------------------------------
+
+describe('findEarliestInvalidRoute', () => {
+  const now = new Date(2026, 4, 12);
+  const valid: AggregatorInputs = {
+    gender: 'male',
+    birthYear: 1995,
+    heightCm: 170,
+    currentWeightKg: 70,
+    activityLevel: 'moderate',
+    trainingDaysPerWeek: 3,
+    targetWeightKg: 65,
+    goalType: 'cut',
+    weeklyRatePct: -0.5,
+    proteinFactor: 1.6,
+    now,
+  };
+
+  it('returns null when all validators pass (summary should render)', () => {
+    expect(findEarliestInvalidRoute(valid)).toBeNull();
+  });
+
+  it('routes to /body-info when C-3 fails', () => {
+    expect(
+      findEarliestInvalidRoute({ ...valid, heightCm: 50 }),
+    ).toBe('/(onboarding)/body-info');
+  });
+
+  it('routes to /activity when C-4 fails (C-3 passes)', () => {
+    expect(
+      findEarliestInvalidRoute({ ...valid, trainingDaysPerWeek: 10 }),
+    ).toBe('/(onboarding)/activity');
+  });
+
+  it('routes to /goal-weight when C-5 fails (C-3 + C-4 pass)', () => {
+    expect(
+      findEarliestInvalidRoute({
+        ...valid,
+        goalType: 'cut',
+        weeklyRatePct: 0.25, // inconsistent
+      }),
+    ).toBe('/(onboarding)/goal-weight');
+  });
+
+  it('flow-order precedence: C-3 break shadows downstream breaks', () => {
+    // Both C-3 (heightCm) AND C-5 (inconsistent goalType) broken —
+    // routes to the earliest screen so the user doesn't bounce
+    // multiple times.
+    expect(
+      findEarliestInvalidRoute({
+        ...valid,
+        heightCm: 50,
+        weeklyRatePct: 0.25,
+      }),
+    ).toBe('/(onboarding)/body-info');
   });
 });
 

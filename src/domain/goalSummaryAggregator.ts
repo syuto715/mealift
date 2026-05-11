@@ -27,8 +27,9 @@ import type { ActivityLevel, Gender, GoalType } from '../types/common';
 //   - target kcal:       calculateDailyTarget (A-4)
 //   - schedule:          calculateGoalSummary → estimateTargetDate (A-4)
 //   - body composition:  forecastBodyComposition (B-5, absolute
-//                        snapshots) + predictBodyComposition (A-4,
-//                        delta — used as cross-check sanity)
+//                        snapshots — same helper B-5 chart uses
+//                        internally so the chart and any text
+//                        rendering read from a single source)
 //
 // proteinFactor is optional: C-3〜C-5 don't collect it ([8] does),
 // so the body-composition preview uses a default 1.6 ("適度な
@@ -43,7 +44,11 @@ export interface OnboardingSummary {
     current: number;
     target: number;
     deltaKg: number;
-    direction: 'cut' | 'maintain' | 'bulk';
+    // Codex pass 1 / Important #2 — 'recomp' is distinct from
+    // 'maintain' for display purposes: the calorie section can
+    // show a non-zero delta even when the weight target is
+    // stable, and the summary copy needs to differentiate.
+    direction: 'cut' | 'maintain' | 'bulk' | 'recomp';
   };
   schedule: {
     targetDate: Date;
@@ -128,12 +133,14 @@ export function aggregateOnboardingSummary(
   );
 
   const deltaKg = inputs.targetWeightKg - inputs.currentWeightKg;
-  const direction: 'cut' | 'maintain' | 'bulk' =
+  const direction: 'cut' | 'maintain' | 'bulk' | 'recomp' =
     inputs.goalType === 'cut'
       ? 'cut'
       : inputs.goalType === 'bulk'
         ? 'bulk'
-        : 'maintain';
+        : inputs.goalType === 'recomp'
+          ? 'recomp'
+          : 'maintain';
 
   const proteinFactorUsed =
     inputs.proteinFactor ?? DEFAULT_PROTEIN_FACTOR_FALLBACK;
@@ -198,3 +205,41 @@ export function formatDeltaLabel(deltaPerDay: number): string {
 // The cross-check test in __tests__/goalSummaryAggregator.test.ts
 // pins this so a future calculateDailyTarget rebalancing surfaces
 // the inconsistency immediately.
+
+// === findEarliestInvalidRoute ===
+//
+// Codex pass 1 / Important #1 — when aggregateOnboardingSummary
+// returns null, the screen's sanity redirect should land the
+// user on the screen owning the offending input, not /welcome
+// (which forces a full replay). Walk the validators in flow
+// order and return the first that fails; null when all pass
+// (then the caller stays on the summary screen).
+export function findEarliestInvalidRoute(
+  inputs: AggregatorInputs,
+): '/(onboarding)/body-info' | '/(onboarding)/activity' | '/(onboarding)/goal-weight' | null {
+  if (
+    !isBodyInfoValid(
+      inputs.gender,
+      inputs.birthYear,
+      inputs.heightCm,
+      inputs.currentWeightKg,
+      inputs.now,
+    )
+  ) {
+    return '/(onboarding)/body-info';
+  }
+  if (!isAllInputsValidForC4(inputs.activityLevel, inputs.trainingDaysPerWeek)) {
+    return '/(onboarding)/activity';
+  }
+  if (
+    !isAllInputsValidForC5(
+      inputs.goalType,
+      inputs.targetWeightKg,
+      inputs.weeklyRatePct,
+      inputs.currentWeightKg,
+    )
+  ) {
+    return '/(onboarding)/goal-weight';
+  }
+  return null;
+}
