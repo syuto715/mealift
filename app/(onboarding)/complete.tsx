@@ -195,6 +195,17 @@ export default function CompleteScreen() {
       if (onboarding.cheatDays && onboarding.cheatDays.length > 0) {
         completionPatch.cheatDays = onboarding.cheatDays;
       }
+      // Phase D-7 / Codex pass 1 Sign-off fix — estimatedTargetDate
+      // was the one v2 cache field the legacy bridge previously
+      // dropped. onboardingService.buildProfilePatch writes it from
+      // step >= 5 (FIELD_STEP_THRESHOLDS), but the legacy path
+      // never inherited that. Preserve it here so a user who
+      // saw "達成予定: 2026年8月15日" on /goal-summary or
+      // /motivation doesn't land with a null targetDate in DB.
+      if (onboarding.estimatedTargetDate != null) {
+        completionPatch.estimatedTargetDate =
+          onboarding.estimatedTargetDate.toISOString();
+      }
       await updateProfileRepo(profile.id, completionPatch);
 
       // NOTE: No auto-grant of Plus trial here. Trials are now user-initiated
@@ -240,6 +251,12 @@ export default function CompleteScreen() {
           : {}),
         ...(onboarding.cheatDays && onboarding.cheatDays.length > 0
           ? { cheatDays: onboarding.cheatDays }
+          : {}),
+        ...(onboarding.estimatedTargetDate != null
+          ? {
+              estimatedTargetDate:
+                onboarding.estimatedTargetDate.toISOString(),
+            }
           : {}),
       };
       setProfile(hydratedProfile);

@@ -15,6 +15,7 @@ import {
   computeTrajectoryPoints,
   formatTrajectoryAccessibilityLabel,
   getProgressCopyForDirection,
+  isTrajectoryTruncated,
 } from '../progressTrajectoryUtils';
 import type { OnboardingSummary } from '../goalSummaryAggregator';
 
@@ -154,6 +155,31 @@ describe('computeTrajectoryPoints', () => {
       ),
     ).toEqual([]);
   });
+
+  // Codex pass 1 / Important regression — weekCap === 1 edge.
+  // The screen's xAxisTicks dedup relies on the helper returning
+  // a 2-point trajectory here (week 0 + week 1). Pin so a future
+  // change can't accidentally collapse it.
+  it('weeksToGoal=1 returns exactly 2 points (week 0 + 1)', () => {
+    const points = computeTrajectoryPoints(
+      buildSummary({
+        weight: {
+          current: 70,
+          target: 69,
+          deltaKg: -1,
+          direction: 'cut',
+        },
+        schedule: {
+          targetDate: new Date(2026, 4, 19),
+          weeksToGoal: 1,
+          weeklyRatePct: -1.0,
+        },
+      }),
+    );
+    expect(points.length).toBe(2);
+    expect(points[0].week).toBe(0);
+    expect(points[1].week).toBe(1);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -244,6 +270,68 @@ describe('formatTrajectoryAccessibilityLabel', () => {
     }));
     const out = formatTrajectoryAccessibilityLabel(points);
     expect(out.split('、').length).toBe(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isTrajectoryTruncated — Codex pass 1 / Important fix regression
+// ---------------------------------------------------------------------------
+
+describe('isTrajectoryTruncated', () => {
+  it('null summary → false', () => {
+    expect(isTrajectoryTruncated(null)).toBe(false);
+  });
+
+  it('null schedule (maintain / recomp) → false', () => {
+    expect(
+      isTrajectoryTruncated(
+        buildSummary({
+          schedule: null,
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it('weeksToGoal <= MAX → false', () => {
+    expect(
+      isTrajectoryTruncated(
+        buildSummary({
+          schedule: {
+            targetDate: new Date(2026, 7, 15),
+            weeksToGoal: 14,
+            weeklyRatePct: -0.5,
+          },
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it('weeksToGoal > MAX → true (chart needs truncation cue)', () => {
+    expect(
+      isTrajectoryTruncated(
+        buildSummary({
+          schedule: {
+            targetDate: new Date(2027, 7, 15),
+            weeksToGoal: 100,
+            weeklyRatePct: -0.1,
+          },
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('weeksToGoal exactly == MAX → false (boundary inclusive)', () => {
+    expect(
+      isTrajectoryTruncated(
+        buildSummary({
+          schedule: {
+            targetDate: new Date(2027, 4, 1),
+            weeksToGoal: MAX_TRAJECTORY_WEEKS,
+            weeklyRatePct: -0.25,
+          },
+        }),
+      ),
+    ).toBe(false);
   });
 });
 

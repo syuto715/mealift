@@ -63,6 +63,20 @@ export function computeTrajectoryPoints(
   return points;
 }
 
+// === isTrajectoryTruncated ===
+//
+// Codex pass 1 / Important fix — caller-facing check whether the
+// trajectory chart was capped at MAX_TRAJECTORY_WEEKS. The screen
+// uses this to render a "(以降は省略)" cue on the right edge so
+// the user doesn't read the end of the polyline as the target.
+export function isTrajectoryTruncated(
+  summary: OnboardingSummary | null,
+  maxWeeks: number = MAX_TRAJECTORY_WEEKS,
+): boolean {
+  if (summary?.schedule == null) return false;
+  return summary.schedule.weeksToGoal > maxWeeks;
+}
+
 // === getProgressCopyForDirection ===
 //
 // 4-tier branch (D-6 学び — maintain/recomp collapse regression
@@ -118,10 +132,11 @@ export function getProgressCopyForDirection(
 //
 // VoiceOver-friendly readout for the chart. Picks 3 anchor
 // points (start, midpoint, end) so the announcement stays
-// concise even for long projections. Empty array → fallback
-// copy explicitly states "予測なし" so screen-reader users get
-// the "no projection" state context (Pattern 18 補強
-// cross-consumer — maintain/recomp must surface distinctly).
+// concise even for long projections. Empty array → generic
+// "予測なし" fallback; the screen-level empty state preserves
+// the maintain/recomp distinction (this helper has no direction
+// input, so the screen handles cross-consumer differentiation
+// via its own conditional copy).
 export function formatTrajectoryAccessibilityLabel(
   points: readonly TrajectoryPoint[],
 ): string {

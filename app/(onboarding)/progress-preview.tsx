@@ -29,6 +29,7 @@ import {
   computeTrajectoryPoints,
   formatTrajectoryAccessibilityLabel,
   getProgressCopyForDirection,
+  isTrajectoryTruncated,
 } from '../../src/domain/progressTrajectoryUtils';
 
 // v1.3.0 / Onboarding v2 / Phase D-7 — Progress preview screen [11].
@@ -58,7 +59,7 @@ const SUBTITLE = '計画通り進んだ場合の体重の推移です';
 const CTA_LABEL = '進める';
 
 // SVG layout — matches the B-5 BodyCompositionChart conventions
-// (280×160 viewBox at width 280, scales linearly via the SVG
+// (280×180 viewBox at width 280, scales linearly via the SVG
 // width prop). Padding values picked to leave room for the
 // y-axis weight labels + x-axis week labels.
 const VIEWBOX_WIDTH = 280;
@@ -188,6 +189,7 @@ export default function ProgressPreviewScreen() {
   }
 
   const trajectoryPoints = computeTrajectoryPoints(summary);
+  const truncated = isTrajectoryTruncated(summary);
   const copy = getProgressCopyForDirection(
     summary.weight.direction,
     summary.schedule?.weeksToGoal ?? null,
@@ -218,7 +220,13 @@ export default function ProgressPreviewScreen() {
         >
           <View style={styles.sectionHeader}>
             <Ionicons
-              name="trending-down-outline"
+              name={
+                summary.weight.direction === 'bulk'
+                  ? 'trending-up-outline'
+                  : summary.weight.direction === 'cut'
+                    ? 'trending-down-outline'
+                    : 'analytics-outline'
+              }
               size={20}
               color={colors.primary}
             />
@@ -229,7 +237,19 @@ export default function ProgressPreviewScreen() {
             </Text>
           </View>
           {trajectoryPoints.length >= 2 ? (
-            <TrajectoryChart points={trajectoryPoints} colors={colors} />
+            <>
+              <TrajectoryChart points={trajectoryPoints} colors={colors} />
+              {truncated && (
+                <Text
+                  style={[
+                    styles.truncationNote,
+                    { color: colors.textTertiary },
+                  ]}
+                >
+                  ※ グラフは最初の 52 週まで表示しています
+                </Text>
+              )}
+            </>
           ) : (
             <Text
               style={[styles.emptyChart, { color: colors.textSecondary }]}
@@ -324,8 +344,15 @@ function TrajectoryChart({ points, colors }: TrajectoryChartProps) {
 
   const startPoint = points[0];
   const endPoint = points[points.length - 1];
+  // Codex pass 1 / Important fix — dedupe x-axis ticks. For
+  // weekCap === 1 the original `[0, midWeek=0, weekCap=1]`
+  // produced duplicate React keys + overlapping "0週" labels.
+  // Set-based dedup + sorted output handles weekCap=0/1/N
+  // uniformly.
   const midWeek = Math.floor(weekCap / 2);
-  const xAxisTicks = [0, midWeek, weekCap];
+  const xAxisTicks = Array.from(new Set([0, midWeek, weekCap])).sort(
+    (a, b) => a - b,
+  );
 
   const a11yLabel = formatTrajectoryAccessibilityLabel(points);
 
@@ -468,6 +495,11 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     textAlign: 'center',
     paddingVertical: spacing.md,
+  },
+  truncationNote: {
+    ...typography.bodySmall,
+    textAlign: 'center',
+    marginTop: spacing.xs,
   },
   bodyCopy: {
     ...typography.bodyMedium,
