@@ -20,8 +20,6 @@ import {
   formatSelectedCountLabel,
   getMealTimingDescription,
   getMealTimingLabel,
-  isAllInputsValidForD3,
-  isValidMealTiming,
   toggleSelection,
 } from '../../src/domain/mealTimingUtils';
 
@@ -72,17 +70,40 @@ export default function MealTimingScreen() {
 
   const [isAdvancing, setIsAdvancing] = useState(false);
 
-  // Defensive narrow — Profile.mealTimings is typed as
-  // string[] | null at the schema-layer (no per-value CHECK
-  // constraint), so we filter via isValidMealTiming before
-  // checkbox state lookups. A corrupted DB row or sync poison
-  // can't crash the screen.
+  // Codex pass 1 / Sign-off + Important fix — derive a single
+  // canonical view of the store value and drive BOTH display +
+  // CTA + persist from it. Same shape validateMealTimings.sanitized
+  // produces (MEAL_TIMING_OPTIONS-filter intersection: dedupes
+  // duplicates, drops invalid values, sorts to chronological
+  // order). Pre-fix the screen filtered for render but validated
+  // raw, so a corrupted `['breakfast', 'brunch']` would show
+  // 'breakfast' checked + count=1 + CTA disabled with no
+  // explanation. Now corruption collapses to the salvageable
+  // intersection uniformly — and persist writes the canonical
+  // shape regardless of how the user got here (typed selection
+  // vs prefilled DB row).
   const selected: readonly MealTiming[] = useMemo(() => {
     if (mealTimings == null) return [];
-    return mealTimings.filter(isValidMealTiming);
+    return MEAL_TIMING_OPTIONS.filter((opt) =>
+      mealTimings.includes(opt),
+    );
   }, [mealTimings]);
 
-  const allValid = isAllInputsValidForD3(mealTimings);
+  // Dev-visibility for sync-poison / corrupted-row detection.
+  // Silent canonical repair is fine in production (user sees a
+  // working selector with their valid subset checked), but in
+  // dev we want a footprint so debug sessions can spot the
+  // mismatch.
+  if (__DEV__ && mealTimings != null && mealTimings.length !== selected.length) {
+    console.warn(
+      '[onboarding/meal-timing] mealTimings non-canonical — normalized to',
+      selected,
+      'from',
+      mealTimings,
+    );
+  }
+
+  const allValid = selected.length > 0;
 
   const handleToggle = useCallback(
     (timing: MealTiming) => {
@@ -96,6 +117,17 @@ export default function MealTimingScreen() {
     if (isAdvancing) return;
     if (!allValid) return;
     setIsAdvancing(true);
+    // Codex pass 1 fix — write the canonical shape to store
+    // before persist so the DB receives sorted/dedup'd JSON
+    // regardless of whether the user toggled or just inherited
+    // a non-canonical prefilled value.
+    if (
+      mealTimings == null ||
+      mealTimings.length !== selected.length ||
+      mealTimings.some((v, i) => v !== selected[i])
+    ) {
+      setMealTimings(selected);
+    }
     try {
       await persistToProfile();
     } catch (err) {
@@ -107,7 +139,14 @@ export default function MealTimingScreen() {
     // complete.tsx now preserves it via the conditional patch
     // added in this commit.
     router.push('/(onboarding)/body-and-training');
-  }, [allValid, isAdvancing, persistToProfile]);
+  }, [
+    allValid,
+    isAdvancing,
+    mealTimings,
+    persistToProfile,
+    selected,
+    setMealTimings,
+  ]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

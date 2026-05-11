@@ -132,6 +132,35 @@ describe('validateMealTimings', () => {
       reason: 'invalid_value',
     });
   });
+
+  // Codex pass 1 / Sign-off regression — validateMealTimings.sanitized
+  // is the canonical form (chronological-sorted, dedup'd, valid-
+  // value-only). Pin the canonical-shape contract so a future
+  // change that lets non-canonical input slip past validation
+  // surfaces a test failure. Note: the screen layer also derives
+  // an equivalent canonical view inline via MEAL_TIMING_OPTIONS
+  // filter so persisted JSON matches this shape regardless of
+  // input order.
+  it('sanitized is always MEAL_TIMING_OPTIONS-ordered for valid input', () => {
+    const cases: string[][] = [
+      ['snack', 'breakfast'],
+      ['late_night', 'lunch', 'breakfast'],
+      ['dinner', 'snack', 'lunch', 'breakfast', 'late_night'],
+    ];
+    for (const input of cases) {
+      const out = validateMealTimings(input);
+      expect(out.valid).toBe(true);
+      if (out.valid) {
+        const indices = out.sanitized.map((t) =>
+          MEAL_TIMING_OPTIONS.indexOf(t),
+        );
+        // Monotonically increasing indices = canonical sort.
+        for (let i = 1; i < indices.length; i++) {
+          expect(indices[i]).toBeGreaterThan(indices[i - 1]);
+        }
+      }
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
