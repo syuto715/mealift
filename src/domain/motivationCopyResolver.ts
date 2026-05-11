@@ -65,11 +65,22 @@ export function formatAchievementDateLabel(
   return `${dateLabel}（約 ${weeks} 週）`;
 }
 
-// === formatMaintenanceCopy ===
+// === No-schedule fallback labels ===
 //
-// When goalType is 'maintain' the schedule is null (no convergence
-// date). The motivation screen needs a fallback line that doesn't
-// reference a deadline — distinct copy maintains user expectation.
+// calculateGoalSummary returns null whenever the direction is
+// maintain (covers BOTH goalType='maintain' AND goalType='recomp'
+// per the C-5 consistency rules — recomp has target ≈ current,
+// so direction='maintain' even though the kcal/PFC plan is
+// non-zero). The motivation screen needs distinct fallback copy
+// for the two cases:
+//   - maintain: "現状維持を継続中" — user wants to hold steady
+//   - recomp:   "体組成を改善中" — user holds weight but shifts
+//                composition; D-1 goal-summary.tsx already makes
+//                this distinction in its weight-card copy.
 export function getMaintenanceDateLabel(): string {
   return '現状維持を継続中';
+}
+
+export function getRecompDateLabel(): string {
+  return '体組成を改善中';
 }

@@ -5,6 +5,7 @@ import {
   formatAchievementDateLabel,
   getMaintenanceDateLabel,
   getMotivationCopyForGoal,
+  getRecompDateLabel,
 } from '../motivationCopyResolver';
 
 // ---------------------------------------------------------------------------
@@ -91,5 +92,26 @@ describe('getMaintenanceDateLabel', () => {
     const out = getMaintenanceDateLabel();
     expect(out.length).toBeGreaterThan(0);
     expect(out).toMatch(/維持|現状/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getRecompDateLabel — Codex pass 1 / Important regression
+// ---------------------------------------------------------------------------
+
+describe('getRecompDateLabel', () => {
+  it('returns non-empty recomp-specific fallback', () => {
+    const out = getRecompDateLabel();
+    expect(out.length).toBeGreaterThan(0);
+    expect(out).toMatch(/体組成/);
+  });
+
+  // Distinct from maintain copy per the D-1 precedent — both
+  // goalTypes have direction='maintain' (target ≈ current) so
+  // calculateGoalSummary returns null for both, but the display
+  // copy must differentiate. Pin so a future merge can't silently
+  // collapse them back together.
+  it('is distinct from getMaintenanceDateLabel', () => {
+    expect(getRecompDateLabel()).not.toBe(getMaintenanceDateLabel());
   });
 });

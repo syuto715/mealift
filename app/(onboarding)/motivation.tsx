@@ -22,6 +22,7 @@ import {
   formatAchievementDateLabel,
   getMaintenanceDateLabel,
   getMotivationCopyForGoal,
+  getRecompDateLabel,
 } from '../../src/domain/motivationCopyResolver';
 
 // v1.3.0 / Onboarding v2 / Phase D-6 — Motivation screen [10].
@@ -183,13 +184,21 @@ export default function MotivationScreen() {
   }
 
   const copy = getMotivationCopyForGoal(goalType);
+  // Codex pass 1 / Important fix — null-schedule fallback now
+  // branches by direction. Both maintain and recomp produce
+  // null schedule (target ≈ current → direction='maintain' per
+  // C-5 consistency), but recomp's display should describe the
+  // composition shift, not the static maintain copy. Mirrors
+  // the D-1 goal-summary distinction.
   const dateLabel =
     summary.schedule != null
       ? formatAchievementDateLabel(
           summary.schedule.targetDate,
           summary.schedule.weeksToGoal,
         )
-      : getMaintenanceDateLabel();
+      : summary.weight.direction === 'recomp'
+        ? getRecompDateLabel()
+        : getMaintenanceDateLabel();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

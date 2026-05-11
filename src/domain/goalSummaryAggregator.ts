@@ -54,7 +54,11 @@ export interface OnboardingSummary {
     targetDate: Date;
     weeksToGoal: number;
     weeklyRatePct: number;
-  } | null; // null for maintain — no convergence date
+  } | null; // null for maintain OR recomp — both have
+  //        direction='maintain' (target ≈ current) so neither
+  //        has a convergence date. Display layer (D-6) branches
+  //        on weight.direction to render distinct copy for the
+  //        two cases.
   calories: {
     maintenance: number;
     target: number;
