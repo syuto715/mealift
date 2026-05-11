@@ -24,7 +24,6 @@ import {
   getDistributionDescription,
   getDistributionLabel,
   isAllInputsValidForD5,
-  isValidDayOfWeek,
   toggleCheatDay,
 } from '../../src/domain/weeklyDistribUtils';
 
@@ -81,17 +80,22 @@ export default function WeeklyDistribScreen() {
     return DAY_OF_WEEK_OPTIONS.filter((opt) => cheatDays.includes(opt));
   }, [cheatDays]);
 
-  if (
-    __DEV__ &&
-    cheatDays != null &&
-    cheatDays.length !== selectedDays.length
-  ) {
-    console.warn(
-      '[onboarding/weekly-distrib] cheatDays non-canonical — normalized to',
-      selectedDays,
-      'from',
-      cheatDays,
-    );
+  // Codex pass 1 Nit fix — the length-only check missed
+  // reorder-only divergence (e.g., raw [5, 1] sanitized to [1, 5]).
+  // Mirror the submit-time per-element compare so dev surfacing
+  // catches every shape mismatch, not just count.
+  if (__DEV__ && cheatDays != null) {
+    const reorder =
+      cheatDays.length !== selectedDays.length ||
+      cheatDays.some((v, i) => v !== selectedDays[i]);
+    if (reorder) {
+      console.warn(
+        '[onboarding/weekly-distrib] cheatDays non-canonical — normalized to',
+        selectedDays,
+        'from',
+        cheatDays,
+      );
+    }
   }
 
   const showCheatDaysSection = weeklyDistribution === 'cheat_days';
@@ -305,14 +309,6 @@ export default function WeeklyDistribScreen() {
     </View>
   );
 }
-
-// Acknowledge unused import — isValidDayOfWeek isn't called from
-// the screen itself (the canonical-filter pattern via
-// DAY_OF_WEEK_OPTIONS.filter already enforces validity), but it's
-// part of the validation contract exposed by weeklyDistribUtils.
-// Keep the import slot so any future defensive narrowing has the
-// helper at hand.
-void isValidDayOfWeek;
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

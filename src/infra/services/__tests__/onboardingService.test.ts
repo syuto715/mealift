@@ -351,6 +351,51 @@ describe('buildProfilePatch — JSON-array fields', () => {
     });
     expect(patch.mealTimings).toBeUndefined();
   });
+
+  // Codex pass 1 / Phase D-5 Important regression — service-layer
+  // defense for the cheatDays/weeklyDistribution composite
+  // invariant. Without these gates, an oversize / 'even'-mode
+  // cheatDays prefill could leak into the DB.
+  it('weeklyDistribution=even forces cheatDays=null in patch', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 10,
+        weeklyDistribution: 'even',
+        cheatDays: [1, 3, 5], // stale from a prior cheat_days session
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.weeklyDistribution).toBe('even');
+    expect(patch.cheatDays).toBeNull();
+  });
+
+  it('cheatDays.length > 3 truncates to first 3 in patch', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 10,
+        weeklyDistribution: 'cheat_days',
+        cheatDays: [0, 1, 2, 3, 4], // unreachable from UI but possible via prefill
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.cheatDays).toEqual([0, 1, 2]);
+  });
+
+  it('weeklyDistribution=cheat_days + valid cheatDays passes through', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 10,
+        weeklyDistribution: 'cheat_days',
+        cheatDays: [1, 3],
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.weeklyDistribution).toBe('cheat_days');
+    expect(patch.cheatDays).toEqual([1, 3]);
+  });
 });
 
 // ---------------------------------------------------------------------------

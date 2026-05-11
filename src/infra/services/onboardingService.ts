@@ -229,7 +229,24 @@ export function buildProfilePatch(
   }
   if (step >= FIELD_STEP_THRESHOLDS.weeklyDistribution) {
     patch.weeklyDistribution = store.weeklyDistribution;
-    patch.cheatDays = store.cheatDays;
+    // Phase D-5 / Codex pass 1 Important fix — enforce the
+    // composite invariant at the persistence boundary, not just
+    // the screen:
+    //   - When distribution === 'even', cheatDays MUST be null
+    //     (the array is meaningless without cheat_days mode).
+    //   - cheatDays cap (CHEAT_DAYS_MAX = 3) is enforced by
+    //     truncating to the first N canonical-sorted entries
+    //     rather than silently writing an oversize array.
+    // Defense-in-depth: a prefill / test / future-caller path
+    // that bypasses the screen's UI cap can't leak unreachable
+    // state into the DB.
+    if (store.weeklyDistribution === 'even') {
+      patch.cheatDays = null;
+    } else if (store.cheatDays != null && store.cheatDays.length > 3) {
+      patch.cheatDays = store.cheatDays.slice(0, 3);
+    } else {
+      patch.cheatDays = store.cheatDays;
+    }
   }
 
   // === Service-managed fields ===
