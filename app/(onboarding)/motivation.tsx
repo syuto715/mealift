@@ -168,11 +168,15 @@ export default function MotivationScreen() {
     if (isAdvancing) return;
     if (summary == null) return;
     setIsAdvancing(true);
-    // Phase D-7 transitional bridge — flip to '/progress-preview'
-    // when D-7 ships. body-and-training is the precedent target;
-    // D-6 is read-only so no new v2 fields, complete.tsx hardening
-    // already covers full input layer through D-5.
-    router.push('/(onboarding)/body-and-training');
+    // Phase D-7 flipped this to the new flow's [11]
+    // /progress-preview screen. The D-6 stop-gap (legacy
+    // /body-and-training) is no longer reachable from this CTA.
+    // progress-preview is the LAST transitional phase — its CTA
+    // pushes directly to /(onboarding)/complete (legacy + the
+    // accumulated C-2..D-5 hardening serves as the end
+    // destination until Phase D-8 rewrites under the same
+    // route).
+    router.push('/(onboarding)/progress-preview');
   }, [isAdvancing, summary]);
 
   if (summary == null) {
