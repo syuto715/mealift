@@ -79,12 +79,12 @@ export default function MealPlanScreen() {
     } catch (err) {
       console.warn('[onboarding/meal-plan] persistToProfile failed', err);
     }
-    // Phase D-3 transitional bridge — flip to '/meal-timing' when
-    // D-3 ships. body-and-training is the bridge precedent; the
-    // legacy screen doesn't touch mealPlan, and complete.tsx now
-    // preserves it via the conditional patch added in this commit,
-    // so the bridge has full integrity.
-    router.push('/(onboarding)/body-and-training');
+    // Phase D-3 flipped this to the new flow's [7] /meal-timing
+    // screen. The D-2 stop-gap (legacy /body-and-training) is
+    // no longer reachable from this CTA. meal-timing itself
+    // still bridges to /body-and-training until Phase D-4 ships
+    // /protein-target.
+    router.push('/(onboarding)/meal-timing');
   }, [allValid, isAdvancing, persistToProfile]);
 
   return (

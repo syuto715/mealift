@@ -168,6 +168,13 @@ export interface OnboardingActions {
   // CTA gates on non-null without needing a per-screen
   // hasInteracted sentinel.
   setMealPlan: (value: MealPlan) => void;
+
+  // Phase D-3 — Meal timing screen [7] field setter. Multi-select
+  // checkbox list — accepts an array of MealTiming values (or
+  // empty for "unset"; screen-side validation rejects empty
+  // submissions). Bumps step to 8 per the route table /
+  // FIELD_STEP_THRESHOLDS alignment from D-2.
+  setMealTimings: (values: readonly string[]) => void;
 }
 
 export type OnboardingState = OnboardingData & OnboardingActions;
@@ -481,5 +488,16 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     set((s) => ({
       mealPlan: value,
       onboardingStep: Math.max(s.onboardingStep, 7),
+    })),
+
+  // Phase D-3 — Meal timing screen [7] field setter. Spread the
+  // input array to a mutable copy so the store doesn't share a
+  // reference with the screen's controlled state (defensive
+  // immutability — callers can iterate without worrying about
+  // store-internal mutation).
+  setMealTimings: (values) =>
+    set((s) => ({
+      mealTimings: [...values],
+      onboardingStep: Math.max(s.onboardingStep, 8),
     })),
 }));

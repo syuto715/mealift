@@ -825,3 +825,47 @@ describe('useOnboardingStore — setMealPlan (Phase D-2)', () => {
     expect(s1.weeklyRatePct).toBe(-0.5);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 13. Meal timings action — Phase D-3 atomic value+step setter
+// ---------------------------------------------------------------------------
+
+describe('useOnboardingStore — setMealTimings (Phase D-3)', () => {
+  it('writes value AND bumps step 0 → 8 atomically', () => {
+    useOnboardingStore.getState().setMealTimings(['breakfast', 'lunch']);
+    const s = useOnboardingStore.getState();
+    expect(s.mealTimings).toEqual(['breakfast', 'lunch']);
+    expect(s.onboardingStep).toBe(8);
+  });
+
+  it('accepts empty array (screen-side validation rejects empty)', () => {
+    useOnboardingStore.getState().setMealTimings([]);
+    expect(useOnboardingStore.getState().mealTimings).toEqual([]);
+  });
+
+  it('spreads input to a mutable copy (defensive immutability)', () => {
+    const source = ['breakfast', 'lunch'] as const;
+    useOnboardingStore.getState().setMealTimings(source);
+    const stored = useOnboardingStore.getState().mealTimings;
+    expect(stored).toEqual(source);
+    // Store-internal mutation should not affect the source.
+    stored?.push('dinner');
+    expect(source).toEqual(['breakfast', 'lunch']);
+  });
+
+  it('preserves a higher onboardingStep (no regression on revisit)', () => {
+    useOnboardingStore.getState().setField('onboardingStep', 11);
+    useOnboardingStore.getState().setMealTimings(['dinner']);
+    expect(useOnboardingStore.getState().onboardingStep).toBe(11);
+  });
+
+  it('does NOT touch unrelated fields', () => {
+    const s0 = useOnboardingStore.getState();
+    s0.setField('nickname', 'persisting');
+    s0.setMealPlan('washoku');
+    s0.setMealTimings(['breakfast', 'lunch', 'dinner']);
+    const s1 = useOnboardingStore.getState();
+    expect(s1.nickname).toBe('persisting');
+    expect(s1.mealPlan).toBe('washoku');
+  });
+});

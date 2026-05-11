@@ -40,6 +40,24 @@ export const PROTEIN_FACTOR_OPTIONS: readonly ProteinFactor[] = [
   1.0, 1.6, 2.2, 3.0,
 ];
 
+// Phase D-3 — meal timing slots. v30 schema stores
+// profiles.meal_timings as TEXT (JSON array) with no per-value CHECK
+// constraint, so this app-side literal-union is the source of truth.
+// Keep ordered chronologically (breakfast..late_night) for display.
+export type MealTiming =
+  | 'breakfast'
+  | 'lunch'
+  | 'snack'
+  | 'dinner'
+  | 'late_night';
+export const MEAL_TIMING_OPTIONS: readonly MealTiming[] = [
+  'breakfast',
+  'lunch',
+  'snack',
+  'dinner',
+  'late_night',
+];
+
 export type WeeklyDistribution = 'even' | 'cheat_days';
 
 // PFC keys for the calculated-target cache. Phase 6.1 lesson —
