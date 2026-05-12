@@ -31,11 +31,15 @@ describe('ONBOARDING_ROUTES table integrity', () => {
     }
   });
 
-  it('only welcome and complete have showBack=false', () => {
+  it('welcome / complete / tier-preview have showBack=false', () => {
+    // Phase D-9 — tier-preview is post-completion promotional;
+    // back-nav to /complete would re-fire the createProfile
+    // FromOnboarding success animation, so the screen exits
+    // only via Plus / Skip CTAs.
     const noBack = ONBOARDING_ROUTES.filter((r) => !r.showBack).map(
       (r) => r.name,
     );
-    expect(noBack.sort()).toEqual(['complete', 'welcome']);
+    expect(noBack.sort()).toEqual(['complete', 'tier-preview', 'welcome']);
   });
 
   it('exactly one route is iosOnly (healthkit)', () => {

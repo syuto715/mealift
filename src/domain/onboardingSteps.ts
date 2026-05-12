@@ -42,8 +42,12 @@ export const ONBOARDING_ROUTES: readonly OnboardingRoute[] = [
   // [12] complete — back from here means abandoning a finished
   // onboarding, which the AbandonDialog flow handles separately.
   { name: 'complete', step: 13, showBack: false },
-  // [12.5] tier-preview — Pro/Plus pitch screen.
-  { name: 'tier-preview', step: 14, showBack: true },
+  // [12.5] tier-preview — Pro/Plus pitch screen. showBack=false
+  // because the screen is post-completion (profile already
+  // persisted by D-8 complete); back-nav to /complete would re-
+  // fire the success animation. User exits via the explicit
+  // Plus / Skip CTAs only.
+  { name: 'tier-preview', step: 14, showBack: false },
   // [12.6] iOS-only HealthKit permission. Excluded from
   // totalSteps on Android via getTotalStepsForPlatform.
   { name: 'healthkit', step: 15, showBack: true, iosOnly: true },

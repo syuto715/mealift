@@ -131,9 +131,14 @@ export default function CompleteScreen() {
         }
       })();
       setStatus('success');
-      // Brief success display, then home redirect.
+      // Brief success display, then proceed to the [12.5] tier-
+      // preview promotional screen. Phase D-9 inserted this
+      // post-completion screen for explicit-opt-in Plus trial
+      // pitching. tier-preview's skip path redirects to home
+      // (Android flow); D-10 will add the iOS HealthKit step
+      // between tier-preview and home.
       setTimeout(() => {
-        router.replace('/(tabs)/home');
+        router.replace('/(onboarding)/tier-preview');
       }, 1500);
     } catch (err) {
       console.error('[onboarding/complete] createProfileFromOnboarding failed', err);
