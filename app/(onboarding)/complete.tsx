@@ -62,7 +62,6 @@ export default function CompleteScreen() {
   const onboarding = useOnboardingStore();
   const setProfile = useProfileStore((s) => s.setProfile);
   const user = useAuthStore((s) => s.user);
-  const setField = useOnboardingStore((s) => s.setField);
 
   const [status, setStatus] = useState<CompletionStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -108,28 +107,25 @@ export default function CompleteScreen() {
       : 'ユーザー';
 
     try {
+      // The wrapper handles both v2-field persistence AND the
+      // terminal markers (onboardingCompleted: true + step=13)
+      // via buildProfilePatch's markCompleted path. The returned
+      // profile already reflects those terminal values, so the
+      // in-memory setProfile is a direct passthrough.
       const profile = await createProfileFromOnboarding({
         store: onboarding,
         displayName,
       });
-      // Mark onboarding terminally completed in the store (mirrors
-      // the DB onboardingCompleted=true write — service path
-      // doesn't flip that flag, complete.tsx does as the
-      // user-visible "I'm done" gate).
-      setField('onboardingStep', 13);
       // Sync to profile store so the rest of the app reads the
       // fresh profile without waiting for a DB round-trip.
-      setProfile({ ...profile, onboardingCompleted: true });
+      setProfile(profile);
       // Fire-and-forget notification scheduling — never block
       // home entry on notification setup. The existing service
       // logs internally.
       void (async () => {
         try {
           const settings = await loadNotificationSettings();
-          await syncNotifications({
-            settings,
-            profile: { ...profile, onboardingCompleted: true },
-          });
+          await syncNotifications({ settings, profile });
         } catch (notifErr) {
           console.warn('[onboarding/complete] notification sync failed', notifErr);
         }
@@ -148,7 +144,7 @@ export default function CompleteScreen() {
       // Allow the retry button to re-fire by resetting the guard.
       hasRun.current = false;
     }
-  }, [onboarding, setField, setProfile, user]);
+  }, [onboarding, setProfile, user]);
 
   useEffect(() => {
     void runCompletion();

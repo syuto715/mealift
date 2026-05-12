@@ -15,6 +15,9 @@ jest.mock('../../repositories/profileRepository', () => ({
   getProfile: jest.fn(),
   updateProfile: jest.fn(),
 }));
+// onboardingSteps imports react-native's Platform; mock so Jest's
+// CJS runtime can resolve the module for the SSoT cross-check test.
+jest.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 
 import {
   buildProfilePatch,
@@ -28,6 +31,7 @@ import {
 } from '../../repositories/profileRepository';
 import type { Profile } from '../../../types/profile';
 import type { OnboardingData } from '../../../stores/onboardingStore';
+import { ONBOARDING_ROUTES } from '../../../domain/onboardingSteps';
 
 const mockCreateProfile = createProfile as jest.MockedFunction<
   typeof createProfile
@@ -758,7 +762,7 @@ describe('createProfileFromOnboarding', () => {
     });
   }
 
-  it('happy path: createProfile + updateProfile sequenced, returns hydrated', async () => {
+  it('happy path: createProfile + updateProfile sequenced, returns hydrated terminal profile', async () => {
     const created = makeCreatedProfile();
     const hydrated: Profile = {
       ...created,
@@ -768,12 +772,16 @@ describe('createProfileFromOnboarding', () => {
       mealTimings: ['breakfast', 'lunch', 'dinner'],
       proteinFactor: 1.6,
       weeklyDistribution: 'even',
-      onboardingStep: 12,
+      onboardingStep: 13, // terminal (Codex pass 1 / Important fix)
+      onboardingCompleted: true, // terminal (Codex pass 1 / Critical fix)
       onboardingStartedAt: NOW.toISOString(),
       onboardingVersion: 2,
     };
+    // No existing profile pre-call → createProfile fires.
+    mockGetProfile
+      .mockResolvedValueOnce(null) // pre-existence check
+      .mockResolvedValueOnce(hydrated); // post-update re-read
     mockCreateProfile.mockResolvedValue(created);
-    mockGetProfile.mockResolvedValue(hydrated);
     mockUpdateProfile.mockResolvedValue(undefined);
 
     const result = await createProfileFromOnboarding({
@@ -787,9 +795,56 @@ describe('createProfileFromOnboarding', () => {
     expect(result).toBe(hydrated);
   });
 
-  it('legacy ProfileInput carries all 11 required columns', async () => {
+  // Codex pass 1 / Critical regression — the patch MUST flip
+  // onboardingCompleted to true and bump step to terminal 13.
+  // Pre-fix the wrapper only patched v2 fields, leaving the
+  // completion flag at the schema default (false). On next app
+  // boot index.tsx would route the user back into onboarding.
+  it('terminal save writes onboardingCompleted=true + step=13 in patch', async () => {
+    mockGetProfile
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(makeCreatedProfile());
     mockCreateProfile.mockResolvedValue(makeCreatedProfile());
-    mockGetProfile.mockResolvedValue(makeCreatedProfile());
+
+    await createProfileFromOnboarding({
+      store: makeCompletedStore(), // store.onboardingStep = 12
+      displayName: 'syuto',
+      now: NOW,
+    });
+
+    const patch = mockUpdateProfile.mock.calls[0][1];
+    expect(patch.onboardingCompleted).toBe(true);
+    expect(patch.onboardingStep).toBe(13);
+  });
+
+  // Codex pass 1 / Critical regression — orphan-row defense.
+  // Pre-fix: createProfile always fired, generating a fresh id;
+  // a retry path (error during updateProfile + screen re-fire)
+  // would insert row B alongside row A, then getProfile's
+  // LIMIT 1 (no id targeting) could hydrate either. The
+  // pre-check makes the wrapper idempotent at the insert level.
+  it('skips createProfile when pre-existing profile detected (retry safety)', async () => {
+    const existing = makeCreatedProfile();
+    mockGetProfile
+      .mockResolvedValueOnce(existing) // pre-check sees existing row
+      .mockResolvedValueOnce(existing); // re-read after patch
+    mockUpdateProfile.mockResolvedValue(undefined);
+
+    await createProfileFromOnboarding({
+      store: makeCompletedStore(),
+      displayName: 'syuto',
+      now: NOW,
+    });
+
+    expect(mockCreateProfile).not.toHaveBeenCalled();
+    expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it('legacy ProfileInput carries all 11 required columns', async () => {
+    mockGetProfile
+      .mockResolvedValueOnce(null) // pre-check
+      .mockResolvedValueOnce(makeCreatedProfile()); // re-read
+    mockCreateProfile.mockResolvedValue(makeCreatedProfile());
 
     await createProfileFromOnboarding({
       store: makeCompletedStore(),
@@ -819,8 +874,10 @@ describe('createProfileFromOnboarding', () => {
   // A future change that drops a field from buildProfilePatch
   // (or skips this wrapper call) surfaces here.
   it('v2 patch carries all 14 v2 fields atomically (Pattern 24 SSoT regression)', async () => {
+    mockGetProfile
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(makeCreatedProfile());
     mockCreateProfile.mockResolvedValue(makeCreatedProfile());
-    mockGetProfile.mockResolvedValue(makeCreatedProfile());
 
     await createProfileFromOnboarding({
       store: makeCompletedStore(),
@@ -884,8 +941,10 @@ describe('createProfileFromOnboarding', () => {
     // still constitute a non-empty patch, so updateProfile fires
     // anyway. This test exists to pin that we don't preemptively
     // short-circuit on an empty user-input shape.
+    mockGetProfile
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(makeCreatedProfile());
     mockCreateProfile.mockResolvedValue(makeCreatedProfile());
-    mockGetProfile.mockResolvedValue(makeCreatedProfile());
 
     // Use a store where buildProfilePatch returns at least the
     // service-managed fields — this is the realistic path.
@@ -899,8 +958,10 @@ describe('createProfileFromOnboarding', () => {
   });
 
   it('throws when getProfile re-read returns null (DB consistency)', async () => {
+    mockGetProfile
+      .mockResolvedValueOnce(null) // pre-check: no profile
+      .mockResolvedValueOnce(null); // re-read also null
     mockCreateProfile.mockResolvedValue(makeCreatedProfile());
-    mockGetProfile.mockResolvedValue(null);
 
     await expect(
       createProfileFromOnboarding({
@@ -909,5 +970,18 @@ describe('createProfileFromOnboarding', () => {
         now: NOW,
       }),
     ).rejects.toThrow(/not found after insert/);
+  });
+
+  // Pattern 18 SSoT cross-check — the wrapper's terminal-step
+  // hardcode (TERMINAL_ONBOARDING_STEP = 13) must match
+  // ONBOARDING_ROUTES.complete.step. The service deliberately
+  // doesn't import the routes table (boundary stays at the
+  // screen layer); this test pins the value alignment so a
+  // future route renumbering surfaces here.
+  it('TERMINAL_ONBOARDING_STEP matches ONBOARDING_ROUTES.complete.step', () => {
+    const completeRoute = ONBOARDING_ROUTES.find(
+      (r) => r.name === 'complete',
+    );
+    expect(completeRoute?.step).toBe(13);
   });
 });

@@ -160,18 +160,33 @@ function deriveCacheFromSnapshot(store: OnboardingData): DerivedSnapshotCache {
   return { estimatedTargetDateIso, targetCalories, pfcTargets };
 }
 
+// Phase D-8 — terminal step value for the new flow's completion
+// screen. Matches ONBOARDING_ROUTES.complete.step. Hardcoded as
+// a number rather than imported to avoid pulling the routes
+// table into the service layer (the boundary is the screen
+// layer's responsibility); kept in sync with onboardingSteps.ts
+// by the test `terminal step matches ONBOARDING_ROUTES.complete`.
+const TERMINAL_ONBOARDING_STEP = 13;
+
 export interface BuildProfilePatchInput {
   store: OnboardingData;
   existing: Profile | null;
   // Test seam — production callers omit and the helper uses
   // new Date() for the onboardingStartedAt set-once stamp.
   now?: Date;
+  // Phase D-8 — when true, terminalize the patch:
+  // onboardingCompleted=true + onboardingStep>=TERMINAL_ONBOARDING_STEP.
+  // Caller is createProfileFromOnboarding wrapper signaling "this
+  // is the final save"; intermediate per-screen persists omit
+  // (default false) so a back-nav round-trip never flips the
+  // completion flag prematurely.
+  markCompleted?: boolean;
 }
 
 export function buildProfilePatch(
   input: BuildProfilePatchInput,
 ): Partial<Profile> {
-  const { store, existing, now = new Date() } = input;
+  const { store, existing, now = new Date(), markCompleted = false } = input;
   const step = store.onboardingStep;
   const patch: Partial<Profile> = {};
 
@@ -257,10 +272,30 @@ export function buildProfilePatch(
   // shouldn't roll the persisted progress back. The user's already-
   // collected data lives in the patch above (gated by the LIVE
   // store value), so the DB step stays at the high-water mark.
-  patch.onboardingStep = Math.max(
+  //
+  // Phase D-8 / Codex pass 1 — when markCompleted is true (terminal
+  // save from createProfileFromOnboarding), include
+  // TERMINAL_ONBOARDING_STEP in the max so the persisted step
+  // reaches the route table's complete value (13). Without this
+  // the DB landed at step 12 (from /progress-preview) while the
+  // in-memory store advanced to 13.
+  const stepCandidates = [
     existing?.onboardingStep ?? 0,
     store.onboardingStep,
-  );
+  ];
+  if (markCompleted) {
+    stepCandidates.push(TERMINAL_ONBOARDING_STEP);
+  }
+  patch.onboardingStep = Math.max(...stepCandidates);
+
+  // Phase D-8 / Codex pass 1 — onboardingCompleted is the terminal
+  // boolean the rest of the app reads (app/index.tsx routes
+  // !onboardingCompleted users back into onboarding). buildProfilePatch
+  // intentionally only writes this when markCompleted is true so
+  // intermediate per-screen persists never flip the flag.
+  if (markCompleted) {
+    patch.onboardingCompleted = true;
+  }
 
   // onboardingStartedAt: set on first persist, preserve on subsequent
   // calls. existing.onboardingStartedAt being non-null means a prior
@@ -408,16 +443,32 @@ export async function createProfileFromOnboarding(
     equipment: store.equipment,
   };
 
-  // Step 1 — insert legacy columns + enqueue sync (existing
-  // profileRepository.createProfile contract).
-  const profile = await createProfile(legacyInput);
+  // Phase D-8 / Codex pass 1 Critical fix — orphan-row defense.
+  // The screen's retry path resets its idempotency guard and
+  // re-fires the wrapper. Without this pre-check, a partial
+  // success (createProfile inserted row A, updateProfile threw)
+  // would, on retry, call createProfile AGAIN with a fresh id
+  // and produce row B. getProfile()'s SELECT ... LIMIT 1 (no
+  // id targeting) could then return either row. Pre-checking
+  // for an existing profile makes the wrapper idempotent at
+  // the row-insert level: first call creates+patches, retry
+  // detects the existing row and re-patches (idempotent for
+  // unchanged store values).
+  const preExisting = await getProfile();
+  const profile = preExisting ?? (await createProfile(legacyInput));
 
   // Step 2 — atomically patch every v2 field gated by step
-  // thresholds. Passing the just-created profile as `existing`
-  // ensures buildProfilePatch can read its onboardingStep /
+  // thresholds + terminalize completion (markCompleted: true).
+  // Passing the just-created profile as `existing` ensures
+  // buildProfilePatch can read its onboardingStep /
   // onboardingStartedAt baseline (set-once stamp + monotonic
   // step max both work off existing.* values).
-  const patch = buildProfilePatch({ store, existing: profile, now });
+  const patch = buildProfilePatch({
+    store,
+    existing: profile,
+    now,
+    markCompleted: true,
+  });
   if (Object.keys(patch).length > 0) {
     await updateProfile(profile.id, patch);
   }
