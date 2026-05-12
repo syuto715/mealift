@@ -10,6 +10,33 @@ export const colors = {
   accent: '#FF6B35',
   accentLight: '#FF8F66',
 
+  // v1.4 / UI 改善 v1 Phase A-1 — Plus/プレミアム tier token.
+  //
+  // Plan §4.3 ブランドトーン "Plus/プレミアム グラデーション or ゴールド".
+  // Use case: ProCard / ProTeaser / ProInlineCTA — entry-tier
+  // (Plus) promotional surfaces across 設定 / ホーム / AIメニュー /
+  // 食事 / トレーニング 画面.
+  //
+  // Hex picks:
+  //   - `pro` (#B68B3C): warm gold base. Saturated enough to read
+  //     as premium on both light + dark surfaceSecondary without
+  //     clashing with primary (#1A73E8). Pairs with `proLight`
+  //     (#D4A961) for gradient mid-stop + `proDark` (#8E6925)
+  //     for active / pressed states.
+  //   - `proGradientStart` / `proGradientEnd` form the canonical
+  //     LinearGradient pair for ProCard backgrounds. Use via
+  //     `react-native-svg` LinearGradient (already prebuilt) or
+  //     Stack of two semi-transparent overlays — agent judge.
+  //
+  // Pattern 11 redundant encoding: pair the color with bold
+  // typography + icon ("crown" / "diamond" / "star-outline") so
+  // color-blind users still recognize Plus surfaces.
+  pro: '#B68B3C',
+  proLight: '#D4A961',
+  proDark: '#8E6925',
+  proGradientStart: '#D4A961',
+  proGradientEnd: '#8E6925',
+
   // Semantic
   success: '#34C759',
   warning: '#FF9500',
@@ -84,6 +111,14 @@ export function getColors(scheme: ColorScheme) {
       primaryDark: colors.primaryDark,
       accent: colors.accent,
       accentLight: colors.accentLight,
+      // Phase A-1 — Plus tier tokens. Pass through same hex for
+      // light / dark; legibility on dark surfaces holds because
+      // gold reads well against #161B22 / #21262D.
+      pro: colors.pro,
+      proLight: colors.proLight,
+      proDark: colors.proDark,
+      proGradientStart: colors.proGradientStart,
+      proGradientEnd: colors.proGradientEnd,
       success: colors.success,
       warning: colors.warning,
       error: colors.error,
@@ -106,6 +141,11 @@ export function getColors(scheme: ColorScheme) {
     primaryDark: colors.primaryDark,
     accent: colors.accent,
     accentLight: colors.accentLight,
+    pro: colors.pro,
+    proLight: colors.proLight,
+    proDark: colors.proDark,
+    proGradientStart: colors.proGradientStart,
+    proGradientEnd: colors.proGradientEnd,
     success: colors.success,
     warning: colors.warning,
     error: colors.error,
