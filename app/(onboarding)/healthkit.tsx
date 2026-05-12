@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -82,7 +82,28 @@ export default function HealthKitOnboardingScreen() {
   const setPermissionStatus = useHealthKitStore((s) => s.setPermissionStatus);
   const [busy, setBusy] = useState(false);
 
-  const goNext = () => router.push('/(onboarding)/complete');
+  // Phase D-10 — HealthKit is the terminal screen in the new
+  // iOS onboarding flow (welcome → ... → complete → tier-preview
+  // → healthkit → home). Pre-D-10 ordering was healthkit →
+  // complete; the new flow puts /complete much earlier so
+  // healthkit's "next" now means home. router.replace (not push)
+  // so the user can't back-nav into the post-completion chain.
+  const goNext = () => router.replace('/(tabs)/home');
+
+  // Phase D-10 / kickoff §4 — defensive Platform check. The
+  // canonical path only routes to this screen on iOS (tier-
+  // preview's handleSkip + handleStartTrial branch), but a deep
+  // link / dev-tools navigation could land an Android user
+  // here. isHealthKitAvailable() at handleConnect time covers
+  // the tap path (returns false → goNext), but the visible UI
+  // would still render HealthKit-specific copy/icons before the
+  // user tapped anything. Redirect on mount so non-iOS never
+  // sees the screen at all.
+  useEffect(() => {
+    if (Platform.OS !== 'ios') {
+      router.replace('/(tabs)/home');
+    }
+  }, []);
 
   const handleConnect = async () => {
     if (busy) return;

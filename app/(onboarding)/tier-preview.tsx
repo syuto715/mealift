@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  Platform,
   useColorScheme,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -85,11 +86,17 @@ export default function TierPreviewScreen() {
   // (disabled button without indicator).
 
   const handleSkip = useCallback(() => {
-    // Phase D-9 ships the Android flow's terminal redirect here;
-    // Phase D-10 will introduce iOS HealthKit between tier-
-    // preview and home (Platform.OS conditional flip in this
-    // callback).
-    router.replace('/(tabs)/home');
+    // Phase D-10 — iOS users continue to /(onboarding)/healthkit
+    // for the HealthKit permission request before reaching home.
+    // Android skips HealthKit (platform not supported) and
+    // lands directly on home. Mealift convention is Platform.OS
+    // === 'ios' ternaries over Platform.select (see app/(tabs)/
+    // settings/health-sync.tsx + training/* for parity).
+    const nextRoute =
+      Platform.OS === 'ios'
+        ? '/(onboarding)/healthkit'
+        : '/(tabs)/home';
+    router.replace(nextRoute);
   }, []);
 
   const handleStartTrial = useCallback(async () => {
@@ -130,9 +137,16 @@ export default function TierPreviewScreen() {
         return;
       }
       await applyCustomerInfoToProfile(customerInfo);
-      // Success — proceed to home (Phase D-10 will redirect
-      // iOS users through HealthKit first).
-      router.replace('/(tabs)/home');
+      // Phase D-10 — iOS users continue to /healthkit after
+      // a successful Plus purchase; Android lands on home
+      // directly. Same Platform conditional as handleSkip
+      // (HealthKit is free regardless of subscription tier —
+      // user memory: paywall NEVER touches HealthKit).
+      const nextRoute =
+        Platform.OS === 'ios'
+          ? '/(onboarding)/healthkit'
+          : '/(tabs)/home';
+      router.replace(nextRoute);
     } catch (err) {
       setIsPurchasing(false);
       const message =
