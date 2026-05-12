@@ -33,18 +33,20 @@ interface EmptyStateProps {
   title: string;
   // 副文 (任意、 lineHeight 緩めで読みやすく)
   description?: string;
-  // Primary CTA (任意)
+  // Primary CTA (任意). Codex pass 1 Nit — `icon` field was unused
+  // (existing `ui/Button` doesn't accept icon prop). Removed to
+  // avoid silent no-op for callers. If icon-on-button is needed
+  // later, extend `ui/Button` itself rather than re-introducing
+  // a dead-prop here.
   primaryAction?: {
     label: string;
     onPress: () => void;
-    icon?: React.ComponentProps<typeof Ionicons>['name'];
     testID?: string;
   };
   // Secondary CTA (任意)
   secondaryAction?: {
     label: string;
     onPress: () => void;
-    icon?: React.ComponentProps<typeof Ionicons>['name'];
     testID?: string;
   };
   // testID for screen-level identification (例: "training-empty")

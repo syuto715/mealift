@@ -107,8 +107,11 @@ export function ProCard() {
             </Text>
           </View>
         </View>
+        {/* Codex pass 1 Important — pill bg switched from colors.pro
+            (#B68B3C, white-on-gold 3.11:1) to colors.proDark
+            (#8E6925, white-on-deeper-gold ~5.07:1) for WCAG AA. */}
         <View
-          style={[styles.cta, { backgroundColor: colors.pro }]}
+          style={[styles.cta, { backgroundColor: colors.proDark }]}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >

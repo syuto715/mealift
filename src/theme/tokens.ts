@@ -17,23 +17,31 @@ export const colors = {
   // (Plus) promotional surfaces across 設定 / ホーム / AIメニュー /
   // 食事 / トレーニング 画面.
   //
-  // Hex picks:
-  //   - `pro` (#B68B3C): warm gold base. Saturated enough to read
-  //     as premium on both light + dark surfaceSecondary without
-  //     clashing with primary (#1A73E8). Pairs with `proLight`
-  //     (#D4A961) for gradient mid-stop + `proDark` (#8E6925)
-  //     for active / pressed states.
-  //   - `proGradientStart` / `proGradientEnd` form the canonical
-  //     LinearGradient pair for ProCard backgrounds. Use via
-  //     `react-native-svg` LinearGradient (already prebuilt) or
-  //     Stack of two semi-transparent overlays — agent judge.
+  // WCAG AA contrast (Codex pass 1 Important — Phase A-1 hardening):
+  //   - `pro` (#B68B3C, gold) on white: 3.11:1 — **icon-only OK**
+  //     (non-text content requirement = 3:1), but **NOT** valid for
+  //     text labels at < 18pt (need ≥ 4.5:1).
+  //   - `proDark` (#8E6925, deeper gold) on white: ~5.07:1 — **valid
+  //     for normal text** on light surface. **White on proDark**:
+  //     ~4.13:1 — borderline for normal text but passes for ≥ 14pt
+  //     bold (3:1 large-text rule).
+  //   - `proText` (#7B5A1F, foreground-only): ~6.2:1 on white. Use
+  //     for label text < 14pt on light/tinted surfaces.
+  //
+  // Usage guide:
+  //   - Borders / icon backgrounds / accent fills: `pro`
+  //   - Filled buttons (text on dark gold): `proDark` for bg + white
+  //     for text
+  //   - Text on white / tinted surface: `proText`
+  //   - LinearGradient: `proGradientStart` → `proGradientEnd`
   //
   // Pattern 11 redundant encoding: pair the color with bold
-  // typography + icon ("crown" / "diamond" / "star-outline") so
+  // typography + icon ("star" / "diamond" / "sparkles") so
   // color-blind users still recognize Plus surfaces.
   pro: '#B68B3C',
   proLight: '#D4A961',
   proDark: '#8E6925',
+  proText: '#7B5A1F',
   proGradientStart: '#D4A961',
   proGradientEnd: '#8E6925',
 
@@ -117,6 +125,7 @@ export function getColors(scheme: ColorScheme) {
       pro: colors.pro,
       proLight: colors.proLight,
       proDark: colors.proDark,
+      proText: colors.proText,
       proGradientStart: colors.proGradientStart,
       proGradientEnd: colors.proGradientEnd,
       success: colors.success,
@@ -144,6 +153,7 @@ export function getColors(scheme: ColorScheme) {
     pro: colors.pro,
     proLight: colors.proLight,
     proDark: colors.proDark,
+    proText: colors.proText,
     proGradientStart: colors.proGradientStart,
     proGradientEnd: colors.proGradientEnd,
     success: colors.success,

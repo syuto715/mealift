@@ -68,6 +68,10 @@ export function ProInlineCTA({
         accessibilityLabel={`${label}。 プラン画面を開く。`}
         testID="pro-inline-cta-card"
       >
+        {/* Codex pass 1 Important — sparkles icon (decorative, 16px)
+            stays colors.pro (icon-only 3:1 OK), but the text label
+            uses colors.proText (#7B5A1F, ~6.2:1 on near-white tint)
+            for WCAG AA. */}
         <Ionicons
           name="sparkles"
           size={16}
@@ -75,7 +79,9 @@ export function ProInlineCTA({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         />
-        <Text style={[styles.cardLabel, { color: colors.pro }]}>{label}</Text>
+        <Text style={[styles.cardLabel, { color: colors.proText }]}>
+          {label}
+        </Text>
       </TouchableOpacity>
     );
   }
@@ -90,7 +96,11 @@ export function ProInlineCTA({
       accessibilityLabel={`${label}。 プラン画面を開く。`}
       testID="pro-inline-cta-link"
     >
-      <Text style={[styles.linkLabel, { color: colors.pro }]}>{label}</Text>
+      {/* Codex pass 1 Important — link text uses colors.proText
+          (#7B5A1F) for AA contrast on white background. */}
+      <Text style={[styles.linkLabel, { color: colors.proText }]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }

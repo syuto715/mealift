@@ -91,8 +91,20 @@ export function ProTeaser({
         </View>
       </View>
       <View style={styles.ctaRow}>
-        <Text style={[styles.ctaLabel, { color: colors.pro }]}>{ctaLabel}</Text>
-        <Ionicons name="arrow-forward" size={16} color={colors.pro} />
+        {/* Codex pass 1 Important — text uses colors.proText (#7B5A1F,
+            ~6.2:1 on white) for WCAG AA at labelLarge size. Arrow
+            icon stays colors.proDark + hidden from a11y to avoid
+            duplicate announce (label-only is sufficient). */}
+        <Text style={[styles.ctaLabel, { color: colors.proText }]}>
+          {ctaLabel}
+        </Text>
+        <Ionicons
+          name="arrow-forward"
+          size={16}
+          color={colors.proDark}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
       </View>
     </TouchableOpacity>
   );
