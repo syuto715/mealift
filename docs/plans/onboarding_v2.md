@@ -199,7 +199,8 @@ Removed in E-1:
 
 E-3 (Multi-TZ + a11y audit pass) verified that the architectural
 integrity sealed by E-1 / E-2 holds at ship-ready depth. Headline:
-**audit false-positive rate ~70%**, a positive maturity signal —
+**8 of 10 audit-register entries were already-implemented or
+intentional design choices** — a positive maturity signal where
 the audit hit existing hardening rather than discovering gaps.
 
 Verified-state documentation: [onboarding_v2_e3_audit.md](./onboarding_v2_e3_audit.md).

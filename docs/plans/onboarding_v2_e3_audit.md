@@ -11,18 +11,19 @@ verified state for future-audit reference.
 
 ## Headline finding
 
-**Audit false-positive rate was ~70%** across the multi-agent recon.
-Most flagged "missing" attributes or test gaps proved to be already
-implemented after manual verification. This is a **positive
-architectural-maturity signal**: when a thorough audit produces many
-false positives, the baseline is already solid — the audit is hitting
-existing hardening rather than discovering new gaps.
+**Most audit-agent claims that flagged a "missing" attribute or test
+gap turned out to be false positives** — see the explicit register
+below (10 claims verified, 8 were already implemented or intentional
+design choices). This is a **positive architectural-maturity signal**:
+when a thorough audit produces many false positives, the baseline is
+already solid — the audit is hitting existing hardening rather than
+discovering new gaps.
 
 Architectural learning recorded in MEMORY-equivalent comments in the
 test pin block (`src/domain/__tests__/onboardingCalc.test.ts` —
 "Phase E-3 TZ round-trip stability"):
 
-> Audit false-positive rate is a maturity signal. Phases E-1/E-2
+> Audit false-positive density is a maturity signal. Phases E-1/E-2
 > sealed the Pattern 18 補強 (legacy/v2 coverage completeness) and
 > Pattern 24 補強 (completion signals atomic bundle); E-3 verified
 > that the seal held under audit pressure. The remaining concrete
@@ -55,21 +56,29 @@ test pin block (`src/domain/__tests__/onboardingCalc.test.ts` —
    calendar while preserving hours/minutes/seconds. The UTC instant
    shifts ±1 hour relative to the base; this is the **design-intent
    behavior** (user sees the same time-of-day on their target date).
-4. **Month-end overflow is correct** — Jan 31 + 4 weeks = Feb 28
-   (2026 non-leap year). `setDate(59)` overflows correctly via
-   JavaScript's built-in calendar arithmetic.
+4. **Month-end overflow is correct** — starting Jan 31, the local
+   calendar Y/M/D of the result matches an independent setDate
+   reference (e.g. `setDate(31 + weeks*7)` overflowing through
+   Feb 28 → Mar). Pinned via assertLocalCalendarDayMatches helper
+   so a refactor switching to month-aware arithmetic surfaces.
 5. **Long horizon (multi-DST + leap year) doesn't blow up** —
-   60+ week horizons crossing Mar 2027 / Nov 2027 / Feb 29 2028
-   still produce valid Dates with stable wall-clock.
+   ~59-week horizons crossing Mar 2027 / Nov 2027 / approaching
+   Feb 29 2028 still produce valid Dates with stable wall-clock
+   AND correct Y/M/D against the independent reference.
 
 ### Intentional design choices (recorded for future audit)
 
 - **onboardingStartedAt is text-only round-trip** — stored as ISO TEXT,
   read as raw string, never re-parsed into a Date for display. Layer 4
   is intentionally absent here because there's no display path.
-- **`setDate` local-calendar arithmetic** — chosen over UTC-day math
-  so the user's local-TZ calendar day is preserved. DST-induced UTC
-  offset shifts (±1 hour twice a year) are correct behavior, not bugs.
+- **`setDate` local-calendar arithmetic** — the implementation uses
+  the JavaScript Date API's default local-TZ behavior, and E-3
+  codifies this as the intended contract: the user's local-TZ
+  calendar day is preserved on the target date. DST-induced UTC
+  offset shifts (±1 hour twice a year) are correct user-facing
+  behavior, not bugs. (Note: this is documented as the contract
+  going forward; the repo doesn't claim this was the original
+  author's explicit design decision.)
 - **`formatAchievementDateLabel` does not 0-pad** — `Intl.DateTimeFormat('ja-JP')` renders "8月" not "08月", matching JP
   casual-text convention. Pin via shape regex (`/月/`), not
   exact-string match.
@@ -180,10 +189,11 @@ Items intentionally NOT addressed in E-3, with reason and target phase:
 
 **Pattern: audit-maturity signal**
 
-When a thorough multi-agent audit produces a high false-positive rate
-(observed ~70% in E-3), the architectural baseline is at ship-ready
-depth. The signal is: the audit is hitting existing hardening rather
-than discovering new gaps.
+When a thorough multi-agent audit produces a high density of false
+positives (observed in E-3: 8 of 10 verified register entries were
+already-implemented or intentional design choices), the architectural
+baseline is at ship-ready depth. The signal is: the audit is hitting
+existing hardening rather than discovering new gaps.
 
 Triggering conditions:
 - Phase 18 SSoT 補強 cycle has run (legacy/v2 coverage, completion

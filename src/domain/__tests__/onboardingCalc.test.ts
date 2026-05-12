@@ -236,9 +236,11 @@ describe('estimateTargetDate — Phase E-3 TZ round-trip stability', () => {
     // Canonical weeks for 70→65 at -0.5%: deterministic geometric
     // decay. Pin the exact value (not a range) so any TZ-induced
     // drift surfaces immediately rather than silently sliding by a
-    // week. The 14-week figure is set by the cross-the-line check
-    // in the simulator (line ~176 of onboardingCalc.ts) which fires
-    // when simulatedWeight first dips below the target.
+    // week. The 14-week figure is set by the ACHIEVEMENT_THRESHOLD_KG
+    // (0.5 kg) gate in the while-loop condition
+    // (src/domain/onboardingCalc.ts:163), not by the cross-the-line
+    // break: simulatedWeight at week 14 lands at ~65.26, within
+    // 0.5 kg of target=65, so |simulated-target| <= 0.5 fires.
     expect(out.weeks).toBe(14);
   });
 
@@ -258,7 +260,24 @@ describe('estimateTargetDate — Phase E-3 TZ round-trip stability', () => {
     );
   });
 
-  it('result spanning US DST start (Mar 8 2026) preserves local wall-clock', () => {
+  // Independent local-calendar reference: clone the base instant
+  // then advance by `days` via the same setDate primitive the
+  // production helper uses. The reference Date carries the local-
+  // calendar Y/M/D that the production helper SHOULD produce, so
+  // a refactor that preserves the local wall-clock but lands on the
+  // wrong calendar day would still fail this assertion.
+  function localCalendarAfterDays(base: Date, days: number): Date {
+    const ref = new Date(base.getTime());
+    ref.setDate(ref.getDate() + days);
+    return ref;
+  }
+  function assertLocalCalendarDayMatches(actual: Date, expected: Date) {
+    expect(actual.getFullYear()).toBe(expected.getFullYear());
+    expect(actual.getMonth()).toBe(expected.getMonth());
+    expect(actual.getDate()).toBe(expected.getDate());
+  }
+
+  it('result spanning US DST start (Mar 8 2026) preserves local wall-clock + calendar day', () => {
     // 2026 US DST starts Sunday March 8. Pick a base instant ~2
     // weeks before so the result lands on/after the transition.
     //
@@ -270,8 +289,9 @@ describe('estimateTargetDate — Phase E-3 TZ round-trip stability', () => {
     // same time-of-day on their target date as the base
     // computation; that's what setDate accomplishes by preserving
     // local hours/minutes/seconds. Pinning getHours()/getMinutes()
-    // catches a refactor that swaps to UTC-day arithmetic and
-    // accidentally drops or shifts the local wall-clock.
+    // catches a refactor that swaps to UTC-day arithmetic; pinning
+    // calendar Y/M/D catches a refactor that preserves the hour
+    // but lands on the wrong date.
     const baseNow = new Date('2026-02-22T12:00:00.000Z');
     const out = estimateTargetDate({
       currentWeight: 70,
@@ -280,19 +300,24 @@ describe('estimateTargetDate — Phase E-3 TZ round-trip stability', () => {
       now: baseNow,
     });
     expect(out.weeks).toBeGreaterThan(0);
-    // Wall-clock time-of-day in local TZ stays the same across
-    // the DST transition. (UTC offset can shift ±1 hour; that is
-    // expected and correct user-facing behavior.)
+    // Wall-clock time-of-day stays the same across the DST
+    // transition. (UTC offset can shift ±1 hour; that is expected.)
     expect(out.date.getHours()).toBe(baseNow.getHours());
     expect(out.date.getMinutes()).toBe(baseNow.getMinutes());
     expect(out.date.getSeconds()).toBe(baseNow.getSeconds());
+    // Calendar day equals the independent setDate reference.
+    assertLocalCalendarDayMatches(
+      out.date,
+      localCalendarAfterDays(baseNow, out.weeks * 7),
+    );
     // ISO round-trip still preserves the helper's chosen UTC instant.
     expect(roundTripISO(out.date).getTime()).toBe(out.date.getTime());
   });
 
-  it('result spanning US DST end (Nov 1 2026) preserves local wall-clock', () => {
+  it('result spanning US DST end (Nov 1 2026) preserves local wall-clock + calendar day', () => {
     // 2026 US DST ends Sunday November 1. Same invariant — the
-    // helper preserves local-TZ time-of-day across the fall-back.
+    // helper preserves local-TZ time-of-day AND local calendar day
+    // across the fall-back transition.
     const baseNow = new Date('2026-10-18T12:00:00.000Z');
     const out = estimateTargetDate({
       currentWeight: 70,
@@ -304,38 +329,53 @@ describe('estimateTargetDate — Phase E-3 TZ round-trip stability', () => {
     expect(out.date.getHours()).toBe(baseNow.getHours());
     expect(out.date.getMinutes()).toBe(baseNow.getMinutes());
     expect(out.date.getSeconds()).toBe(baseNow.getSeconds());
+    assertLocalCalendarDayMatches(
+      out.date,
+      localCalendarAfterDays(baseNow, out.weeks * 7),
+    );
     expect(roundTripISO(out.date).getTime()).toBe(out.date.getTime());
   });
 
-  it('result at month-end boundary (Jan 31 + 4 weeks) does not silently shift', () => {
-    // setDate(31 + 28) = setDate(59). JavaScript's setDate
-    // overflows correctly: Jan 31 + 28 days = Feb 28 (2026 is not
-    // a leap year). Pin so a refactor that does month-aware
-    // arithmetic doesn't accidentally land Mar 1.
+  it('result starting Jan 31 overflows the calendar correctly (no Mar-1 slide)', () => {
+    // baseNow = Jan 31 2026. The helper's setDate(31 + N*7) overflows
+    // through Feb (28 days, 2026 non-leap) and possibly into March
+    // depending on N. JavaScript's setDate handles the overflow
+    // (e.g. setDate(59) → Feb 28; setDate(60) → Mar 1). Pin the
+    // helper's resulting local Y/M/D against an independent setDate
+    // reference — a refactor switching to month-aware arithmetic
+    // could silently land Mar 1 instead of Feb 28 + N more days.
+    //
+    // Use a target distance large enough that the result actually
+    // crosses Feb 28: 70→60 @ -0.5% takes ~30 weeks (~210 days),
+    // landing well after both Feb 28 AND the Mar 8 DST transition.
+    // The independent reference assertion holds in all 3 TZ zones.
     const baseNow = new Date('2026-01-31T12:00:00.000Z');
     const out = estimateTargetDate({
       currentWeight: 70,
-      targetWeight: 69.0,
+      targetWeight: 60,
       weeklyRatePct: -0.5,
       now: baseNow,
     });
-    // Calendar arithmetic is straight UTC-ms addition; result is
-    // exactly weeks*7 days past baseNow regardless of which side
-    // of any month boundary the result lands on.
-    const expectedMs =
-      baseNow.getTime() + out.weeks * 7 * 24 * 60 * 60 * 1000;
-    expect(out.date.getTime()).toBe(expectedMs);
+    expect(out.weeks).toBeGreaterThan(20);
+    assertLocalCalendarDayMatches(
+      out.date,
+      localCalendarAfterDays(baseNow, out.weeks * 7),
+    );
+    // Wall-clock invariant still holds across the embedded DST.
+    expect(out.date.getHours()).toBe(baseNow.getHours());
+    expect(out.date.getMinutes()).toBe(baseNow.getMinutes());
   });
 
   it('long horizon spanning multi-DST + leap-year edge (2027/2028 transit)', () => {
-    // Tight rate + far-apart weights → result ~60 weeks out, will
-    // cross multiple DST transitions (Mar 14 2027, Nov 7 2027) and
-    // the Feb 29 2028 leap day. Verify the helper still produces a
-    // valid Date with the same local wall-clock as base + round-
-    // tripable ISO. (Do NOT assert exact UTC ms: on a DST-
-    // transitioning runner the offset between base and result can
-    // shift ±1 hour. The wall-clock invariant catches the design-
-    // intent behavior across all 3 jest TZ matrix runners.)
+    // 70→60 @ -0.25% converges in ~59 weeks. Result lands in early
+    // 2028, crossing 2 DST transitions (Mar 14 2027, Nov 7 2027)
+    // and approaching the Feb 29 2028 leap day. Verify the helper
+    // still produces a valid Date with the same local wall-clock
+    // as base + round-tripable ISO + calendar-day correctness
+    // against the independent setDate reference. (Do NOT assert
+    // exact UTC ms: on a DST-transitioning runner the offset
+    // between base and result can shift ±1 hour. The Y/M/D
+    // assertion catches the design-intent behavior.)
     const baseNow = new Date('2026-12-01T12:00:00.000Z');
     const out = estimateTargetDate({
       currentWeight: 70,
@@ -344,9 +384,15 @@ describe('estimateTargetDate — Phase E-3 TZ round-trip stability', () => {
       now: baseNow,
     });
     expect(out.weeks).toBeGreaterThan(40);
+    expect(out.weeks).toBeLessThan(80);
     // Wall-clock invariant: result's local hour/minute matches base.
     expect(out.date.getHours()).toBe(baseNow.getHours());
     expect(out.date.getMinutes()).toBe(baseNow.getMinutes());
+    // Calendar Y/M/D matches independent setDate reference.
+    assertLocalCalendarDayMatches(
+      out.date,
+      localCalendarAfterDays(baseNow, out.weeks * 7),
+    );
     // Round-trip through ISO preserves the helper's chosen UTC instant.
     expect(roundTripISO(out.date).getTime()).toBe(out.date.getTime());
     // Year should be 2027 or 2028 (not a Date-arithmetic blowup).
