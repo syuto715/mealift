@@ -215,9 +215,29 @@ Delivered:
 - Audit false-positive register (10 verified claims) so future
   audits don't re-investigate
 
-## Open items (post-E-3)
+## Phase E-4 — v1-migration UX notice + iOS dogfooding
 
-- E-4 — User-facing v1-migration notice ("データは保存されています")
-  + dogfooding pass (VoiceOver / TalkBack manual)
+E-4 (UX polish phase) delivered the v1-migration notice that appears
+on /welcome for users routed through Option A re-onboarding by the
+index.tsx version gate. Pattern 25 helper-thick: `isV1MigrationUser`
+in `src/domain/onboardingMigration.ts` encapsulates the show
+condition (returning profile + completed=true + version<2), with
+6+ false-positive defense tests (NaN-aware, downgrade-aware,
+mid-flow-aware).
+
+Notice copy (decided in E-4 kickoff):
+- Title: 「Mealift がアップデートされました」
+- Body: 「これまで入力された情報は保存されています。一部の項目だけ更新させてください（約 3 分）。」
+- a11y: role="alert" + liveRegion="polite" + decorative icon
+
+iOS VoiceOver dogfooding executes manually per
+[onboarding_v2_e4_dogfooding.md](./onboarding_v2_e4_dogfooding.md).
+Android TalkBack deferred to v1.4 (Plus tier RevenueCat-blocked on
+Android).
+
+## Open items (post-E-4)
+
+- E-5 — EAS build + Apple submit (separate phase scope)
 - Build 15+ TODO 12 — jest-expo / RNTL preset for component rendering
+- v1.4 prep — Android RevenueCat API key + TalkBack dogfooding
 - Handbook / contributor guide for the Pattern catalog (post-ship)

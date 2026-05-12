@@ -14,6 +14,7 @@ import { typography } from '../../src/theme/typography';
 import { Button } from '../../src/components/ui';
 import { useOnboardingStore } from '../../src/stores/onboardingStore';
 import { useProfileStore } from '../../src/stores/profileStore';
+import { isV1MigrationUser } from '../../src/domain/onboardingMigration';
 
 // v1.3.0 / Onboarding v2 / Phase C-1 — Welcome screen [1].
 //
@@ -52,6 +53,14 @@ const TITLE = 'ようこそ Mealift へ';
 const SUBTITLE = '食事と運動を一緒に管理できる、日本人向けのフィットネス・アプリ';
 const CTA_LABEL = '始める';
 
+// Phase E-4 — v1-migration notice copy. Surfaces only for returning
+// v1 users routed back through welcome by the Option A version
+// gate in app/index.tsx (Phase E-1). isV1MigrationUser encapsulates
+// the show condition (Pattern 25 helper-thick).
+const MIGRATION_TITLE = 'Mealift がアップデートされました';
+const MIGRATION_BODY =
+  'これまで入力された情報は保存されています。一部の項目だけ更新させてください（約 3 分）。';
+
 export default function WelcomeScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
@@ -60,6 +69,12 @@ export default function WelcomeScreen() {
   const prefillFromProfile = useOnboardingStore((s) => s.prefillFromProfile);
   const existingProfile = useProfileStore((s) => s.profile);
   const [isAdvancing, setIsAdvancing] = useState(false);
+
+  // Phase E-4 — gate the migration notice on a single helper call.
+  // existingProfile rarely changes on this screen (set once by
+  // app/index.tsx pre-navigation); inline derivation is cheaper
+  // than useMemo overhead.
+  const showMigrationNotice = isV1MigrationUser(existingProfile);
 
   useEffect(() => {
     // Phase E-1 — v1-user re-onboarding prefill. When a profile
@@ -101,6 +116,63 @@ export default function WelcomeScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+        {showMigrationNotice && (
+          <View
+            // Phase E-4 — v1-migration UX notice.
+            //
+            // accessibilityRole="alert" is intentional: the notice
+            // carries information the user MUST register before
+            // tapping 始める (their prior data is preserved, the flow
+            // takes ~3 min). VoiceOver / TalkBack treat alert-role
+            // text as priority content during the screen's initial
+            // read; pairing with accessibilityLiveRegion="polite"
+            // ensures any defensive late-mount profile load also
+            // triggers a re-announce without interrupting other
+            // reading.
+            //
+            // Pattern 11 — color (info-tinted background) + non-color
+            // (icon + bold title + body) redundant encoding.
+            style={[
+              styles.migrationNotice,
+              {
+                backgroundColor: colors.primary + '12',
+                borderColor: colors.primary + '40',
+              },
+            ]}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+            testID="welcome-migration-notice"
+          >
+            <Ionicons
+              name="information-circle"
+              size={24}
+              color={colors.primary}
+              // Decorative — title + body carry the meaning.
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={styles.migrationIcon}
+            />
+            <View style={styles.migrationTextBlock}>
+              <Text
+                style={[
+                  styles.migrationTitle,
+                  { color: colors.textPrimary },
+                ]}
+                accessibilityRole="header"
+              >
+                {MIGRATION_TITLE}
+              </Text>
+              <Text
+                style={[
+                  styles.migrationBody,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {MIGRATION_BODY}
+              </Text>
+            </View>
+          </View>
+        )}
         <View style={styles.hero}>
           <View
             style={[
@@ -152,6 +224,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xl,
+  },
+  migrationNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    marginBottom: spacing.lg,
+  },
+  migrationIcon: {
+    marginTop: 2,
+  },
+  migrationTextBlock: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  migrationTitle: {
+    ...typography.titleSmall,
+  },
+  migrationBody: {
+    ...typography.bodyMedium,
   },
   hero: {
     alignItems: 'center',
