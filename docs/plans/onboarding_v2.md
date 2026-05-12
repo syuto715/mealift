@@ -195,10 +195,28 @@ Removed in E-1:
 - `app/(onboarding)/body-and-training.tsx` (legacy combined screen)
 - `setGoal` / `setBody` / `setTraining` bulk-setter actions
 
-## Open items (post-E-1)
+## Phase E-3 verified architectural integrity
 
-- E-2 — buildProfilePatch service hardening (final invariant pass)
-- E-3 — Multi-TZ + a11y audit pass
+E-3 (Multi-TZ + a11y audit pass) verified that the architectural
+integrity sealed by E-1 / E-2 holds at ship-ready depth. Headline:
+**audit false-positive rate ~70%**, a positive maturity signal —
+the audit hit existing hardening rather than discovering gaps.
+
+Verified-state documentation: [onboarding_v2_e3_audit.md](./onboarding_v2_e3_audit.md).
+
+Delivered:
+- 6 TZ round-trip pin tests for `estimateTargetDate` (DST-spanning,
+  month-end overflow, multi-DST long horizon, ISO round-trip)
+- a11y coverage matrix for 14 screens × 6 reusable components
+- Intentional design choices recorded (no live region on read-only
+  screens; TextInput implicit role; setDate local-calendar arithmetic
+  for user-facing date correctness)
+- Audit false-positive register (10 verified claims) so future
+  audits don't re-investigate
+
+## Open items (post-E-3)
+
 - E-4 — User-facing v1-migration notice ("データは保存されています")
+  + dogfooding pass (VoiceOver / TalkBack manual)
 - Build 15+ TODO 12 — jest-expo / RNTL preset for component rendering
 - Handbook / contributor guide for the Pattern catalog (post-ship)

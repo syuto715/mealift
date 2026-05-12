@@ -183,6 +183,179 @@ describe('estimateTargetDate', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 2b. Phase E-3 — estimateTargetDate TZ round-trip stability
+// ---------------------------------------------------------------------------
+//
+// Phase E-3 audit pin: estimateTargetDate emits a Date used by the
+// service layer's `date.toISOString()` boundary (Layer 3 of the 4-layer
+// TZ defense). The full round-trip is:
+//
+//   compute (estimateTargetDate, setDate calendar arithmetic)
+//   → serialize (toISOString, UTC-ISO TEXT in DB)
+//   → re-parse (new Date(iso), preserves UTC instant)
+//   → format (toLocaleDateString('ja-JP'), local-TZ rendering)
+//
+// The whole jest suite already runs in TZ=UTC / Asia/Tokyo /
+// America/Los_Angeles. These tests pin the invariants the matrix is
+// supposed to catch:
+//
+//   1. `weeks` count is pure math — process TZ must not change it
+//   2. ISO round-trip preserves the UTC instant exactly
+//   3. Results that land during DST transitions don't drop or
+//      duplicate calendar days
+//   4. Results at month-end boundaries (Jan 31, Feb 28/29) don't
+//      silently shift via setDate's arithmetic
+//
+// Phase E-3 finding: the audit agent's initial recon claimed missing
+// helper-level TZ tests, but verification showed the 3-zone jest
+// matrix already exercises every helper. The real gap was an
+// EXPLICIT pin for these 4 invariants on the round-trip path —
+// without it, a future refactor (e.g. swapping setDate for an
+// .add(weeks*7) library call) could break TZ stability silently.
+
+describe('estimateTargetDate — Phase E-3 TZ round-trip stability', () => {
+  // Helper: simulate a service-boundary round-trip (compute →
+  // toISOString → re-parse). The re-parsed Date has the same UTC
+  // instant as the original.
+  function roundTripISO(d: Date): Date {
+    return new Date(d.toISOString());
+  }
+
+  it('weeks count is TZ-independent (pure math invariant)', () => {
+    // The same input must produce the same `weeks` count regardless
+    // of which TZ the jest runner is in. Verified by the 3-zone
+    // matrix at the suite level; pinned here so a refactor that
+    // accidentally introduces TZ-dependent math (e.g. reading
+    // local hours) surfaces immediately.
+    const out = estimateTargetDate({
+      currentWeight: 70,
+      targetWeight: 65,
+      weeklyRatePct: -0.5,
+      now: NOW,
+    });
+    // Canonical weeks for 70→65 at -0.5%: deterministic geometric
+    // decay. Pin the exact value (not a range) so any TZ-induced
+    // drift surfaces immediately rather than silently sliding by a
+    // week. The 14-week figure is set by the cross-the-line check
+    // in the simulator (line ~176 of onboardingCalc.ts) which fires
+    // when simulatedWeight first dips below the target.
+    expect(out.weeks).toBe(14);
+  });
+
+  it('ISO round-trip preserves the exact UTC instant (Layer 3 boundary)', () => {
+    const out = estimateTargetDate({
+      currentWeight: 70,
+      targetWeight: 65,
+      weeklyRatePct: -0.5,
+      now: NOW,
+    });
+    const roundTripped = roundTripISO(out.date);
+    expect(roundTripped.getTime()).toBe(out.date.getTime());
+    // ISO string itself is canonical UTC — Z suffix + millisecond
+    // precision regardless of process TZ.
+    expect(out.date.toISOString()).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+    );
+  });
+
+  it('result spanning US DST start (Mar 8 2026) preserves local wall-clock', () => {
+    // 2026 US DST starts Sunday March 8. Pick a base instant ~2
+    // weeks before so the result lands on/after the transition.
+    //
+    // KEY INVARIANT — local wall-clock preservation, NOT UTC offset.
+    // setDate operates on the local calendar; on a DST-transitioning
+    // runner (America/Los_Angeles), the result's UTC instant CAN
+    // shift by ±1 hour relative to baseNow because the local UTC
+    // offset changes. The DESIGN INTENT is that the user sees the
+    // same time-of-day on their target date as the base
+    // computation; that's what setDate accomplishes by preserving
+    // local hours/minutes/seconds. Pinning getHours()/getMinutes()
+    // catches a refactor that swaps to UTC-day arithmetic and
+    // accidentally drops or shifts the local wall-clock.
+    const baseNow = new Date('2026-02-22T12:00:00.000Z');
+    const out = estimateTargetDate({
+      currentWeight: 70,
+      targetWeight: 69.0, // small delta → 2-3 weeks
+      weeklyRatePct: -0.5,
+      now: baseNow,
+    });
+    expect(out.weeks).toBeGreaterThan(0);
+    // Wall-clock time-of-day in local TZ stays the same across
+    // the DST transition. (UTC offset can shift ±1 hour; that is
+    // expected and correct user-facing behavior.)
+    expect(out.date.getHours()).toBe(baseNow.getHours());
+    expect(out.date.getMinutes()).toBe(baseNow.getMinutes());
+    expect(out.date.getSeconds()).toBe(baseNow.getSeconds());
+    // ISO round-trip still preserves the helper's chosen UTC instant.
+    expect(roundTripISO(out.date).getTime()).toBe(out.date.getTime());
+  });
+
+  it('result spanning US DST end (Nov 1 2026) preserves local wall-clock', () => {
+    // 2026 US DST ends Sunday November 1. Same invariant — the
+    // helper preserves local-TZ time-of-day across the fall-back.
+    const baseNow = new Date('2026-10-18T12:00:00.000Z');
+    const out = estimateTargetDate({
+      currentWeight: 70,
+      targetWeight: 69.0,
+      weeklyRatePct: -0.5,
+      now: baseNow,
+    });
+    expect(out.weeks).toBeGreaterThan(0);
+    expect(out.date.getHours()).toBe(baseNow.getHours());
+    expect(out.date.getMinutes()).toBe(baseNow.getMinutes());
+    expect(out.date.getSeconds()).toBe(baseNow.getSeconds());
+    expect(roundTripISO(out.date).getTime()).toBe(out.date.getTime());
+  });
+
+  it('result at month-end boundary (Jan 31 + 4 weeks) does not silently shift', () => {
+    // setDate(31 + 28) = setDate(59). JavaScript's setDate
+    // overflows correctly: Jan 31 + 28 days = Feb 28 (2026 is not
+    // a leap year). Pin so a refactor that does month-aware
+    // arithmetic doesn't accidentally land Mar 1.
+    const baseNow = new Date('2026-01-31T12:00:00.000Z');
+    const out = estimateTargetDate({
+      currentWeight: 70,
+      targetWeight: 69.0,
+      weeklyRatePct: -0.5,
+      now: baseNow,
+    });
+    // Calendar arithmetic is straight UTC-ms addition; result is
+    // exactly weeks*7 days past baseNow regardless of which side
+    // of any month boundary the result lands on.
+    const expectedMs =
+      baseNow.getTime() + out.weeks * 7 * 24 * 60 * 60 * 1000;
+    expect(out.date.getTime()).toBe(expectedMs);
+  });
+
+  it('long horizon spanning multi-DST + leap-year edge (2027/2028 transit)', () => {
+    // Tight rate + far-apart weights → result ~60 weeks out, will
+    // cross multiple DST transitions (Mar 14 2027, Nov 7 2027) and
+    // the Feb 29 2028 leap day. Verify the helper still produces a
+    // valid Date with the same local wall-clock as base + round-
+    // tripable ISO. (Do NOT assert exact UTC ms: on a DST-
+    // transitioning runner the offset between base and result can
+    // shift ±1 hour. The wall-clock invariant catches the design-
+    // intent behavior across all 3 jest TZ matrix runners.)
+    const baseNow = new Date('2026-12-01T12:00:00.000Z');
+    const out = estimateTargetDate({
+      currentWeight: 70,
+      targetWeight: 60,
+      weeklyRatePct: -0.25, // slow → long horizon
+      now: baseNow,
+    });
+    expect(out.weeks).toBeGreaterThan(40);
+    // Wall-clock invariant: result's local hour/minute matches base.
+    expect(out.date.getHours()).toBe(baseNow.getHours());
+    expect(out.date.getMinutes()).toBe(baseNow.getMinutes());
+    // Round-trip through ISO preserves the helper's chosen UTC instant.
+    expect(roundTripISO(out.date).getTime()).toBe(out.date.getTime());
+    // Year should be 2027 or 2028 (not a Date-arithmetic blowup).
+    expect(out.date.getFullYear()).toBeGreaterThanOrEqual(2027);
+    expect(out.date.getFullYear()).toBeLessThanOrEqual(2028);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 3. calculatePFCTargetsByMealPlan
 // ---------------------------------------------------------------------------
 
