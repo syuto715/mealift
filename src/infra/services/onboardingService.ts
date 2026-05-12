@@ -72,21 +72,41 @@ import { ONBOARDING_VERSION } from '../../constants/onboarding';
 // could leak those values into the DB on a step-N persist BEFORE
 // reaching the corresponding screen. Each row below now matches
 // the route table.
+//
+// Phase E-2 / Critical hardening — `goalType` and `trainingDaysPerWeek`
+// are legacy (Build 14/15) fields, but the new flow's C-5 and C-4
+// screens collect them. Pre-E-2 they only persisted via
+// createProfile()'s legacyInput on the first-time-user path; the
+// Option A re-onboarding path (D-8 pre-existing-profile check skips
+// createProfile and routes everything through buildProfilePatch)
+// silently dropped any user-changed value. Adding both fields to
+// the threshold table closes the coverage gap:
+//   - Pattern 18 SSoT 補強 (legacy/v2 coverage completeness): when
+//     buildProfilePatch is claimed as the SSoT for "what persists at
+//     terminal save", it must cover every field the new flow
+//     collects, not just the v2-introduced subset.
+//   - Non-collected legacy fields (equipment / targetBodyFatPct /
+//     targetDate) are INTENTIONALLY absent — the new flow doesn't
+//     surface them as inputs, so prefill values flow through
+//     createProfile.legacyInput on first save and stay untouched
+//     thereafter. See "non-collected legacy fields" test block.
 const FIELD_STEP_THRESHOLDS = {
-  nickname: 2,        // /nickname
-  gender: 3,          // /body-info
-  birthYear: 3,       // /body-info
-  heightCm: 3,        // /body-info
-  currentWeightKg: 3, // /body-info
-  activityLevel: 4,   // /activity
-  targetWeightKg: 5,  // /goal-weight
-  weeklyRatePct: 5,   // /goal-weight
+  nickname: 2,            // /nickname
+  gender: 3,              // /body-info
+  birthYear: 3,           // /body-info
+  heightCm: 3,            // /body-info
+  currentWeightKg: 3,     // /body-info
+  activityLevel: 4,       // /activity
+  trainingDaysPerWeek: 4, // /activity (E-2 added)
+  targetWeightKg: 5,      // /goal-weight
+  weeklyRatePct: 5,       // /goal-weight
+  goalType: 5,            // /goal-weight (E-2 added)
   estimatedTargetDate: 5, // /goal-weight (derived)
-  mealPlan: 7,        // /meal-plan (was 6, off by 1)
-  mealTimings: 8,     // /meal-timing (was 7, off by 1)
-  proteinFactor: 9,   // /protein-target (was 8, off by 1)
+  mealPlan: 7,            // /meal-plan (was 6, off by 1)
+  mealTimings: 8,         // /meal-timing (was 7, off by 1)
+  proteinFactor: 9,       // /protein-target (was 8, off by 1)
   weeklyDistribution: 10, // /weekly-distrib (was 9, off by 1)
-  cheatDays: 10,      // /weekly-distrib (was 9, off by 1)
+  cheatDays: 10,          // /weekly-distrib (was 9, off by 1)
 } as const;
 
 // Codex review pass 1 / Important — derive cache values from the
@@ -205,6 +225,14 @@ export function buildProfilePatch(
   }
   if (step >= FIELD_STEP_THRESHOLDS.activityLevel) {
     patch.activityLevel = store.activityLevel;
+    // Phase E-2 — trainingDaysPerWeek is a legacy (Build 14/15)
+    // field but the new flow's C-4 /activity screen collects it
+    // (the 0-7 stepper). Pre-E-2 it only persisted via
+    // createProfile.legacyInput on first save; Option A
+    // re-onboarding (D-8 createProfile skip) silently dropped any
+    // change. Grouped with activityLevel because both flow out of
+    // the same screen submit.
+    patch.trainingDaysPerWeek = store.trainingDaysPerWeek;
   }
   // Codex review pass 1 / Important — derive estimatedTargetDate +
   // PFC bundle from the snapshot at write time, not from the
@@ -215,6 +243,14 @@ export function buildProfilePatch(
   if (step >= FIELD_STEP_THRESHOLDS.targetWeightKg) {
     patch.targetWeightKg = store.targetWeightKg;
     patch.weeklyRatePct = store.weeklyRatePct;
+    // Phase E-2 — goalType is a legacy field collected by C-5
+    // /goal-weight (the 4-segment cut/maintain/recomp/bulk
+    // selector). Same coverage rationale as trainingDaysPerWeek
+    // above: pre-E-2 it only persisted via legacyInput on
+    // first save and was silently dropped on Option A re-
+    // onboarding. Grouped with targetWeightKg+weeklyRatePct
+    // because the C-5 screen writes all three on submit.
+    patch.goalType = store.goalType;
     // estimatedTargetDate boundary: Date → ISO string. Phase A-1
     // schema is TEXT (not INTEGER); parseDateOrNull on the read
     // side already expects ISO. Always write a value at step >= 5:

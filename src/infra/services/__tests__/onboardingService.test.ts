@@ -652,6 +652,225 @@ describe('buildProfilePatch — onboardingVersion v2 bump', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 3b. Phase E-2 invariant audit pass — buildProfilePatch coverage completeness
+// ---------------------------------------------------------------------------
+
+describe('buildProfilePatch — Phase E-2 legacy fields collected by new flow', () => {
+  // Critical regression — pre-E-2 `goalType` (C-5) + `trainingDaysPerWeek`
+  // (C-4) were absent from FIELD_STEP_THRESHOLDS and absent from the per-
+  // field section. They only persisted via createProfile.legacyInput on
+  // the first-time-user path. On the Option A re-onboarding path (D-8
+  // pre-existing-profile detect → skip createProfile → route through
+  // buildProfilePatch only), any user-changed value was silently dropped.
+
+  it('trainingDaysPerWeek: step<4 → not in patch (gate enforces)', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({ onboardingStep: 3, trainingDaysPerWeek: 5 }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.trainingDaysPerWeek).toBeUndefined();
+  });
+
+  it('trainingDaysPerWeek: step>=4 → in patch (C-4 collects)', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({ onboardingStep: 4, trainingDaysPerWeek: 5 }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.trainingDaysPerWeek).toBe(5);
+  });
+
+  it('goalType: step<5 → not in patch (gate enforces)', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({ onboardingStep: 4, goalType: 'recomp' }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.goalType).toBeUndefined();
+  });
+
+  it('goalType: step>=5 → in patch (C-5 collects)', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({ onboardingStep: 5, goalType: 'recomp' }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.goalType).toBe('recomp');
+  });
+
+  it('Option A re-onboarding: existing trainingDaysPerWeek=3 + store=5 → patch carries 5', () => {
+    // The whole point of E-2 Critical fix: existing v1 row has
+    // legacy 3, user changed to 5 in C-4. Pre-fix the new value
+    // was dropped; post-fix it lands in the update patch.
+    const patch = buildProfilePatch({
+      store: makeStore({ onboardingStep: 12, trainingDaysPerWeek: 5 }),
+      existing: makeExistingProfile({ trainingDaysPerWeek: 3 }),
+      now: NOW,
+    });
+    expect(patch.trainingDaysPerWeek).toBe(5);
+  });
+
+  it('Option A re-onboarding: existing goalType=cut + store=recomp → patch carries recomp', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({ onboardingStep: 12, goalType: 'recomp' }),
+      existing: makeExistingProfile({ goalType: 'cut' }),
+      now: NOW,
+    });
+    expect(patch.goalType).toBe('recomp');
+  });
+});
+
+describe('buildProfilePatch — Phase E-2 non-collected legacy fields intentional skip', () => {
+  // The new flow's C-3..D-5 screens do NOT collect equipment /
+  // targetBodyFatPct / targetDate. These flow exclusively through
+  // createProfile.legacyInput on the first-time-user path (default
+  // values for new users, prefilled values for v1 re-onboarders).
+  // buildProfilePatch never writes them — verified here so future
+  // contributors don't add them speculatively and break the
+  // "new flow collects + everything else carries from legacy" model.
+
+  it('equipment never lands in patch at any step', () => {
+    for (const step of [3, 5, 10, 12]) {
+      const patch = buildProfilePatch({
+        store: makeStore({ onboardingStep: step, equipment: 'bodyweight' }),
+        existing: makeExistingProfile({ equipment: 'gym' }),
+        now: NOW,
+      });
+      expect(patch).not.toHaveProperty('equipment');
+    }
+  });
+
+  it('targetBodyFatPct never lands in patch at any step', () => {
+    for (const step of [3, 5, 10, 12]) {
+      const patch = buildProfilePatch({
+        store: makeStore({ onboardingStep: step, targetBodyFatPct: 15 }),
+        existing: makeExistingProfile({ targetBodyFatPct: null }),
+        now: NOW,
+      });
+      expect(patch).not.toHaveProperty('targetBodyFatPct');
+    }
+  });
+
+  it('targetDate never lands in patch at any step', () => {
+    for (const step of [3, 5, 10, 12]) {
+      const patch = buildProfilePatch({
+        store: makeStore({ onboardingStep: step, targetDate: '2027-01-01' }),
+        existing: makeExistingProfile({ targetDate: null }),
+        now: NOW,
+      });
+      expect(patch).not.toHaveProperty('targetDate');
+    }
+  });
+});
+
+describe('buildProfilePatch — Phase E-2 PFC bundle partial-null inputs (Important)', () => {
+  // deriveCacheFromSnapshot requires weeklyRatePct + proteinFactor +
+  // mealPlan ALL non-null to emit the bundle. Existing tests cover
+  // the all-set case (Pattern 24 atomic 4-field); E-2 adds the
+  // partial-null cases so a regression that loosens the AND gate
+  // (e.g. computing PFC with a default mealPlan when store has null)
+  // surfaces here.
+
+  it('step>=9 with proteinFactor=null → PFC bundle absent (no half-write)', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 9,
+        weeklyRatePct: -0.5,
+        targetWeightKg: 65,
+        mealPlan: 'balanced',
+        proteinFactor: null, // ← only this null
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.targetCalories).toBeUndefined();
+    expect(patch.targetProteinG).toBeUndefined();
+    expect(patch.targetFatG).toBeUndefined();
+    expect(patch.targetCarbG).toBeUndefined();
+  });
+
+  it('step>=9 with mealPlan=null → PFC bundle absent', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 9,
+        weeklyRatePct: -0.5,
+        targetWeightKg: 65,
+        mealPlan: null, // ← only this null
+        proteinFactor: 1.6,
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.targetCalories).toBeUndefined();
+    expect(patch.targetProteinG).toBeUndefined();
+    expect(patch.targetFatG).toBeUndefined();
+    expect(patch.targetCarbG).toBeUndefined();
+  });
+
+  it('step>=9 with weeklyRatePct=null → PFC bundle absent', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({
+        onboardingStep: 9,
+        weeklyRatePct: null, // ← only this null
+        targetWeightKg: 65,
+        mealPlan: 'balanced',
+        proteinFactor: 1.6,
+      }),
+      existing: makeExistingProfile(),
+      now: NOW,
+    });
+    expect(patch.targetCalories).toBeUndefined();
+    expect(patch.targetProteinG).toBeUndefined();
+    expect(patch.targetFatG).toBeUndefined();
+    expect(patch.targetCarbG).toBeUndefined();
+  });
+});
+
+describe('buildProfilePatch — Phase E-2 markCompleted atomic 3-signal bundle (Important)', () => {
+  // Pattern 24 補強 — the three completion signals
+  // (onboardingCompleted / onboardingStep>=TERMINAL / onboardingVersion)
+  // must all flip atomically on the same markCompleted=true call.
+  // Individual signal tests exist above; this pins they coexist in
+  // ONE patch so a future refactor splitting them into separate
+  // calls (and risking partial-completion DB state) surfaces here.
+
+  it('markCompleted=true with v1 row → all 3 signals in same patch', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({ onboardingStep: 12 }),
+      existing: makeExistingProfile({
+        onboardingVersion: 1,
+        onboardingCompleted: false,
+        onboardingStep: 12,
+      }),
+      now: NOW,
+      markCompleted: true,
+    });
+    // Combined assertion — all three present on the same patch.
+    expect(patch.onboardingCompleted).toBe(true);
+    expect(patch.onboardingStep).toBe(13);
+    expect(patch.onboardingVersion).toBe(2);
+  });
+
+  it('markCompleted=false → none of the 3 signals fire', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({ onboardingStep: 12 }),
+      existing: makeExistingProfile({
+        onboardingVersion: 1,
+        onboardingCompleted: false,
+        onboardingStep: 10,
+      }),
+      now: NOW,
+      // no markCompleted → defaults to false
+    });
+    expect(patch.onboardingCompleted).toBeUndefined();
+    // step is still in patch (monotonic max), but not promoted to TERMINAL
+    expect(patch.onboardingStep).toBe(12);
+    expect(patch.onboardingVersion).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 4. persistToProfile — DB delegate
 // ---------------------------------------------------------------------------
 
