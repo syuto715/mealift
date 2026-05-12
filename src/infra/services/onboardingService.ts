@@ -120,8 +120,9 @@ const FIELD_STEP_THRESHOLDS = {
 // and the stale-cache resistance.
 //
 // Returns null fields when the matching screen hasn't been reached
-// (step < 5 → no estimatedTargetDate; step < 8 → no PFC targets);
-// callers gate on the presence of values.
+// (step < 5 → no estimatedTargetDate; step < ONBOARDING_STEP_FULL_INPUT
+// = 9 → no PFC targets, post Phase D-2 route renumbering); callers
+// gate on the presence of values.
 interface DerivedSnapshotCache {
   estimatedTargetDateIso: string | null;
   targetCalories: number | null;
