@@ -13,6 +13,7 @@ import { spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
 import { Button } from '../../src/components/ui';
 import { useOnboardingStore } from '../../src/stores/onboardingStore';
+import { useProfileStore } from '../../src/stores/profileStore';
 
 // v1.3.0 / Onboarding v2 / Phase C-1 — Welcome screen [1].
 //
@@ -56,9 +57,21 @@ export default function WelcomeScreen() {
   const colors = getColors(scheme);
   const markStarted = useOnboardingStore((s) => s.markStarted);
   const persistToProfile = useOnboardingStore((s) => s.persistToProfile);
+  const prefillFromProfile = useOnboardingStore((s) => s.prefillFromProfile);
+  const existingProfile = useProfileStore((s) => s.profile);
   const [isAdvancing, setIsAdvancing] = useState(false);
 
   useEffect(() => {
+    // Phase E-1 — v1-user re-onboarding prefill. When a profile
+    // already exists (returning user forced through onboarding
+    // again via the index.tsx version-gate redirect), hydrate
+    // the store with the legacy field values so the C-3..D-5
+    // input screens render with the user's existing data
+    // pre-filled. v2-introduced fields (nickname, mealPlan,
+    // proteinFactor, etc.) stay null and require fresh entry.
+    if (existingProfile) {
+      prefillFromProfile(existingProfile);
+    }
     markStarted();
     persistToProfile().catch((err) => {
       // Codex pass 1 / Important — non-blocking but NOT silent.
@@ -70,7 +83,11 @@ export default function WelcomeScreen() {
       // the UI alive but leaves a footprint for telemetry / debug.
       console.warn('[onboarding/welcome] persistToProfile failed', err);
     });
-  }, [markStarted, persistToProfile]);
+    // Run only on mount — re-running prefill mid-flow would clobber
+    // in-progress edits. Same eslint-disable pattern as the
+    // nickname/body-info prefill effects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCtaPress = useCallback(() => {
     if (isAdvancing) return;

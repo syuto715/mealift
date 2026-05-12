@@ -194,7 +194,7 @@ export default function HealthKitOnboardingScreen() {
             legacy 4-dot ProgressDots with current={2}. The dots
             reflected the pre-D-10 numbering (4-screen onboarding
             with healthkit as the 3rd dot). Post-D-10 healthkit
-            is screen 15 of 15 (iOS), and LEGACY_OWN_HEADER_ROUTES
+            is screen 15 of 15 (iOS), and LAYOUT_HEADER_SUPPRESSED_ROUTES
             already suppresses the layout-rendered ProgressHeader
             here, so the legacy dots were both wrong AND redundant
             with the "最後のステップ" copy in the screen header.

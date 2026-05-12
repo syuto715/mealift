@@ -84,31 +84,24 @@ export function getTotalStepsForPlatform(
 }
 
 // Routes that the layout should NOT render its ProgressHeader for.
-// Two categories now share this set:
+// Two categories share this set:
 //
-//   1. Legacy own-header screens — welcome-and-goal +
-//      body-and-training are load-bearing Build 14/15 screens
-//      still mounted as transitional bridges. complete +
-//      healthkit are in this table but their CURRENT
-//      implementations also own their UI. Rendering the layout-
-//      level ProgressHeader on top would duplicate the back
-//      button + dot row.
+//   1. Own-header screens — complete + healthkit own their
+//      header UI. Rendering the layout-level ProgressHeader on
+//      top would duplicate the back button + dot row.
 //
-//   2. Post-completion screens (Phase D-9+) — tier-preview is
-//      reached AFTER the user's profile is fully persisted and
+//   2. Post-completion screens — tier-preview is reached AFTER
+//      the user's profile is fully persisted and
 //      onboardingCompleted=true. The progress bar would either
 //      mislead ("14/15" on iOS where step 15 is unreachable
 //      without HealthKit) or be redundant (the user is done).
 //
-// Phase D-X removes welcome-and-goal + body-and-training files
-// and rewrites complete + healthkit to delegate header rendering
-// to the layout. tier-preview stays in this set permanently as
-// a post-completion exception. The constant name remains
-// LEGACY_OWN_HEADER_ROUTES for git-history continuity but the
-// comment now reflects both meanings.
-const LEGACY_OWN_HEADER_ROUTES: ReadonlySet<string> = new Set([
-  'welcome-and-goal',
-  'body-and-training',
+// Phase E-1 — renamed from LEGACY_OWN_HEADER_ROUTES to better
+// describe intent now that the Build 14/15 legacy bridges
+// (welcome-and-goal + body-and-training) have been removed.
+// The remaining members are not "legacy" — they are permanent
+// exceptions to layout-level header rendering.
+const LAYOUT_HEADER_SUPPRESSED_ROUTES: ReadonlySet<string> = new Set([
   'complete',
   'healthkit',
   'tier-preview',
@@ -118,10 +111,10 @@ const LEGACY_OWN_HEADER_ROUTES: ReadonlySet<string> = new Set([
 // ProgressHeader for `routeName`. False when:
 //   - the route isn't in ONBOARDING_ROUTES (unknown route, would
 //     fall back to step=1 / 1-of-15 which is misleading)
-//   - the route is currently a legacy own-header implementation
-//     (rendering ProgressHeader on top would duplicate UI)
+//   - the route owns its own header / is post-completion (see
+//     LAYOUT_HEADER_SUPPRESSED_ROUTES comment for rationale)
 export function shouldRenderLayoutHeader(routeName: string): boolean {
   if (getRouteByName(routeName) === null) return false;
-  if (LEGACY_OWN_HEADER_ROUTES.has(routeName)) return false;
+  if (LAYOUT_HEADER_SUPPRESSED_ROUTES.has(routeName)) return false;
   return true;
 }

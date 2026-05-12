@@ -40,13 +40,16 @@ import { useProfileStore } from './profileStore';
 //     (Phase A-4 lands the actual logic; A-3 stubs to no-op).
 //
 // Actions:
-//   - Existing setGoal / setBody / setTraining preserved for
-//     Build 14/15 callers (welcome-and-goal.tsx + body-and-training.tsx
-//     still use them — those screens get deleted in Phase D-X
-//     once their replacements ship).
-//   - New setField<K> generic — enforces field/value type pairing
+//   - setField<K> generic — enforces field/value type pairing
 //     (Phase 6.1 generic-T preservation pattern, applied at setter
-//     scope).
+//     scope). Backstop for any field without a dedicated setter.
+//   - Per-field setters (markStarted / setNickname / setGender /
+//     setBirthYear / setHeightCm / setCurrentWeightKg /
+//     setActivityLevel / setTrainingDaysPerWeek /
+//     setTargetWeightKg / setGoalType / setWeeklyRatePct /
+//     setMealPlan / setMealTimings / setProteinFactor /
+//     setWeeklyDistribution / setCheatDays) — Phase C-1 .. D-5
+//     atomic value+step writes from per-screen submit handlers.
 //   - calculateAll / persistToProfile: stubs in A-3, filled in
 //     A-4 / A-5 respectively.
 //   - prefillFromProfile: hydrates store from an existing Profile
@@ -93,24 +96,11 @@ export interface OnboardingData {
 // === Actions ===
 
 export interface OnboardingActions {
-  // Build 14/15 bulk setters (preserved for legacy screens)
-  setGoal: (goalType: GoalType) => void;
-  setBody: (data: {
-    gender: Gender;
-    birthYear: number;
-    heightCm: number;
-    currentWeightKg: number;
-    targetWeightKg: number | null;
-    targetBodyFatPct: number | null;
-  }) => void;
-  setTraining: (data: {
-    activityLevel: ActivityLevel;
-    trainingDaysPerWeek: number;
-    equipment: Equipment;
-    targetDate: string | null;
-  }) => void;
-
   // v1.3.0 actions
+  // (Build 14/15 bulk setters setGoal/setBody/setTraining were
+  // removed in Phase E-1 along with their welcome-and-goal.tsx +
+  // body-and-training.tsx callers. Per-field setters below cover
+  // every collected input via dedicated screens.)
   setField: <K extends keyof OnboardingData>(
     field: K,
     value: OnboardingData[K],
@@ -253,11 +243,6 @@ function parseDateOrNull(iso: string | null): Date | null {
 
 export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   ...INITIAL_STATE,
-
-  // Build 14/15 bulk setters
-  setGoal: (goalType) => set({ goalType }),
-  setBody: (data) => set(data),
-  setTraining: (data) => set(data),
 
   // v1.3.0 generic setter — type-safe field-by-field updates from
   // the new 13 screens. setField('mealPlan', 'high_protein') compiles;

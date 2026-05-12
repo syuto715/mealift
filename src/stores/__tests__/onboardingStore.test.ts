@@ -481,50 +481,7 @@ describe('useOnboardingStore — reset', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 6. Build 14/15 legacy bulk setters (preservation)
-// ---------------------------------------------------------------------------
-
-describe('useOnboardingStore — Build 14/15 bulk setters preserved', () => {
-  it('setGoal updates goalType (welcome-and-goal.tsx caller)', () => {
-    useOnboardingStore.getState().setGoal('recomp');
-    expect(useOnboardingStore.getState().goalType).toBe('recomp');
-  });
-
-  it('setBody updates all 6 body fields atomically (body-and-training.tsx caller)', () => {
-    useOnboardingStore.getState().setBody({
-      gender: 'female',
-      birthYear: 1992,
-      heightCm: 162,
-      currentWeightKg: 58,
-      targetWeightKg: 55,
-      targetBodyFatPct: 20,
-    });
-    const s = useOnboardingStore.getState();
-    expect(s.gender).toBe('female');
-    expect(s.birthYear).toBe(1992);
-    expect(s.heightCm).toBe(162);
-    expect(s.currentWeightKg).toBe(58);
-    expect(s.targetWeightKg).toBe(55);
-    expect(s.targetBodyFatPct).toBe(20);
-  });
-
-  it('setTraining updates all 4 training fields atomically', () => {
-    useOnboardingStore.getState().setTraining({
-      activityLevel: 'very_active',
-      trainingDaysPerWeek: 6,
-      equipment: 'bodyweight',
-      targetDate: '2026-12-31',
-    });
-    const s = useOnboardingStore.getState();
-    expect(s.activityLevel).toBe('very_active');
-    expect(s.trainingDaysPerWeek).toBe(6);
-    expect(s.equipment).toBe('bodyweight');
-    expect(s.targetDate).toBe('2026-12-31');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 7. markStarted — Phase C-1 Welcome screen mount handler
+// 6. markStarted — Phase C-1 Welcome screen mount handler
 // ---------------------------------------------------------------------------
 
 describe('useOnboardingStore — markStarted (Phase C-1)', () => {

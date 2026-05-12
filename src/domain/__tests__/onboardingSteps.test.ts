@@ -100,35 +100,36 @@ describe('getRouteByName', () => {
 });
 
 describe('shouldRenderLayoutHeader', () => {
-  // Codex review pass 1 / Important — the layout gates ProgressHeader
-  // on this helper to avoid duplicate UI on legacy own-header screens
-  // (welcome-and-goal / body-and-training / complete / healthkit
-  // CURRENTLY mounted have their own back button + progress UI).
-  // Phase D-X shrinks this gate to empty.
+  // Phase E-1 — the layout gates ProgressHeader on this helper to
+  // avoid duplicate UI on own-header / post-completion screens
+  // (complete + healthkit own their UI; tier-preview is post-
+  // completion). The Build 14/15 legacy combined screens
+  // (welcome-and-goal / body-and-training) have been removed from
+  // the file tree; this helper still returns false for them because
+  // they're not in ONBOARDING_ROUTES.
 
-  it('returns false for routes outside ONBOARDING_ROUTES (legacy combined screens)', () => {
-    // welcome-and-goal / body-and-training are not in the table at all
-    expect(shouldRenderLayoutHeader('welcome-and-goal')).toBe(false);
-    expect(shouldRenderLayoutHeader('body-and-training')).toBe(false);
+  it('returns false for routes outside ONBOARDING_ROUTES', () => {
     expect(shouldRenderLayoutHeader('not-a-route')).toBe(false);
     expect(shouldRenderLayoutHeader('')).toBe(false);
+    // Phase E-1 removed these files but the helper still returns
+    // false on the off-chance a stale link or saved deep-link
+    // points here — defensive, not load-bearing.
+    expect(shouldRenderLayoutHeader('welcome-and-goal')).toBe(false);
+    expect(shouldRenderLayoutHeader('body-and-training')).toBe(false);
   });
 
-  it('returns false for legacy-own-header + post-completion routes', () => {
-    // complete + healthkit are in the post-Phase-D-X table but the
-    // CURRENT implementations own their own UI; layout must not
-    // double up. Phase D-9 / Codex pass 1 — tier-preview joined
-    // this set as a post-completion exception: the progress UI
-    // would render "14/15" on iOS where step 15 (HealthKit) is
-    // unreachable in Android-first builds, misleading the user.
+  it('returns false for own-header + post-completion routes', () => {
+    // complete + healthkit own their UI; layout must not double
+    // up. Phase D-9 / Codex pass 1 — tier-preview joined this set
+    // as a post-completion exception: the progress UI would render
+    // "14/15" on iOS where step 15 (HealthKit) is unreachable in
+    // Android-first builds, misleading the user.
     expect(shouldRenderLayoutHeader('complete')).toBe(false);
     expect(shouldRenderLayoutHeader('healthkit')).toBe(false);
     expect(shouldRenderLayoutHeader('tier-preview')).toBe(false);
   });
 
-  it('returns true for non-legacy routes in the table', () => {
-    // Phase D-X screens — once mounted, the layout will render the
-    // shared header.
+  it('returns true for non-suppressed routes in the table', () => {
     expect(shouldRenderLayoutHeader('welcome')).toBe(true);
     expect(shouldRenderLayoutHeader('nickname')).toBe(true);
     expect(shouldRenderLayoutHeader('body-info')).toBe(true);

@@ -12,6 +12,7 @@ import {
   calculatePFCTargetsByMealPlan,
   ONBOARDING_STEP_FULL_INPUT,
 } from '../../domain/onboardingCalc';
+import { ONBOARDING_VERSION } from '../../constants/onboarding';
 
 // v1.3.0 / Onboarding v2 / Phase A-5 — service layer that finalizes
 // the onboardingStore snapshot to profiles via updateProfile.
@@ -87,9 +88,6 @@ const FIELD_STEP_THRESHOLDS = {
   weeklyDistribution: 10, // /weekly-distrib (was 9, off by 1)
   cheatDays: 10,      // /weekly-distrib (was 9, off by 1)
 } as const;
-
-// Phase A-1 sign-off: v1.3.0 onboarding completes with version=2.
-const ONBOARDING_VERSION_V2 = 2;
 
 // Codex review pass 1 / Important — derive cache values from the
 // snapshot at write time rather than reading from store.bmr / tdee /
@@ -307,8 +305,8 @@ export function buildProfilePatch(
   // onboardingVersion: bump to 2 the first time a v1.3.0 client
   // touches a profile that's still on the Build 14/15 default of 1.
   // Already-v2 profiles don't get a redundant write.
-  if ((existing?.onboardingVersion ?? 0) < ONBOARDING_VERSION_V2) {
-    patch.onboardingVersion = ONBOARDING_VERSION_V2;
+  if ((existing?.onboardingVersion ?? 0) < ONBOARDING_VERSION) {
+    patch.onboardingVersion = ONBOARDING_VERSION;
   }
 
   return patch;

@@ -14,6 +14,7 @@ import {
   syncNotifications,
   loadNotificationSettings,
 } from '../src/infra/services/notificationService';
+import { ONBOARDING_VERSION } from '../src/constants/onboarding';
 
 const ROUTING_TIMEOUT_MS = 8000;
 
@@ -26,6 +27,7 @@ export default function IndexScreen() {
   const setProfile = useProfileStore((s) => s.setProfile);
   const [profileChecked, setProfileChecked] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+  const [onboardingVersion, setOnboardingVersion] = useState(0);
   const hasNavigated = useRef(false);
 
   // Safety timeout: if routing hasn't happened after 8s, force navigate to login
@@ -58,6 +60,7 @@ export default function IndexScreen() {
         if (profile) {
           setProfile(profile);
           setOnboardingCompleted(profile.onboardingCompleted);
+          setOnboardingVersion(profile.onboardingVersion);
           // Re-sync notifications now that we have a profile. The version-
           // gated guard in syncNotifications linearises this with any other
           // concurrent caller so last-write-wins is deterministic.
@@ -81,7 +84,17 @@ export default function IndexScreen() {
     try {
       if (!isAuthenticated) {
         router.replace('/(auth)/login');
-      } else if (!onboardingCompleted) {
+      } else if (
+        !onboardingCompleted ||
+        onboardingVersion < ONBOARDING_VERSION
+      ) {
+        // Phase E-1 — Option A: force re-onboarding for v1
+        // users with onboardingCompleted=true + onboardingVersion=1.
+        // The new flow's onboardingStore.prefillFromProfile (called
+        // on welcome.tsx mount) hydrates every overlapping field so
+        // the user taps through pre-filled inputs rather than
+        // retyping; only v2-introduced fields (nickname, mealPlan,
+        // proteinFactor, etc.) require fresh entries.
         router.replace('/(onboarding)/welcome');
       } else {
         router.replace('/(tabs)');
@@ -94,7 +107,13 @@ export default function IndexScreen() {
         // Nothing more we can do
       }
     }
-  }, [isLoading, profileChecked, isAuthenticated, onboardingCompleted]);
+  }, [
+    isLoading,
+    profileChecked,
+    isAuthenticated,
+    onboardingCompleted,
+    onboardingVersion,
+  ]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
