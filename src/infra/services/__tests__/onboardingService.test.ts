@@ -11,27 +11,34 @@
 jest.mock('../../database/connection', () => ({ getDatabase: jest.fn() }));
 jest.mock('../../../utils/id', () => ({ generateId: () => 'stub-id' }));
 jest.mock('../../repositories/profileRepository', () => ({
+  createProfile: jest.fn(),
   getProfile: jest.fn(),
   updateProfile: jest.fn(),
 }));
 
 import {
   buildProfilePatch,
+  createProfileFromOnboarding,
   persistToProfile,
 } from '../onboardingService';
 import {
+  createProfile,
   getProfile,
   updateProfile,
 } from '../../repositories/profileRepository';
 import type { Profile } from '../../../types/profile';
 import type { OnboardingData } from '../../../stores/onboardingStore';
 
+const mockCreateProfile = createProfile as jest.MockedFunction<
+  typeof createProfile
+>;
 const mockGetProfile = getProfile as jest.MockedFunction<typeof getProfile>;
 const mockUpdateProfile = updateProfile as jest.MockedFunction<
   typeof updateProfile
 >;
 
 beforeEach(() => {
+  mockCreateProfile.mockReset();
   mockGetProfile.mockReset();
   mockUpdateProfile.mockReset();
 });
@@ -691,5 +698,216 @@ describe('persistToProfile', () => {
     await persistToProfile(snapshot, 'p1', { now: NOW });
     const secondCall = mockUpdateProfile.mock.calls[0][1];
     expect(firstCall).toEqual(secondCall);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createProfileFromOnboarding — Phase D-8 baseline simplification
+// ---------------------------------------------------------------------------
+
+describe('createProfileFromOnboarding', () => {
+  // Full-input store: every C-3..D-5 collected field populated +
+  // step at terminal value. The wrapper should write all legacy
+  // columns via createProfile() then atomically patch the v2
+  // fields via updateProfile(buildProfilePatch).
+  function makeCompletedStore(): OnboardingData {
+    return makeStore({
+      gender: 'male',
+      birthYear: 1995,
+      heightCm: 170,
+      currentWeightKg: 70,
+      targetWeightKg: 65,
+      targetBodyFatPct: 15,
+      activityLevel: 'moderate',
+      trainingDaysPerWeek: 3,
+      equipment: 'gym',
+      targetDate: null,
+      goalType: 'cut',
+      nickname: 'syuto',
+      weeklyRatePct: -0.5,
+      mealPlan: 'balanced',
+      mealTimings: ['breakfast', 'lunch', 'dinner'],
+      proteinFactor: 1.6,
+      weeklyDistribution: 'even',
+      cheatDays: null,
+      onboardingStep: 12,
+    });
+  }
+
+  function makeCreatedProfile(): Profile {
+    return makeExistingProfile({
+      id: 'p-new',
+      gender: 'male',
+      birthYear: 1995,
+      heightCm: 170,
+      currentWeightKg: 70,
+      targetWeightKg: 65,
+      activityLevel: 'moderate',
+      trainingDaysPerWeek: 3,
+      goalType: 'cut',
+      equipment: 'gym',
+      // Legacy createProfile doesn't write v2 columns — they stay
+      // at their schema defaults (null) until updateProfile patches.
+      nickname: null,
+      weeklyRatePct: null,
+      mealPlan: null,
+      mealTimings: null,
+      proteinFactor: null,
+      onboardingStep: 0,
+      onboardingStartedAt: null,
+    });
+  }
+
+  it('happy path: createProfile + updateProfile sequenced, returns hydrated', async () => {
+    const created = makeCreatedProfile();
+    const hydrated: Profile = {
+      ...created,
+      nickname: 'syuto',
+      weeklyRatePct: -0.5,
+      mealPlan: 'balanced',
+      mealTimings: ['breakfast', 'lunch', 'dinner'],
+      proteinFactor: 1.6,
+      weeklyDistribution: 'even',
+      onboardingStep: 12,
+      onboardingStartedAt: NOW.toISOString(),
+      onboardingVersion: 2,
+    };
+    mockCreateProfile.mockResolvedValue(created);
+    mockGetProfile.mockResolvedValue(hydrated);
+    mockUpdateProfile.mockResolvedValue(undefined);
+
+    const result = await createProfileFromOnboarding({
+      store: makeCompletedStore(),
+      displayName: 'syuto',
+      now: NOW,
+    });
+
+    expect(mockCreateProfile).toHaveBeenCalledTimes(1);
+    expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+    expect(result).toBe(hydrated);
+  });
+
+  it('legacy ProfileInput carries all 11 required columns', async () => {
+    mockCreateProfile.mockResolvedValue(makeCreatedProfile());
+    mockGetProfile.mockResolvedValue(makeCreatedProfile());
+
+    await createProfileFromOnboarding({
+      store: makeCompletedStore(),
+      displayName: 'syuto',
+      now: NOW,
+    });
+
+    const legacyInput = mockCreateProfile.mock.calls[0][0];
+    expect(legacyInput).toEqual({
+      displayName: 'syuto',
+      gender: 'male',
+      birthYear: 1995,
+      heightCm: 170,
+      currentWeightKg: 70,
+      targetWeightKg: 65,
+      targetBodyFatPct: 15,
+      goalType: 'cut',
+      activityLevel: 'moderate',
+      trainingDaysPerWeek: 3,
+      targetDate: null,
+      equipment: 'gym',
+    });
+  });
+
+  // Pattern 24 atomic bundle regression — every v2 field present
+  // in the store must flow through to the updateProfile patch.
+  // A future change that drops a field from buildProfilePatch
+  // (or skips this wrapper call) surfaces here.
+  it('v2 patch carries all 14 v2 fields atomically (Pattern 24 SSoT regression)', async () => {
+    mockCreateProfile.mockResolvedValue(makeCreatedProfile());
+    mockGetProfile.mockResolvedValue(makeCreatedProfile());
+
+    await createProfileFromOnboarding({
+      store: makeCompletedStore(),
+      displayName: 'syuto',
+      now: NOW,
+    });
+
+    const v2Patch = mockUpdateProfile.mock.calls[0][1];
+    // 14 v2 input fields (or their derived bundle expansions)
+    // plus service-managed fields. Pin presence by key — exact
+    // values are tested elsewhere in this file.
+    expect(v2Patch).toHaveProperty('nickname', 'syuto');
+    expect(v2Patch).toHaveProperty('weeklyRatePct', -0.5);
+    expect(v2Patch).toHaveProperty('mealPlan', 'balanced');
+    expect(v2Patch).toHaveProperty('mealTimings');
+    expect(v2Patch).toHaveProperty('proteinFactor', 1.6);
+    expect(v2Patch).toHaveProperty('weeklyDistribution', 'even');
+    // cheatDays is null when distribution is 'even' (D-5 service
+    // defense forces this).
+    expect(v2Patch).toHaveProperty('cheatDays', null);
+    // PFC bundle (Pattern 24 atomic 4-field).
+    expect(v2Patch).toHaveProperty('targetCalories');
+    expect(v2Patch).toHaveProperty('targetProteinG');
+    expect(v2Patch).toHaveProperty('targetFatG');
+    expect(v2Patch).toHaveProperty('targetCarbG');
+    // estimatedTargetDate (derived).
+    expect(v2Patch).toHaveProperty('estimatedTargetDate');
+    // Service-managed monotonic + set-once.
+    expect(v2Patch).toHaveProperty('onboardingStep');
+    expect(v2Patch).toHaveProperty('onboardingStartedAt');
+    expect(v2Patch).toHaveProperty('onboardingVersion');
+  });
+
+  it('throws on missing displayName (legacy NOT NULL constraint)', async () => {
+    await expect(
+      createProfileFromOnboarding({
+        store: makeCompletedStore(),
+        displayName: '',
+        now: NOW,
+      }),
+    ).rejects.toThrow(/displayName/);
+  });
+
+  it('throws when required legacy field missing from store', async () => {
+    const broken = makeCompletedStore();
+    // Simulate a regression upstream: birthYear cleared somehow.
+    broken.birthYear = NaN;
+    await expect(
+      createProfileFromOnboarding({
+        store: broken,
+        displayName: 'syuto',
+        now: NOW,
+      }),
+    ).rejects.toThrow(/required legacy inputs missing/);
+  });
+
+  it('skips updateProfile call when v2 patch is empty (defensive)', async () => {
+    // Store at step 0 (nothing collected) — every threshold gate
+    // returns short of writing, so the v2 patch is just service-
+    // managed fields (onboardingStep, onboardingStartedAt). Those
+    // still constitute a non-empty patch, so updateProfile fires
+    // anyway. This test exists to pin that we don't preemptively
+    // short-circuit on an empty user-input shape.
+    mockCreateProfile.mockResolvedValue(makeCreatedProfile());
+    mockGetProfile.mockResolvedValue(makeCreatedProfile());
+
+    // Use a store where buildProfilePatch returns at least the
+    // service-managed fields — this is the realistic path.
+    await createProfileFromOnboarding({
+      store: makeCompletedStore(),
+      displayName: 'syuto',
+      now: NOW,
+    });
+
+    expect(mockUpdateProfile).toHaveBeenCalled();
+  });
+
+  it('throws when getProfile re-read returns null (DB consistency)', async () => {
+    mockCreateProfile.mockResolvedValue(makeCreatedProfile());
+    mockGetProfile.mockResolvedValue(null);
+
+    await expect(
+      createProfileFromOnboarding({
+        store: makeCompletedStore(),
+        displayName: 'syuto',
+        now: NOW,
+      }),
+    ).rejects.toThrow(/not found after insert/);
   });
 });

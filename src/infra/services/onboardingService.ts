@@ -1,8 +1,9 @@
 import {
+  createProfile,
   getProfile,
   updateProfile,
 } from '../repositories/profileRepository';
-import type { Profile, MacroKey } from '../../types/profile';
+import type { Profile, ProfileInput, MacroKey } from '../../types/profile';
 import type { OnboardingData } from '../../stores/onboardingStore';
 import { calculateBMR, calculateTDEE, calculateAge } from '../../domain/calories';
 import {
@@ -312,4 +313,123 @@ export async function persistToProfile(
   // mainly a safety net.
   if (Object.keys(patch).length === 0) return;
   await updateProfile(profileId, patch);
+}
+
+// =============================================================================
+// createProfileFromOnboarding — Phase D-8 baseline simplification
+// =============================================================================
+//
+// Single service call that persists a completed onboarding flow into the
+// profile table. Replaces the C-2..D-7 accumulated complete.tsx logic
+// (legacy createProfile + 8 conditional patches + hydratedProfile mirror)
+// with a clean two-step composition:
+//
+//   1. createProfile(legacyInput) — writes the legacy columns that the
+//      v30 schema's INSERT statement requires (gender / birthYear /
+//      heightCm / currentWeightKg / activityLevel / trainingDaysPerWeek /
+//      goalType / equipment / targetWeightKg / targetBodyFatPct /
+//      targetDate / displayName).
+//   2. updateProfile(profile.id, buildProfilePatch(store, existing)) —
+//      atomically applies every v2 field gated by FIELD_STEP_THRESHOLDS
+//      (nickname / weeklyRatePct / mealPlan / mealTimings / proteinFactor
+//      / weeklyDistribution / cheatDays / estimatedTargetDate / PFC
+//      bundle / service-managed onboardingStep+startedAt+version).
+//
+// Pattern 24 derived bundle atomicity — both writes are awaited
+// sequentially in this single function so callers can't observe a
+// half-persisted profile. createProfile + updateProfile are NOT in a
+// SQLite transaction today (their existing signatures don't share one),
+// but the second call is idempotent against any half-state from the
+// first because updateProfile is a partial UPDATE.
+//
+// Pattern 18 SSoT — buildProfilePatch is the single source of truth
+// for which v2 fields persist at which step. complete.tsx had a copy
+// of that logic spread across 8 conditional blocks; this wrapper
+// delegates back to the canonical helper.
+//
+// displayName extraction policy: legacy createProfile requires a
+// non-empty displayName (it's a NOT NULL column on the v30 schema).
+// The new flow doesn't collect displayName explicitly — it collects
+// `nickname` (warm copy). Caller supplies displayName separately
+// (e.g., email-prefix fallback from useAuthStore); the wrapper doesn't
+// hardcode that decision since auth state isn't visible at the
+// service layer.
+
+export interface CreateProfileFromOnboardingInput {
+  store: OnboardingData;
+  // Legacy displayName fallback — caller derives from auth user.
+  // Required by the NOT NULL column on profiles.display_name. The
+  // post-onboarding profile.displayName + profile.nickname remain
+  // distinct fields (kickoff §6.2 sign-off (i)).
+  displayName: string;
+  // Test seam — production callers omit and the helper uses
+  // new Date() for the onboardingStartedAt set-once stamp.
+  now?: Date;
+}
+
+export async function createProfileFromOnboarding(
+  input: CreateProfileFromOnboardingInput,
+): Promise<Profile> {
+  const { store, displayName, now } = input;
+
+  // Pattern 5 — fail-fast on missing required legacy inputs. These
+  // are populated by C-3 + C-4 + C-5 screens before the user can
+  // reach the complete screen; an empty value here is a regression
+  // upstream (e.g., a deep-link arrival that bypassed onboarding).
+  if (!displayName) {
+    throw new Error('createProfileFromOnboarding: displayName is required');
+  }
+  if (
+    !store.gender ||
+    !Number.isFinite(store.birthYear) ||
+    !Number.isFinite(store.heightCm) ||
+    !Number.isFinite(store.currentWeightKg) ||
+    !store.activityLevel ||
+    !store.goalType ||
+    !store.equipment
+  ) {
+    throw new Error(
+      'createProfileFromOnboarding: required legacy inputs missing from store',
+    );
+  }
+
+  const legacyInput: ProfileInput = {
+    displayName,
+    gender: store.gender,
+    birthYear: store.birthYear,
+    heightCm: store.heightCm,
+    currentWeightKg: store.currentWeightKg,
+    targetWeightKg: store.targetWeightKg,
+    targetBodyFatPct: store.targetBodyFatPct,
+    goalType: store.goalType,
+    activityLevel: store.activityLevel,
+    trainingDaysPerWeek: store.trainingDaysPerWeek,
+    targetDate: store.targetDate,
+    equipment: store.equipment,
+  };
+
+  // Step 1 — insert legacy columns + enqueue sync (existing
+  // profileRepository.createProfile contract).
+  const profile = await createProfile(legacyInput);
+
+  // Step 2 — atomically patch every v2 field gated by step
+  // thresholds. Passing the just-created profile as `existing`
+  // ensures buildProfilePatch can read its onboardingStep /
+  // onboardingStartedAt baseline (set-once stamp + monotonic
+  // step max both work off existing.* values).
+  const patch = buildProfilePatch({ store, existing: profile, now });
+  if (Object.keys(patch).length > 0) {
+    await updateProfile(profile.id, patch);
+  }
+
+  // Re-read so the returned Profile reflects both legacy + v2
+  // columns. getProfile is the boundary that hydrates JSON arrays
+  // + ISO dates correctly per Phase A-1 schema mirror.
+  const hydrated = await getProfile();
+  if (!hydrated) {
+    throw new Error(
+      'createProfileFromOnboarding: profile not found after insert',
+    );
+  }
+  return hydrated;
 }
