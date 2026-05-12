@@ -120,15 +120,21 @@ export default function WelcomeScreen() {
           <View
             // Phase E-4 — v1-migration UX notice.
             //
-            // accessibilityRole="alert" is intentional: the notice
-            // carries information the user MUST register before
-            // tapping 始める (their prior data is preserved, the flow
-            // takes ~3 min). VoiceOver / TalkBack treat alert-role
-            // text as priority content during the screen's initial
-            // read; pairing with accessibilityLiveRegion="polite"
-            // ensures any defensive late-mount profile load also
-            // triggers a re-announce without interrupting other
-            // reading.
+            // a11y semantics — Codex pass 1 / Important fix:
+            // dropped accessibilityRole="alert". ARIA "alert" implies
+            // time-sensitive priority content, which over-strengthens
+            // this advisory copy. The inner Text with
+            // accessibilityRole="header" already gives VoiceOver /
+            // TalkBack a semantic anchor; the body text reads in the
+            // natural traversal order on initial focus.
+            //
+            // accessibilityLiveRegion="polite" is kept as Android-
+            // future-proofing: the prop is Android-only per RN docs
+            // (no-op on iOS), so it doesn't affect this commit's iOS
+            // dogfooding target. When TalkBack dogfooding runs in
+            // v1.4, the polite live region will catch any defensive
+            // late-mount profile load that reveals the notice after
+            // initial traversal.
             //
             // Pattern 11 — color (info-tinted background) + non-color
             // (icon + bold title + body) redundant encoding.
@@ -139,7 +145,6 @@ export default function WelcomeScreen() {
                 borderColor: colors.primary + '40',
               },
             ]}
-            accessibilityRole="alert"
             accessibilityLiveRegion="polite"
             testID="welcome-migration-notice"
           >

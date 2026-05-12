@@ -52,18 +52,38 @@ Checklist:
 - [ ] HealthKit (iOS-only): permission copy readable; Connect +
       Skip CTAs distinct.
 
-### Path 2 — first-time user
+### Path 2 — first-time user (profile=null)
 
 Goal: verify the migration notice is **NOT** shown.
 
 **Reset**: delete-and-recreate profile via dev menu (or sign
-out → sign in fresh).
+out → sign in fresh; no profile row).
 
 Checklist:
 - [ ] Welcome screen: migration notice **absent** (no
       "Mealift がアップデートされました" announce).
 - [ ] Standard flow proceeds welcome → nickname → ... → tier-preview
       → (iOS) healthkit → home.
+
+### Path 2b — persisted incomplete user (profile exists, never finished)
+
+Goal: verify the migration notice is **NOT** shown for users who
+have a profile row but never completed onboarding. This is the
+second false-positive boundary the `isV1MigrationUser` gate defends
+against: `profile != null && onboardingCompleted === false`.
+
+**Reset**: directly UPDATE the profile row to
+`onboarding_completed = 0` (any `onboarding_version`) and cold-start.
+The index.tsx version gate routes to /welcome because of
+`!onboardingCompleted`.
+
+Checklist:
+- [ ] Welcome screen: migration notice **absent** (the
+      "あなたのデータは保存されています" claim would be misleading —
+      there's no completed flow to migrate from).
+- [ ] Onboarding flow proceeds normally with any prefilled values
+      from the partial row still hydrating C-3..D-5 inputs via
+      `prefillFromProfile`.
 
 ### Path 3 — mid-flow back-navigation
 
