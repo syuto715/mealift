@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   useColorScheme,
   Alert,
   Platform,
@@ -21,37 +20,6 @@ import {
   requestHealthKitPermissions,
 } from '../../src/infra/services/healthKitService';
 import { useHealthKitStore } from '../../src/stores/healthKitStore';
-
-function ProgressDots({
-  current,
-  colors,
-}: {
-  current: number;
-  colors: ReturnType<typeof getColors>;
-}) {
-  return (
-    <View style={dotStyles.container}>
-      {[0, 1, 2, 3].map((i) => (
-        <View
-          key={i}
-          style={[
-            dotStyles.dot,
-            {
-              backgroundColor:
-                i === current ? colors.primary : colors.surfaceSecondary,
-            },
-            i === current && dotStyles.activeDot,
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
-const dotStyles = StyleSheet.create({
-  container: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  activeDot: { width: 24 },
-});
 
 const BULLETS: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -140,12 +108,27 @@ export default function HealthKitOnboardingScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      {/* Phase D-10 / Codex pass 1 Critical fix — removed the
+          back-button TouchableOpacity. HealthKit is the terminal
+          post-completion screen (welcome → ... → complete →
+          tier-preview → healthkit → home), and the upstream
+          progress-preview push leaves /progress-preview in the
+          stack below the replace'd /complete → /tier-preview →
+          /healthkit chain. Back-nav from here would pop to
+          progress-preview, re-opening pre-completion state
+          after onboardingCompleted=true had already landed in
+          DB. The screen exits via Connect / Skip CTAs only.
+
+          Sign-off violation fix — step indicator copy updated
+          from the stale "ステップ 3/4" (pre-D-10 numbering when
+          healthkit was screen 3 of a 4-screen flow) to a flow-
+          state-agnostic "最後のステップ". Avoids divergence
+          from ONBOARDING_ROUTES.healthkit.step on future
+          renumbering. */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          ステップ 3/4
+          最後のステップ
         </Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -207,7 +190,16 @@ export default function HealthKitOnboardingScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <ProgressDots current={2} colors={colors} />
+        {/* Phase D-10 / Codex pass 1 Sign-off fix — removed the
+            legacy 4-dot ProgressDots with current={2}. The dots
+            reflected the pre-D-10 numbering (4-screen onboarding
+            with healthkit as the 3rd dot). Post-D-10 healthkit
+            is screen 15 of 15 (iOS), and LEGACY_OWN_HEADER_ROUTES
+            already suppresses the layout-rendered ProgressHeader
+            here, so the legacy dots were both wrong AND redundant
+            with the "最後のステップ" copy in the screen header.
+            ProgressDots component left importable for any future
+            screen that wants a custom dot row. */}
         <View style={styles.buttonCol}>
           <Button
             title="連携する"
