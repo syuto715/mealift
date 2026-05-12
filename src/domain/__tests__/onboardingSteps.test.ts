@@ -114,12 +114,16 @@ describe('shouldRenderLayoutHeader', () => {
     expect(shouldRenderLayoutHeader('')).toBe(false);
   });
 
-  it('returns false for in-table-but-legacy-own-header routes', () => {
+  it('returns false for legacy-own-header + post-completion routes', () => {
     // complete + healthkit are in the post-Phase-D-X table but the
     // CURRENT implementations own their own UI; layout must not
-    // double up.
+    // double up. Phase D-9 / Codex pass 1 — tier-preview joined
+    // this set as a post-completion exception: the progress UI
+    // would render "14/15" on iOS where step 15 (HealthKit) is
+    // unreachable in Android-first builds, misleading the user.
     expect(shouldRenderLayoutHeader('complete')).toBe(false);
     expect(shouldRenderLayoutHeader('healthkit')).toBe(false);
+    expect(shouldRenderLayoutHeader('tier-preview')).toBe(false);
   });
 
   it('returns true for non-legacy routes in the table', () => {
@@ -130,7 +134,6 @@ describe('shouldRenderLayoutHeader', () => {
     expect(shouldRenderLayoutHeader('body-info')).toBe(true);
     expect(shouldRenderLayoutHeader('goal-summary')).toBe(true);
     expect(shouldRenderLayoutHeader('protein-target')).toBe(true);
-    expect(shouldRenderLayoutHeader('tier-preview')).toBe(true);
   });
 });
 

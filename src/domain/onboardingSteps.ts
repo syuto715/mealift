@@ -83,24 +83,35 @@ export function getTotalStepsForPlatform(
   return os === 'ios' ? TOTAL_STEPS_IOS_HEALTHKIT : TOTAL_STEPS_DEFAULT;
 }
 
-// Codex review pass 1 / Important — transitional gate for the
-// legacy Build 14/15 screens that own their own header / back
-// button. Phase A-1 only deleted goal/body/training (truly dead
-// code); welcome-and-goal + body-and-training are still mounted
-// (load-bearing, deferred to Phase D-X), and complete + healthkit
-// are in this table but their CURRENT implementations also own
-// their UI. Rendering the layout-level ProgressHeader on top would
-// duplicate the back button + dot row.
+// Routes that the layout should NOT render its ProgressHeader for.
+// Two categories now share this set:
 //
-// Phase D-X removes welcome-and-goal + body-and-training files and
-// rewrites complete + healthkit to delegate header rendering to
-// the layout. After that, this set shrinks to empty and the gate
-// can be removed entirely.
+//   1. Legacy own-header screens — welcome-and-goal +
+//      body-and-training are load-bearing Build 14/15 screens
+//      still mounted as transitional bridges. complete +
+//      healthkit are in this table but their CURRENT
+//      implementations also own their UI. Rendering the layout-
+//      level ProgressHeader on top would duplicate the back
+//      button + dot row.
+//
+//   2. Post-completion screens (Phase D-9+) — tier-preview is
+//      reached AFTER the user's profile is fully persisted and
+//      onboardingCompleted=true. The progress bar would either
+//      mislead ("14/15" on iOS where step 15 is unreachable
+//      without HealthKit) or be redundant (the user is done).
+//
+// Phase D-X removes welcome-and-goal + body-and-training files
+// and rewrites complete + healthkit to delegate header rendering
+// to the layout. tier-preview stays in this set permanently as
+// a post-completion exception. The constant name remains
+// LEGACY_OWN_HEADER_ROUTES for git-history continuity but the
+// comment now reflects both meanings.
 const LEGACY_OWN_HEADER_ROUTES: ReadonlySet<string> = new Set([
   'welcome-and-goal',
   'body-and-training',
   'complete',
   'healthkit',
+  'tier-preview',
 ]);
 
 // Returns true when the layout should render the shared

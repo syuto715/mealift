@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -75,30 +75,14 @@ export default function TierPreviewScreen() {
 
   const platformReady = isRevenueCatConfigured();
   const [isPurchasing, setIsPurchasing] = useState(false);
-  const [offeringReady, setOfferingReady] = useState(false);
 
-  // Mount: pre-fetch the offering so the Plus CTA can disable
-  // gracefully when the store hasn't returned packages yet.
-  // Pattern 10 cancellation guard against strict-mode dev
-  // double-mount + unmount-mid-fetch race.
-  useEffect(() => {
-    if (!platformReady) return undefined;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const offering = await getCurrentOffering();
-        if (cancelled) return;
-        setOfferingReady(offering != null);
-      } catch (err) {
-        if (cancelled) return;
-        console.warn('[onboarding/tier-preview] offering fetch failed', err);
-        setOfferingReady(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [platformReady]);
+  // Codex pass 1 / Important fix — moved offering fetch into
+  // handleStartTrial. The earlier mount-time fetch + cached
+  // offeringReady flag could permanently disable the CTA on a
+  // transient mount-time failure, with no retry affordance.
+  // Tap-time fetch gives the user a recovery path; the silent
+  // mount-time spinner was already invisible to the user
+  // (disabled button without indicator).
 
   const handleSkip = useCallback(() => {
     // Phase D-9 ships the Android flow's terminal redirect here;
@@ -116,15 +100,22 @@ export default function TierPreviewScreen() {
     }
     setIsPurchasing(true);
     try {
+      // Codex pass 1 / Important fix — re-fetch the offering on
+      // tap rather than trusting the mount-time snapshot. A
+      // transient network failure during mount must not
+      // permanently disable the Plus CTA; tap-time fetch gives
+      // the user a retry affordance even when the cached state
+      // says "no offering."
       const offering = await getCurrentOffering();
-      // Prefer the monthly package — its intro offer is the
-      // 7-day trial. Fallback to first available package if
-      // the catalog shape ever changes (defensive narrow rather
-      // than crash on a missing identifier).
-      const pkg =
-        offering?.availablePackages.find(
-          (p) => p.identifier === 'plus_monthly',
-        ) ?? offering?.availablePackages[0];
+      // Codex pass 1 / Important fix — strict plus_monthly
+      // lookup. The earlier silent fallback to availablePackages[0]
+      // could buy plus_halfyear / plus_annual if the offering
+      // shape ever changed, contradicting the CTA's "7-day trial"
+      // promise. Hard-error to the store-unavailable alert when
+      // plus_monthly isn't present.
+      const pkg = offering?.availablePackages.find(
+        (p) => p.identifier === 'plus_monthly',
+      );
       if (!pkg) {
         Alert.alert(
           '商品が取得できません',
@@ -152,7 +143,13 @@ export default function TierPreviewScreen() {
     }
   }, [isPurchasing, platformReady]);
 
-  const trialAvailable = platformReady && offeringReady;
+  // Codex pass 1 / Important fix — drop the offeringReady
+  // dependency from the disabled gate. A failed mount-time
+  // fetch should not permanently lock the CTA; tap-time
+  // re-fetch provides the recovery path. Plus CTA is now
+  // enabled whenever the platform supports purchase, and
+  // mid-purchase the loading state covers the visual gate.
+  const trialAvailable = platformReady;
 
   return (
     <View style={[styles.safe, { backgroundColor: colors.background }]}>
@@ -231,6 +228,20 @@ export default function TierPreviewScreen() {
           </Text>
         </View>
 
+        {/* Codex pass 1 / Important fix — App Store + Play Store
+            subscription disclosure compliance. Matches the legal
+            note rendered on /settings/subscription.tsx
+            (auto-renew + cancel-via-store-settings). Without this
+            block the screen omits post-trial price/renewal
+            behavior, which Google Play's free-trial policy
+            specifically calls out as required. Source:
+            https://support.google.com/googleplay/android-developer/answer/9900533 */}
+        <Text
+          style={[styles.legalNote, { color: colors.textTertiary }]}
+        >
+          サブスクリプションは自動更新されます。更新日の24時間前までにキャンセルしない限り、同じ期間で自動更新されます。解約はストアのアカウント設定から行えます。
+        </Text>
+
         {!platformReady && (
           <View
             style={[
@@ -261,13 +272,18 @@ export default function TierPreviewScreen() {
           testID="tier-preview-trial"
         />
         <View style={styles.skipWrap}>
+          {/* Codex pass 1 / Sign-off fix — skip is NEVER disabled.
+              Explicit-opt-in policy requires the escape path
+              available even during an in-flight purchase
+              (e.g., a stalled RevenueCat response). The user
+              memory contract: the user must always be able to
+              decline. */}
           <Button
             title={CTA_SKIP}
             onPress={handleSkip}
             variant="ghost"
             size="lg"
             fullWidth
-            disabled={isPurchasing}
             testID="tier-preview-skip"
           />
         </View>
@@ -343,6 +359,12 @@ const styles = StyleSheet.create({
   },
   trialSub: {
     ...typography.bodySmall,
+  },
+  legalNote: {
+    ...typography.bodySmall,
+    textAlign: 'center',
+    lineHeight: 16,
+    paddingHorizontal: spacing.md,
   },
   pendingBox: {
     paddingVertical: spacing.sm,
