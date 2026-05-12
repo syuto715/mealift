@@ -614,20 +614,38 @@ describe('buildProfilePatch — onboardingStep monotonic max', () => {
 });
 
 describe('buildProfilePatch — onboardingVersion v2 bump', () => {
-  it('Build 14/15 user (version=1) → patch bumps to 2', () => {
+  // Phase E-1 / Codex pass 1 Critical regression — the version bump
+  // MUST be gated on markCompleted. Without the gate, the welcome-
+  // mount persist (which fires before the user enters any v2 input)
+  // would write onboardingVersion=2 to a row that still has
+  // onboardingCompleted=true (from v1) — leaving the v1 user
+  // permanently routed past the v2 inputs on next boot.
+
+  it('intermediate persist (no markCompleted) does NOT bump version even when v1 user', () => {
     const patch = buildProfilePatch({
       store: makeStore({ onboardingStep: 2 }),
       existing: makeExistingProfile({ onboardingVersion: 1 }),
       now: NOW,
     });
+    expect(patch.onboardingVersion).toBeUndefined();
+  });
+
+  it('completion path (markCompleted=true) bumps a v1 user to v2', () => {
+    const patch = buildProfilePatch({
+      store: makeStore({ onboardingStep: 12 }),
+      existing: makeExistingProfile({ onboardingVersion: 1 }),
+      now: NOW,
+      markCompleted: true,
+    });
     expect(patch.onboardingVersion).toBe(2);
   });
 
-  it('already-v2 user does NOT get a redundant write', () => {
+  it('completion path on an already-v2 row does NOT get a redundant write', () => {
     const patch = buildProfilePatch({
-      store: makeStore({ onboardingStep: 2 }),
+      store: makeStore({ onboardingStep: 12 }),
       existing: makeExistingProfile({ onboardingVersion: 2 }),
       now: NOW,
+      markCompleted: true,
     });
     expect(patch.onboardingVersion).toBeUndefined();
   });

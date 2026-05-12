@@ -57,7 +57,7 @@ targetBodyFatPct / targetDate):
 2. `mealPlan` — 3 vs 5 meal/day
 3. `mealTimings` — ordered multi-select (`breakfast`..`late_night`)
 4. `proteinFactor` — 1.6 / 1.8 / 2.0 / 2.2 g/kg
-5. `weeklyDistribution` — `even` | `cheat` literal-union
+5. `weeklyDistribution` — `even` | `cheat_days` literal-union
 6. `cheatDays` — `DayOfWeek[]` length ≤ 3, sorted/deduped
 7. `weeklyRatePct` — pace selector output (% bodyweight per week)
 8. `dailyCalorieTarget` — derived (cached, recomputable)
@@ -132,7 +132,11 @@ invariants the screen layer cannot:
 - `weeklyDistribution === 'even'` → `cheatDays = null`
 - `cheatDays.length > 3` → truncated to first 3
 - `mealTimings` sorted + deduped to canonical order
-- `onboardingVersion` auto-bumped on completion path
+- `onboardingVersion` bumped to current SSoT **only on the completion
+  path** (`markCompleted=true`), atomically with `onboardingCompleted=true` —
+  intermediate per-screen persists never flip the version, so a v1 user
+  forced through re-onboarding (Option A) can't get stranded mid-flow
+  with `version=2 + completed=true` and skip the C-3..D-5 inputs
 - Set-once fields (`onboardingStartedAt`) never overwritten
 
 Screen-layer validation exists for UX (immediate feedback) but is

@@ -302,10 +302,23 @@ export function buildProfilePatch(
     patch.onboardingStartedAt = now.toISOString();
   }
 
-  // onboardingVersion: bump to 2 the first time a v1.3.0 client
-  // touches a profile that's still on the Build 14/15 default of 1.
-  // Already-v2 profiles don't get a redundant write.
-  if ((existing?.onboardingVersion ?? 0) < ONBOARDING_VERSION) {
+  // onboardingVersion: bump to current SSoT ONLY on the completion
+  // path (markCompleted=true). Phase E-1 / Codex pass 1 Critical fix —
+  // a v1 user (onboardingCompleted=true + onboardingVersion=1) gets
+  // routed to /welcome by app/index.tsx's version gate. The welcome
+  // mount fires persistToProfile (for onboardingStartedAt). If we
+  // bump the version here, the row is left at
+  // onboardingCompleted=true + onboardingVersion=2 BEFORE the user
+  // completes the v2 inputs. On next app boot the version gate
+  // passes and the user is sent to /(tabs) — having skipped every
+  // C-3..D-5 v2 screen. The bump must therefore be deferred to
+  // the terminal save from createProfileFromOnboarding, the same
+  // place markCompleted flips onboardingCompleted=true. Together
+  // they form an atomic "finished v2 onboarding" stamp.
+  if (
+    markCompleted &&
+    (existing?.onboardingVersion ?? 0) < ONBOARDING_VERSION
+  ) {
     patch.onboardingVersion = ONBOARDING_VERSION;
   }
 
