@@ -12,11 +12,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getColors, radius } from '../../../src/theme/tokens';
+import { getColors, radius, shadow } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
-import { Button, Card, SegmentedControl, Toast } from '../../../src/components/ui';
+import { Button, Toast } from '../../../src/components/ui';
+import { ProInlineCTA } from '../../../src/components/shared/ProInlineCTA';
 import { useProfileStore } from '../../../src/stores/profileStore';
+import { useSubscription } from '../../../src/hooks/useSubscription';
 import { MUSCLE_GROUPS } from '../../../src/constants/muscleGroups';
 import type { MuscleGroup } from '../../../src/types/common';
 import {
@@ -30,32 +32,29 @@ import { getFeatureFlags } from '../../../src/infra/services/subscriptionService
 import { supabase } from '../../../src/infra/supabase/client';
 import { useAIMenuStagingStore } from '../../../src/stores/aiMenuStagingStore';
 
-// Build 15 / Session 8 / Phase 6 / Commit 24 — AI menu generation
-// entry screen.
+// v1.4 / UI 改善 v1 ステージ 2 Phase B [S1] — AIメニュー画面リデザイン.
 //
-// Flow:
-//   1. User picks 1+ muscle chips (strength + 全身 only — cardio
-//      excluded in v1, see Phase 6 Q1.b sign-off).
-//   2. Picks duration (30 / 45 / 60 / 90 min).
-//   3. Tap 「メニュー生成」 → builds Pattern C slug list via
-//      listExerciseSlugsByMuscles({ minCount: 30 }) → calls EF.
-//   4. Loading overlay with stage-shifting message at 5s/15s/30s.
-//      Cancel button aborts via AbortController.
-//   5. On success: program stored in screen state and a placeholder
-//      success toast is shown — Commit 25 replaces this with the
-//      preview screen + week/day picker + save flow.
-//   6. On error: toast with localized message from ERROR_MESSAGE_BY_CODE
-//      (mapped via AIWorkoutError.code).
+// Plan §5.1: 「機能名→人格化」 (AI メニュー生成 → AIトレーナー)、
+// 部位選択を card grid 化、 時間選択に意味付きヘルパーテキスト、
+// プライマリボタン強化 + Plus アップセル、 4-step ローディング演出.
 //
-// Quota badge: live-fetched from ai_usage_logs (RLS-safe direct read,
-// scoped by auth.uid()). Refetches on screen focus and after each
-// generation completes.
+// 既存業務ロジック維持 (Plan §10.1 既存ロジック破壊なし):
+//   - quota fetch (ai_usage_logs RLS-safe SELECT)
+//   - generateAIWorkoutMenu (Edge Function call + cache args)
+//   - listExerciseSlugsByMuscles / listUserEquipment
+//   - AbortController + stage timer cleanup
+//   - aiMenuStagingStore via useAIMenuStagingStore
+//   - Error handling (AIWorkoutError + ERROR_MESSAGE_BY_CODE)
+//
+// 変更箇所 (UI layer のみ):
+//   B-1 ヘッダー: 「AIメニュー生成」 → 「AIトレーナー」 + キャッチコピー
+//   B-2 部位選択: text chip → アイコン + テキスト card grid (2列)
+//   B-3 時間選択: SegmentedControl → 4-option detail cards
+//                 (30分・軽め N種目 等の意味付き)
+//   B-4 生成ボタン: size lg + shadow.md + 残量表示 + ProInlineCTA
+//   B-5 ローディング: ActivityIndicator → 4-step progress visualization
+//                     (履歴分析 / ボリューム計算 / 種目選定 / セット最適化)
 
-// Allowed muscle filters in v1: strength groups + 全身. cardio/sports
-// is excluded — the v25 seed has no slug for those rows so an
-// EF call with cardio-only filter would 400 with no_equipment-style
-// emptiness. Build 16+ may add cardio menu generation as a separate
-// product surface.
 const AI_MENU_MUSCLES: MuscleGroup[] = [
   'chest',
   'back',
@@ -66,31 +65,55 @@ const AI_MENU_MUSCLES: MuscleGroup[] = [
   'full_body',
 ];
 
-const DURATION_SEGMENTS = [
-  { label: '30分', value: '30' },
-  { label: '45分', value: '45' },
-  { label: '60分', value: '60' },
-  { label: '90分', value: '90' },
+// Per-muscle Ionicon mapping. MUSCLE_GROUPS の `icon` field は全
+// 'body-outline' なので、 画面ローカルで Plan §5.1「胸/背中/肩/腕/
+// 脚/腹、+全身」 に対応する distinct アイコンを用意.
+const MUSCLE_ICONS: Record<
+  MuscleGroup,
+  React.ComponentProps<typeof Ionicons>['name']
+> = {
+  chest: 'body-outline',
+  back: 'body-outline',
+  shoulders: 'body-outline',
+  arms: 'barbell-outline',
+  legs: 'walk-outline',
+  core: 'body-outline',
+  full_body: 'body',
+};
+
+// Plan §5.1 B-3 duration options with 意味付きヘルパーテキスト.
+const DURATION_OPTIONS: {
+  value: string;
+  label: string;
+  helper: string;
+}[] = [
+  { value: '30', label: '30分', helper: '軽め (4-5種目)' },
+  { value: '45', label: '45分', helper: '標準 (6-7種目)' },
+  { value: '60', label: '60分', helper: 'しっかり (8-9種目)' },
+  { value: '90', label: '90分', helper: 'じっくり (10種目以上)' },
 ];
 
-// Pattern C minimum: ensures the AI prompt always sees ≥ 30 slugs even
-// when the user picks a single narrow group (full_body alone has 8 in
-// the seed). Gives Gemini enough variety to avoid degenerate outputs.
 const SLUG_LIST_MIN_COUNT = 30;
 
 // Loading stage breakpoints (seconds since fetch started).
+// 4 steps with auto-advance for visual progress feedback.
 const LOADING_STAGE_2_MS = 5_000;
 const LOADING_STAGE_3_MS = 15_000;
 const LOADING_STAGE_4_MS = 30_000;
+
+const LOADING_STEPS = [
+  { label: '履歴を分析中', icon: 'analytics-outline' as const },
+  { label: 'ボリュームを計算中', icon: 'calculator-outline' as const },
+  { label: '種目を選定中', icon: 'list-outline' as const },
+  { label: 'セットを最適化中', icon: 'sparkles-outline' as const },
+];
 
 type ScreenState =
   | { kind: 'idle' }
   | { kind: 'loading' }
   | { kind: 'error'; message: string };
 
-// UTC month-start ISO — matches the EF's quota window (utcMonthStartISO
-// in supabase/functions/generate-workout-menu/index.ts) so the client
-// counter stays in lockstep with what the server enforces.
+// UTC month-start ISO — matches EF's quota window.
 function utcMonthStartISO(now: Date): string {
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth();
@@ -101,6 +124,7 @@ export default function AIMenuScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
   const profile = useProfileStore((s) => s.profile);
+  const sub = useSubscription();
 
   const [selectedMuscles, setSelectedMuscles] = useState<Set<MuscleGroup>>(
     new Set(),
@@ -122,9 +146,8 @@ export default function AIMenuScreen() {
 
   const planFlags = getFeatureFlags();
   const monthlyLimit = planFlags.aiWorkoutGenerationLimit;
-  const quotaRemaining = quotaUsed != null
-    ? Math.max(0, monthlyLimit - quotaUsed)
-    : null;
+  const quotaRemaining =
+    quotaUsed != null ? Math.max(0, monthlyLimit - quotaUsed) : null;
 
   const fetchQuota = useCallback(async () => {
     if (!profile?.id || !supabase) {
@@ -140,7 +163,6 @@ export default function AIMenuScreen() {
       .eq('response_status', 200)
       .gte('created_at', monthStart);
     if (error) {
-      // Silent fail — badge just hides until a successful refetch.
       setQuotaUsed(null);
       return;
     }
@@ -153,7 +175,6 @@ export default function AIMenuScreen() {
     }, [fetchQuota]),
   );
 
-  // Cleanup any in-flight controller / stage timers on unmount.
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
@@ -196,7 +217,6 @@ export default function AIMenuScreen() {
     setScreenState({ kind: 'loading' });
     setLoadingStage(1);
 
-    // Schedule stage transitions. Cleared in cleanup paths below.
     for (const t of stageTimersRef.current) clearTimeout(t);
     stageTimersRef.current = [
       setTimeout(() => setLoadingStage(2), LOADING_STAGE_2_MS),
@@ -212,20 +232,12 @@ export default function AIMenuScreen() {
         minCount: SLUG_LIST_MIN_COUNT,
       });
       if (exerciseSlugs.length === 0) {
-        // Defensive: empty seed (cold-install before seedExercisesV2
-        // ran) — should never happen on a fully-booted app.
         throw new AIWorkoutError(
           'invalid_request',
           '種目データが読み込まれていません。アプリを再起動してください',
           400,
         );
       }
-      // Phase 7 cache key inputs. Equipment is fetched fresh from
-      // local DB at generate time so a recently-toggled chip is
-      // reflected — listUserEquipment runs against SQLite (sub-ms)
-      // and the result also mirrors what the EF reads server-side
-      // via user_equipment, keeping the cache in lockstep with the
-      // EF's view.
       const equipmentRows = profile?.id
         ? await listUserEquipment(profile.id)
         : [];
@@ -238,9 +250,6 @@ export default function AIMenuScreen() {
             profileId: profile.id,
             goalType: profile.goalType ?? null,
             equipmentKeys,
-            // Phase 7 / Codex #1 — must match what the EF prompt
-            // embeds. profile.trainingDaysPerWeek is the raw int the
-            // EF reads server-side; pipe it through unchanged.
             trainingDaysPerWeek: profile.trainingDaysPerWeek ?? null,
           }
         : undefined;
@@ -249,13 +258,8 @@ export default function AIMenuScreen() {
         { targetMuscles: muscles, durationMinutes, exerciseSlugs },
         { signal: controller.signal, cache: cacheArgs },
       );
-      // Hand off to preview via the staging store. router params would
-      // need to JSON-stringify a multi-week program (>4 KB typical),
-      // which Expo Router doesn't love — see aiMenuStagingStore.ts.
       setStaging(program, muscles);
       setScreenState({ kind: 'idle' });
-      // Refresh quota count to advance the badge before navigation so
-      // the user-facing remaining count is fresh on return.
       void fetchQuota();
       router.push('/(tabs)/training/ai-menu-preview');
     } catch (err) {
@@ -265,7 +269,6 @@ export default function AIMenuScreen() {
           ? err.message
           : ERROR_MESSAGE_BY_CODE.internal_error;
       setScreenState({ kind: 'error', message });
-      // 'aborted' is user-initiated — show as info, not error.
       setToast({
         message,
         type: code === 'aborted' ? 'info' : 'error',
@@ -282,6 +285,10 @@ export default function AIMenuScreen() {
     durationStr,
     quotaRemaining,
     fetchQuota,
+    profile?.id,
+    profile?.goalType,
+    profile?.trainingDaysPerWeek,
+    setStaging,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -294,28 +301,28 @@ export default function AIMenuScreen() {
     selectedMuscles.size === 0 ||
     (quotaRemaining != null && quotaRemaining <= 0);
 
-  const loadingMessage =
-    loadingStage === 1
-      ? 'AI が最適なメニューを考えています...'
-      : loadingStage === 2
-      ? 'もうしばらくかかります...'
-      : loadingStage === 3
-      ? '処理に時間がかかっています。ネットワーク状況を確認してください'
-      : 'タイムアウト目前です。中止して再試行できます';
+  // B-4 — residual count + Plus アップセル 表示判定.
+  // Free / Trial: 残量カウンタ表示 + ProInlineCTA (Plus でもっと使う).
+  // Plus / Pro: 残量だけ表示 (CTA 非表示、 Handbook §15.4).
+  const showResidualCount = quotaRemaining != null;
+  const showPlusUpsell = sub.isFree;
 
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.background }]}
       edges={['top']}
     >
+      {/* B-1 ヘッダー */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="戻る"
+        >
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
-          AI メニュー生成
-        </Text>
-        <View style={styles.backBtn} />
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
@@ -323,7 +330,20 @@ export default function AIMenuScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Quota badge */}
+        {/* B-1 タイトル + キャッチコピー (機能名 → 人格化) */}
+        <View style={styles.hero}>
+          <Text
+            style={[styles.title, { color: colors.textPrimary }]}
+            accessibilityRole="header"
+          >
+            AIトレーナー
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            あなた専用のメニューを、 AI が作成します
+          </Text>
+        </View>
+
+        {/* Quota badge — 既存ロジック維持、 visual を pill 化 */}
         <View
           style={[
             styles.quotaBadge,
@@ -332,41 +352,69 @@ export default function AIMenuScreen() {
         >
           <Ionicons name="sparkles-outline" size={16} color={colors.primary} />
           <Text style={[styles.quotaText, { color: colors.textSecondary }]}>
-            {quotaRemaining != null
-              ? `今月: 残り ${quotaRemaining} / ${monthlyLimit}`
-              : `今月: -- / ${monthlyLimit}`}
+            {showResidualCount
+              ? `今月 残り ${quotaRemaining} / ${monthlyLimit}`
+              : `今月 -- / ${monthlyLimit}`}
           </Text>
         </View>
 
-        {/* Muscle chips */}
-        <Card>
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-            鍛えたい部位（複数選択可）
+        {/* B-2 部位選択 — 2列 card grid */}
+        <View style={styles.section}>
+          <Text
+            style={[styles.sectionLabel, { color: colors.textPrimary }]}
+            accessibilityRole="header"
+          >
+            鍛えたい部位
           </Text>
-          <View style={styles.chipGrid}>
+          <Text
+            style={[styles.sectionHelper, { color: colors.textTertiary }]}
+          >
+            複数選択できます
+          </Text>
+          <View
+            style={styles.muscleGrid}
+            accessibilityRole="radiogroup"
+            accessibilityLabel="鍛えたい部位を選択"
+          >
             {AI_MENU_MUSCLES.map((m) => {
               const info = MUSCLE_GROUPS.find((g) => g.id === m);
               if (!info) return null;
               const selected = selectedMuscles.has(m);
+              const isFullBody = m === 'full_body';
               return (
                 <TouchableOpacity
                   key={m}
                   style={[
-                    styles.chip,
+                    styles.muscleCard,
+                    isFullBody && styles.muscleCardWide,
                     {
                       backgroundColor: selected
-                        ? colors.primary
-                        : colors.surfaceSecondary,
-                      borderRadius: radius.full,
+                        ? colors.primary + '15'
+                        : colors.surface,
+                      borderColor: selected ? colors.primary : colors.border,
                     },
                   ]}
                   onPress={() => toggleMuscle(m)}
                   disabled={isLoading}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: selected }}
+                  accessibilityLabel={info.nameJa}
                 >
+                  <Ionicons
+                    name={MUSCLE_ICONS[m]}
+                    size={28}
+                    color={selected ? colors.primary : colors.textSecondary}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                  />
                   <Text
                     style={[
-                      styles.chipText,
-                      { color: selected ? '#FFFFFF' : colors.textSecondary },
+                      styles.muscleLabel,
+                      {
+                        color: selected
+                          ? colors.primary
+                          : colors.textPrimary,
+                      },
                     ]}
                   >
                     {info.nameJa}
@@ -375,51 +423,173 @@ export default function AIMenuScreen() {
               );
             })}
           </View>
-        </Card>
+        </View>
 
-        {/* Duration */}
-        <Card>
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+        {/* B-3 時間選択 — 4 option detail cards */}
+        <View style={styles.section}>
+          <Text
+            style={[styles.sectionLabel, { color: colors.textPrimary }]}
+            accessibilityRole="header"
+          >
             1 セッションの時間
           </Text>
-          <SegmentedControl
-            segments={DURATION_SEGMENTS}
-            selectedValue={durationStr}
-            onValueChange={setDurationStr}
-          />
-        </Card>
+          <View
+            style={styles.durationList}
+            accessibilityRole="radiogroup"
+            accessibilityLabel="1セッションの時間を選択"
+          >
+            {DURATION_OPTIONS.map((opt) => {
+              const selected = durationStr === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.durationCard,
+                    {
+                      backgroundColor: selected
+                        ? colors.primary + '15'
+                        : colors.surface,
+                      borderColor: selected ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => setDurationStr(opt.value)}
+                  disabled={isLoading}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={`${opt.label} ${opt.helper}`}
+                >
+                  <View style={styles.durationCardText}>
+                    <Text
+                      style={[
+                        styles.durationLabel,
+                        {
+                          color: selected
+                            ? colors.primary
+                            : colors.textPrimary,
+                        },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.durationHelper,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {opt.helper}
+                    </Text>
+                  </View>
+                  {selected && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={20}
+                      color={colors.primary}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
 
-        {/* Note about exclusions */}
+        {/* v1 限定の helper */}
         <Text style={[styles.helperText, { color: colors.textTertiary }]}>
-          ※ v1 では筋トレメニューのみ生成できます。有酸素・スポーツは対象外です。
+          ※ v1 では筋トレメニューのみ生成できます。 有酸素・スポーツは対象外です。
         </Text>
 
-        {/* Generate button */}
-        <Button
-          title={isLoading ? '生成中...' : '✨ メニュー生成'}
-          onPress={handleGenerate}
-          variant="primary"
-          fullWidth
-          disabled={generateDisabled}
-        />
-
+        {/* B-4 生成ボタン + 残量 + Plus upsell */}
+        <View style={[styles.ctaSection, shadow.md]}>
+          <Button
+            title={isLoading ? '生成中…' : 'AIメニューを作成する'}
+            onPress={handleGenerate}
+            variant="primary"
+            size="lg"
+            fullWidth
+            disabled={generateDisabled}
+            testID="ai-menu-generate-cta"
+          />
+        </View>
+        {showResidualCount && (
+          <Text style={[styles.residualText, { color: colors.textTertiary }]}>
+            あと {quotaRemaining} 回 / 月 {monthlyLimit} 回
+          </Text>
+        )}
+        {showPlusUpsell && (
+          <ProInlineCTA
+            label={`Plus でもっと使う → 月 ${30} 回`}
+            variant="link"
+          />
+        )}
       </ScrollView>
 
-      {/* Loading overlay */}
+      {/* B-5 ローディングオーバーレイ — 4-step progress */}
       <RNModal visible={isLoading} transparent animationType="fade">
-        <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+        <View
+          style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
+        >
           <View
             style={[
               styles.overlayCard,
-              { backgroundColor: colors.surface, borderRadius: radius.lg },
+              {
+                backgroundColor: colors.surface,
+                borderRadius: radius.lg,
+              },
             ]}
           >
-            <ActivityIndicator size="large" color={colors.primary} />
             <Text
-              style={[styles.overlayText, { color: colors.textPrimary }]}
+              style={[styles.overlayTitle, { color: colors.textPrimary }]}
+              accessibilityRole="header"
             >
-              {loadingMessage}
+              AIトレーナーが作成中…
             </Text>
+            <View style={styles.stepsList}>
+              {LOADING_STEPS.map((step, idx) => {
+                const stepNum = (idx + 1) as 1 | 2 | 3 | 4;
+                const isActive = loadingStage === stepNum;
+                const isDone = loadingStage > stepNum;
+                const iconColor = isDone
+                  ? colors.success
+                  : isActive
+                    ? colors.primary
+                    : colors.textTertiary;
+                const labelColor = isDone
+                  ? colors.textSecondary
+                  : isActive
+                    ? colors.textPrimary
+                    : colors.textTertiary;
+                return (
+                  <View key={step.label} style={styles.stepRow}>
+                    {isDone ? (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={22}
+                        color={iconColor}
+                      />
+                    ) : isActive ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Ionicons
+                        name={step.icon}
+                        size={22}
+                        color={iconColor}
+                      />
+                    )}
+                    <Text
+                      style={[
+                        styles.stepLabel,
+                        { color: labelColor },
+                        isActive && styles.stepLabelActive,
+                      ]}
+                    >
+                      {step.label}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
             <Button
               title="中止"
               onPress={handleCancel}
@@ -450,12 +620,22 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  title: { ...typography.titleMedium, flex: 1, textAlign: 'center' },
+  headerSpacer: { width: 40, height: 40 },
   scroll: { flex: 1 },
   content: {
     padding: spacing.lg,
     gap: spacing.lg,
     paddingBottom: spacing.xxxxl,
+  },
+  hero: {
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  title: {
+    ...typography.displayMedium,
+  },
+  subtitle: {
+    ...typography.bodyMedium,
   },
   quotaBadge: {
     flexDirection: 'row',
@@ -467,18 +647,80 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   quotaText: { ...typography.labelSmall },
-  sectionLabel: { ...typography.labelMedium, marginBottom: spacing.sm },
-  chipGrid: {
+  section: {
+    gap: spacing.sm,
+  },
+  sectionLabel: {
+    ...typography.titleSmall,
+  },
+  sectionHelper: {
+    ...typography.bodySmall,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  muscleGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  chip: {
+  // 2 列計算: (画面幅 - 左右 padding 16*2 - gap 8) / 2 ≈ (360 - 40) / 2 = 160
+  // しかしレイアウト固定値を flex で扱う方が安全 — flex-basis で 48%。
+  muscleCard: {
+    flexBasis: '48%',
+    flexGrow: 0,
+    flexShrink: 0,
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    minHeight: 80,
   },
-  chipText: { ...typography.labelMedium },
-  helperText: { ...typography.bodySmall, textAlign: 'center' },
+  muscleCardWide: {
+    flexBasis: '100%',
+  },
+  muscleLabel: {
+    ...typography.titleSmall,
+  },
+  durationList: {
+    gap: spacing.sm,
+  },
+  durationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    minHeight: 56,
+  },
+  durationCardText: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.md,
+  },
+  durationLabel: {
+    ...typography.titleMedium,
+  },
+  durationHelper: {
+    ...typography.bodySmall,
+  },
+  helperText: {
+    ...typography.bodySmall,
+    textAlign: 'center',
+  },
+  ctaSection: {
+    borderRadius: radius.md,
+  },
+  residualText: {
+    ...typography.labelMedium,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
   overlay: {
     flex: 1,
     alignItems: 'center',
@@ -486,13 +728,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   overlayCard: {
+    alignItems: 'stretch',
+    gap: spacing.lg,
+    padding: spacing.xl,
+    minWidth: 280,
+    maxWidth: 320,
+  },
+  overlayTitle: {
+    ...typography.titleMedium,
+    textAlign: 'center',
+  },
+  stepsList: {
+    gap: spacing.md,
+  },
+  stepRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.xl,
-    minWidth: 240,
+    minHeight: 26,
   },
-  overlayText: {
+  stepLabel: {
     ...typography.bodyMedium,
-    textAlign: 'center',
+    flex: 1,
+  },
+  stepLabelActive: {
+    fontWeight: '600',
   },
 });
