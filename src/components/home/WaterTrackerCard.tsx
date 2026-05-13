@@ -117,8 +117,14 @@ export function WaterTrackerCard({ totalMl, targetMl, onAdd, onPress }: Props) {
 
       {/* Custom amount + direction toggle. Logging a negative amount
           records a correction row that the daily-total SUM subtracts.
-          onStartShouldSetResponder は legacy guard、 親 TouchableOpacity
-          scope narrow 後は冗長だが backward-compat のため残置。 */}
+
+          v1.4 ステージ 3.5 / Codex pass 1 Nit fix —
+          `onStartShouldSetResponder={() => true}` は元々 outer
+          TouchableOpacity (card-wide navigation) からの touch
+          propagation を defend する目的だったが、 Issue A fix で
+          outer TouchableOpacity を削除済 → 現在は **dead guard**.
+          v1.5 cleanup pass で safe-remove candidate (今回は
+          touch-handling regression risk を避けるため残置). */}
       <View
         style={[styles.customRow, { borderColor: colors.border }]}
         onStartShouldSetResponder={() => true}
