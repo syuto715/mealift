@@ -322,7 +322,28 @@ export default function BarcodeScanScreen() {
       });
       router.back();
     } catch (error) {
-      Alert.alert('エラー', '登録に失敗しました');
+      // v1.4 ステージ 3.5 / Issue C-2 visibility lift —
+      // Pattern 11 補強 facet 6 (Error visibility 3-tier):
+      //   1. user-facing: Alert に error.message を露出 (推測ベース fix
+      //      を避け、 actual root cause を user-reportable に)
+      //   2. dev-time: __DEV__ console.error で開発時の log path 確立
+      //   3. prod telemetry: Sentry 等の telemetry hookup TODO 記録
+      //      (v1.5 prep)
+      //
+      // dogfood で C-2 が generic Alert 「登録に失敗しました」 に
+      // 吸収されていた reason: catch block が error.message を 捨てて
+      // いた。 actual root cause (saveBarcodeFood / addFood / etc.) を
+      // 特定するための diagnostic lift。 actual fix は次 turn で
+      // Syuto-san reproduce 後の error 詳細に基づき確定。
+      const msg = error instanceof Error ? error.message : String(error);
+      if (__DEV__) {
+        console.error(
+          '[barcode.handleRegisterAndAdd] Registration failed:',
+          error,
+        );
+      }
+      // TODO(v1.5 Sentry): Sentry.captureException(error, { context: 'barcode.register' });
+      Alert.alert('エラー', `登録に失敗しました: ${msg}`);
     } finally {
       setRegSaving(false);
     }
@@ -349,7 +370,18 @@ export default function BarcodeScanScreen() {
       }
       handleRescan();
     } catch (error) {
-      Alert.alert('エラー', '登録に失敗しました');
+      // v1.4 ステージ 3.5 / Issue C-2 visibility lift —
+      // 同 Pattern 11 補強 facet 6 (Error visibility 3-tier) を
+      // handleRegisterAndAdd と統一適用。
+      const msg = error instanceof Error ? error.message : String(error);
+      if (__DEV__) {
+        console.error(
+          '[barcode.handleRegisterOnly] Registration failed:',
+          error,
+        );
+      }
+      // TODO(v1.5 Sentry): Sentry.captureException(error, { context: 'barcode.registerOnly' });
+      Alert.alert('エラー', `登録に失敗しました: ${msg}`);
     } finally {
       setRegSaving(false);
     }
