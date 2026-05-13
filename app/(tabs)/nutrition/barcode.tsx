@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors, radius } from '../../../src/theme/tokens';
@@ -84,6 +84,18 @@ export default function BarcodeScanScreen() {
   const [scannedBarcode, setScannedBarcode] = useState('');
   const lastScannedRef = useRef<string>('');
 
+  // v1.4 ステージ 3.5 / Issue C-1 fix —
+  // expo-camera CameraView の iOS native session lifecycle quirk
+  // workaround. dogfood で発見: 1 回目 scan 成功後、 router.back で
+  // 抜けて再度この画面に来ると `onBarcodeScanned` callback が
+  // native 側で発火しなくなる症状。 既知 expo-camera issue で、
+  // standard workaround は screen focus の度に CameraView を強制
+  // remount すること。 cameraKey を useFocusEffect で increment、
+  // CameraView の key prop に渡すことで focus 戻り毎に new native
+  // session を起動。 internal state (scanned / mode / lastScannedRef)
+  // も同時 reset、 register form の partial state 残留も解消。
+  const [cameraKey, setCameraKey] = useState(0);
+
   // Registration form state
   const [regName, setRegName] = useState('');
   const [regBrand, setRegBrand] = useState('');
@@ -137,6 +149,23 @@ export default function BarcodeScanScreen() {
   const cholesterolRef = useRef<TextInput>(null);
   const saturatedFatRef = useRef<TextInput>(null);
   const sugarRef = useRef<TextInput>(null);
+
+  // Issue C-1 fix — focus 戻り毎に CameraView remount + scan state reset.
+  // useFocusEffect callback の cleanup phase は触らない (画面を離れた
+  // ときの cleanup は次回 focus 時の cameraKey++ で十分代替).
+  useFocusEffect(
+    useCallback(() => {
+      setCameraKey((k) => k + 1);
+      setScanned(false);
+      setMode('scan');
+      setResult(null);
+      setScannedBarcode('');
+      lastScannedRef.current = '';
+      return () => {
+        // 明示 cleanup は不要、 次 focus 時の cameraKey++ で remount される.
+      };
+    }, []),
+  );
 
   const parseNum = (s: string): number => {
     const v = parseFloat(s);
@@ -471,7 +500,11 @@ export default function BarcodeScanScreen() {
 
       {mode === 'scan' && (
         <View style={styles.cameraContainer}>
+          {/* Issue C-1 fix — key={cameraKey} で focus 戻り毎に
+              CameraView を新規 mount、 native session を完全 reset。
+              cameraKey は useFocusEffect で increment される. */}
           <CameraView
+            key={cameraKey}
             style={styles.camera}
             facing="back"
             barcodeScannerSettings={{
