@@ -18,7 +18,9 @@ import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
 import { Card, ProgressRing, ProgressBar, Button, Badge, DateNavigator, Toast } from '../../src/components/ui';
 import { PredictionChart } from '../../src/components/progress/PredictionChart';
-import { getGreeting, getISODate, formatDate } from '../../src/utils/format';
+import { getISODate, formatDate } from '../../src/utils/format';
+import { getHomeGreeting } from '../../src/domain/homeGreeting';
+import { ProTeaser } from '../../src/components/shared/ProTeaser';
 import { getRecordedNutritionDates } from '../../src/infra/repositories/nutritionRepository';
 import { getRecordedSessionDates } from '../../src/infra/repositories/workoutRepository';
 import { useProfileStore } from '../../src/stores/profileStore';
@@ -502,15 +504,39 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-              {getGreeting()}
-            </Text>
-          </View>
-          <TrialBadge />
-        </View>
+        {/* Phase D-1 — 時間帯別グリーティングヘッダー (4-tier + icon).
+            Plan §5.3 A 「5-10時おはよう / 10-17時こんにちは / 17-22時
+            こんばんは / 22-5時お疲れさまです」 + 太陽/月 アイコン 1個.
+            既存 getGreeting() (3-tier、 icon なし) は format.ts に
+            残し、 home は domain/homeGreeting.ts の 4-tier 版を使用
+            (TZ-safe、 23 tests pin). */}
+        {(() => {
+          const g = getHomeGreeting();
+          const nickname = profile?.nickname?.trim();
+          const fullLabel = nickname
+            ? `${g.label}、 ${nickname} さん`
+            : g.label;
+          return (
+            <View style={styles.header}>
+              <View style={styles.greetingRow}>
+                <Ionicons
+                  name={g.icon}
+                  size={20}
+                  color={colors.textSecondary}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
+                <Text
+                  style={[styles.greeting, { color: colors.textSecondary }]}
+                  accessibilityRole="header"
+                >
+                  {fullLabel}
+                </Text>
+              </View>
+              <TrialBadge />
+            </View>
+          );
+        })()}
 
         {/* Date Navigator */}
         <View style={{ marginBottom: spacing.sm }}>
@@ -878,6 +904,12 @@ export default function HomeScreen() {
           onPress={() => router.push('/(tabs)/progress')}
         />
 
+        {/* Phase D-6 — Plus 機能ティーザー (ホーム末尾).
+            ProTeaser 内部で sub.isFree のみ表示する gate あり
+            (trial / plus / pro は null 返却、 Handbook §15.4)。
+            Plan §12.4 シナリオ 4「Plus でホーム末尾」 = 非表示 verify. */}
+        <ProTeaser />
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
@@ -900,6 +932,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   greeting: { ...typography.bodyMedium },
   date: { ...typography.titleLarge },
