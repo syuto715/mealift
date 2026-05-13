@@ -343,6 +343,19 @@ export default function NutritionScreen() {
           >
             kcal
           </Text>
+          {/* Phase F-1 — ヘッダー進捗バー追加. kcal 摂取率を視覚的に
+              提示 (既存 macro bars と並列、 全 calorie の "今どれだけ
+              達成しているか" を即視認できる) */}
+          {targetCalories > 0 && (
+            <View style={styles.calorieProgressWrap}>
+              <ProgressBar
+                progress={Math.min(1, totalCalories / targetCalories)}
+                color={colors.calorie}
+                backgroundColor={colors.calorie + '20'}
+                height={6}
+              />
+            </View>
+          )}
           <View style={styles.macros}>
             <View style={styles.macroRow}>
               <View style={styles.macroBarContainer}>
@@ -611,13 +624,20 @@ export default function NutritionScreen() {
               ) : (
                 <View style={styles.mealEmptyState}>
                   <Ionicons name="restaurant-outline" size={32} color={colors.textTertiary} />
+                  {/* Phase F-2 — エンプティ copy 温かい誘導に. 元の
+                      「食事を記録して栄養バランスを確認しましょう」 は
+                      "記録" 行為の説明だけ、 user の行動誘導が弱い.
+                      Plan §5.5 B「温かいエンプティ + CTA」 の方向性で
+                      copy 改善. AI 推定 / 写真から CTA はステージ 4
+                      食品 3 タブ統合 UI で実装 (本 Phase F は既存
+                      "食品を追加" button preserve、 copy のみ調整). */}
                   <Text
                     style={[
                       styles.emptyText,
                       { color: colors.textSecondary },
                     ]}
                   >
-                    食事を記録して栄養バランスを確認しましょう
+                    まだ記録がありません
                   </Text>
                 </View>
               )}
@@ -780,6 +800,11 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     textAlign: 'center',
     marginBottom: spacing.lg,
+  },
+  // Phase F-1 — calorie achievement progress bar wrap (macros の上に
+  // 配置、 macros と同じ gap 体系で揃え).
+  calorieProgressWrap: {
+    marginBottom: spacing.md,
   },
   macros: { gap: spacing.sm },
   macroRow: {
