@@ -50,57 +50,79 @@ export function WaterTrackerCard({ totalMl, targetMl, onAdd, onPress }: Props) {
     Number(customAmount) > 0 &&
     Number(customAmount) <= MAX_CUSTOM_ML;
 
+  // v1.4 ステージ 3.5 / Issue A fix —
+  // 旧実装: <TouchableOpacity onPress={onPress}><Card>... 全体 ... </Card></TouchableOpacity>
+  //   card 全領域が tap で /(tabs)/progress へ navigate、 TextInput
+  //   tap 時に native focus と navigation onPress が race、 入力が
+  //   反映されない / 不可視になる issue。
+  // 新実装: TouchableOpacity scope を「水分」 label 行のみに narrow、
+  //   残りは Card 直接。 customRow View の onStartShouldSetResponder
+  //   は引き続き内側 button group (+250 / +500) からの propagation
+  //   ガードとして機能 (本来は冗長になるが、 backward-compat 維持).
+  // Pattern 18 SSoT (navigation 動線を sub-section に narrow) + Pattern 11
+  // visual redundancy (label tap chevron で navigability を示す).
   return (
-    <TouchableOpacity activeOpacity={onPress ? 0.7 : 1} onPress={onPress}>
-      <Card>
-        <View style={styles.row}>
-          <View style={styles.left}>
-            <Ionicons name="water" size={22} color={colors.primary} />
-            <Text style={[styles.label, { color: colors.textPrimary }]}>水分</Text>
-          </View>
+    <Card>
+      <TouchableOpacity
+        style={styles.row}
+        activeOpacity={onPress ? 0.7 : 1}
+        onPress={onPress}
+        disabled={!onPress}
+        accessibilityRole={onPress ? 'button' : undefined}
+        accessibilityLabel={onPress ? '水分の詳細を見る' : undefined}
+      >
+        <View style={styles.left}>
+          <Ionicons name="water" size={22} color={colors.primary} />
+          <Text style={[styles.label, { color: colors.textPrimary }]}>水分</Text>
+        </View>
+        <View style={styles.totalRight}>
           <Text style={[styles.total, { color: colors.textPrimary }]}>
             {totalMl.toLocaleString()} / {targetMl.toLocaleString()} ml
           </Text>
-        </View>
-        <View style={styles.cupsRow}>
-          {Array.from({ length: CUP_COUNT }).map((_, i) => (
+          {onPress && (
             <Ionicons
-              key={i}
-              name={i < filledCups ? 'water' : 'water-outline'}
-              size={22}
-              color={i < filledCups ? colors.primary : colors.textTertiary}
+              name="chevron-forward"
+              size={16}
+              color={colors.textTertiary}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
             />
-          ))}
+          )}
         </View>
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.btn, { backgroundColor: colors.primary + '15' }]}
-            onPress={(e) => {
-              e.stopPropagation();
-              onAdd(250);
-            }}
-          >
-            <Text style={[styles.btnText, { color: colors.primary }]}>+250ml</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.btn, { backgroundColor: colors.primary + '15' }]}
-            onPress={(e) => {
-              e.stopPropagation();
-              onAdd(500);
-            }}
-          >
-            <Text style={[styles.btnText, { color: colors.primary }]}>+500ml</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Custom amount + direction toggle. Logging a negative amount
-            records a correction row that the daily-total SUM subtracts. */}
-        <View
-          style={[styles.customRow, { borderColor: colors.border }]}
-          // Block the parent TouchableOpacity from firing onPress when
-          // the user interacts with the input row.
-          onStartShouldSetResponder={() => true}
+      </TouchableOpacity>
+      <View style={styles.cupsRow}>
+        {Array.from({ length: CUP_COUNT }).map((_, i) => (
+          <Ionicons
+            key={i}
+            name={i < filledCups ? 'water' : 'water-outline'}
+            size={22}
+            color={i < filledCups ? colors.primary : colors.textTertiary}
+          />
+        ))}
+      </View>
+      <View style={styles.actions}>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: colors.primary + '15' }]}
+          onPress={() => onAdd(250)}
         >
+          <Text style={[styles.btnText, { color: colors.primary }]}>+250ml</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: colors.primary + '15' }]}
+          onPress={() => onAdd(500)}
+        >
+          <Text style={[styles.btnText, { color: colors.primary }]}>+500ml</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Custom amount + direction toggle. Logging a negative amount
+          records a correction row that the daily-total SUM subtracts.
+          onStartShouldSetResponder は legacy guard、 親 TouchableOpacity
+          scope narrow 後は冗長だが backward-compat のため残置。 */}
+      <View
+        style={[styles.customRow, { borderColor: colors.border }]}
+        onStartShouldSetResponder={() => true}
+      >
           <View style={styles.directionToggle}>
             <TouchableOpacity
               style={[
@@ -177,8 +199,7 @@ export function WaterTrackerCard({ totalMl, targetMl, onAdd, onPress }: Props) {
             </Text>
           </TouchableOpacity>
         </View>
-      </Card>
-    </TouchableOpacity>
+    </Card>
   );
 }
 
@@ -190,6 +211,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  // Issue A fix — total + chevron を右寄せ cluster、 navigability の
+  // visual cue として chevron-forward を total の隣に。
+  totalRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   label: { ...typography.titleSmall },
   total: { ...typography.numberSmall, fontSize: 16 },
   cupsRow: {
