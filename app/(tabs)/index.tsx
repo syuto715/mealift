@@ -513,8 +513,12 @@ export default function HomeScreen() {
         {(() => {
           const g = getHomeGreeting();
           const nickname = profile?.nickname?.trim();
+          // Codex pass 1 Nit — extra space before さん が visible に出る ため
+          // `${nickname}さん` 形式に統一 (Plan §4.1 ブランドコピー集の
+          // 「○○さん」 と整合)。 greeting + 句読点 「、」 の後に nickname
+          // を続け、 nickname と さん の間には空白なし。
           const fullLabel = nickname
-            ? `${g.label}、 ${nickname} さん`
+            ? `${g.label}、${nickname}さん`
             : g.label;
           return (
             <View style={styles.header}>

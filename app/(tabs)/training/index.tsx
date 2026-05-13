@@ -906,12 +906,27 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flex: 1 },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxxxl },
+  // Phase E-1 / Issue 2 hardening (Codex pass 1 Sign-off) — iPhone SE
+  // (320pt) width budget は 36pt icon + 2 ghost buttons (各 ~80pt) +
+  // title (~80pt) + gaps + padding でほぼ満タン、 flexShrink/flexWrap
+  // fallback なしでは narrow phone で依然 overflow risk あり。
+  // header に flexWrap='wrap' + gap、 title に flexShrink=0 を追加して
+  // actions row が必要時に第二段へ折り返す安全網を確立。 通常 width で
+  // は 1-row 内収まり、 narrow phone のみ 2-row になる graceful
+  // degradation.
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flexWrap: 'wrap',
+  },
   // Phase E-1 / Issue 2 fix — ピリオダイゼーション icon-only button.
   // Pro tier gating の visual signal は colors.pro + '15' bg + proDark
   // icon (Phase A-1 contrast-tier の application).
@@ -922,7 +937,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { ...typography.titleLarge },
+  title: { ...typography.titleLarge, flexShrink: 0 },
   freeSessionButton: {
     flexDirection: 'row',
     alignItems: 'center',
