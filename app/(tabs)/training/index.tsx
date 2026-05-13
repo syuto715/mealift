@@ -402,27 +402,49 @@ export default function TrainingScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {/* Phase E-1 / Issue 2 fix — header 3-button overflow 解消.
+            v1.3.0 build 20 TestFlight dogfood で training/index.tsx の
+            ヘッダー右側 3 buttons (AIメニュー + ピリオダイゼーション +
+            ルーティン作成) が narrow phone (iPhone SE 等) で右端
+            overflow trip。
+
+            Visual hierarchy 採用 (Recon §J Option (a)):
+              プライマリ 2: AIメニュー + ルーティン作成 (text+emoji label)
+              セカンダリ 1: ピリオダイゼーション (icon-only IconButton、
+                            Pro tier gating 維持、 accessibilityLabel で
+                            読み上げ確保)
+
+            行を分けて折り返し (flexWrap) する代わりに、 ピリオダイ
+            ゼーションを icon-only にすることで 3-button を 1 行内に
+            収める + Pro tier 機能の visual distinction も保つ. */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>トレーニング</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            トレーニング
+          </Text>
           <View style={styles.headerActions}>
+            {periodizationUnlocked && (
+              <TouchableOpacity
+                style={[
+                  styles.headerIconBtn,
+                  { backgroundColor: colors.pro + '15' },
+                ]}
+                onPress={() =>
+                  router.push('/(tabs)/training/periodization-presets')
+                }
+                accessibilityRole="button"
+                accessibilityLabel="ピリオダイゼーション"
+              >
+                <Ionicons name="calendar" size={18} color={colors.proDark} />
+              </TouchableOpacity>
+            )}
             <Button
               title="✨ AIメニュー"
               onPress={() => router.push('/(tabs)/training/ai-menu')}
               variant="ghost"
               size="sm"
             />
-            {periodizationUnlocked && (
-              <Button
-                title="📅 ピリオダイゼーション"
-                onPress={() =>
-                  router.push('/(tabs)/training/periodization-presets')
-                }
-                variant="ghost"
-                size="sm"
-              />
-            )}
             <Button
-              title="+ ルーティン作成"
+              title="+ ルーティン"
               onPress={() => setShowCreateModal(true)}
               variant="ghost"
               size="sm"
@@ -890,6 +912,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  // Phase E-1 / Issue 2 fix — ピリオダイゼーション icon-only button.
+  // Pro tier gating の visual signal は colors.pro + '15' bg + proDark
+  // icon (Phase A-1 contrast-tier の application).
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   title: { ...typography.titleLarge },
   freeSessionButton: {
     flexDirection: 'row',
