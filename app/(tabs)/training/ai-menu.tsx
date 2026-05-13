@@ -371,10 +371,14 @@ export default function AIMenuScreen() {
           >
             複数選択できます
           </Text>
+          {/* Codex pass 1 Important — multi-select だが container を
+              radiogroup にすると VoiceOver / TalkBack が single-select
+              を期待する。 子は checkbox role を維持、 container は
+              accessibilityLabel のみ (RN は 'group' role 未サポート、
+              role 省略が cleanest). */}
           <View
             style={styles.muscleGrid}
-            accessibilityRole="radiogroup"
-            accessibilityLabel="鍛えたい部位を選択"
+            accessibilityLabel="鍛えたい部位を選択 (複数選択可)"
           >
             {AI_MENU_MUSCLES.map((m) => {
               const info = MUSCLE_GROUPS.find((g) => g.id === m);

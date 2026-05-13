@@ -19,7 +19,6 @@ import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { Card, SegmentedControl, Modal, Button } from '../../../src/components/ui';
 import { ProCard } from '../../../src/components/shared/ProCard';
-import { ProInlineCTA } from '../../../src/components/shared/ProInlineCTA';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { useHealthKitStore } from '../../../src/stores/healthKitStore';
@@ -309,15 +308,18 @@ export default function SettingsScreen() {
           </>
         )}
 
-        {/* Phase C-2 — AI栄養推定 セクション. Plan §5.2 で「Plus で
-            使ってみる」 サブボタンを追加。 v1.0 までは
-            canUse('aiNutritionEstimate') gating で Pro tier のみ表示
-            だったが、 plan は free/trial にも訴求 + tier 上昇導線を
-            提供する方針。 表示 logic を反転:
-            - Pro tier: 説明文のみ (利用中、 押し売り回避)
-            - Free / Trial / Plus tier: 説明文 + ProInlineCTA (card variant)
-              ※ 現状 Plus tier には未 unlock (subscriptionService.ts:159
-                aiNutritionEstimate: false)、 Plus でも CTA 表示
+        {/* Phase C-2 — AI 栄養推定 セクション (Codex pass 1 Important fix).
+            v1.0: canUse('aiNutritionEstimate') gating で Pro tier のみ表示。
+            v1.1: 全 tier で表示、 非 Pro tier に Pro upgrade CTA を併設。
+
+            実装制約: aiNutritionEstimate は subscriptionService.ts:159 で
+            Plus tier も false (Pro tier exclusive feature)。 通常の
+            ProInlineCTA は Plus 加入済を非表示 (Handbook §15.4 で Plus
+            entry 訴求を Plus 加入済に出さない原則) だが、 ここは
+            **Plus → Pro upgrade** という別軸の訴求。 ProInlineCTA を
+            使わず inline TouchableOpacity で全 4 status のうち Pro 以外
+            (free / trial / plus) に CTA 表示。 押し売り回避は copy
+            ("Pro プランで使ってみる") + label-level (静的、 fixed)。
           */}
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
           AI 栄養推定
@@ -326,19 +328,37 @@ export default function SettingsScreen() {
           <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
             AI 栄養推定
           </Text>
-          <Text style={[styles.aiDescription, { color: colors.textSecondary }]}>
+          <Text
+            style={[styles.aiDescription, { color: colors.textSecondary }]}
+          >
             {canUse('aiNutritionEstimate')
-              ? 'Pro プラン特典: 料理名から AI が栄養素を推定します。'
+              ? 'Pro プランで料理名から AI が栄養素を推定します。'
               : 'Pro プランで料理名から AI が栄養素を推定できます。'}
           </Text>
-          {!canUse('aiNutritionEstimate') && (
-            <View style={styles.aiCtaWrap}>
-              <ProInlineCTA
-                label="Pro で使ってみる →"
-                variant="card"
-                showOnTrial
+          {!sub.isPro && (
+            <TouchableOpacity
+              style={[
+                styles.proUpgradeCta,
+                { backgroundColor: colors.pro + '12' },
+              ]}
+              onPress={() => router.push('/(tabs)/settings/subscription')}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Pro プランで使ってみる。 プラン画面を開く。"
+            >
+              <Ionicons
+                name="sparkles"
+                size={16}
+                color={colors.pro}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
               />
-            </View>
+              <Text
+                style={[styles.proUpgradeCtaLabel, { color: colors.proText }]}
+              >
+                Pro プランで使ってみる →
+              </Text>
+            </TouchableOpacity>
           )}
         </Card>
 
@@ -633,8 +653,19 @@ const styles = StyleSheet.create({
   },
   aboutCopyright: { ...typography.bodySmall, marginTop: spacing.sm },
   aiDescription: { ...typography.bodyMedium },
-  aiCtaWrap: {
+  proUpgradeCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
     marginTop: spacing.md,
-    alignItems: 'flex-start',
+    alignSelf: 'flex-start',
+  },
+  proUpgradeCtaLabel: {
+    ...typography.labelMedium,
+    fontWeight: '600',
   },
 });
