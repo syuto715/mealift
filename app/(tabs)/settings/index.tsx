@@ -18,9 +18,12 @@ import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { Card, SegmentedControl, Modal, Button } from '../../../src/components/ui';
+import { ProCard } from '../../../src/components/shared/ProCard';
+import { ProInlineCTA } from '../../../src/components/shared/ProInlineCTA';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { useHealthKitStore } from '../../../src/stores/healthKitStore';
+import { useSubscription } from '../../../src/hooks/useSubscription';
 import { APP_CONFIG } from '../../../src/constants/config';
 import { canUse } from '../../../src/infra/services/subscriptionService';
 import { exportCsv, ExportType, TYPE_LABELS } from '../../../src/infra/services/csvExportService';
@@ -75,6 +78,7 @@ export default function SettingsScreen() {
   const profile = useProfileStore((s) => s.profile);
   const healthKitEnabled = useHealthKitStore((s) => s.enabled);
   const healthKitPermission = useHealthKitStore((s) => s.permissionStatus);
+  const sub = useSubscription();
 
   const [restTimer, setRestTimer] = useState('90');
   const [themePref, setThemePref] = useState('system');
@@ -179,6 +183,12 @@ export default function SettingsScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={[styles.title, { color: colors.textPrimary }]}>設定</Text>
+
+        {/* Phase C-1 — ProCard 最上部. 4 状態 (free/trial/plus/pro) を
+            useSubscription 経由で切替. 旧「プラン管理」 row は本カードに
+            統合済 (C-3 で削除済). 全 status で tap → subscription 画面
+            (free=訴求、 trial=残量+進捗、 plus/pro=plan 確認). */}
+        <ProCard />
 
         <Card padding="none">
           <SettingsRow
@@ -299,19 +309,38 @@ export default function SettingsScreen() {
           </>
         )}
 
-        {canUse('aiNutritionEstimate') && (
-          <>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>AI栄養推定</Text>
-            <Card>
-              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                AI栄養推定
-              </Text>
-              <Text style={[styles.aiDescription, { color: colors.textSecondary }]}>
-                Proプランで料理名からAIが栄養素を推定します。
-              </Text>
-            </Card>
-          </>
-        )}
+        {/* Phase C-2 — AI栄養推定 セクション. Plan §5.2 で「Plus で
+            使ってみる」 サブボタンを追加。 v1.0 までは
+            canUse('aiNutritionEstimate') gating で Pro tier のみ表示
+            だったが、 plan は free/trial にも訴求 + tier 上昇導線を
+            提供する方針。 表示 logic を反転:
+            - Pro tier: 説明文のみ (利用中、 押し売り回避)
+            - Free / Trial / Plus tier: 説明文 + ProInlineCTA (card variant)
+              ※ 現状 Plus tier には未 unlock (subscriptionService.ts:159
+                aiNutritionEstimate: false)、 Plus でも CTA 表示
+          */}
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          AI 栄養推定
+        </Text>
+        <Card>
+          <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
+            AI 栄養推定
+          </Text>
+          <Text style={[styles.aiDescription, { color: colors.textSecondary }]}>
+            {canUse('aiNutritionEstimate')
+              ? 'Pro プラン特典: 料理名から AI が栄養素を推定します。'
+              : 'Pro プランで料理名から AI が栄養素を推定できます。'}
+          </Text>
+          {!canUse('aiNutritionEstimate') && (
+            <View style={styles.aiCtaWrap}>
+              <ProInlineCTA
+                label="Pro で使ってみる →"
+                variant="card"
+                showOnTrial
+              />
+            </View>
+          )}
+        </Card>
 
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>表示</Text>
         <Card>
@@ -325,13 +354,13 @@ export default function SettingsScreen() {
           />
         </Card>
 
+        {/* Phase C-3 — 旧「プラン管理」 SettingsRow を削除. 最上部の
+            ProCard が tap で同じ /(tabs)/settings/subscription へ遷移
+            するので機能上の重複を解消。 削除済 row の外部参照
+            (router.push 等) は無い (Phase 0 recon で確認、
+            settings/subscription への push は他 5+ 箇所からは継続、
+            この row 経由の固有 path は無かった). */}
         <Card padding="none">
-          <SettingsRow
-            icon="diamond-outline"
-            label="プラン管理"
-            onPress={() => router.push('/(tabs)/settings/subscription')}
-            colors={colors}
-          />
           <SettingsRow
             icon="restaurant-outline"
             label="自分が追加した食品"
@@ -604,4 +633,8 @@ const styles = StyleSheet.create({
   },
   aboutCopyright: { ...typography.bodySmall, marginTop: spacing.sm },
   aiDescription: { ...typography.bodyMedium },
+  aiCtaWrap: {
+    marginTop: spacing.md,
+    alignItems: 'flex-start',
+  },
 });
