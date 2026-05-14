@@ -73,6 +73,7 @@ import { DishDetailModal } from '../../../src/components/nutrition/DishDetailMod
 import { FoodDetailModal } from '../../../src/components/nutrition/FoodDetailModal';
 import { UpgradePromptModal } from '../../../src/components/subscription/UpgradePromptModal';
 import { formatServingHint } from '../../../src/constants/servingUnits';
+import { UNIT_SEGMENTS_FULL } from '../../../src/constants/units';
 import { useMealLoggingOcrStore } from '../../../src/stores/mealLoggingOcrStore';
 
 // v1.4 ステージ 4 Phase 4B — 3-tab top-level + 6-tab nested structure.
@@ -112,12 +113,13 @@ function isValidTopTab(value: unknown): value is TopTab {
   return value === 'search' || value === 'scan' || value === 'ocr';
 }
 
-const UNIT_SEGMENTS = [
-  { label: 'g', value: 'g' },
-  { label: 'ml', value: 'ml' },
-  { label: '個', value: '個' },
-  { label: '杯', value: '杯' },
-];
+// Phase 4F — UNIT_SEGMENTS を `src/constants/units.ts` の
+// UNIT_SEGMENTS_FULL (Phase 4A で確立) に置換、 4 → 7 option
+// (g/ml/個/本/枚/パック/杯). 「+ 食品を追加」 手入力 mode の unit
+// picker が拡張、 食パン / バナナ 等 count 系食品 (本/枚) を直接
+// register 可能。 元 4-option (g/ml/個/杯) は SUPERSEDE、 既存 caller
+// (manual tab の SegmentedControl) は同 const 名で動作.
+const UNIT_SEGMENTS = UNIT_SEGMENTS_FULL;
 
 export default function AddFoodScreen() {
   const scheme = useColorScheme() ?? 'light';
@@ -1336,9 +1338,10 @@ export default function AddFoodScreen() {
                   単位
                 </Text>
                 <SegmentedControl
-                  segments={UNIT_SEGMENTS}
+                  segments={UNIT_SEGMENTS as unknown as { label: string; value: string }[]}
                   selectedValue={manualUnit}
                   onValueChange={setManualUnit}
+                  scrollable
                 />
               </View>
             </View>
