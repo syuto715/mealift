@@ -4,8 +4,13 @@ import { getColors, radius } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 
+// v1.4 ステージ 4 Turn 1 / Codex pass 1 Nit fix — segments を
+// ReadonlyArray に変えて caller 側の `as const` literal narrow を
+// preserve (caller の `as unknown as` double-cast を解消)。
+// component 内部では `segments.map(...)` のみ、 mutate しないので
+// runtime safety OK.
 interface SegmentedControlProps {
-  segments: { label: string; value: string }[];
+  segments: ReadonlyArray<{ label: string; value: string }>;
   selectedValue: string;
   onValueChange: (value: string) => void;
   scrollable?: boolean;

@@ -254,8 +254,11 @@ export default function AddFoodScreen() {
       if (pending.proteinG != null) lines.push(`タンパク質: ${pending.proteinG} g`);
       if (pending.fatG != null) lines.push(`脂質: ${pending.fatG} g`);
       if (pending.carbG != null) lines.push(`炭水化物: ${pending.carbG} g`);
+      // Codex pass 1 Nit fix — soften user-facing "Turn 2" dev terminology
+      // を「今後のアップデート」 product copy に差し替え。 TestFlight
+      // beta tester 向け visible 文言、 internal milestone 言及を削除。
       const body = lines.length
-        ? `読み取り結果:\n${lines.join('\n')}\n\nTurn 2 で自動入力に対応予定です。`
+        ? `読み取り結果:\n${lines.join('\n')}\n\n今後のアップデートで自動入力に対応予定です。`
         : '栄養成分を読み取れませんでした。 ラベルを再撮影してください。';
       Alert.alert('OCR 読み取り完了', body);
     }, [consumePendingOcrResult]),
@@ -927,7 +930,7 @@ export default function AddFoodScreen() {
           既存 6 sub-tab を維持. */}
       <View style={styles.segmentWrapper}>
         <SegmentedControl
-          segments={TOP_TAB_SEGMENTS as unknown as { label: string; value: string }[]}
+          segments={TOP_TAB_SEGMENTS}
           selectedValue={topTab}
           onValueChange={(v) => setTopTab(v as TopTab)}
         />
@@ -1338,7 +1341,7 @@ export default function AddFoodScreen() {
                   単位
                 </Text>
                 <SegmentedControl
-                  segments={UNIT_SEGMENTS as unknown as { label: string; value: string }[]}
+                  segments={UNIT_SEGMENTS}
                   selectedValue={manualUnit}
                   onValueChange={setManualUnit}
                   scrollable
