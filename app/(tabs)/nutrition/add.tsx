@@ -14,7 +14,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
@@ -73,8 +73,31 @@ import { DishDetailModal } from '../../../src/components/nutrition/DishDetailMod
 import { FoodDetailModal } from '../../../src/components/nutrition/FoodDetailModal';
 import { UpgradePromptModal } from '../../../src/components/subscription/UpgradePromptModal';
 import { formatServingHint } from '../../../src/constants/servingUnits';
+import { useMealLoggingOcrStore } from '../../../src/stores/mealLoggingOcrStore';
 
-const TAB_SEGMENTS = [
+// v1.4 ステージ 4 Phase 4B — 3-tab top-level + 6-tab nested structure.
+// Plan §5.6 Option C nested reconciliation: top-level navigation を
+// semantic 3-tab (検索 / スキャン / OCR) に分け、 既存 6-tab は
+// 「検索」 の sub-navigation として preserve (UX regression なし、
+// 既存 ユーザー relearning ゼロ).
+//
+// Top-level (3 tab):
+//   - search: 既存 6 sub-tab (検索/マイ料理/よく使う/お気に入り/手入力/
+//             テンプレ) を内包
+//   - scan: Vision food scan placeholder (Turn 2 で Gemini Vision
+//           Edge Function integrate)
+//   - ocr: 栄養成分ラベル撮影 → /(tabs)/nutrition/scan-label route
+//          → ML Kit OCR + parser → mealLoggingOcrStore handoff
+const TOP_TAB_SEGMENTS = [
+  { label: '検索', value: 'search' },
+  { label: 'スキャン', value: 'scan' },
+  { label: 'OCR', value: 'ocr' },
+] as const;
+
+// Nested 6 sub-tab (Top-level=「検索」 でのみ表示). 既存 add.tsx の
+// activeTab state を継承、 内部 logic は untouched (Plan §10.1 既存
+// ロジック破壊なし).
+const SEARCH_SUB_SEGMENTS = [
   { label: '検索', value: 'search' },
   { label: 'マイ料理', value: 'myDish' },
   { label: 'よく使う', value: 'frequent' },
@@ -82,6 +105,12 @@ const TAB_SEGMENTS = [
   { label: '手入力', value: 'manual' },
   { label: 'テンプレ', value: 'template' },
 ];
+
+type TopTab = (typeof TOP_TAB_SEGMENTS)[number]['value'];
+
+function isValidTopTab(value: unknown): value is TopTab {
+  return value === 'search' || value === 'scan' || value === 'ocr';
+}
 
 const UNIT_SEGMENTS = [
   { label: 'g', value: 'g' },
@@ -93,11 +122,25 @@ const UNIT_SEGMENTS = [
 export default function AddFoodScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
-  const params = useLocalSearchParams<{ mealType: string; date?: string }>();
+  const params = useLocalSearchParams<{
+    mealType: string;
+    date?: string;
+    // Phase 4B — Plan §5.5 B integration. nutrition/index.tsx の
+    // 「✨ AI で記録」 button が `?topTab=scan` で起動可能、 「+ 食品を
+    // 追加」 は default の 'search'.
+    topTab?: string;
+  }>();
   const mealType = (params.mealType as MealType) ?? 'breakfast';
   const targetDate = params.date; // undefined = today (useNutrition default)
   const { addFood } = useNutrition(targetDate);
   const profile = useProfileStore((s) => s.profile);
+
+  // Phase 4B — top-level navigation state. URL param で initial value
+  // を override 可能、 不明値は default 'search' fallback.
+  const initialTopTab: TopTab = isValidTopTab(params.topTab)
+    ? params.topTab
+    : 'search';
+  const [topTab, setTopTab] = useState<TopTab>(initialTopTab);
 
   const [activeTab, setActiveTab] = useState('search');
   const [searchQuery, setSearchQuery] = useState('');
@@ -189,6 +232,32 @@ export default function AddFoodScreen() {
   useEffect(() => {
     loadFrequentFoods();
   }, [loadFrequentFoods]);
+
+  // Phase 4D — OCR handoff consumption. scan-label route で
+  // mealLoggingOcrStore.setPendingResult した結果を screen focus 復帰
+  // 時に消費。 Turn 1 minimal integration: parsed nutrient values を
+  // Alert で notify、 user に手動 record 誘導。 Turn 2 で
+  // ServingQuantityModal pre-fill に upgrade 予定 (ParsedNutritionLabel
+  // → Food mapping helper の establishment + Vision integration と
+  // 同時)。
+  const consumePendingOcrResult = useMealLoggingOcrStore(
+    (s) => s.consumePendingResult,
+  );
+  useFocusEffect(
+    useCallback(() => {
+      const pending = consumePendingOcrResult();
+      if (!pending) return;
+      const lines: string[] = [];
+      if (pending.calories != null) lines.push(`カロリー: ${pending.calories} kcal`);
+      if (pending.proteinG != null) lines.push(`タンパク質: ${pending.proteinG} g`);
+      if (pending.fatG != null) lines.push(`脂質: ${pending.fatG} g`);
+      if (pending.carbG != null) lines.push(`炭水化物: ${pending.carbG} g`);
+      const body = lines.length
+        ? `読み取り結果:\n${lines.join('\n')}\n\nTurn 2 で自動入力に対応予定です。`
+        : '栄養成分を読み取れませんでした。 ラベルを再撮影してください。';
+      Alert.alert('OCR 読み取り完了', body);
+    }, [consumePendingOcrResult]),
+  );
 
   useEffect(() => {
     if (activeTab === 'template') {
@@ -851,16 +920,98 @@ export default function AddFoodScreen() {
         <View style={{ width: 24 }} />
       </View>
 
+      {/* Phase 4B — top-level 3-tab navigation (検索 / スキャン / OCR).
+          Plan §5.6 Option C nested reconciliation. 「検索」 内で
+          既存 6 sub-tab を維持. */}
       <View style={styles.segmentWrapper}>
         <SegmentedControl
-          segments={TAB_SEGMENTS}
-          selectedValue={activeTab}
-          onValueChange={setActiveTab}
-          scrollable
+          segments={TOP_TAB_SEGMENTS as unknown as { label: string; value: string }[]}
+          selectedValue={topTab}
+          onValueChange={(v) => setTopTab(v as TopTab)}
         />
       </View>
 
-      {activeTab === 'search' && (
+      {/* Top tab = 「検索」: 既存 6 sub-tab を nested 表示. */}
+      {topTab === 'search' && (
+        <View style={styles.segmentWrapper}>
+          <SegmentedControl
+            segments={SEARCH_SUB_SEGMENTS}
+            selectedValue={activeTab}
+            onValueChange={setActiveTab}
+            scrollable
+          />
+        </View>
+      )}
+
+      {/* Top tab = 「スキャン」: Vision food scan placeholder.
+          Turn 2 で Gemini Vision Edge Function (estimate-nutrition-vision)
+          deploy + integrate 予定。 Turn 1 では coming-soon UI のみ. */}
+      {topTab === 'scan' && (
+        <View style={styles.placeholderContainer}>
+          <Ionicons
+            name="camera-outline"
+            size={64}
+            color={colors.textTertiary}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+          <Text
+            style={[styles.placeholderTitle, { color: colors.textPrimary }]}
+            accessibilityRole="header"
+          >
+            料理を撮影して記録
+          </Text>
+          <Text
+            style={[
+              styles.placeholderSubtitle,
+              { color: colors.textSecondary },
+            ]}
+          >
+            AI が料理を認識して栄養成分を推定します
+          </Text>
+          <Text
+            style={[styles.placeholderHint, { color: colors.textTertiary }]}
+          >
+            (近日公開予定)
+          </Text>
+        </View>
+      )}
+
+      {/* Top tab = 「OCR」: 栄養成分ラベル撮影 → scan-label route. */}
+      {topTab === 'ocr' && (
+        <View style={styles.placeholderContainer}>
+          <Ionicons
+            name="scan-outline"
+            size={64}
+            color={colors.primary}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+          <Text
+            style={[styles.placeholderTitle, { color: colors.textPrimary }]}
+            accessibilityRole="header"
+          >
+            食品ラベルから記録
+          </Text>
+          <Text
+            style={[
+              styles.placeholderSubtitle,
+              { color: colors.textSecondary },
+            ]}
+          >
+            栄養成分表示を撮影して自動入力
+          </Text>
+          <Button
+            title="ラベルを撮影"
+            onPress={() => router.push('/(tabs)/nutrition/scan-label')}
+            variant="primary"
+            size="lg"
+            testID="add-nutrition-ocr-cta"
+          />
+        </View>
+      )}
+
+      {topTab === 'search' && activeTab === 'search' && (
         <View style={styles.tabContent}>
           <View style={styles.searchBarRow}>
             <View
@@ -961,7 +1112,7 @@ export default function AddFoodScreen() {
         </View>
       )}
 
-      {activeTab === 'frequent' && (
+      {topTab === 'search' && activeTab === 'frequent' && (
         <View style={styles.tabContent}>
           <FlatList
             data={frequentFoods}
@@ -979,7 +1130,7 @@ export default function AddFoodScreen() {
         </View>
       )}
 
-      {activeTab === 'myDish' && (
+      {topTab === 'search' && activeTab === 'myDish' && (
         <View style={styles.tabContent}>
           <View style={styles.myDishActionRow}>
             <Button
@@ -1012,7 +1163,7 @@ export default function AddFoodScreen() {
         </View>
       )}
 
-      {activeTab === 'favorite' && (
+      {topTab === 'search' && activeTab === 'favorite' && (
         <View style={styles.tabContent}>
           <FlatList
             data={combinedFavorites}
@@ -1040,7 +1191,7 @@ export default function AddFoodScreen() {
         </View>
       )}
 
-      {activeTab === 'manual' && (
+      {topTab === 'search' && activeTab === 'manual' && (
         <KeyboardAvoidingView
           style={styles.tabContent}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1237,7 +1388,7 @@ export default function AddFoodScreen() {
         </KeyboardAvoidingView>
       )}
 
-      {activeTab === 'template' && (
+      {topTab === 'search' && activeTab === 'template' && (
         <View style={styles.tabContent}>
           <FlatList
             data={templates}
@@ -1323,6 +1474,28 @@ const styles = StyleSheet.create({
   },
   headerTitle: { ...typography.titleMedium },
   segmentWrapper: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+  // Phase 4B — Top tab scan/ocr placeholder layout.
+  placeholderContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.md,
+  },
+  placeholderTitle: {
+    ...typography.titleMedium,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
+  placeholderSubtitle: {
+    ...typography.bodyMedium,
+    textAlign: 'center',
+  },
+  placeholderHint: {
+    ...typography.bodySmall,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
   tabContent: { flex: 1 },
   searchBarRow: {
     paddingHorizontal: spacing.lg,
