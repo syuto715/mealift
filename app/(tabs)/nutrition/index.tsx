@@ -642,26 +642,83 @@ export default function NutritionScreen() {
                 </View>
               )}
 
-              <TouchableOpacity
-                style={[
-                  styles.addButton,
-                  { borderColor: colors.primary },
-                ]}
-                onPress={() =>
-                  router.push({
-                    pathname: '/(tabs)/nutrition/add',
-                    params: { mealType, date: selectedDate },
-                  })
-                }
-                activeOpacity={0.7}
-              >
-                <Ionicons name="add" size={18} color={colors.primary} />
-                <Text
-                  style={[styles.addButtonText, { color: colors.primary }]}
+              {/* Phase 4C-3 — meal-type-scoped action row. 「食品を追加」
+                  (existing default flow) + 「📷 AI で記録」 (judgment B-2
+                  additive sub-CTA, Pro plan only). The AI scan button
+                  preserves the meal-type context (no need to re-pick
+                  on the scan-dish screen). Free / trial tier sees the
+                  same button but routes to the subscription screen
+                  instead of the camera, so the Pro value stays
+                  visible without breaking the existing UX. */}
+              <View style={styles.mealActionRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.addButton,
+                    styles.mealActionLeft,
+                    { borderColor: colors.primary },
+                  ]}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(tabs)/nutrition/add',
+                      params: { mealType, date: selectedDate },
+                    })
+                  }
+                  activeOpacity={0.7}
                 >
-                  食品を追加
-                </Text>
-              </TouchableOpacity>
+                  <Ionicons name="add" size={18} color={colors.primary} />
+                  <Text
+                    style={[styles.addButtonText, { color: colors.primary }]}
+                  >
+                    食品を追加
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.addButton,
+                    styles.mealActionRight,
+                    {
+                      borderColor: canUse('aiNutritionEstimate')
+                        ? colors.primary
+                        : colors.textTertiary,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (!canUse('aiNutritionEstimate')) {
+                      router.push('/(tabs)/settings/subscription');
+                      return;
+                    }
+                    router.push({
+                      pathname: '/(tabs)/nutrition/scan-dish',
+                      params: { mealType, date: selectedDate },
+                    });
+                  }}
+                  activeOpacity={0.7}
+                  testID={`nutrition-home-scan-dish-${mealType}`}
+                >
+                  <Ionicons
+                    name="camera"
+                    size={16}
+                    color={
+                      canUse('aiNutritionEstimate')
+                        ? colors.primary
+                        : colors.textTertiary
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.addButtonText,
+                      {
+                        color: canUse('aiNutritionEstimate')
+                          ? colors.primary
+                          : colors.textTertiary,
+                      },
+                    ]}
+                  >
+                    AI で記録
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </Card>
           );
         })}
@@ -916,6 +973,13 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   addButtonText: { ...typography.labelMedium },
+  // Phase 4C-3 — meal-type action row: 「食品を追加」 + 「📷 AI で記録」.
+  mealActionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  mealActionLeft: { flex: 1 },
+  mealActionRight: { flex: 1 },
   templateModalBody: {
     gap: spacing.lg,
   },
