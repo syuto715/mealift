@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
@@ -22,6 +23,8 @@ import {
   OcrUnavailableError,
 } from '../../../src/infra/services/ocrService';
 import { parseNutritionLabel } from '../../../src/domain/submission/nutritionLabelParser';
+import { decomposeFromImage } from '../../../src/infra/services/aiNutritionService';
+import { canUse } from '../../../src/infra/services/subscriptionService';
 
 // v1.4 ステージ 4 Phase 4D — meal-logging OCR scan screen.
 //
@@ -62,6 +65,9 @@ export default function ScanLabelScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const setPendingResult = useMealLoggingOcrStore((s) => s.setPendingResult);
+  const setPendingVisionResult = useMealLoggingOcrStore(
+    (s) => s.setPendingVisionResult,
+  );
 
   const cameraRef = useRef<CameraView>(null);
   const [capturing, setCapturing] = useState(false);
@@ -78,6 +84,37 @@ export default function ScanLabelScreen() {
         // 明示 cleanup 不要、 次 focus 時の cameraKey++ で remount.
       };
     }, []),
+  );
+
+  // v1.4 ステージ 4 Phase 4E-2 — Issue B 3-tier fallback helper.
+  // OCR is the primary path; if the parser yields nothing usable AND
+  // the user is on a Pro plan, we silently retry the same captured
+  // image through the Vision Edge Function (judgment α: handed off
+  // via the Vision channel of mealLoggingOcrStore, NOT mapped into
+  // ParsedNutritionLabel). Vision failure falls through to a manual
+  // entry alert — the user is never blocked.
+  const runVisionFallback = useCallback(
+    async (photoUri: string): Promise<boolean> => {
+      if (!canUse('aiNutritionEstimate')) return false;
+      try {
+        const base64 = await FileSystem.readAsStringAsync(photoUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const vision = await decomposeFromImage(base64);
+        setPendingVisionResult(vision);
+        router.back();
+        return true;
+      } catch (visionError) {
+        if (__DEV__) {
+          console.error(
+            '[scan-label.runVisionFallback] Vision retry failed:',
+            visionError,
+          );
+        }
+        return false;
+      }
+    },
+    [setPendingVisionResult],
   );
 
   const handleCapture = useCallback(async () => {
@@ -97,13 +134,30 @@ export default function ScanLabelScreen() {
       try {
         const ocr = await recognizeText(photo.uri);
         if (!ocr.text || ocr.text.trim().length === 0) {
+          // Tier 2 — Vision fallback for Pro users on empty OCR.
+          const recovered = await runVisionFallback(photo.uri);
+          if (recovered) return;
+          // Tier 3 — manual entry.
           Alert.alert(
             '読み取れませんでした',
-            '栄養成分表示の文字をはっきり写すようにしてください',
+            '栄養成分表示の文字をはっきり写すか、手入力してください',
           );
           return;
         }
         const parsed = parseNutritionLabel(ocr.text);
+        // If the parser found NOTHING (no kcal, no macros), Tier 2
+        // Vision fallback also fires — OCR caught text but it wasn't
+        // a label panel, so Vision may still recover the dish from
+        // the image.
+        const hasAnyMacro =
+          parsed.calories != null ||
+          parsed.proteinG != null ||
+          parsed.fatG != null ||
+          parsed.carbG != null;
+        if (!hasAnyMacro) {
+          const recovered = await runVisionFallback(photo.uri);
+          if (recovered) return;
+        }
         setPendingResult(parsed);
         router.back();
       } catch (e) {
@@ -113,6 +167,9 @@ export default function ScanLabelScreen() {
           console.error('[scan-label.handleCapture] OCR pipeline failed:', e);
         }
         if (e instanceof OcrUnavailableError) {
+          // Tier 2 — Vision fallback when ML Kit is unavailable.
+          const recovered = await runVisionFallback(photo.uri);
+          if (recovered) return;
           Alert.alert('OCRサービスが利用できません', e.message);
         } else {
           const msg =
@@ -126,7 +183,7 @@ export default function ScanLabelScreen() {
       setCapturing(false);
       setProcessing(false);
     }
-  }, [capturing, processing, setPendingResult]);
+  }, [capturing, processing, setPendingResult, runVisionFallback]);
 
   if (!permission) {
     return (

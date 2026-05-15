@@ -75,6 +75,7 @@ import { UpgradePromptModal } from '../../../src/components/subscription/Upgrade
 import { formatServingHint } from '../../../src/constants/servingUnits';
 import { UNIT_SEGMENTS_FULL } from '../../../src/constants/units';
 import { useMealLoggingOcrStore } from '../../../src/stores/mealLoggingOcrStore';
+import { mapParsedLabelToFood } from '../../../src/domain/parsedLabelToFood';
 
 // v1.4 ステージ 4 Phase 4B — 3-tab top-level + 6-tab nested structure.
 // Plan §5.6 Option C nested reconciliation: top-level navigation を
@@ -235,33 +236,79 @@ export default function AddFoodScreen() {
     loadFrequentFoods();
   }, [loadFrequentFoods]);
 
-  // Phase 4D — OCR handoff consumption. scan-label route で
-  // mealLoggingOcrStore.setPendingResult した結果を screen focus 復帰
-  // 時に消費。 Turn 1 minimal integration: parsed nutrient values を
-  // Alert で notify、 user に手動 record 誘導。 Turn 2 で
-  // ServingQuantityModal pre-fill に upgrade 予定 (ParsedNutritionLabel
-  // → Food mapping helper の establishment + Vision integration と
-  // 同時)。
+  // v1.4 ステージ 4 Phase 4E-3 — OCR + Vision handoff consumption.
+  //
+  // scan-label.tsx (OCR) and scan-dish.tsx (Vision) both park their
+  // result on mealLoggingOcrStore. On focus return we drain both
+  // channels in priority order (OCR first — it's more specific in
+  // the panel-text-anchored case where both could in principle fire,
+  // though in practice only one channel is set per capture).
+  //
+  // OCR result → ServingQuantityModal pre-fill. The parser DOES
+  // recover calories / PFC numerically, so the Modal can scale them
+  // by serving amount and the user just confirms the quantity.
+  //
+  // Vision result → switch to the manual tab and pre-fill name +
+  // amount only. Vision does NOT return nutrient values in v1.4
+  // (judgment α + scaffolding NOTE), so opening a numeric-scaling
+  // Modal would silently log a 0 kcal / 0 PFC meal if the user just
+  // tapped confirm. Routing into the manual form forces them to type
+  // PFC values themselves (the form's required-field UX rejects an
+  // empty submission via the disabled「追加」 button).
   const consumePendingOcrResult = useMealLoggingOcrStore(
     (s) => s.consumePendingResult,
   );
+  const consumePendingVisionResult = useMealLoggingOcrStore(
+    (s) => s.consumePendingVisionResult,
+  );
   useFocusEffect(
     useCallback(() => {
-      const pending = consumePendingOcrResult();
-      if (!pending) return;
-      const lines: string[] = [];
-      if (pending.calories != null) lines.push(`カロリー: ${pending.calories} kcal`);
-      if (pending.proteinG != null) lines.push(`タンパク質: ${pending.proteinG} g`);
-      if (pending.fatG != null) lines.push(`脂質: ${pending.fatG} g`);
-      if (pending.carbG != null) lines.push(`炭水化物: ${pending.carbG} g`);
-      // Codex pass 1 Nit fix — soften user-facing "Turn 2" dev terminology
-      // を「今後のアップデート」 product copy に差し替え。 TestFlight
-      // beta tester 向け visible 文言、 internal milestone 言及を削除。
-      const body = lines.length
-        ? `読み取り結果:\n${lines.join('\n')}\n\n今後のアップデートで自動入力に対応予定です。`
-        : '栄養成分を読み取れませんでした。 ラベルを再撮影してください。';
-      Alert.alert('OCR 読み取り完了', body);
-    }, [consumePendingOcrResult]),
+      const pendingOcr = consumePendingOcrResult();
+      if (pendingOcr) {
+        const candidate = mapParsedLabelToFood(pendingOcr, {
+          onUnknownBasis: () => {
+            // Surface an advisory alert AFTER the Modal opens so the
+            // alert appears on top — the Modal mount + this setTimeout
+            // are queued onto sequential RN ticks. Native Alert.alert
+            // dismisses on tap; the Modal stays open underneath.
+            setTimeout(() => {
+              Alert.alert(
+                '単位基準を確認してください',
+                'OCRから単位（1食分 / 100gあたり）を判別できませんでした。入力値が想定と違う場合は g ボタンで切り替えてください。',
+              );
+            }, 300);
+          },
+        });
+        setSelectedFood(candidate);
+        setServingModalItem({ type: 'food', food: candidate });
+        setServingModalVisible(true);
+        return;
+      }
+      const pendingVision = consumePendingVisionResult();
+      if (pendingVision) {
+        const totalGrams = pendingVision.ingredients.reduce(
+          (sum, ing) =>
+            sum + (Number.isFinite(ing.amountG) ? ing.amountG : 0),
+          0,
+        );
+        // Force manual tab into view so the pre-filled name + amount
+        // are visible immediately on focus return.
+        setTopTab('search');
+        setActiveTab('manual');
+        setManualName(pendingVision.dishName);
+        setManualAmount(totalGrams > 0 ? Math.round(totalGrams) : 100);
+        setManualUnit('g');
+        // Defer the advisory so it doesn't race with the SegmentedControl
+        // animation that runs as the manual tab mounts.
+        setTimeout(() => {
+          Alert.alert(
+            'AI料理スキャン完了',
+            `「${pendingVision.dishName}」を識別しました。栄養成分を入力して追加してください。`,
+          );
+        }, 300);
+        return;
+      }
+    }, [consumePendingOcrResult, consumePendingVisionResult]),
   );
 
   useEffect(() => {
@@ -318,8 +365,14 @@ export default function AddFoodScreen() {
   const handleServingConfirm = async (result: ServingQuantityResult) => {
     if (!servingModalItem || servingModalItem.type !== 'food') return;
     const food = servingModalItem.food;
+    // Phase 4E-3 — candidate foods (OCR / Vision pre-fill) have an
+    // empty id; passing it as foodId would either fail the FK
+    // constraint or insert a dangling reference. Omit foodId so the
+    // row is recorded as a manual entry, matching how handleManualAdd
+    // already records foodName-only items.
+    const isCandidate = !food.id;
     await addFood(mealType, {
-      foodId: food.id,
+      ...(isCandidate ? {} : { foodId: food.id }),
       foodName: food.nameJa,
       servingAmount: result.amount,
       servingUnit: result.servingUnit,
