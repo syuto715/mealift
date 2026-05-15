@@ -1,37 +1,46 @@
 import { create } from 'zustand';
 import type { ParsedNutritionLabel } from '../domain/submission/nutritionLabelParser';
+import type { RecipeDecomposition } from '../infra/services/aiNutritionService';
 
-// v1.4 ステージ 4 Phase 4D — meal-logging OCR handoff store.
+// v1.4 ステージ 4 Phase 4D + 4E-1 — meal-logging OCR + Vision handoff store.
 //
-// `submissionScanStore` (community-DB submission flow) と同型の軽量
-// store、 但し独立 channel。 scan-label screen が OCR + parser を
-// 実行 → pendingResult set → router.back → add.tsx (OCR tab) が
-// consume + ServingQuantityModal pre-fill。
+// Two independent channels:
+//   - `pendingResult`        ParsedNutritionLabel | null  (OCR, Phase 4D)
+//   - `pendingVisionResult`  RecipeDecomposition | null   (Vision, Phase 4E-1)
 //
-// submission flow と meal-logging flow を分離する理由:
-//   1. 動作分岐: submission = community DB contribution、 meal-logging =
-//      個人 meal_log_items insert。 副作用先が違う。
-//   2. consume timing: submission は form fill だけ、 meal-logging は
-//      ServingQuantityModal 経由で per-meal insert。 consume の trigger
-//      タイミング違う。
-//   3. concurrency: 同時 OCR 利用シナリオ (submission flow 中 + meal-
-//      logging flow 中) で互いに影響しない設計。
+// The channels are kept separate (judgment α in Turn 2 recon) because
+// the source shapes do not converge cleanly:
+//   - ParsedNutritionLabel = nutrient values + perBasis (OCR semantics)
+//   - RecipeDecomposition  = dishName + servingDescription + ingredients
+//                            (Vision semantics, no native nutrient values
+//                             in v1.4 scaffold)
+// Mapping Vision into ParsedNutritionLabel would drop dishName /
+// ingredients / servingDescription on the floor, so we keep both
+// shapes alive and let `add.tsx` discriminate on which channel fired.
 //
-// consume = atomic read + clear、 StrictMode / fast refresh で 1 度
-// しか参照しない invariant 確保 (submissionScanStore.consumePending*
-// と同 pattern)。
+// Why both live on the same store rather than two parallel zustand
+// instances (judgment β rejected): atomic consume semantics. If OCR
+// and Vision were in different stores, a stale producer on one side
+// could survive across a focus cycle that consumed the other.
+// Co-located clear lets add.tsx's useFocusEffect drain both in one
+// pass without coordinating two consumers.
+//
+// consume = atomic read + clear, StrictMode / fast refresh safe.
 //
 // Patterns:
-//   #18 SSoT — meal-logging OCR の handoff path 一元
-//   #25 helper-thick — Zustand store、 React 依存なし、 jest 1-zone
-//       で完全 testable
+//   #18 SSoT — meal-logging handoff path 一元 (OCR + Vision 共通 channel)
+//   #25 helper-thick — Zustand store、 React 依存なし、 jest 1-zone testable
 
 interface MealLoggingOcrState {
   pendingResult: ParsedNutritionLabel | null;
   setPendingResult: (value: ParsedNutritionLabel) => void;
-  // Returns the pending value AND clears it atomically.
   consumePendingResult: () => ParsedNutritionLabel | null;
   clearPendingResult: () => void;
+  // Vision channel (Phase 4E-1).
+  pendingVisionResult: RecipeDecomposition | null;
+  setPendingVisionResult: (value: RecipeDecomposition) => void;
+  consumePendingVisionResult: () => RecipeDecomposition | null;
+  clearPendingVisionResult: () => void;
 }
 
 export const useMealLoggingOcrStore = create<MealLoggingOcrState>(
@@ -44,5 +53,13 @@ export const useMealLoggingOcrStore = create<MealLoggingOcrState>(
       return value;
     },
     clearPendingResult: () => set({ pendingResult: null }),
+    pendingVisionResult: null,
+    setPendingVisionResult: (value) => set({ pendingVisionResult: value }),
+    consumePendingVisionResult: () => {
+      const value = get().pendingVisionResult;
+      if (value !== null) set({ pendingVisionResult: null });
+      return value;
+    },
+    clearPendingVisionResult: () => set({ pendingVisionResult: null }),
   }),
 );
