@@ -301,29 +301,28 @@ export default function BarcodeScanScreen() {
     source: 'user' as const,
   });
 
-  const handleRegisterAndAdd = async () => {
-    if (!regName.trim()) {
-      Alert.alert('入力エラー', '商品名を入力してください');
-      return;
-    }
-    setRegSaving(true);
-    try {
-      const input = buildBarcodeInput();
-      const saved = await saveBarcodeFood(input);
-      // Also write to foods table as a user-added row so it appears in search.
-      try {
-        await saveFood(barcodeInputToFoodInput(input), {
-          source: 'user',
-          externalId: input.barcode,
-          isUserAdded: true,
-          verified: false,
-        });
-      } catch {
-        // Non-fatal.
-      }
-
-      // Also add to meal log
-      await addFood(mealType, {
+  // v1.4 ステージ 4 Phase 4E-4 — Issue C-2 Path B defensive sequencing.
+  //
+  // Old (Stage 3.5): the entire saveBarcodeFood + saveFood + addFood
+  // chain ran inside a single try/catch, so an addFood failure looked
+  // identical to a saveBarcodeFood failure — the user got "登録に
+  // 失敗しました" and had no way to know the food *was* persisted in
+  // the barcode DB. Retrying would either succeed silently or hit a
+  // duplicate-barcode constraint.
+  //
+  // New: each step is wrapped separately.
+  //   1. saveBarcodeFood — if this fails, nothing persisted; abort
+  //      and surface the error verbatim.
+  //   2. saveFood — non-fatal (food-search mirror, already best-effort).
+  //   3. addFood — if this fails the food *is* in the DB; offer a
+  //      retry button that calls addFood again with the saved row.
+  //
+  // The partial-success Alert text explicitly tells the user the
+  // food is already saved so they don't try to re-register and hit
+  // a duplicate-barcode error.
+  const performAddFood = useCallback(
+    (saved: BarcodeFood) =>
+      addFood(mealType, {
         foodName: saved.nameJa,
         servingAmount: saved.servingSizeG,
         servingUnit: saved.servingUnit,
@@ -348,31 +347,116 @@ export default function BarcodeScanScreen() {
         saturatedFatG: saved.saturatedFatG ?? 0,
         sugarG: saved.sugarG ?? 0,
         saltG: saved.saltG ?? 0,
-      });
-      router.back();
-    } catch (error) {
-      // v1.4 ステージ 3.5 / Issue C-2 visibility lift —
-      // Pattern 11 補強 facet 6 (Error visibility 3-tier):
-      //   1. user-facing: Alert に error.message を露出 (推測ベース fix
-      //      を避け、 actual root cause を user-reportable に)
-      //   2. dev-time: __DEV__ console.error で開発時の log path 確立
-      //   3. prod telemetry: Sentry 等の telemetry hookup TODO 記録
-      //      (v1.5 prep)
-      //
-      // dogfood で C-2 が generic Alert 「登録に失敗しました」 に
-      // 吸収されていた reason: catch block が error.message を 捨てて
-      // いた。 actual root cause (saveBarcodeFood / addFood / etc.) を
-      // 特定するための diagnostic lift。 actual fix は次 turn で
-      // Syuto-san reproduce 後の error 詳細に基づき確定。
-      const msg = error instanceof Error ? error.message : String(error);
-      if (__DEV__) {
-        console.error(
-          '[barcode.handleRegisterAndAdd] Registration failed:',
-          error,
+      }),
+    [addFood, mealType],
+  );
+
+  const retryAddFoodAfterPartialSuccess = useCallback(
+    async (saved: BarcodeFood) => {
+      try {
+        await performAddFood(saved);
+        Alert.alert('完了', '食事に追加しました');
+        router.back();
+      } catch (retryError) {
+        const msg =
+          retryError instanceof Error
+            ? retryError.message
+            : String(retryError);
+        if (__DEV__) {
+          console.error(
+            '[barcode.retryAddFood] Retry failed (food still saved):',
+            retryError,
+          );
+        }
+        // TODO(v1.5 Sentry): Sentry.captureException(retryError,
+        //   { context: 'barcode.retryAddFood', tags: { partial_success: 'true' } });
+        // Codex pass 2 Important fix — Step 2 (saveFood foods-table
+        // mirror) is best-effort, so we can't promise the user that
+        // the food shows up in the search tab. The barcode DB row
+        // (Step 1) is guaranteed to exist, so re-scanning the same
+        // barcode will resolve via findByBarcode and skip the
+        // re-registration path. That's the reliable recovery hint.
+        Alert.alert(
+          '再試行失敗',
+          `食事への追加に再度失敗しました: ${msg}\n\n食品DBには登録済みです。同じバーコードを再スキャンすると、登録した情報から再度食事に追加できます。`,
         );
       }
-      // TODO(v1.5 Sentry): Sentry.captureException(error, { context: 'barcode.register' });
-      Alert.alert('エラー', `登録に失敗しました: ${msg}`);
+    },
+    [performAddFood],
+  );
+
+  const handleRegisterAndAdd = async () => {
+    if (!regName.trim()) {
+      Alert.alert('入力エラー', '商品名を入力してください');
+      return;
+    }
+    setRegSaving(true);
+    try {
+      const input = buildBarcodeInput();
+
+      // Step 1 — barcode DB persistence. Fatal if this fails;
+      // nothing is saved.
+      let saved: BarcodeFood;
+      try {
+        saved = await saveBarcodeFood(input);
+      } catch (saveError) {
+        const msg =
+          saveError instanceof Error ? saveError.message : String(saveError);
+        if (__DEV__) {
+          console.error(
+            '[barcode.saveBarcodeFood] Persistence failed:',
+            saveError,
+          );
+        }
+        // TODO(v1.5 Sentry): Sentry.captureException(saveError,
+        //   { context: 'barcode.saveBarcodeFood' });
+        Alert.alert('エラー', `食品DBへの登録に失敗しました: ${msg}`);
+        return;
+      }
+
+      // Step 2 — foods-table mirror (search-index propagation).
+      // Already non-fatal in the prior implementation; preserved.
+      try {
+        await saveFood(barcodeInputToFoodInput(input), {
+          source: 'user',
+          externalId: input.barcode,
+          isUserAdded: true,
+          verified: false,
+        });
+      } catch {
+        // Non-fatal — barcode_foods row still exists.
+      }
+
+      // Step 3 — meal log insertion. Partial-success path: barcode
+      // DB and foods mirror are both written; only the meal log
+      // failed. Surface a retry option that uses the already-saved
+      // BarcodeFood so the user doesn't re-register.
+      try {
+        await performAddFood(saved);
+        router.back();
+      } catch (addError) {
+        const msg =
+          addError instanceof Error ? addError.message : String(addError);
+        if (__DEV__) {
+          console.error(
+            '[barcode.addFood] Failed after saveBarcodeFood success:',
+            addError,
+          );
+        }
+        // TODO(v1.5 Sentry): Sentry.captureException(addError,
+        //   { context: 'barcode.addFood', tags: { partial_success: 'true' } });
+        Alert.alert(
+          '一部成功',
+          `食品DBには登録できましたが、食事への追加に失敗しました: ${msg}`,
+          [
+            { text: '閉じる', style: 'cancel', onPress: () => router.back() },
+            {
+              text: '食事に追加を再試行',
+              onPress: () => retryAddFoodAfterPartialSuccess(saved),
+            },
+          ],
+        );
+      }
     } finally {
       setRegSaving(false);
     }
