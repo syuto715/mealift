@@ -194,6 +194,38 @@ export async function decomposeRecipe(
   return parsed;
 }
 
+// v1.4 ステージ 4 Phase 4C-1 — Vision (multimodal) wrapper.
+// Sibling of decomposeRecipe but takes a base64 jpeg instead of a
+// dish name. The Edge Function returns the same RecipeDecomposition
+// shape so downstream helpers (visionToFood) are reusable. Empty
+// dishName means "image was unidentifiable" — surface as gemini_error
+// so the UI can prompt for a retry rather than open the Modal with
+// a blank candidate.
+export async function decomposeFromImage(
+  imageBase64: string,
+): Promise<RecipeDecomposition> {
+  const parsed = await callEdgeFunction<
+    { imageBase64: string },
+    RecipeDecomposition
+  >('estimate-nutrition-vision', { imageBase64 });
+
+  if (
+    !parsed ||
+    typeof parsed.dishName !== 'string' ||
+    !Array.isArray(parsed.ingredients)
+  ) {
+    throw new AIError('gemini_error', 'AI応答の形式が不正です', 502);
+  }
+  if (!parsed.dishName.trim()) {
+    throw new AIError(
+      'gemini_error',
+      '料理を識別できませんでした。再撮影してください',
+      502,
+    );
+  }
+  return parsed;
+}
+
 // === Step 2: ローカル DB から栄養計算 ===
 
 export async function calculateNutritionFromDecomposition(
