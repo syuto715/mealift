@@ -70,12 +70,5 @@
     "typescript": "~5.9.2",
     "xlsx": "^0.18.5"
   },
-  "private": true,
-  "jest": {
-    "testPathIgnorePatterns": [
-      "/node_modules/",
-      "/__tests__/testHelpers\\.ts$",
-      "/__tests__/standardSyncTests\\.ts$"
-    ]
-  }
+  "private": true
 }
