@@ -12,6 +12,7 @@ import { getColors } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { useSubscription } from '../../hooks/useSubscription';
+import { ROUTES } from '../../constants/routes';
 
 // v1.4 / UI 改善 v1 Phase A-3 — ProInlineCTA.
 //
@@ -28,7 +29,7 @@ import { useSubscription } from '../../hooks/useSubscription';
 //   - `variant="link"` (default): テキストリンク風 (「Plus なら無制限 →」)
 //   - `variant="card"`: 小さい card 風 (icon + text、 ボタン直下)
 
-const SUBSCRIPTION_ROUTE = '/(tabs)/settings/subscription';
+const SUBSCRIPTION_ROUTE = ROUTES.SETTINGS_SUBSCRIPTION;
 
 interface ProInlineCTAProps {
   // CTA 本体 message。 short copy 推奨 (1 行内収まり)。

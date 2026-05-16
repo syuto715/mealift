@@ -14,6 +14,7 @@ import { getColors, radius } from '../../src/theme/tokens';
 import { spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
 import { Button } from '../../src/components/ui';
+import { ROUTES } from '../../src/constants/routes';
 import {
   PLUS_FEATURES,
   getTrialCopy,
@@ -93,9 +94,7 @@ export default function TierPreviewScreen() {
     // === 'ios' ternaries over Platform.select (see app/(tabs)/
     // settings/health-sync.tsx + training/* for parity).
     const nextRoute =
-      Platform.OS === 'ios'
-        ? '/(onboarding)/healthkit'
-        : '/(tabs)';
+      Platform.OS === 'ios' ? ROUTES.ONBOARDING_HEALTHKIT : ROUTES.HOME;
     router.replace(nextRoute);
   }, []);
 
@@ -143,9 +142,7 @@ export default function TierPreviewScreen() {
       // (HealthKit is free regardless of subscription tier —
       // user memory: paywall NEVER touches HealthKit).
       const nextRoute =
-        Platform.OS === 'ios'
-          ? '/(onboarding)/healthkit'
-          : '/(tabs)';
+        Platform.OS === 'ios' ? ROUTES.ONBOARDING_HEALTHKIT : ROUTES.HOME;
       router.replace(nextRoute);
     } catch (err) {
       setIsPurchasing(false);

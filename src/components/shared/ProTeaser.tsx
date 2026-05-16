@@ -12,6 +12,7 @@ import { getColors, radius } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { useSubscription } from '../../hooks/useSubscription';
+import { ROUTES } from '../../constants/routes';
 
 // v1.4 / UI 改善 v1 Phase A-3 — ProTeaser.
 //
@@ -31,7 +32,7 @@ import { useSubscription } from '../../hooks/useSubscription';
 //   #12 accessibilityRole — button on TouchableOpacity, header on title
 //   #13 decorative icon hidden (Pattern paired)
 
-const SUBSCRIPTION_ROUTE = '/(tabs)/settings/subscription';
+const SUBSCRIPTION_ROUTE = ROUTES.SETTINGS_SUBSCRIPTION;
 
 interface ProTeaserProps {
   // 任意の override message. 省略時は default copy.

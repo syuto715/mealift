@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSubscription } from '../../hooks/useSubscription';
 import { getColors, radius } from '../../theme/tokens';
+import { ROUTES } from '../../constants/routes';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 
@@ -26,7 +27,7 @@ export function TrialBadge() {
   return (
     <TouchableOpacity
       activeOpacity={0.7}
-      onPress={() => router.push('/(tabs)/settings/subscription')}
+      onPress={() => router.push(ROUTES.SETTINGS_SUBSCRIPTION)}
       style={[
         styles.pill,
         { backgroundColor: bg, borderColor: accent },

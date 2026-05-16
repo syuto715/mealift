@@ -8,6 +8,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { useProfileStore } from '../../stores/profileStore';
 import { useSubscription } from '../../hooks/useSubscription';
+import { ROUTES } from '../../constants/routes';
 import { TRIAL_DURATION_DAYS } from '../../constants/pricing';
 
 type RequiredPlan = 'plus' | 'pro';
@@ -53,7 +54,7 @@ export function UpgradePromptModal({
 
   const handleUpgrade = () => {
     onClose();
-    router.push('/(tabs)/settings/subscription');
+    router.push(ROUTES.SETTINGS_SUBSCRIPTION);
   };
 
   const planLabel = PLAN_LABELS[requiredPlan];

@@ -13,6 +13,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { useSubscription } from '../../hooks/useSubscription';
 import { ProgressBar } from '../ui/ProgressBar';
+import { ROUTES } from '../../constants/routes';
 
 // v1.4 / UI 改善 v1 Phase A-2 — ProCard.
 //
@@ -43,7 +44,7 @@ import { ProgressBar } from '../ui/ProgressBar';
 //       paired Onboarding v2 Phase E-4 通り)
 //   #18 SSoT — 全画面で同じ ProCard 使用、 4 状態 logic はここ集約
 
-const SUBSCRIPTION_ROUTE = '/(tabs)/settings/subscription';
+const SUBSCRIPTION_ROUTE = ROUTES.SETTINGS_SUBSCRIPTION;
 const TRIAL_DURATION_DAYS = 14;
 
 // 「あと N 日でトライアル終了。 継続するには登録を」 を出す境界。
