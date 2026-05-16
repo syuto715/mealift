@@ -36,7 +36,11 @@ const config: ExpoConfig = {
     icon: './assets/icon.png',
     supportsTablet: true,
     bundleIdentifier: 'com.mealift.app',
-    buildNumber: '1',
+    // buildNumber is managed by EAS: eas.json sets
+    // `cli.appVersionSource: "remote"` and `build.production.autoIncrement: true`,
+    // so the App Store build number is sourced from the EAS server,
+    // not from this file. Leaving a literal here was misleading —
+    // it never made it onto a real binary post-Build-9.
     // Sign In with Apple capability — Expo prebuild adds the entitlement
     // when this flag is true. Apple Provider is enabled in Supabase Auth
     // (Bundle ID com.mealift.app, Team 9WCKU8U5XV, Key 7PP32JU7F4).
