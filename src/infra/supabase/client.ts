@@ -53,11 +53,22 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
 // in _layout.tsx maps that to setUnauthenticated(), and the user
 // lands on the login screen. The exact symptom Phase 9.1.5 fixes.
 //
-// Module-level registration is intentional: the client is a
-// singleton, so its refresh timer should match the process lifetime,
-// not any single React component. Re-imports just re-run the
-// idempotent addEventListener call (RN dedup'd internally on
-// identical handlers).
+// Module-level registration of the AppState handler is intentional:
+// the client is a singleton, so its refresh-timer toggle should
+// match the process lifetime, not any single React component. Re-
+// imports just re-run the idempotent addEventListener call (RN
+// dedup'd internally on identical handlers).
+//
+// v1.4 ステージ 5.3 (Tier 3 partial reorder): the cold-start
+// startAutoRefresh kick has been moved out of this file into
+// app/_layout.tsx's initialize(), where it runs AFTER the
+// onAuthStateChange listener is subscribed. This eliminates the
+// "Candidate B" race in docs/plans/auth_session_persistence_fix.md
+// (a SIGNED_OUT fired by the very first refresh tick, before any
+// listener was wired, was observed by nothing — only AsyncStorage
+// got cleared). The AppState change handler stays here because
+// foreground/background transitions happen long after listeners
+// are wired and have no ordering hazard.
 function handleAppStateChange(nextState: AppStateStatus) {
   if (!supabase) return;
   if (nextState === 'active') {
@@ -69,9 +80,8 @@ function handleAppStateChange(nextState: AppStateStatus) {
 
 if (supabase && typeof AppState?.addEventListener === 'function') {
   AppState.addEventListener('change', handleAppStateChange);
-  // Kick the refresh loop now in case the module loads while already
-  // foregrounded (cold start).
-  if (AppState.currentState === 'active') {
-    supabase.auth.startAutoRefresh();
-  }
+  // NOTE: the initial cold-start kick (if AppState.currentState
+  // === 'active') is performed by app/_layout.tsx after the
+  // onAuthStateChange listener is registered — see Tier 3 note
+  // above.
 }

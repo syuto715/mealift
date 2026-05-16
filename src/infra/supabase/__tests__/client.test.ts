@@ -111,7 +111,13 @@ describe('supabase client (Phase 9.1.5 hotfix)', () => {
     require('../client');
     const handler = mockAddEventListener.mock.calls[0][1] as (s: string) => void;
     handler('active');
-    expect(mockStartAutoRefresh).toHaveBeenCalledTimes(2); // 1 from cold-start kick + 1 from handler
+    // v1.4 ステージ 5.3 Tier 3 partial reorder — client.ts no
+    // longer kicks startAutoRefresh on module load. The AppState
+    // handler is the sole caller from this file now; the cold-
+    // start kick (when AppState.currentState === 'active' at
+    // module load) lives in app/_layout.tsx initialize() AFTER
+    // the onAuthStateChange listener is subscribed.
+    expect(mockStartAutoRefresh).toHaveBeenCalledTimes(1);
     expect(mockStopAutoRefresh).not.toHaveBeenCalled();
   });
 
@@ -124,16 +130,22 @@ describe('supabase client (Phase 9.1.5 hotfix)', () => {
     expect(mockStopAutoRefresh).toHaveBeenCalledTimes(2);
   });
 
-  it('kicks the refresh loop on cold start when the app is already active', () => {
+  it('does NOT kick the refresh loop at module load even when AppState is active (Tier 3 partial reorder)', () => {
+    // Pre-5.3 pinned the opposite: client.ts started the refresh
+    // ticker on cold start when the app was already foregrounded.
+    // The reorder moved that kick into app/_layout.tsx so any
+    // SIGNED_OUT fired by the first refresh tick is observable by
+    // the onAuthStateChange listener (which is subscribed before
+    // the kick in initialize()). client.ts is now strictly
+    // listener-registration + the AppState transition handler.
     mockAppStateValue = 'active';
     require('../client');
-    expect(mockStartAutoRefresh).toHaveBeenCalled();
+    expect(mockStartAutoRefresh).not.toHaveBeenCalled();
   });
 
-  it('does not start the cold-start refresh when the app is launched in background', () => {
+  it('does not start the cold-start refresh when the app is launched in background (still true post-reorder)', () => {
     mockAppStateValue = 'background';
     require('../client');
-    // No active-state cold-start kick; only addEventListener registration.
     expect(mockStartAutoRefresh).not.toHaveBeenCalled();
   });
 });
