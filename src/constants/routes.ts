@@ -11,12 +11,16 @@
 //
 // Style:
 //   - Every constant carries an `as const` literal type so consumers
-//     that pass it into `router.push({ pathname })` keep the
-//     compile-time typed-route benefits expo-router provides for
-//     literal-string paths.
-//   - Keys are SCREAMING_SNAKE_CASE namespaced by group
-//     (TABS_*, ONBOARDING_*, AUTH_*). Discoverable via VS Code
-//     auto-import `ROUTES.<tab>`.
+//     keep the value's narrow string-literal type rather than
+//     widening to plain `string`. This repo does NOT enable expo-
+//     router's generated typed-routes declarations, so `router.push`
+//     still accepts `string | HrefObject` — the SSoT benefit here
+//     is runtime-correctness (one fix-place per path) and editor
+//     auto-import, not Href-level compile-time validation.
+//   - Keys are SCREAMING_SNAKE_CASE. Tab roots are bare (`HOME`,
+//     `TRAINING`, ...); sub-routes prefix the group (e.g.
+//     `SETTINGS_SUBSCRIPTION`, `ONBOARDING_WELCOME`). Discoverable
+//     via `ROUTES.` auto-import.
 //   - The constants do NOT include params (mealType, date, etc.);
 //     callers continue to build params at the call site.
 
