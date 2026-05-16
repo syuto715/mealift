@@ -85,7 +85,7 @@ describe('bootstrapAuthSession', () => {
     expect(callbacks.setLoading).not.toHaveBeenCalled();
   });
 
-  it('Case 4: Supabase configured + getSession throws → setUnauthenticated (catch path)', async () => {
+  it('Case 4: Supabase configured + getSession throws + not authed → setUnauthenticated (catch path)', async () => {
     const callbacks = makeCallbacks();
     const getSession: GetSessionFn = jest.fn(async () => {
       throw new Error('network error');
@@ -93,6 +93,20 @@ describe('bootstrapAuthSession', () => {
     await bootstrapAuthSession(true, false, false, getSession, callbacks);
     expect(callbacks.setUnauthenticated).toHaveBeenCalledTimes(1);
     expect(callbacks.setAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('Case 4b: Supabase configured + getSession throws + isAuthenticated true → preserve persisted state (NO setUnauthenticated)', async () => {
+    const callbacks = makeCallbacks();
+    const getSession: GetSessionFn = jest.fn(async () => {
+      throw new Error('network error');
+    });
+    await bootstrapAuthSession(true, false, true, getSession, callbacks);
+    // Persisted local auth must survive a transient remote failure
+    // on cold start. The onAuthStateChange listener (Stage 5.3 Tier 2
+    // probe) reconciles when connectivity returns.
+    expect(callbacks.setUnauthenticated).not.toHaveBeenCalled();
+    expect(callbacks.setAuthenticated).not.toHaveBeenCalled();
+    expect(callbacks.setLoading).not.toHaveBeenCalled();
   });
 
   it('Case 5: local-only mode (isSupabaseConfigured=false) + not authenticated → setUnauthenticated, getSession never called', async () => {

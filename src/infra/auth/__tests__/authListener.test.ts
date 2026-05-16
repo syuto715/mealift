@@ -93,6 +93,30 @@ describe('makeAuthListener', () => {
     expect(deps.setAuthenticated).not.toHaveBeenCalled();
   });
 
+  it('Scenario 3b (event filter): INITIAL_SESSION with null session → setUnauthenticated, probe NOT called', async () => {
+    const deps = makeDeps();
+    const listener = makeAuthListener(deps);
+
+    // INITIAL_SESSION at cold start with no persisted session is
+    // a legitimate logged-out state, not a spurious-SIGNED_OUT
+    // candidate. The Tier 2 probe must NOT fire.
+    await listener('INITIAL_SESSION', null);
+
+    expect(deps.probeSession).not.toHaveBeenCalled();
+    expect(deps.setUnauthenticated).toHaveBeenCalledTimes(1);
+    expect(deps.setAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('Scenario 3c (event filter): USER_UPDATED with null session → setUnauthenticated, probe NOT called', async () => {
+    const deps = makeDeps();
+    const listener = makeAuthListener(deps);
+
+    await listener('USER_UPDATED', null);
+
+    expect(deps.probeSession).not.toHaveBeenCalled();
+    expect(deps.setUnauthenticated).toHaveBeenCalledTimes(1);
+  });
+
   it('Scenario 4 (regression guard): isLocalOnly=true bypasses probe entirely', async () => {
     const deps = makeDeps({ isLocalOnly: jest.fn(() => true) });
     const listener = makeAuthListener(deps);
@@ -117,5 +141,24 @@ describe('makeAuthListener', () => {
     expect(deps.probeSession).toHaveBeenCalledTimes(1);
     expect(deps.setUnauthenticated).toHaveBeenCalledTimes(1);
     expect(deps.setAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('Scenario 6 (regression guard): probe recovers but identifyRC throws → setAuthenticated still committed (RC non-fatal)', async () => {
+    const recoveredSession = makeSession({ id: 'uid-9' });
+    const deps = makeDeps({
+      probeSession: jest.fn(async () => recoveredSession),
+      identifyRC: jest.fn(async () => {
+        throw new Error('RC outage');
+      }),
+    });
+    const listener = makeAuthListener(deps);
+
+    await listener('SIGNED_OUT', null);
+
+    // The user IS recovered; an RC tie-in failure must NOT flip
+    // them back to unauthenticated.
+    expect(deps.setAuthenticated).toHaveBeenCalledWith('uid-9', 'a@b.com');
+    expect(deps.identifyRC).toHaveBeenCalledTimes(1);
+    expect(deps.setUnauthenticated).not.toHaveBeenCalled();
   });
 });

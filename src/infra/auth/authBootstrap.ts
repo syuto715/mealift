@@ -75,6 +75,14 @@ export async function bootstrapAuthSession(
       // eslint-disable-next-line no-console
       console.error('[authBootstrap] getSession failed:', error);
     }
-    callbacks.setUnauthenticated();
+    // Codex pass / Critical fix — match baseline behavior: only
+    // demote to unauthenticated if no persisted session exists.
+    // When the user has a persisted local auth state (isAuthenticated
+    // === true), a transient getSession failure must NOT evict them
+    // on cold start; the onAuthStateChange listener (Tier 2 probe in
+    // Stage 5.3) reconciles once connectivity returns.
+    if (!isAuthenticated) {
+      callbacks.setUnauthenticated();
+    }
   }
 }

@@ -20,11 +20,17 @@
 
 /** @type {import('jest').Config} */
 module.exports = {
-  // Existing rules — preserve as-is.
+  // Existing rules — preserve the original semantics. The pre-5.2A
+  // patterns (`/__tests__/testHelpers\\.ts$` /
+  // `/__tests__/standardSyncTests\\.ts$`) ignore matching helpers
+  // anywhere under a `__tests__/` directory, not just under src/.
+  // The repo only has matching files under src/infra/supabase/sync
+  // today, so either form yields the same green count — but the
+  // original form is the contract.
   testPathIgnorePatterns: [
     '/node_modules/',
-    'src/.*/testHelpers\\.ts$',
-    'src/.*/standardSyncTests\\.ts$',
+    '/__tests__/testHelpers\\.ts$',
+    '/__tests__/standardSyncTests\\.ts$',
   ],
 
   // Manual extension for Expo / React Native ESM modules. Default jest
