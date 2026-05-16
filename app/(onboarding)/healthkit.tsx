@@ -56,7 +56,7 @@ export default function HealthKitOnboardingScreen() {
   // complete; the new flow puts /complete much earlier so
   // healthkit's "next" now means home. router.replace (not push)
   // so the user can't back-nav into the post-completion chain.
-  const goNext = () => router.replace('/(tabs)/home');
+  const goNext = () => router.replace('/(tabs)');
 
   // Phase D-10 / kickoff §4 — defensive Platform check. The
   // canonical path only routes to this screen on iOS (tier-
@@ -69,7 +69,7 @@ export default function HealthKitOnboardingScreen() {
   // sees the screen at all.
   useEffect(() => {
     if (Platform.OS !== 'ios') {
-      router.replace('/(tabs)/home');
+      router.replace('/(tabs)');
     }
   }, []);
 

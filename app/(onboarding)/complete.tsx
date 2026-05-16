@@ -35,7 +35,7 @@ import { findEarliestInvalidRoute } from '../../src/domain/goalSummaryAggregator
 // Post-rewrite the screen is a thin status-driven view: mount-
 // time call to createProfileFromOnboarding wrapper (which composes
 // createProfile + buildProfilePatch via updateProfile in a single
-// service call), then redirect to /(tabs)/home on success or
+// service call), then redirect to /(tabs) on success or
 // render a retry surface on error. Pattern 26 facet 1 + facet 3
 // conditional logic is fully reverted; buildProfilePatch is the
 // SSoT for v2 field persistence (Pattern 18).

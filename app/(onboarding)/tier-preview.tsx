@@ -95,7 +95,7 @@ export default function TierPreviewScreen() {
     const nextRoute =
       Platform.OS === 'ios'
         ? '/(onboarding)/healthkit'
-        : '/(tabs)/home';
+        : '/(tabs)';
     router.replace(nextRoute);
   }, []);
 
@@ -145,7 +145,7 @@ export default function TierPreviewScreen() {
       const nextRoute =
         Platform.OS === 'ios'
           ? '/(onboarding)/healthkit'
-          : '/(tabs)/home';
+          : '/(tabs)';
       router.replace(nextRoute);
     } catch (err) {
       setIsPurchasing(false);
