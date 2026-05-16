@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme } from 'react-native';
+import { AppState, useColorScheme } from 'react-native';
+import type { Session } from '@supabase/supabase-js';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
@@ -16,7 +17,10 @@ import {
   onAuthStateChange,
   isSupabaseConfigured,
 } from '../src/infra/supabase/auth';
+import { supabase } from '../src/infra/supabase/client';
 import { bootstrapAuthSession } from '../src/infra/auth/authBootstrap';
+import { makeAuthListener } from '../src/infra/auth/authListener';
+import { buildAuthListenerDeps } from '../src/infra/auth/buildAuthListenerDeps';
 import { Toast } from '../src/components/ui';
 import { useUIStore } from '../src/stores/uiStore';
 import { bootstrapNotifications } from '../src/infra/services/notificationService';
@@ -148,31 +152,60 @@ export default function RootLayout() {
           },
         );
 
-        // Listen for auth state changes
+        // v1.4 ステージ 5.3 — onAuthStateChange listener via the
+        // makeAuthListener factory (Stage 5.2). The factory owns the
+        // pure decision tree (SIGNED_IN / SIGNED_OUT / probe-recover);
+        // buildAuthListenerDeps owns the option γ wiring:
+        //   - identifyRevenueCatUser fires inside the setAuthenticated
+        //     wrapper, on every session-bearing event (matching the
+        //     pre-5.3 inline listener exactly)
+        //   - the factory's identifyRC dep is a no-op so SIGNED_IN
+        //     doesn't double-fire RC
+        //   - logOutRevenueCat fires inside the setUnauthenticated
+        //     wrapper
+        // See src/infra/auth/buildAuthListenerDeps.ts for the
+        // rationale + Pattern 18 facet 11 commentary.
         try {
+          const listener = makeAuthListener(
+            buildAuthListenerDeps({
+              setAuthenticated,
+              setUnauthenticated,
+              identifyRevenueCatUser,
+              applyCustomerInfoToProfile,
+              getRevenueCatCustomerInfo,
+              logOutRevenueCat,
+              runLoginSync,
+              getIsLocalOnly: () => useAuthStore.getState().isLocalOnly,
+              supabaseClient: supabase,
+            }),
+          );
+
           const { data } = onAuthStateChange((event, session) => {
-            if (session && typeof session === 'object' && 'user' in session) {
-              const user = (
-                session as { user: { id: string; email?: string } }
-              ).user;
-              setAuthenticated(user.id, user.email ?? undefined);
-              void identifyRevenueCatUser(user.id).then(async () => {
-                const info = await getRevenueCatCustomerInfo();
-                await applyCustomerInfoToProfile(info);
-              });
-              // SIGNED_IN only — TOKEN_REFRESHED / INITIAL_SESSION /
-              // USER_UPDATED don't trigger a sync run. Re-entry while a
-              // run is already going gets dropped by runLoginSync's
-              // mutex; surfaced errors land in syncStatusStore.lastError.
-              if (event === 'SIGNED_IN') {
-                void runLoginSync(user.id);
-              }
-            } else if (!useAuthStore.getState().isLocalOnly) {
-              setUnauthenticated();
-              void logOutRevenueCat();
-            }
+            // The shared onAuthStateChange wrapper types session as
+            // `unknown` because the Supabase JS Session shape leaks
+            // through several call sites. Narrow once here for the
+            // factory's Session | null contract.
+            const narrowed =
+              session &&
+              typeof session === 'object' &&
+              'user' in (session as Record<string, unknown>)
+                ? (session as Session)
+                : null;
+            void listener(event, narrowed);
           });
           authUnsubscribe = data.subscription.unsubscribe;
+
+          // v1.4 ステージ 5.3 Tier 3 — kick the refresh timer AFTER
+          // the listener is subscribed. Pre-5.3 this lived in
+          // client.ts at module load, which meant the very first
+          // refresh tick could fire SIGNED_OUT before any listener
+          // existed (Candidate B in
+          // docs/plans/auth_session_persistence_fix.md). Now any
+          // such SIGNED_OUT lands on the factory listener, which
+          // probes for a recoverable session before committing.
+          if (supabase && AppState.currentState === 'active') {
+            supabase.auth.startAutoRefresh();
+          }
         } catch {
           // Auth listener setup failed — non-fatal
         }
