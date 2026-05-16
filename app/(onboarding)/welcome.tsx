@@ -59,7 +59,7 @@ const CTA_LABEL = '始める';
 // the show condition (Pattern 25 helper-thick).
 const MIGRATION_TITLE = 'Mealift がアップデートされました';
 const MIGRATION_BODY =
-  'これまで入力された情報は保存されています。一部の項目だけ更新させてください（約 3 分）。';
+  'これまで入力された情報は保存されています。一部の項目だけ確認してください（約 5 分）。';
 
 export default function WelcomeScreen() {
   const scheme = useColorScheme() ?? 'light';
