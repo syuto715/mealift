@@ -35,14 +35,23 @@ export interface AuthListenerCallbacks {
   setAuthenticated: (uid: string, email?: string) => void;
   setUnauthenticated: () => void;
   identifyRevenueCatUser: (uid: string) => Promise<void>;
-  // CustomerInfo flows through here unchanged — kept loose-typed
-  // intentionally so the builder doesn't need to import the
-  // RevenueCat type chain.
+  // The CustomerInfo type lives in react-native-purchases and we
+  // don't want to import that chain into the auth layer. `never`
+  // is intentional: as a function parameter type it allows ANY
+  // production function to satisfy the slot (bottom-typed input,
+  // which RC's stronger `CustomerInfo | null` parameter is a
+  // supertype of). `unknown` would tighten compatibility in the
+  // wrong direction and reject the production function — see
+  // Codex Stage 5.3 review pass Nit follow-up.
   applyCustomerInfoToProfile: (info: never) => Promise<void>;
   getRevenueCatCustomerInfo: () => Promise<unknown>;
   logOutRevenueCat: () => Promise<unknown>;
   runLoginSync: (uid: string) => Promise<unknown>;
   getIsLocalOnly: () => boolean;
+  // Stage 5.3 Codex pass / Critical fix — non-SIGNED_OUT null-
+  // session events must NOT demote a persisted local auth state.
+  // The factory reads this through its `isAuthenticated` dep.
+  getIsAuthenticated: () => boolean;
   /**
    * Optional override for the probe — primarily used by tests to
    * substitute a deterministic stub. Production passes
@@ -95,5 +104,6 @@ export function buildAuthListenerDeps(
     },
     probeSession: probe,
     isLocalOnly: () => callbacks.getIsLocalOnly(),
+    isAuthenticated: () => callbacks.getIsAuthenticated(),
   };
 }

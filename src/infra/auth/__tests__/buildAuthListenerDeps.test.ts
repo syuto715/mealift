@@ -27,13 +27,14 @@ const makeCallbacks = (
   logOutRevenueCat: jest.fn(async () => undefined),
   runLoginSync: jest.fn(async () => ({ kind: 'completed' as const })),
   getIsLocalOnly: jest.fn(() => false),
+  getIsAuthenticated: jest.fn(() => false),
   ...overrides,
 });
 
 const flushMicrotasks = () => new Promise<void>((r) => setImmediate(r));
 
 describe('buildAuthListenerDeps', () => {
-  it('exposes the full AuthListenerDeps shape (setAuthenticated, setUnauthenticated, identifyRC no-op, runLoginSync, probeSession, isLocalOnly)', () => {
+  it('exposes the full AuthListenerDeps shape (setAuthenticated, setUnauthenticated, identifyRC no-op, runLoginSync, probeSession, isLocalOnly, isAuthenticated)', () => {
     const deps = buildAuthListenerDeps(makeCallbacks());
     expect(typeof deps.setAuthenticated).toBe('function');
     expect(typeof deps.setUnauthenticated).toBe('function');
@@ -41,6 +42,7 @@ describe('buildAuthListenerDeps', () => {
     expect(typeof deps.runLoginSync).toBe('function');
     expect(typeof deps.probeSession).toBe('function');
     expect(typeof deps.isLocalOnly).toBe('function');
+    expect(typeof deps.isAuthenticated).toBe('function');
   });
 
   it('setAuthenticated wrapper forwards uid+email AND fires identifyRevenueCatUser + applyCustomerInfoToProfile (production RC parity)', async () => {
@@ -109,6 +111,16 @@ describe('buildAuthListenerDeps', () => {
     expect(deps.isLocalOnly()).toBe(false);
     local = true;
     expect(deps.isLocalOnly()).toBe(true);
+  });
+
+  it('isAuthenticated dep proxies getIsAuthenticated() so the value is read fresh per call (Stage 5.3 Codex Critical fix)', () => {
+    let authed = false;
+    const callbacks = makeCallbacks({ getIsAuthenticated: () => authed });
+    const deps = buildAuthListenerDeps(callbacks);
+
+    expect(deps.isAuthenticated()).toBe(false);
+    authed = true;
+    expect(deps.isAuthenticated()).toBe(true);
   });
 
   it('probeSession dep accepts an override so tests can substitute a deterministic stub', async () => {

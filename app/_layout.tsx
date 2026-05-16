@@ -176,6 +176,7 @@ export default function RootLayout() {
               logOutRevenueCat,
               runLoginSync,
               getIsLocalOnly: () => useAuthStore.getState().isLocalOnly,
+              getIsAuthenticated: () => useAuthStore.getState().isAuthenticated,
               supabaseClient: supabase,
             }),
           );

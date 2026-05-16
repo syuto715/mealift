@@ -42,11 +42,22 @@ export interface AuthListenerDeps {
    * against the recovered session. If it returns null (or throws),
    * the listener commits to setUnauthenticated().
    *
-   * Stage 5.3 will provide an actual implementation against
-   * supabase.auth.getSession() + storage probe + 1-retry refresh.
+   * Stage 5.3 wires this to probeSession() in
+   * src/infra/auth/probeSession.ts.
    */
   probeSession: () => Promise<Session | null>;
   isLocalOnly: () => boolean;
+  /**
+   * Stage 5.3 Codex pass Critical fix — preserves the pre-5.3
+   * inline listener's "session=null + isAuthenticated=true →
+   * skip setUnauthenticated" behavior on non-SIGNED_OUT null-
+   * session events (INITIAL_SESSION / USER_UPDATED). Without
+   * this, the persisted local auth that bootstrapAuthSession()
+   * intentionally preserves gets clobbered by Supabase's
+   * immediate-on-subscribe INITIAL_SESSION callback before the
+   * Tier 3 refresh kick has a chance to repair the session.
+   */
+  isAuthenticated: () => boolean;
 }
 
 export type AuthListener = (
@@ -73,20 +84,30 @@ export function makeAuthListener(deps: AuthListenerDeps): AuthListener {
       return;
     }
 
-    // session === null. The Tier 2 probe is scoped to SIGNED_OUT
-    // specifically (Codex pass / Important — the probe defense is
-    // documented as spurious-SIGNED_OUT recovery, not a general
-    // null-session catchall). INITIAL_SESSION with null session at
-    // cold start is a legitimate "user is logged out", not a
-    // candidate for recovery.
-    if (event !== 'SIGNED_OUT') {
-      deps.setUnauthenticated();
+    // session === null. Stage 5.3 Codex pass / Critical fix —
+    // local-only mode preserves the existing auth state regardless
+    // of event type. The pre-5.3 inline listener's contract was
+    // "do nothing on null session when isLocalOnly". Demoting to
+    // setUnauthenticated would clobber the persisted local-only
+    // session the user explicitly opted into.
+    if (deps.isLocalOnly()) {
       return;
     }
 
-    // Local-only mode short-circuits the probe — there is no remote
-    // session to recover, and probing would either no-op or fail.
-    if (deps.isLocalOnly()) {
+    // The Tier 2 probe is scoped to SIGNED_OUT specifically (the
+    // probe defense is documented as spurious-SIGNED_OUT recovery,
+    // not a general null-session catchall).
+    if (event !== 'SIGNED_OUT') {
+      // Stage 5.3 Codex pass / Critical fix — non-SIGNED_OUT null-
+      // session events (INITIAL_SESSION, USER_UPDATED) must NOT
+      // clobber a persisted local auth state that
+      // bootstrapAuthSession() chose to preserve on cold start.
+      // The next refresh tick (Tier 3 kick) may repair the session
+      // and emit SIGNED_IN; until then, leave isAuthenticated as
+      // bootstrap left it.
+      if (deps.isAuthenticated()) {
+        return;
+      }
       deps.setUnauthenticated();
       return;
     }
