@@ -10,13 +10,14 @@ import type { Session } from '@supabase/supabase-js';
 // to authenticated, unauthenticated, or stay-as-is" decision.
 //
 // Why extracted: that decision tree drives Issue 1's cold-start
-// hydration race (the v1.4 fixes the static `/(tabs)/home` route
-// typo, but a future race could still send the user to the wrong
-// screen if the auth-state transitions during navigation). A pure
-// function with explicit callback injection makes the six branches
-// covered by deterministic unit tests rather than full-render
-// integration tests (which would drag jest-expo into the dependency
-// tree — see Phase 5.2A commit for why we declined that route).
+// hydration race (the v1.4 routes-SSoT pass fixed the static
+// legacy-home route typo, but a future race could still send the
+// user to the wrong screen if the auth-state transitions during
+// navigation). A pure function with explicit callback injection
+// makes the six branches covered by deterministic unit tests rather
+// than full-render integration tests (which would drag jest-expo
+// into the dependency tree — see Phase 5.2A commit for why we
+// declined that route).
 //
 // All side effects flow through `callbacks`; the helper itself is
 // pure-async and has no module-level state.
