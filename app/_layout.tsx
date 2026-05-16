@@ -16,6 +16,7 @@ import {
   onAuthStateChange,
   isSupabaseConfigured,
 } from '../src/infra/supabase/auth';
+import { bootstrapAuthSession } from '../src/infra/auth/authBootstrap';
 import { Toast } from '../src/components/ui';
 import { useUIStore } from '../src/stores/uiStore';
 import { bootstrapNotifications } from '../src/infra/services/notificationService';
@@ -116,41 +117,36 @@ export default function RootLayout() {
         } catch (notifError) {
         }
 
-        // Initialize auth state
-        if (isSupabaseConfigured && !isLocalOnly) {
-          try {
-            const { data } = await getSession();
-            if (data.session?.user) {
-              setAuthenticated(
-                data.session.user.id,
-                data.session.user.email ?? undefined,
-              );
-              // Tie RevenueCat appUserID to the Supabase user so purchases
-              // follow the account across devices.
+        // Initialize auth state. The branch logic (Supabase vs
+        // local-only, session present vs not, isAuthenticated
+        // persisted state) lives in `bootstrapAuthSession` so it's
+        // unit-testable in isolation (Phase 5.2B). The RevenueCat
+        // tie-in stays here because it depends on lifecycle-scoped
+        // state (cleanup ref) that doesn't belong in the pure helper.
+        await bootstrapAuthSession(
+          isSupabaseConfigured,
+          isLocalOnly,
+          isAuthenticated,
+          getSession,
+          {
+            setAuthenticated: (uid, email) => {
+              setAuthenticated(uid, email);
+              // Tie RevenueCat appUserID to the Supabase user so
+              // purchases follow the account across devices.
               void (async () => {
                 try {
-                  await identifyRevenueCatUser(data.session!.user.id);
+                  await identifyRevenueCatUser(uid);
                   const info = await getRevenueCatCustomerInfo();
                   await applyCustomerInfoToProfile(info);
                 } catch {
                   // Non-fatal — plan state falls back to local defaults.
                 }
               })();
-            } else if (!isAuthenticated) {
-              setUnauthenticated();
-            }
-          } catch {
-            if (!isAuthenticated) {
-              setUnauthenticated();
-            }
-          }
-        } else if (!isAuthenticated) {
-          // No Supabase configured and not already authenticated
-          setUnauthenticated();
-        } else {
-          // Already authenticated (persisted local mode or Supabase session)
-          setLoading(false);
-        }
+            },
+            setUnauthenticated,
+            setLoading,
+          },
+        );
 
         // Listen for auth state changes
         try {

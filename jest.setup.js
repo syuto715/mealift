@@ -1,11 +1,24 @@
 /* eslint-env jest */
-// v1.4 ステージ 5.2 Phase 5.2A — jest global setup (skeleton).
+// v1.4 ステージ 5.2 Phase 5.2A — jest global setup.
 //
 // This file runs once per test file via jest.config.js's
-// setupFilesAfterEach hook. It is intentionally empty today; the
-// current 1957-test suite is pure-logic and does NOT need any
-// Expo / RN native module mocking at the global level — each test
-// file installs its own jest.mock() boundaries.
+// setupFilesAfterEnv hook. The 1957-test suite that pre-dates this
+// hook installs its own jest.mock() boundaries per file; the only
+// thing crystallized here at the global level is the `__DEV__`
+// React Native compile-time constant. Production code reaches for
+// `if (__DEV__) { ... }` to gate diagnostic logging; without this
+// shim those branches throw ReferenceError under jest.
+//
+// babel-preset-expo does NOT replace `__DEV__` with a literal in
+// jest's transform path, so the symbol lands at the global level
+// at runtime. The codebase's convention (see
+// src/infra/services/__tests__/subscriptionService.test.ts and
+// aiWeeklyReportService.test.ts) is for tests that need to flip
+// the dev-vs-prod branch to set `(global as ...).__DEV__ = false`
+// in their own setup. Defaulting to `true` here matches that
+// convention — dev mode is the implicit default during jest runs.
+
+(globalThis).__DEV__ = (globalThis).__DEV__ ?? true;
 //
 // The samples below are kept as commented templates so future
 // component tests (added when RNTL coverage lands in Stage 5.3 / 5.4
