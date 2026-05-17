@@ -243,6 +243,13 @@ export const useRoutineGenStore = create<RoutineGenState>((set, get) => ({
   },
 
   discardDraft: async ({ userId, generationId }) => {
+    // Phase 1.3 Codex round 3 follow-up — clear the shared
+    // `error` field on entry so a stale prior error (e.g. from a
+    // failed apply) doesn't get misread as a discard failure on
+    // the screen-level `routineGenStore.getState().error` check
+    // after this call returns. Matches the runGeneration /
+    // applyDraft pattern.
+    set({ error: null });
     try {
       const result = await updateGenerationStatus(userId, generationId, {
         status: 'discarded',

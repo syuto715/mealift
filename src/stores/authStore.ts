@@ -248,6 +248,17 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           // No-op.
         }
+        // Phase 1.3 — diagnosticStore wizard answers (3rd store
+        // with the Drafting 106 logout-reset pattern). Wizard
+        // state is in-memory only (no SQLite mirror), so the
+        // reset() call is the lone safeguard against cross-account
+        // leak on same-process account switch.
+        try {
+          const { useDiagnosticStore } = await import('./diagnosticStore');
+          useDiagnosticStore.getState().reset();
+        } catch {
+          // No-op.
+        }
       },
 
       startLocalMode: () => {

@@ -115,6 +115,40 @@ export default function CoachConversationList() {
         </View>
       )}
 
+      {/* v1.5 Stage 1 Phase 1.3 — diagnostic wizard entry. Same
+          surface as the chat list so users find diagnostic +
+          chat side-by-side. The entry screen handles the Free
+          user ProInlineCTA case (plan check there). */}
+      <TouchableOpacity
+        style={[
+          styles.diagnosticEntry,
+          { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+        ]}
+        onPress={() => router.push('/(tabs)/coach/diagnostic')}
+        accessibilityRole="button"
+        accessibilityLabel="ミー先生に診断してもらう"
+        testID="coach-diagnostic-entry"
+      >
+        <Ionicons
+          name="clipboard-outline"
+          size={20}
+          color={colors.primary}
+        />
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[styles.diagnosticEntryTitle, { color: colors.textPrimary }]}
+          >
+            ミー先生に診断してもらう
+          </Text>
+          <Text
+            style={[styles.diagnosticEntryHint, { color: colors.textTertiary }]}
+          >
+            いくつかの質問にお答えいただくと、 オリジナルのルーティンを生成します
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+      </TouchableOpacity>
+
       <FlatList
         data={conversations}
         keyExtractor={(c) => c.id}
@@ -184,6 +218,25 @@ const styles = StyleSheet.create({
   },
   quotaLabel: {
     ...typography.labelMedium,
+  },
+  diagnosticEntry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginHorizontal: spacing.md,
+    marginVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 0.5,
+  },
+  diagnosticEntryTitle: {
+    ...typography.bodyMedium,
+    fontWeight: '600',
+  },
+  diagnosticEntryHint: {
+    ...typography.labelSmall,
+    marginTop: 2,
   },
   list: {
     paddingVertical: spacing.sm,
