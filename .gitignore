@@ -38,3 +38,4 @@ scripts/import-mext-foods/downloaded/
 # Supabase CLI cache (regenerated on every `supabase functions deploy` / link).
 # Tracking these makes the working tree dirty after every CLI invocation.
 supabase/.temp/
+*.swp
