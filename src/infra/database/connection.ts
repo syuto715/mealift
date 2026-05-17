@@ -30,6 +30,7 @@ import { migrateV27 } from './migrations/v27';
 import { migrateV28 } from './migrations/v28';
 import { migrateV29 } from './migrations/v29';
 import { migrateV30 } from './migrations/v30';
+import { migrateV31 } from './migrations/v31';
 import { seedExercisesV2 } from '../../../scripts/seed-exercises-v2/run';
 import { seedFoods, seedExercises } from './seed/foods';
 import { seedDishes } from './seed/dishes';
@@ -186,6 +187,10 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     if (currentVersion < 30) {
       await migrateV30(db);
       await db.execAsync('PRAGMA user_version = 30;');
+    }
+    if (currentVersion < 31) {
+      await migrateV31(db);
+      await db.execAsync('PRAGMA user_version = 31;');
     }
 
   } catch (error) {

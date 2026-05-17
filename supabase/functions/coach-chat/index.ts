@@ -1,0 +1,1172 @@
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// v1.5 Stage 1 Phase 1.1 — coach-chat Edge Function.
+//
+// Architectural SSoT: docs/plans/v1.5_stage_1_ai_chat_epic.md
+//   §3 (sequence sketch — chat send, 12 steps)
+//   §4 (LLMClient abstraction)
+//   §5.1 (chat_conversations + chat_messages schema)
+//   §6 (UserContext injection)
+//   §7 (ミー先生 system prompt)
+//   §9 (Pro gating: aiCoachChat boolean + monthly limit)
+//
+// 12-step sequence implemented inline (no helper extraction —
+// the EF is the single execution unit per request):
+//   1. Auth: Bearer token verify (immutable).
+//   2. Idempotency check: replay short-circuits BEFORE plan/quota
+//      gate (NewC1 + Drafting 98).
+//   3. Plan gate (free / plus / pro).
+//   4. UTC-monthly quota gate (parity with generate-workout-menu).
+//   5. INSERT chat_messages (assistant placeholder, status='pending',
+//      idempotency_key) — partial unique constraint fires here on
+//      a same-key duplicate request, BEFORE the user row writes.
+//   6. INSERT chat_messages (user, status='final').
+//   7. INSERT ai_usage_logs (quota counted HERE).
+//   8. Stream meta line (Content-Type: application/x-ndjson) +
+//      trailing \n.
+//   9-10. Stream Gemini chunks; UPDATE final on success +
+//         emit done line.
+//   11. On mid-stream error: UPDATE error + emit error line.
+//   12. On client disconnect: 30s safety timer → UPDATE partial.
+//
+// Quota model: a partial stream still counts against quota —
+// same usage-charged model as the existing four Gemini EFs.
+
+const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')!;
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+const GEMINI_URL =
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent';
+
+const FUNCTION_NAME = 'coach-chat';
+
+// Tier-specific monthly cap — keep in lockstep with
+// subscriptionService.ts `aiCoachChatMonthlyLimit`.
+const MONTHLY_QUOTA: Record<string, number> = {
+  free: 5,
+  plus: 200,
+  pro: -1, // -1 = unlimited
+};
+
+// Server-side safety bound on client disconnect → row.status='partial'.
+const DISCONNECT_SAFETY_MS = 30_000;
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers':
+    'authorization, content-type, idempotency-key',
+};
+
+const SYSTEM_PROMPT = `あなたは「ミー先生」という、 ユーザー専属の食事・トレーニング
+コーチです。 サイエンスベースで、 親しみやすく、 ユーザーの
+ペースと選択を尊重します。
+
+- 口調: 丁寧な日本語、 「〜です/ます」 ベース、 落ち着いた声色
+- 性別: 中立、 マッチョ的・男性的な印象は避ける
+- 過度な賞賛は使わない (sycophancy 警戒)
+- 必要なときは「専門医に相談してください」と促す
+- 1 応答 200〜400 字を基本
+
+【できること】
+- 栄養 (PFC, kcal, 食材, タイミング) の助言
+- トレーニング (ボリューム, RPE, デロード, 種目) の助言
+- 目標と現在地のギャップ説明、 次の 1 週間のアクション提案
+
+【できないこと】
+- 個別の医療診断・処方・服薬指導
+- 摂食障害の臨床判断
+- 妊娠・授乳に関する個別アドバイス
+
+【外食メニューの栄養情報】
+- 公知メニュー (大手チェーン店の公表値等) で確信がある → 「公表値」 タグで answer
+- 確信が無い → 「[推定値]」 タグで概算 + 「公式サイトでご確認ください」 を併記
+- 完全に未知 → 「データベース未収録です、 公式サイトの栄養情報をご確認ください」`;
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+  });
+}
+
+function utcMonthStartISO(now: Date): string {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
+  ).toISOString();
+}
+
+interface NDJSONEvent {
+  event: 'meta' | 'chunk' | 'done' | 'error';
+  [key: string]: unknown;
+}
+
+/** Encodes one NDJSON event with the §3 EOF contract: every line
+ *  is terminated by exactly one `\n`. The server's responsibility
+ *  to flush a trailing `\n` after the FINAL event before TCP
+ *  close lives at the caller; this helper just produces one line. */
+function ndjsonLine(event: NDJSONEvent): Uint8Array {
+  return new TextEncoder().encode(JSON.stringify(event) + '\n');
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: CORS_HEADERS });
+  }
+
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  // -------------------------------------------------------------------
+  // STEP 1 — Auth (immutable; no DB writes, no quota touch)
+  // -------------------------------------------------------------------
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (!token) {
+    return jsonResponse(
+      { error: 'unauthorized', message: 'ログインが必要です' },
+      401,
+    );
+  }
+  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: userData, error: userError } = await userClient.auth.getUser();
+  if (userError || !userData?.user) {
+    return jsonResponse(
+      {
+        error: 'invalid_token',
+        message: 'セッションが無効です。再ログインしてください',
+      },
+      401,
+    );
+  }
+  const userId = userData.user.id;
+
+  // -------------------------------------------------------------------
+  // STEP 2 — Idempotency check (BEFORE plan/quota gate)
+  // -------------------------------------------------------------------
+  const idempotencyKey = req.headers.get('Idempotency-Key');
+  if (!idempotencyKey) {
+    return jsonResponse(
+      { error: 'invalid_request', message: 'Idempotency-Key header required' },
+      400,
+    );
+  }
+  // Replay lookup: scope to the requesting user via the conversation
+  // FK join (chat_messages → chat_conversations.user_id).
+  const { data: replayRows, error: replayError } = await admin
+    .from('chat_messages')
+    .select('id, conversation_id, content, status, model, role')
+    .eq('idempotency_key', idempotencyKey)
+    .eq('role', 'assistant')
+    .limit(1);
+  if (replayError) {
+    return jsonResponse(
+      { error: 'internal_error', message: 'リプレイ検出に失敗しました' },
+      500,
+    );
+  }
+  if (replayRows && replayRows.length > 0) {
+    const replay = replayRows[0];
+    // Verify ownership of the replayed conversation before exposing
+    // the cached result — defense against key-collision attempts.
+    const { data: conv } = await admin
+      .from('chat_conversations')
+      .select('user_id')
+      .eq('id', replay.conversation_id)
+      .single();
+    if (!conv || conv.user_id !== userId) {
+      return jsonResponse(
+        { error: 'invalid_request', message: 'Idempotency-Key conflict' },
+        409,
+      );
+    }
+    // Replay short-circuit: NO plan gate, NO quota gate, NO Gemini
+    // call, NO ai_usage_logs INSERT. Re-emit the persisted final
+    // record as a one-shot NDJSON response.
+    return replayStream(
+      replay.id as string,
+      replay.conversation_id as string,
+      (replay.content as string) ?? '',
+      (replay.status as string) ?? 'final',
+      (replay.model as string) ?? 'gemini-2.5-flash',
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // STEP 3 — Plan gate
+  // -------------------------------------------------------------------
+  const { data: profile, error: profileError } = await admin
+    .from('profiles')
+    .select('plan')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (profileError) {
+    return jsonResponse(
+      { error: 'internal_error', message: 'プラン情報の取得に失敗しました' },
+      500,
+    );
+  }
+  const plan = (profile?.plan as string) ?? 'free';
+  if (!(plan in MONTHLY_QUOTA)) {
+    return jsonResponse(
+      { error: 'invalid_request', message: 'unknown plan' },
+      403,
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // STEP 4 — UTC-monthly quota gate
+  // -------------------------------------------------------------------
+  const limit = MONTHLY_QUOTA[plan];
+  if (limit !== -1) {
+    const monthStart = utcMonthStartISO(new Date());
+    const { count, error: countError } = await admin
+      .from('ai_usage_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('function_name', FUNCTION_NAME)
+      .eq('response_status', 200)
+      .gte('created_at', monthStart);
+    if (countError) {
+      return jsonResponse(
+        { error: 'internal_error', message: 'クォータの確認に失敗しました' },
+        500,
+      );
+    }
+    if ((count ?? 0) >= limit) {
+      return jsonResponse(
+        {
+          error: 'quota_exceeded',
+          message: `今月のチャット上限（${limit}回）に達しました`,
+          details: { used: count, limit },
+        },
+        429,
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // Parse request body (after gates so unauthenticated requests
+  // can't soft-probe the body shape).
+  // -------------------------------------------------------------------
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== 'object') {
+    return jsonResponse(
+      { error: 'invalid_request', message: 'リクエストボディが不正です' },
+      400,
+    );
+  }
+  const messages = (body as { messages?: unknown }).messages;
+  const context = (body as { context?: unknown }).context;
+  const conversationIdArg = (body as { conversationId?: unknown })
+    .conversationId;
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return jsonResponse(
+      { error: 'invalid_request', message: 'messages は必須です' },
+      400,
+    );
+  }
+
+  // Resolve or create the conversation row.
+  let conversationId: string;
+  let newlyCreatedConversation = false;
+  if (typeof conversationIdArg === 'string' && conversationIdArg.length > 0) {
+    const { data: conv } = await admin
+      .from('chat_conversations')
+      .select('id, user_id')
+      .eq('id', conversationIdArg)
+      .maybeSingle();
+    if (!conv || conv.user_id !== userId) {
+      return jsonResponse(
+        { error: 'invalid_request', message: 'conversation not found' },
+        404,
+      );
+    }
+    conversationId = conv.id;
+  } else {
+    const { data: created, error: createError } = await admin
+      .from('chat_conversations')
+      .insert({ user_id: userId })
+      .select('id')
+      .single();
+    if (createError || !created) {
+      return jsonResponse(
+        {
+          error: 'internal_error',
+          message: '会話の作成に失敗しました',
+        },
+        500,
+      );
+    }
+    conversationId = created.id;
+    // Track whether THIS request owns the new conversation row so
+    // the assistant-INSERT race-loser can roll it back without
+    // leaving an empty conversation in the DB (Codex round 2
+    // Important — race window between Step 2 idempotency check
+    // and the assistant uniqueness gate at Step 5).
+    newlyCreatedConversation = true;
+  }
+
+  const lastUser = (messages as Array<{ role?: string; content?: string }>)
+    .slice()
+    .reverse()
+    .find((m) => m.role === 'user');
+  if (!lastUser || typeof lastUser.content !== 'string') {
+    return jsonResponse(
+      { error: 'invalid_request', message: 'user メッセージが必要です' },
+      400,
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // STEP 5 — INSERT assistant placeholder FIRST (Codex C2 fix)
+  // -------------------------------------------------------------------
+  // The assistant row carries the idempotency_key; its partial
+  // unique index is the only thing protecting against two
+  // first-flight requests with the same key racing past Step 2's
+  // replay lookup. If we insert the user row first and the
+  // assistant insert then conflicts, the user row gets duplicated
+  // every retry. By inserting the assistant placeholder before
+  // the user row, the unique-key conflict aborts BEFORE any
+  // mutable state lands.
+  const model = 'gemini-2.5-flash';
+  const { data: assistantRow, error: assistantInsertError } = await admin
+    .from('chat_messages')
+    .insert({
+      conversation_id: conversationId,
+      role: 'assistant',
+      content: '',
+      status: 'pending',
+      model,
+      idempotency_key: idempotencyKey,
+    })
+    .select('id')
+    .single();
+  if (assistantInsertError || !assistantRow) {
+    // Could be an Idempotency-Key partial-unique conflict from a
+    // race; that's the rare "two retries at once" edge case.
+    //
+    // Round 2 Important fix + Round 3 Important fix — roll back
+    // the newly-created conversation row if this request created
+    // it; check the delete's `{ error }` field instead of relying
+    // on try/catch (supabase-js does not throw on PostgREST
+    // failure).
+    if (newlyCreatedConversation) {
+      await deleteConversationBestEffort(
+        admin,
+        conversationId,
+        userId,
+        'assistant-insert-conflict',
+      );
+    }
+    return jsonResponse(
+      { error: 'invalid_request', message: 'Idempotency-Key conflict' },
+      409,
+    );
+  }
+  const assistantMessageId = assistantRow.id as string;
+
+  // -------------------------------------------------------------------
+  // STEP 6 — INSERT user message (status='final')
+  // -------------------------------------------------------------------
+  // Safe to run after the assistant placeholder lands — the
+  // unique-key constraint already blocked the same-key concurrent
+  // path above, so this insert can't double.
+  //
+  // Round 2 Important fix — check the `error` field on the
+  // PostgREST response. supabase-js does NOT throw on insert
+  // failure; it returns `{ data, error }`. Without the check, a
+  // silent failure would leave the assistant row alive with no
+  // user counterpart while the stream still ran.
+  //
+  // Round 4 Important fix — capture the inserted row's id so the
+  // STEP 7 rollback path can target this specific row instead of
+  // a content-match delete (which could collateral-damage older
+  // identical user messages in the same conversation).
+  let userMessageId: string | undefined;
+  {
+    const { data: userRow, error: userInsertError } = await admin
+      .from('chat_messages')
+      .insert({
+        conversation_id: conversationId,
+        role: 'user',
+        content: lastUser.content,
+        status: 'final',
+      })
+      .select('id')
+      .single();
+    if (userInsertError) {
+      // Mark assistant row as error so reconciliation surfaces the
+      // partial-write state on the next read; return 500 so the
+      // client doesn't replay against the same Idempotency-Key
+      // (the unique index would then block forever until cleanup).
+      // Round 3 Important — failure-path cleanup writes also
+      // surface `{ error }` for visibility instead of relying on
+      // try/catch only.
+      await failAssistantRowBestEffort(
+        admin,
+        assistantMessageId,
+        'user-insert-failed',
+      );
+      if (newlyCreatedConversation) {
+        await deleteConversationBestEffort(
+          admin,
+          conversationId,
+          userId,
+          'user-insert-failed',
+        );
+      }
+      return jsonResponse(
+        {
+          error: 'internal_error',
+          message: 'ユーザーメッセージの保存に失敗しました',
+        },
+        500,
+      );
+    }
+    userMessageId = userRow?.id as string | undefined;
+  }
+
+  // -------------------------------------------------------------------
+  // STEP 7 — INSERT ai_usage_logs (quota counted HERE)
+  // -------------------------------------------------------------------
+  // Partial stream still counts — usage-charged streaming contract
+  // (Drafting 97). The success row is upserted on STEP 10/11; we
+  // record one row at request-start with response_status=200 so
+  // the quota counter increments immediately.
+  //
+  // Round 2 Important fix — check the `error` field. If the
+  // usage-logs INSERT fails the quota counter is undercounted; we
+  // surface it as 500 so the client doesn't proceed thinking the
+  // call was free.
+  {
+    const { error: usageInsertError } = await admin
+      .from('ai_usage_logs')
+      .insert({
+        user_id: userId,
+        function_name: FUNCTION_NAME,
+        input: { idempotencyKey, conversationId, assistantMessageId },
+        response_status: 200,
+      });
+    if (usageInsertError) {
+      // Round 3 Important — Step 7 fail path also rolls back the
+      // user row write that just happened in Step 6 (delete user
+      // row + assistant row cleanup), and rolls back the new
+      // conversation if this request created it. Otherwise the
+      // failed request leaks user+assistant rows and (for new
+      // conversations) an orphan conversation.
+      await failAssistantRowBestEffort(
+        admin,
+        assistantMessageId,
+        'usage-log-failed',
+      );
+      if (userMessageId) {
+        await deleteUserMessageByIdBestEffort(
+          admin,
+          userMessageId,
+          'usage-log-failed',
+        );
+      }
+      if (newlyCreatedConversation) {
+        await deleteConversationBestEffort(
+          admin,
+          conversationId,
+          userId,
+          'usage-log-failed',
+        );
+      }
+      return jsonResponse(
+        {
+          error: 'internal_error',
+          message: 'クォータ記録に失敗しました',
+        },
+        500,
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // STEPS 8-12 — Stream Gemini → NDJSON to the client.
+  // -------------------------------------------------------------------
+  //
+  // Codex round 1 / C3 fix — the 30 s safety timer measures from
+  // CLIENT DISCONNECT, not from stream start. Implementation:
+  //   - The Gemini fetch runs under an AbortController; `cancel()`
+  //     callback (fired by the client closing the connection)
+  //     arms a setTimeout for 30 s, and on fire it aborts the
+  //     controller + updates the row to 'partial'.
+  //   - If Gemini completes naturally before the timer fires,
+  //     `controller.close()` clears the timer so it's a no-op.
+  //   - Healthy long-running responses are NOT killed by the
+  //     timer because the timer never arms while the client is
+  //     still connected.
+  let buffer = '';
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let geminiCompleted = false;
+  let disconnectTimer: number | undefined;
+  const geminiAbortController = new AbortController();
+
+  const finalizeAsPartial = async () => {
+    try {
+      const { error } = await admin
+        .from('chat_messages')
+        .update({ content: buffer, status: 'partial' })
+        .eq('id', assistantMessageId);
+      if (error) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          '[coach-chat] finalizeAsPartial UPDATE failed:',
+          error.message,
+        );
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[coach-chat] finalizeAsPartial threw:', e);
+    }
+  };
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      // STEP 8 — meta line FIRST, before any LLM token.
+      controller.enqueue(
+        ndjsonLine({
+          event: 'meta',
+          assistantMessageId,
+          conversationId,
+          model,
+        }),
+      );
+
+      try {
+        // Convert ChatMessage[] → Gemini `contents` shape.
+        const contents = (messages as Array<{
+          role: string;
+          content: string;
+        }>).map((m) => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }],
+        }));
+
+        // Codex round 1 / I1 fix — server-side PII projection
+        // before assembling the Gemini prompt. The EF cannot
+        // trust the client's `context` payload verbatim because a
+        // compromised / malicious client could have tampered with
+        // the safe-subset projection.
+        const safeContext = projectContextSafeSubset(context);
+
+        const geminiBody = {
+          contents,
+          systemInstruction: {
+            parts: [
+              { text: SYSTEM_PROMPT },
+              {
+                text:
+                  '\n\n【ユーザーコンテキスト】\n' +
+                  JSON.stringify(safeContext),
+              },
+            ],
+          },
+          generationConfig: {
+            maxOutputTokens: 1024,
+            temperature: 0.4,
+          },
+        };
+
+        const geminiResponse = await fetch(
+          `${GEMINI_URL}?key=${GEMINI_API_KEY}&alt=sse`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(geminiBody),
+            signal: geminiAbortController.signal,
+          },
+        );
+        if (!geminiResponse.ok || !geminiResponse.body) {
+          controller.enqueue(
+            ndjsonLine({
+              event: 'error',
+              code: 'gemini_error',
+              message: 'AI応答の取得に失敗しました',
+              recoverable: false,
+            }),
+          );
+          {
+            const { error: errUpdate } = await admin
+              .from('chat_messages')
+              .update({ status: 'error' })
+              .eq('id', assistantMessageId);
+            if (errUpdate) {
+              // eslint-disable-next-line no-console
+              console.warn(
+                '[coach-chat] gemini-fetch-fail UPDATE error status failed:',
+                errUpdate.message,
+              );
+            }
+          }
+          controller.close();
+          return;
+        }
+
+        // Parse Gemini SSE → forward each delta as an NDJSON `chunk`.
+        const reader = geminiResponse.body.getReader();
+        const decoder = new TextDecoder();
+        let geminiBuf = '';
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          geminiBuf += decoder.decode(value, { stream: true });
+          // SSE lines start with `data: ` and end with `\n\n`.
+          let blockEnd = geminiBuf.indexOf('\n\n');
+          while (blockEnd !== -1) {
+            const block = geminiBuf.slice(0, blockEnd);
+            geminiBuf = geminiBuf.slice(blockEnd + 2);
+            const lines = block.split('\n');
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              const payload = line.slice(6);
+              if (payload === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(payload);
+                const partsArr =
+                  parsed?.candidates?.[0]?.content?.parts ?? [];
+                for (const p of partsArr) {
+                  if (typeof p?.text === 'string' && p.text.length > 0) {
+                    buffer += p.text;
+                    try {
+                      controller.enqueue(
+                        ndjsonLine({
+                          event: 'chunk',
+                          delta: p.text,
+                        }),
+                      );
+                    } catch {
+                      // Controller closed (cancel() fired) — the
+                      // 30 s safety timer is already armed; we let
+                      // the loop ride until Gemini ends so the
+                      // upstream fetch is consumed cleanly.
+                    }
+                  }
+                }
+                if (parsed?.usageMetadata) {
+                  inputTokens =
+                    parsed.usageMetadata.promptTokenCount ?? inputTokens;
+                  outputTokens =
+                    parsed.usageMetadata.candidatesTokenCount ?? outputTokens;
+                }
+              } catch {
+                // Malformed SSE line — skip.
+              }
+            }
+            blockEnd = geminiBuf.indexOf('\n\n');
+          }
+        }
+
+        geminiCompleted = true;
+        if (disconnectTimer != null) {
+          clearTimeout(disconnectTimer);
+          disconnectTimer = undefined;
+        }
+
+        // STEP 10 — success: UPDATE final + emit done.
+        {
+          const { error: finalUpdateError } = await admin
+            .from('chat_messages')
+            .update({
+              content: buffer,
+              status: 'final',
+              input_tokens: inputTokens,
+              output_tokens: outputTokens,
+            })
+            .eq('id', assistantMessageId);
+          if (finalUpdateError) {
+            // The stream has already delivered the text; if this
+            // UPDATE fails the row stays 'pending'. The hourly
+            // cleanup job won't touch it until 24h has passed,
+            // but the next read by the client will see 'pending'
+            // and can re-request. Surface via warn so Supabase
+            // logs capture the drift.
+            // eslint-disable-next-line no-console
+            console.warn(
+              '[coach-chat] STEP 10 final UPDATE failed:',
+              finalUpdateError.message,
+            );
+          }
+        }
+        try {
+          controller.enqueue(
+            ndjsonLine({
+              event: 'done',
+              inputTokens,
+              outputTokens,
+              model,
+              finishReason: 'stop',
+            }),
+          );
+          controller.close();
+        } catch {
+          // Controller already closed by cancel(); the row write
+          // above is the durable record of success.
+        }
+      } catch (e) {
+        if (
+          e instanceof Error &&
+          (e.name === 'AbortError' || /aborted/i.test(e.message))
+        ) {
+          // Gemini fetch was aborted (by the disconnect-timer
+          // expiring, in practice). The cancel() callback already
+          // wrote 'partial' to the row.
+          return;
+        }
+        // STEP 11 — mid-stream error.
+        {
+          const { error: errStatusErr } = await admin
+            .from('chat_messages')
+            .update({ content: buffer, status: 'error' })
+            .eq('id', assistantMessageId);
+          if (errStatusErr) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              '[coach-chat] STEP 11 error UPDATE failed:',
+              errStatusErr.message,
+            );
+          }
+        }
+        try {
+          controller.enqueue(
+            ndjsonLine({
+              event: 'error',
+              code: 'gemini_error',
+              message: e instanceof Error ? e.message : 'unknown error',
+              recoverable: false,
+            }),
+          );
+          controller.close();
+        } catch {
+          // Controller already closed.
+        }
+      }
+    },
+    async cancel() {
+      // STEP 12 — client disconnected. Arm the 30 s safety timer:
+      // give Gemini a grace window to finish; if it doesn't, abort
+      // the upstream fetch and persist the row as 'partial'.
+      if (geminiCompleted) return;
+      if (disconnectTimer != null) return; // already armed
+      disconnectTimer = setTimeout(() => {
+        if (geminiCompleted) return;
+        try {
+          geminiAbortController.abort();
+        } catch {
+          // Already aborted; ignore.
+        }
+        void finalizeAsPartial();
+      }, DISCONNECT_SAFETY_MS) as unknown as number;
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type': 'application/x-ndjson',
+      'Cache-Control': 'no-store',
+    },
+  });
+});
+
+// Replay path: re-emit the persisted assistant content as a
+// single NDJSON response. No Gemini call, no quota increment.
+//
+// Codex round 1 / C4 fix — the replay path mirrors the stored
+// status faithfully:
+//   - 'final'   → emit chunk (if any) + done
+//   - 'partial' → emit chunk (if any) + error(aborted, recoverable=true)
+//   - 'error'   → emit error(gemini_error, recoverable=false)
+//   - 'pending' → 409 conflict (a still-in-flight original attempt
+//                 means replay can't be authoritative; the client
+//                 should retry shortly with the SAME key, which
+//                 will short-circuit through this same path once
+//                 the original transitions to a terminal state).
+function replayStream(
+  assistantMessageId: string,
+  conversationId: string,
+  content: string,
+  status: string,
+  model: string,
+): Response {
+  if (status === 'pending') {
+    return jsonResponse(
+      {
+        error: 'invalid_request',
+        message: '前回のリクエストがまだ処理中です。少し待ってから再度お試しください',
+        details: { status },
+      },
+      409,
+    );
+  }
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(
+        ndjsonLine({
+          event: 'meta',
+          assistantMessageId,
+          conversationId,
+          model,
+        }),
+      );
+      if (content.length > 0) {
+        controller.enqueue(ndjsonLine({ event: 'chunk', delta: content }));
+      }
+      if (status === 'error') {
+        controller.enqueue(
+          ndjsonLine({
+            event: 'error',
+            code: 'gemini_error',
+            message: '前回の応答は失敗しました',
+            recoverable: false,
+          }),
+        );
+      } else if (status === 'partial') {
+        controller.enqueue(
+          ndjsonLine({
+            event: 'error',
+            code: 'aborted',
+            message: '前回の応答は途中で中断されました',
+            recoverable: true,
+          }),
+        );
+      } else {
+        // status === 'final' (or unexpected non-terminal value
+        // defaulted to final — production code paths never write
+        // anything outside the four-state enum).
+        controller.enqueue(
+          ndjsonLine({
+            event: 'done',
+            inputTokens: 0,
+            outputTokens: 0,
+            model,
+            finishReason: 'stop',
+          }),
+        );
+      }
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type': 'application/x-ndjson',
+      'Cache-Control': 'no-store',
+    },
+  });
+}
+
+// =====================================================================
+// PII projection (Codex round 1 / I1 + round 2 / Critical 1 fix — §6.4)
+// =====================================================================
+//
+// Server-side defense-in-depth: re-project the client-supplied
+// `context` to the safe subset documented in §6.4 + §5.1.1 before
+// either (a) feeding it to Gemini or (b) persisting any snapshot.
+//
+// Round 2 lesson: per-key allowlists are not enough — a malicious
+// client can still smuggle nested objects / unbounded strings
+// under an "allowed" scalar key like `profile.ageRange`. Each
+// field below uses an explicit type coercion that returns a
+// safe default (undefined) on shape mismatch, so the value
+// reaching Gemini matches the spec shape regardless of input.
+
+const AGE_RANGES = new Set([
+  'under-10',
+  '10-14',
+  '15-19',
+  '20-24',
+  '25-29',
+  '30-34',
+  '35-39',
+  '40-44',
+  '45-49',
+  '50-54',
+  '55-59',
+  '60-64',
+  '65-69',
+  '70-74',
+  '75-79',
+  '80-84',
+  '85-plus',
+]);
+const SEXES = new Set(['male', 'female', 'other']);
+const GOAL_TYPES = new Set(['cut', 'bulk', 'maintain', 'recomp']);
+const ACTIVITY_LEVELS = new Set([
+  'sedentary',
+  'light',
+  'moderate',
+  'active',
+  'very_active',
+]);
+const TOP_FREQUENT_NAMES_MAX = 5;
+const FOOD_NAME_MAX_LEN = 60;
+const ROUTINE_NAME_MAX_LEN = 60;
+const ROUTINE_NAMES_MAX = 10; // Codex round 3 Important — bound cardinality
+const MUSCLE_KEY_MAX_LEN = 40;
+const WEEKLY_VOLUME_MAX_KEYS = 20;
+
+function asFiniteNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function asEnum<T extends string>(
+  value: unknown,
+  set: Set<string>,
+): T | undefined {
+  return typeof value === 'string' && set.has(value)
+    ? (value as T)
+    : undefined;
+}
+
+function asBoundedString(value: unknown, max: number): string | undefined {
+  return typeof value === 'string' && value.length > 0 && value.length <= max
+    ? value
+    : undefined;
+}
+
+function projectNutrientSummary(value: unknown):
+  | { calories: number; proteinG: number; fatG: number; carbG: number }
+  | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const v = value as Record<string, unknown>;
+  const calories = asFiniteNumber(v.calories);
+  const proteinG = asFiniteNumber(v.proteinG);
+  const fatG = asFiniteNumber(v.fatG);
+  const carbG = asFiniteNumber(v.carbG);
+  if (
+    calories === undefined ||
+    proteinG === undefined ||
+    fatG === undefined ||
+    carbG === undefined
+  ) {
+    return undefined;
+  }
+  return { calories, proteinG, fatG, carbG };
+}
+
+// =====================================================================
+// Compensation-write helpers (Codex round 3 / Important #3)
+// =====================================================================
+//
+// supabase-js does NOT throw on PostgREST failure; it returns
+// `{ data, error }`. Earlier rollback / cleanup paths used a
+// `try { ... } catch {}` block which only catches synchronous
+// throws and silently dropped the `{ error }` channel. These
+// helpers consistently check the error field + emit a structured
+// `console.warn` for Supabase log capture.
+
+// deno-lint-ignore no-explicit-any
+type Admin = any;
+
+async function deleteConversationBestEffort(
+  admin: Admin,
+  conversationId: string,
+  userId: string,
+  reason: string,
+): Promise<void> {
+  try {
+    const { error } = await admin
+      .from('chat_conversations')
+      .delete()
+      .eq('id', conversationId)
+      .eq('user_id', userId);
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[coach-chat] conversation rollback failed (${reason}):`,
+        error.message,
+      );
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[coach-chat] conversation rollback threw (${reason}):`,
+      e,
+    );
+  }
+}
+
+async function failAssistantRowBestEffort(
+  admin: Admin,
+  assistantMessageId: string,
+  reason: string,
+): Promise<void> {
+  try {
+    const { error } = await admin
+      .from('chat_messages')
+      .update({ status: 'error', idempotency_key: null })
+      .eq('id', assistantMessageId);
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[coach-chat] assistant row cleanup failed (${reason}):`,
+        error.message,
+      );
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[coach-chat] assistant row cleanup threw (${reason}):`,
+      e,
+    );
+  }
+}
+
+async function deleteUserMessageByIdBestEffort(
+  admin: Admin,
+  userMessageId: string,
+  reason: string,
+): Promise<void> {
+  // Round 4 Important fix — delete by primary key instead of by
+  // content match. The earlier content-match approach
+  // (conversation_id + role + content) could collateral-damage
+  // historical identical user messages in the same conversation;
+  // a same-text message repeated days apart would be deleted by
+  // this rollback. Capturing the row id from the STEP 6 INSERT
+  // and deleting by id targets only the just-inserted row.
+  try {
+    const { error } = await admin
+      .from('chat_messages')
+      .delete()
+      .eq('id', userMessageId);
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[coach-chat] user row rollback failed (${reason}):`,
+        error.message,
+      );
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[coach-chat] user row rollback threw (${reason}):`,
+      e,
+    );
+  }
+}
+
+function projectContextSafeSubset(input: unknown): Record<string, unknown> {
+  if (!input || typeof input !== 'object') return {};
+  const i = input as Record<string, unknown>;
+
+  // ---- profile ------------------------------------------------------
+  const rawProfile = (i.profile ?? {}) as Record<string, unknown>;
+  const profile = {
+    ageRange: asEnum<string>(rawProfile.ageRange, AGE_RANGES),
+    sex: asEnum<string>(rawProfile.sex, SEXES),
+    heightCm: asFiniteNumber(rawProfile.heightCm),
+    weightKg: asFiniteNumber(rawProfile.weightKg),
+    goalType: asEnum<string>(rawProfile.goalType, GOAL_TYPES),
+    activityLevel: asEnum<string>(rawProfile.activityLevel, ACTIVITY_LEVELS),
+    trainingDaysPerWeek: asFiniteNumber(rawProfile.trainingDaysPerWeek),
+  };
+
+  // ---- targets ------------------------------------------------------
+  const rawTargets = (i.targets ?? {}) as Record<string, unknown>;
+  const targets = {
+    calories: asFiniteNumber(rawTargets.calories) ?? 0,
+    proteinG: asFiniteNumber(rawTargets.proteinG) ?? 0,
+    fatG: asFiniteNumber(rawTargets.fatG) ?? 0,
+    carbG: asFiniteNumber(rawTargets.carbG) ?? 0,
+  };
+
+  // ---- recentMeals --------------------------------------------------
+  const rawMeals = (i.recentMeals ?? {}) as Record<string, unknown>;
+  const topFrequentNamesIn = Array.isArray(rawMeals.topFrequentNames)
+    ? (rawMeals.topFrequentNames as unknown[])
+    : [];
+  const topFrequentNames: string[] = [];
+  for (const candidate of topFrequentNamesIn) {
+    const bounded = asBoundedString(candidate, FOOD_NAME_MAX_LEN);
+    if (bounded === undefined) continue;
+    topFrequentNames.push(bounded);
+    if (topFrequentNames.length >= TOP_FREQUENT_NAMES_MAX) break;
+  }
+  const recentMeals = {
+    last7DaysAverage: projectNutrientSummary(rawMeals.last7DaysAverage) ?? {
+      calories: 0,
+      proteinG: 0,
+      fatG: 0,
+      carbG: 0,
+    },
+    todaySoFar: projectNutrientSummary(rawMeals.todaySoFar),
+    topFrequentNames,
+  };
+
+  // ---- recentWorkouts ----------------------------------------------
+  const rawWorkouts = (i.recentWorkouts ?? {}) as Record<string, unknown>;
+  const routineNamesIn = Array.isArray(rawWorkouts.routineNames)
+    ? (rawWorkouts.routineNames as unknown[])
+    : [];
+  const routineNames: string[] = [];
+  for (const candidate of routineNamesIn) {
+    const bounded = asBoundedString(candidate, ROUTINE_NAME_MAX_LEN);
+    if (bounded !== undefined) {
+      routineNames.push(bounded);
+      // Cardinality bound — Codex round 3 Important: stop after
+      // ROUTINE_NAMES_MAX so a malicious client can't ship a
+      // multi-thousand-entry routineNames array to bloat the
+      // Gemini prompt or inject sneaky payload.
+      if (routineNames.length >= ROUTINE_NAMES_MAX) break;
+    }
+  }
+  let weeklyVolumeKgRepsByMuscle: Record<string, number> | undefined;
+  if (
+    rawWorkouts.weeklyVolumeKgRepsByMuscle !== undefined &&
+    rawWorkouts.weeklyVolumeKgRepsByMuscle !== null &&
+    typeof rawWorkouts.weeklyVolumeKgRepsByMuscle === 'object' &&
+    !Array.isArray(rawWorkouts.weeklyVolumeKgRepsByMuscle)
+  ) {
+    const out: Record<string, number> = {};
+    let kept = 0;
+    for (const [k, v] of Object.entries(
+      rawWorkouts.weeklyVolumeKgRepsByMuscle as Record<string, unknown>,
+    )) {
+      const keyOk = asBoundedString(k, MUSCLE_KEY_MAX_LEN);
+      const valueOk = asFiniteNumber(v);
+      if (keyOk !== undefined && valueOk !== undefined) {
+        out[keyOk] = valueOk;
+        kept++;
+        if (kept >= WEEKLY_VOLUME_MAX_KEYS) break;
+      }
+    }
+    weeklyVolumeKgRepsByMuscle = out;
+  }
+  const recentWorkouts = {
+    last14DaysSessions:
+      asFiniteNumber(rawWorkouts.last14DaysSessions) ?? 0,
+    routineNames,
+    weeklyVolumeKgRepsByMuscle,
+  };
+
+  // ---- recentWeightTrend -------------------------------------------
+  const rawTrend = (i.recentWeightTrend ?? {}) as Record<string, unknown>;
+  const recentWeightTrend = {
+    last14DaysKgChange:
+      asFiniteNumber(rawTrend.last14DaysKgChange) ?? 0,
+  };
+
+  return {
+    profile,
+    targets,
+    recentMeals,
+    recentWorkouts,
+    recentWeightTrend,
+  };
+}

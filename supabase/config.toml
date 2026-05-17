@@ -19,3 +19,11 @@ project_id = "mealift"
 # verification would block the cron call before the function runs.
 [functions.send-push-notifications]
 verify_jwt = false
+
+# cleanup-idempotency-keys — hourly cron drains the 24h-stale
+# idempotency_key column on chat_messages so the partial unique
+# index can re-use the keys (Phase 1.1 §5.1 retention contract).
+# Same pg_cron + hex CRON_SECRET pattern as send-push-notifications;
+# same `verify_jwt = false` reason.
+[functions.cleanup-idempotency-keys]
+verify_jwt = false
