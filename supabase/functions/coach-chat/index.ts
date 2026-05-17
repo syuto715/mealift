@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { projectContextSafeSubset } from '../_shared/projectContext.ts';
 
 // v1.5 Stage 1 Phase 1.1 — coach-chat Edge Function.
 //
@@ -202,10 +203,18 @@ serve(async (req) => {
   // -------------------------------------------------------------------
   // STEP 3 — Plan gate
   // -------------------------------------------------------------------
+  // Phase 1.5 Codex round 1 Critical fix — profiles.id IS auth.uid()
+  // (no separate user_id column on profiles; the generate-workout-menu
+  // EF documents this convention at lines 16-19). Earlier rev used
+  // `.eq('user_id', userId)` which would PostgREST-error on the
+  // missing column; the column-not-found error surface depends on
+  // version + RLS, so the issue can manifest as a silent null or a
+  // 500. Aligning to `.eq('id', userId)` matches the established
+  // generate-workout-menu pattern.
   const { data: profile, error: profileError } = await admin
     .from('profiles')
     .select('plan')
-    .eq('user_id', userId)
+    .eq('id', userId)
     .maybeSingle();
   if (profileError) {
     return jsonResponse(
@@ -872,95 +881,6 @@ function replayStream(
 }
 
 // =====================================================================
-// PII projection (Codex round 1 / I1 + round 2 / Critical 1 fix — §6.4)
-// =====================================================================
-//
-// Server-side defense-in-depth: re-project the client-supplied
-// `context` to the safe subset documented in §6.4 + §5.1.1 before
-// either (a) feeding it to Gemini or (b) persisting any snapshot.
-//
-// Round 2 lesson: per-key allowlists are not enough — a malicious
-// client can still smuggle nested objects / unbounded strings
-// under an "allowed" scalar key like `profile.ageRange`. Each
-// field below uses an explicit type coercion that returns a
-// safe default (undefined) on shape mismatch, so the value
-// reaching Gemini matches the spec shape regardless of input.
-
-const AGE_RANGES = new Set([
-  'under-10',
-  '10-14',
-  '15-19',
-  '20-24',
-  '25-29',
-  '30-34',
-  '35-39',
-  '40-44',
-  '45-49',
-  '50-54',
-  '55-59',
-  '60-64',
-  '65-69',
-  '70-74',
-  '75-79',
-  '80-84',
-  '85-plus',
-]);
-const SEXES = new Set(['male', 'female', 'other']);
-const GOAL_TYPES = new Set(['cut', 'bulk', 'maintain', 'recomp']);
-const ACTIVITY_LEVELS = new Set([
-  'sedentary',
-  'light',
-  'moderate',
-  'active',
-  'very_active',
-]);
-const TOP_FREQUENT_NAMES_MAX = 5;
-const FOOD_NAME_MAX_LEN = 60;
-const ROUTINE_NAME_MAX_LEN = 60;
-const ROUTINE_NAMES_MAX = 10; // Codex round 3 Important — bound cardinality
-const MUSCLE_KEY_MAX_LEN = 40;
-const WEEKLY_VOLUME_MAX_KEYS = 20;
-
-function asFiniteNumber(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-}
-
-function asEnum<T extends string>(
-  value: unknown,
-  set: Set<string>,
-): T | undefined {
-  return typeof value === 'string' && set.has(value)
-    ? (value as T)
-    : undefined;
-}
-
-function asBoundedString(value: unknown, max: number): string | undefined {
-  return typeof value === 'string' && value.length > 0 && value.length <= max
-    ? value
-    : undefined;
-}
-
-function projectNutrientSummary(value: unknown):
-  | { calories: number; proteinG: number; fatG: number; carbG: number }
-  | undefined {
-  if (!value || typeof value !== 'object') return undefined;
-  const v = value as Record<string, unknown>;
-  const calories = asFiniteNumber(v.calories);
-  const proteinG = asFiniteNumber(v.proteinG);
-  const fatG = asFiniteNumber(v.fatG);
-  const carbG = asFiniteNumber(v.carbG);
-  if (
-    calories === undefined ||
-    proteinG === undefined ||
-    fatG === undefined ||
-    carbG === undefined
-  ) {
-    return undefined;
-  }
-  return { calories, proteinG, fatG, carbG };
-}
-
-// =====================================================================
 // Compensation-write helpers (Codex round 3 / Important #3)
 // =====================================================================
 //
@@ -1061,112 +981,7 @@ async function deleteUserMessageByIdBestEffort(
   }
 }
 
-function projectContextSafeSubset(input: unknown): Record<string, unknown> {
-  if (!input || typeof input !== 'object') return {};
-  const i = input as Record<string, unknown>;
-
-  // ---- profile ------------------------------------------------------
-  const rawProfile = (i.profile ?? {}) as Record<string, unknown>;
-  const profile = {
-    ageRange: asEnum<string>(rawProfile.ageRange, AGE_RANGES),
-    sex: asEnum<string>(rawProfile.sex, SEXES),
-    heightCm: asFiniteNumber(rawProfile.heightCm),
-    weightKg: asFiniteNumber(rawProfile.weightKg),
-    goalType: asEnum<string>(rawProfile.goalType, GOAL_TYPES),
-    activityLevel: asEnum<string>(rawProfile.activityLevel, ACTIVITY_LEVELS),
-    trainingDaysPerWeek: asFiniteNumber(rawProfile.trainingDaysPerWeek),
-  };
-
-  // ---- targets ------------------------------------------------------
-  const rawTargets = (i.targets ?? {}) as Record<string, unknown>;
-  const targets = {
-    calories: asFiniteNumber(rawTargets.calories) ?? 0,
-    proteinG: asFiniteNumber(rawTargets.proteinG) ?? 0,
-    fatG: asFiniteNumber(rawTargets.fatG) ?? 0,
-    carbG: asFiniteNumber(rawTargets.carbG) ?? 0,
-  };
-
-  // ---- recentMeals --------------------------------------------------
-  const rawMeals = (i.recentMeals ?? {}) as Record<string, unknown>;
-  const topFrequentNamesIn = Array.isArray(rawMeals.topFrequentNames)
-    ? (rawMeals.topFrequentNames as unknown[])
-    : [];
-  const topFrequentNames: string[] = [];
-  for (const candidate of topFrequentNamesIn) {
-    const bounded = asBoundedString(candidate, FOOD_NAME_MAX_LEN);
-    if (bounded === undefined) continue;
-    topFrequentNames.push(bounded);
-    if (topFrequentNames.length >= TOP_FREQUENT_NAMES_MAX) break;
-  }
-  const recentMeals = {
-    last7DaysAverage: projectNutrientSummary(rawMeals.last7DaysAverage) ?? {
-      calories: 0,
-      proteinG: 0,
-      fatG: 0,
-      carbG: 0,
-    },
-    todaySoFar: projectNutrientSummary(rawMeals.todaySoFar),
-    topFrequentNames,
-  };
-
-  // ---- recentWorkouts ----------------------------------------------
-  const rawWorkouts = (i.recentWorkouts ?? {}) as Record<string, unknown>;
-  const routineNamesIn = Array.isArray(rawWorkouts.routineNames)
-    ? (rawWorkouts.routineNames as unknown[])
-    : [];
-  const routineNames: string[] = [];
-  for (const candidate of routineNamesIn) {
-    const bounded = asBoundedString(candidate, ROUTINE_NAME_MAX_LEN);
-    if (bounded !== undefined) {
-      routineNames.push(bounded);
-      // Cardinality bound — Codex round 3 Important: stop after
-      // ROUTINE_NAMES_MAX so a malicious client can't ship a
-      // multi-thousand-entry routineNames array to bloat the
-      // Gemini prompt or inject sneaky payload.
-      if (routineNames.length >= ROUTINE_NAMES_MAX) break;
-    }
-  }
-  let weeklyVolumeKgRepsByMuscle: Record<string, number> | undefined;
-  if (
-    rawWorkouts.weeklyVolumeKgRepsByMuscle !== undefined &&
-    rawWorkouts.weeklyVolumeKgRepsByMuscle !== null &&
-    typeof rawWorkouts.weeklyVolumeKgRepsByMuscle === 'object' &&
-    !Array.isArray(rawWorkouts.weeklyVolumeKgRepsByMuscle)
-  ) {
-    const out: Record<string, number> = {};
-    let kept = 0;
-    for (const [k, v] of Object.entries(
-      rawWorkouts.weeklyVolumeKgRepsByMuscle as Record<string, unknown>,
-    )) {
-      const keyOk = asBoundedString(k, MUSCLE_KEY_MAX_LEN);
-      const valueOk = asFiniteNumber(v);
-      if (keyOk !== undefined && valueOk !== undefined) {
-        out[keyOk] = valueOk;
-        kept++;
-        if (kept >= WEEKLY_VOLUME_MAX_KEYS) break;
-      }
-    }
-    weeklyVolumeKgRepsByMuscle = out;
-  }
-  const recentWorkouts = {
-    last14DaysSessions:
-      asFiniteNumber(rawWorkouts.last14DaysSessions) ?? 0,
-    routineNames,
-    weeklyVolumeKgRepsByMuscle,
-  };
-
-  // ---- recentWeightTrend -------------------------------------------
-  const rawTrend = (i.recentWeightTrend ?? {}) as Record<string, unknown>;
-  const recentWeightTrend = {
-    last14DaysKgChange:
-      asFiniteNumber(rawTrend.last14DaysKgChange) ?? 0,
-  };
-
-  return {
-    profile,
-    targets,
-    recentMeals,
-    recentWorkouts,
-    recentWeightTrend,
-  };
-}
+// PII projection moved to `../_shared/projectContext.ts` (Phase 1.4
+// extract). The import at the top of this file replaces what used
+// to live here as `projectContextSafeSubset` + 6 constants + 4
+// type-guard helpers. No behavior change.

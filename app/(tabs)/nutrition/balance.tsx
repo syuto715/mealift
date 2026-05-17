@@ -33,6 +33,7 @@ import {
   AIError,
 } from '../../../src/infra/services/aiNutritionService';
 import { UpgradePromptModal } from '../../../src/components/subscription/UpgradePromptModal';
+import { AdviceCard } from '../../../src/components/coach/AdviceCard';
 
 type UpgradeTarget = 'plus-meal' | 'plus-extended' | 'pro-ai';
 
@@ -422,6 +423,11 @@ ${nutrientList}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {/* v1.5 Stage 1 Phase 1.4 — weekly coach advice card
+            (ミー先生). Lazy on-mount fetch; Plus+ sees the live
+            content, Free sees a placeholder + ProInlineCTA. */}
+        <AdviceCard scope="weekly" />
+
         {/* ============================================ */}
         {/* GRAPH MODE                                   */}
         {/* ============================================ */}

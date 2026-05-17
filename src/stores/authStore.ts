@@ -222,6 +222,32 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           isLoading: false,
         });
+        // v1.5 Stage 1 Phase 1.4 — clear in-memory caches that
+        // hold per-user content (Codex round 1 Critical: a stale
+        // coach-advice row from User A must not survive into User
+        // B's session on same-process account switch). Lazy
+        // import so the auth boot path (which hydrates BEFORE the
+        // chat/advice stores) doesn't load these modules
+        // prematurely.
+        try {
+          const { useCoachAdviceStore } = await import(
+            './coachAdviceStore'
+          );
+          useCoachAdviceStore.getState().reset();
+        } catch {
+          // No-op: the store hasn't been loaded yet in this
+          // session (e.g. logout from the welcome screen before
+          // visiting a coach surface).
+        }
+        // Phase 1.5 — routineGenStore drafts can leak to User B
+        // across an account switch in the same process (Drafting
+        // 106). Same lazy-import pattern.
+        try {
+          const { useRoutineGenStore } = await import('./routineGenStore');
+          useRoutineGenStore.getState().reset();
+        } catch {
+          // No-op.
+        }
       },
 
       startLocalMode: () => {

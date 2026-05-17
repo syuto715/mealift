@@ -1,0 +1,121 @@
+// v1.5 Stage 1 Phase 1.5 — routineGenerationClient.
+//
+// Client-side wrapper over the `coach-routine` Edge Function.
+// Returns the full generation envelope so the store can persist a
+// draft + later reference it by `generationId` for apply / discard.
+
+import { APP_CONFIG } from '../../constants/config';
+import { supabase } from '../supabase/client';
+import {
+  AIError,
+  type AIErrorCode,
+} from '../services/aiNutritionService';
+import { buildUserContext } from './contextBuilder';
+import type { GeneratedRoutine } from '../../types/routineGeneration';
+
+const COACH_ROUTINE_PATH = 'functions/v1/coach-routine';
+
+export interface RoutineGenerationResponse {
+  generationId: string;
+  generatedRoutine: GeneratedRoutine;
+  status: 'draft' | 'applied' | 'discarded';
+}
+
+async function getAccessToken(): Promise<string> {
+  if (!supabase) {
+    throw new AIError('not_configured', 'サーバー接続が設定されていません', 0);
+  }
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) {
+    throw new AIError('unauthorized', 'ログインが必要です', 401);
+  }
+  return token;
+}
+
+export interface FetchRoutineGenerationOptions {
+  profileId: string;
+  intentText: string;
+  exerciseSlugs: string[];
+  idempotencyKey: string;
+  signal?: AbortSignal;
+}
+
+export async function fetchRoutineGeneration(
+  options: FetchRoutineGenerationOptions,
+): Promise<RoutineGenerationResponse> {
+  const token = await getAccessToken();
+  const context = await buildUserContext(options.profileId, {
+    mealDays: 7,
+    workoutDays: 14,
+  });
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${APP_CONFIG.SUPABASE_URL}/${COACH_ROUTINE_PATH}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'Idempotency-Key': options.idempotencyKey,
+        },
+        body: JSON.stringify({
+          intentText: options.intentText,
+          exerciseSlugs: options.exerciseSlugs,
+          context,
+        }),
+        signal: options.signal,
+      },
+    );
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new AIError('aborted', 'リクエストを中止しました', 0, {
+        cause: e.message,
+      });
+    }
+    throw new AIError(
+      'network_error',
+      'ネットワーク接続を確認してください',
+      0,
+      { cause: e instanceof Error ? e.message : String(e) },
+    );
+  }
+
+  const raw = await response.text();
+  let parsed: unknown = null;
+  try {
+    parsed = raw ? JSON.parse(raw) : null;
+  } catch {
+    parsed = null;
+  }
+  if (!response.ok) {
+    const errObj =
+      parsed && typeof parsed === 'object'
+        ? (parsed as {
+            error?: string;
+            message?: string;
+            details?: Record<string, unknown>;
+          })
+        : {};
+    const code = (errObj.error as AIErrorCode) ?? 'internal_error';
+    const message = errObj.message ?? 'エラーが発生しました';
+    throw new AIError(code, message, response.status, errObj.details);
+  }
+  if (!parsed || typeof parsed !== 'object') {
+    throw new AIError('gemini_error', 'AI応答の形式が不正です', 502);
+  }
+  const obj = parsed as Partial<RoutineGenerationResponse>;
+  if (
+    typeof obj.generationId !== 'string' ||
+    !obj.generatedRoutine ||
+    typeof obj.generatedRoutine !== 'object' ||
+    (obj.status !== 'draft' &&
+      obj.status !== 'applied' &&
+      obj.status !== 'discarded')
+  ) {
+    throw new AIError('gemini_error', 'AI応答の形式が不正です', 502);
+  }
+  return obj as RoutineGenerationResponse;
+}

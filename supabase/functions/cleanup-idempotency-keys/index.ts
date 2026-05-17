@@ -6,11 +6,16 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // Architectural SSoT: docs/plans/v1.5_stage_1_ai_chat_epic.md §5.1
 // retention prose + §10 Phase 1.1 cron job spec.
 //
-// Operation: NULLs `chat_messages.idempotency_key` for rows older
-// than 24h. The partial unique index
-// `chat_messages_idempotency_key_unique WHERE idempotency_key IS
-// NOT NULL` automatically removes NULLed rows from its keyspace,
-// freeing the keys for reuse.
+// Operation: NULLs `idempotency_key` columns on the coach-related
+// tables (`chat_messages`, `routine_generations`) for rows older
+// than 24h. Each table has a partial unique index that drops
+// NULLed rows from the keyspace automatically, freeing the keys
+// for reuse:
+//   - `chat_messages_idempotency_key_unique`
+//     (migration 20260518000000)
+//   - `routine_generations_idempotency_key_unique`
+//     (migration 20260519000000; Phase 1.5 Codex round 2 fix —
+//     coach-routine race-safe ordering at STEP 7)
 //
 // Trigger: hourly cron (pg_cron). Same mechanism as
 // `send-push-notifications`. The cron secret is verified against
@@ -65,22 +70,45 @@ serve(async (req) => {
 
   const cutoffIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  // The partial unique index `where idempotency_key is not null`
-  // means that after this UPDATE, NULLed rows drop out of the
+  // The partial unique indexes `where idempotency_key is not null`
+  // mean that after this UPDATE, NULLed rows drop out of the
   // index. The row itself stays in the table (the message history
-  // is preserved); only the idempotency key is reclaimed.
-  const { count, error } = await admin
+  // / generated routine is preserved); only the idempotency key
+  // is reclaimed.
+  const { count: chatCleared, error: chatError } = await admin
     .from('chat_messages')
     .update({ idempotency_key: null })
     .lt('created_at', cutoffIso)
     .not('idempotency_key', 'is', null)
     .select('id', { count: 'exact', head: true });
 
-  if (error) {
+  if (chatError) {
     return jsonResponse(
       {
         error: 'internal_error',
-        message: `cleanup failed: ${error.message}`,
+        message: `chat_messages cleanup failed: ${chatError.message}`,
+        function_name: FUNCTION_NAME,
+      },
+      500,
+    );
+  }
+
+  // Phase 1.5 Codex round 3 Important fix — the cleanup contract
+  // also covers `routine_generations.idempotency_key` so the new
+  // partial unique index from migration 20260519000000 has the
+  // same 24h retention semantics as `chat_messages`.
+  const { count: routineCleared, error: routineError } = await admin
+    .from('routine_generations')
+    .update({ idempotency_key: null })
+    .lt('created_at', cutoffIso)
+    .not('idempotency_key', 'is', null)
+    .select('id', { count: 'exact', head: true });
+
+  if (routineError) {
+    return jsonResponse(
+      {
+        error: 'internal_error',
+        message: `routine_generations cleanup failed: ${routineError.message}`,
         function_name: FUNCTION_NAME,
       },
       500,
@@ -89,7 +117,8 @@ serve(async (req) => {
 
   return jsonResponse(
     {
-      cleared: count ?? 0,
+      cleared_chat_messages: chatCleared ?? 0,
+      cleared_routine_generations: routineCleared ?? 0,
       cutoff: cutoffIso,
       function_name: FUNCTION_NAME,
     },

@@ -21,6 +21,9 @@ import { spacing } from '../../../src/theme/spacing';
 import { radius } from '../../../src/theme/tokens';
 import { Card, Button, Badge, Modal, Input, SegmentedControl } from '../../../src/components/ui';
 import { VolumeChart } from '../../../src/components/training/VolumeChart';
+import { AdviceCard } from '../../../src/components/coach/AdviceCard';
+import { RoutineGenerationCard } from '../../../src/components/training/RoutineGenerationCard';
+import { useRoutineGenStore } from '../../../src/stores/routineGenStore';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { useSubscription } from '../../../src/hooks/useSubscription';
 import { MUSCLE_GROUPS, MUSCLE_GROUP_MAP } from '../../../src/constants/muscleGroups';
@@ -123,6 +126,16 @@ export default function TrainingScreen() {
       setLoading(false);
     }
   }, [profile]);
+
+  // Phase 1.5 Codex round 1 Important #2 fix — subscribe to the
+  // routine-generation store's `lastAppliedAt` so a successful
+  // Apply from the inline RoutineGenerationCard re-fetches the
+  // routine list immediately (vs. only on next focus event).
+  const lastAppliedAt = useRoutineGenStore((s) => s.lastAppliedAt);
+  useEffect(() => {
+    if (!lastAppliedAt || !profile) return;
+    void loadRoutines();
+  }, [lastAppliedAt, profile, loadRoutines]);
 
   const loadVolumeAnalysis = useCallback(async () => {
     if (!profile) return;
@@ -589,6 +602,18 @@ export default function TrainingScreen() {
             currentWeekSets={currentWeekSets}
           />
         </Card>
+
+        {/* v1.5 Stage 1 Phase 1.4 — weekly coach advice card
+            (ミー先生). Lazy on-mount fetch; Plus+ sees live
+            content, Free sees a placeholder + ProInlineCTA. */}
+        <AdviceCard scope="weekly" />
+
+        {/* v1.5 Stage 1 Phase 1.5 — routine generation card
+            (ミー先生). Plus/Pro can type a free-text intent +
+            generate a single routine to apply; Free sees a
+            ProInlineCTA. Sits below the weekly advice so the
+            "what" (insight) precedes the "how" (action). */}
+        <RoutineGenerationCard />
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
