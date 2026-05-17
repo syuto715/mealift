@@ -114,6 +114,22 @@ class FakeDb {
       this.conversations = this.conversations.filter((r) => r.id !== id);
       return;
     }
+    if (sql.startsWith('UPDATE chat_conversations_local')) {
+      const [archivedAt, updatedAt, id, userId] = params as [
+        string,
+        string,
+        string,
+        string,
+      ];
+      const found = this.conversations.find(
+        (r) => r.id === id && r.user_id === userId,
+      );
+      if (found) {
+        found.archived_at = archivedAt;
+        found.updated_at = updatedAt;
+      }
+      return;
+    }
   }
 
   async getFirstAsync<T>(sql: string, params: unknown[]): Promise<T | null> {
@@ -159,7 +175,9 @@ jest.mock('../../supabase/client', () => ({
 }));
 
 import {
+  archiveConversation,
   countUserMessagesThisMonth,
+  deleteConversation,
   deleteMessage,
   getMessages,
   listConversations,
@@ -391,5 +409,75 @@ describe('chatRepository', () => {
       new Date('2026-05-17T12:00:00.000Z'),
     );
     expect(n).toBe(1);
+  });
+
+  describe('archive / delete (Phase 1.6)', () => {
+    it('archiveConversation returns ok=false when supabase=null (offline-safe)', async () => {
+      await upsertConversation(makeConv({ id: 'c-1' }));
+      mockSupabaseRef.value = null;
+      const result = await archiveConversation('u-1', 'c-1');
+      expect(result.ok).toBe(false);
+      expect(result.errorMessage).toMatch(/オフライン/);
+      // Local row is NOT touched on offline failure.
+      const row = mockFakeDb.conversations.find((c) => c.id === 'c-1');
+      expect(row?.archived_at).toBeNull();
+    });
+
+    it('archiveConversation sets archived_at on Supabase + local mirror', async () => {
+      await upsertConversation(makeConv({ id: 'c-1' }));
+      mockSupabaseRef.value = {
+        from: () => ({
+          update: () => ({
+            eq: () => ({
+              eq: async () => ({ error: null }),
+            }),
+          }),
+        }),
+      };
+      const result = await archiveConversation('u-1', 'c-1');
+      expect(result.ok).toBe(true);
+      const row = mockFakeDb.conversations.find((c) => c.id === 'c-1');
+      expect(typeof row?.archived_at).toBe('string');
+      expect(row?.archived_at).not.toBeNull();
+      mockSupabaseRef.value = null;
+    });
+
+    it('archived row drops out of listConversations (WHERE archived_at IS NULL filter)', async () => {
+      await upsertConversation(makeConv({ id: 'c-active' }));
+      await upsertConversation(
+        makeConv({
+          id: 'c-archived',
+          archivedAt: '2026-05-17T10:00:00.000Z',
+        }),
+      );
+      const rows = await listConversations('u-1');
+      expect(rows.map((r) => r.id)).toEqual(['c-active']);
+    });
+
+    it('deleteConversation returns ok=false when supabase=null', async () => {
+      await upsertConversation(makeConv({ id: 'c-1' }));
+      mockSupabaseRef.value = null;
+      const result = await deleteConversation('u-1', 'c-1');
+      expect(result.ok).toBe(false);
+      // Local row preserved on offline failure.
+      expect(mockFakeDb.conversations).toHaveLength(1);
+    });
+
+    it('deleteConversation removes the row on Supabase + local mirror when online', async () => {
+      await upsertConversation(makeConv({ id: 'c-1' }));
+      mockSupabaseRef.value = {
+        from: () => ({
+          delete: () => ({
+            eq: () => ({
+              eq: async () => ({ error: null }),
+            }),
+          }),
+        }),
+      };
+      const result = await deleteConversation('u-1', 'c-1');
+      expect(result.ok).toBe(true);
+      expect(mockFakeDb.conversations).toHaveLength(0);
+      mockSupabaseRef.value = null;
+    });
   });
 });

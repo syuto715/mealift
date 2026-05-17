@@ -49,6 +49,7 @@ export default function DiagnosticEntry() {
           onPress={() => router.back()}
           accessibilityRole="button"
           accessibilityLabel="戻る"
+          accessibilityHint="コーチタブに戻ります"
           style={styles.backButton}
         >
           <Ionicons
@@ -91,6 +92,7 @@ export default function DiagnosticEntry() {
             onPress={handleStart}
             accessibilityRole="button"
             accessibilityLabel="診断を開始する"
+            accessibilityHint="7 つの質問にお答えいただきます。 所要時間 約 2 分"
             style={[styles.startButton, { backgroundColor: colors.primary }]}
             testID="diagnostic-start-button"
           >

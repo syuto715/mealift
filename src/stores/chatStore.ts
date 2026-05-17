@@ -36,7 +36,9 @@
 import { create } from 'zustand';
 import { router } from 'expo-router';
 import {
+  archiveConversation,
   countUserMessagesThisMonth,
+  deleteConversation,
   deleteMessage,
   getMessages,
   listConversations,
@@ -99,6 +101,18 @@ export interface ChatStoreState {
   abortStream: () => void;
   dismissError: () => void;
   dismissOffline: () => void;
+  /** Phase 1.6 — soft-archive a conversation. Reversible. Removes
+   *  it from the list view but keeps history server-side. */
+  archiveConversation: (args: {
+    userId: string;
+    conversationId: string;
+  }) => Promise<{ ok: boolean; errorMessage?: string }>;
+  /** Phase 1.6 — hard-delete a conversation + cascade messages.
+   *  Irreversible; UI MUST confirm with the user first. */
+  deleteConversation: (args: {
+    userId: string;
+    conversationId: string;
+  }) => Promise<{ ok: boolean; errorMessage?: string }>;
 }
 
 const sharedClient: LLMClient = new GeminiFlashClient();
@@ -517,6 +531,41 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
 
   dismissError: () => set({ error: null }),
   dismissOffline: () => set({ isOffline: false }),
+
+  archiveConversation: async ({ userId, conversationId }) => {
+    const result = await archiveConversation(userId, conversationId);
+    if (result.ok) {
+      set((state) => ({
+        conversations: state.conversations.filter(
+          (c) => c.id !== conversationId,
+        ),
+      }));
+    }
+    return result;
+  },
+
+  deleteConversation: async ({ userId, conversationId }) => {
+    const result = await deleteConversation(userId, conversationId);
+    if (result.ok) {
+      set((state) => ({
+        conversations: state.conversations.filter(
+          (c) => c.id !== conversationId,
+        ),
+        // If the deleted conversation is the currently-active
+        // one, blank out the messages list + active id so the
+        // chat screen doesn't render a dangling pointer.
+        messages:
+          state.activeConversationId === conversationId
+            ? []
+            : state.messages,
+        activeConversationId:
+          state.activeConversationId === conversationId
+            ? null
+            : state.activeConversationId,
+      }));
+    }
+    return result;
+  },
 }));
 
 function toAIError(err: unknown): AIError {

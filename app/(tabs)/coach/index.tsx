@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import {
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -33,6 +34,68 @@ export default function CoachConversationList() {
   const conversations = useChatStore((s) => s.conversations);
   const loadConversations = useChatStore((s) => s.loadConversations);
   const refreshQuotaCount = useChatStore((s) => s.refreshQuotaCount);
+  const archiveConv = useChatStore((s) => s.archiveConversation);
+  const deleteConv = useChatStore((s) => s.deleteConversation);
+
+  // Phase 1.6 — long-press a conversation row to surface a 3-way
+  // action sheet (Archive / Delete / Cancel). Delete prompts a
+  // second confirmation since it's irreversible. Both actions
+  // require online (the repository layer returns
+  // `{ ok: false, errorMessage }` when supabase=null); the
+  // surfaced message hits the user via Alert.
+  const handleConversationLongPress = useCallback(
+    (conv: LocalChatConversation) => {
+      const title = conv.title ?? '名前のない会話';
+      Alert.alert(title, '操作を選択してください', [
+        {
+          text: 'アーカイブ',
+          onPress: async () => {
+            const result = await archiveConv({
+              userId,
+              conversationId: conv.id,
+            });
+            if (!result.ok) {
+              Alert.alert(
+                'アーカイブできませんでした',
+                result.errorMessage ?? '時間をおいて再度お試しください',
+              );
+            }
+          },
+        },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              '会話を削除',
+              '会話のメッセージはすべて削除されます。 元に戻せません。',
+              [
+                { text: 'キャンセル', style: 'cancel' },
+                {
+                  text: '削除する',
+                  style: 'destructive',
+                  onPress: async () => {
+                    const result = await deleteConv({
+                      userId,
+                      conversationId: conv.id,
+                    });
+                    if (!result.ok) {
+                      Alert.alert(
+                        '削除できませんでした',
+                        result.errorMessage ?? '時間をおいて再度お試しください',
+                      );
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+        { text: 'キャンセル', style: 'cancel' },
+      ]);
+    },
+    [userId, archiveConv, deleteConv],
+  );
 
   const quota = useAiCoachChatQuota();
   const sub = useSubscription();
@@ -58,8 +121,11 @@ export default function CoachConversationList() {
     <TouchableOpacity
       style={[styles.row, { borderColor: colors.border }]}
       onPress={() => router.push(`/(tabs)/coach/${item.id}`)}
+      onLongPress={() => handleConversationLongPress(item)}
+      delayLongPress={400}
       accessibilityRole="button"
       accessibilityLabel={item.title ?? '会話を開く'}
+      accessibilityHint="長押しでアーカイブ・削除メニューを開きます"
       testID={`conversation-row-${item.id}`}
     >
       <Ionicons
@@ -94,6 +160,7 @@ export default function CoachConversationList() {
           onPress={handleStartNew}
           accessibilityRole="button"
           accessibilityLabel="新しい会話を始める"
+          accessibilityHint="ミー先生と新しい会話を開始します"
           testID="coach-start-new-button"
         >
           <Ionicons name="add" size={20} color="#FFFFFF" />
@@ -127,6 +194,7 @@ export default function CoachConversationList() {
         onPress={() => router.push('/(tabs)/coach/diagnostic')}
         accessibilityRole="button"
         accessibilityLabel="ミー先生に診断してもらう"
+        accessibilityHint="質問に答えると、 オリジナルのルーティンを生成します"
         testID="coach-diagnostic-entry"
       >
         <Ionicons
@@ -173,6 +241,7 @@ export default function CoachConversationList() {
               onPress={handleStartNew}
               accessibilityRole="button"
               accessibilityLabel="新しい会話を始める"
+              accessibilityHint="ミー先生と最初の会話を開始します"
             >
               <Ionicons name="add" size={20} color="#FFFFFF" />
               <Text style={styles.newButtonLabel}>新しい会話を始める</Text>

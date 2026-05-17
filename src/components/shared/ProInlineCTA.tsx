@@ -67,6 +67,7 @@ export function ProInlineCTA({
         ]}
         accessibilityRole="button"
         accessibilityLabel={`${label}。 プラン画面を開く。`}
+        accessibilityHint="サブスクリプション設定画面に移動します"
         testID="pro-inline-cta-card"
       >
         {/* Codex pass 1 Important — sparkles icon (decorative, 16px)
@@ -95,6 +96,7 @@ export function ProInlineCTA({
       style={styles.link}
       accessibilityRole="button"
       accessibilityLabel={`${label}。 プラン画面を開く。`}
+      accessibilityHint="サブスクリプション設定画面に移動します"
       testID="pro-inline-cta-link"
     >
       {/* Codex pass 1 Important — link text uses colors.proText

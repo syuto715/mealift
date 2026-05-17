@@ -153,6 +153,79 @@ export async function upsertMessage(msg: LocalChatMessage): Promise<void> {
   );
 }
 
+/** Soft-archive a conversation: sets `archived_at = now()` on
+ *  Supabase (SSoT) first, then mirrors locally. Reversible —
+ *  archived conversations stay in the row store but drop out of
+ *  the default `listConversations` view (which filters
+ *  `WHERE archived_at IS NULL`).
+ *
+ *  Phase 1.6 — Drafting 102 + 103 application: the supabase-js
+ *  call's `{ error }` is checked, the local mirror is only
+ *  touched on Supabase success, and an offline state returns
+ *  `{ ok: false, errorMessage }` so the UI can surface it
+ *  instead of silently mutating local state. */
+export async function archiveConversation(
+  userId: string,
+  conversationId: string,
+): Promise<{ ok: boolean; errorMessage?: string }> {
+  if (!supabase) {
+    return {
+      ok: false,
+      errorMessage: 'オフラインのためアーカイブできません',
+    };
+  }
+  const nowIso = new Date().toISOString();
+  const { error: supabaseError } = await supabase
+    .from('chat_conversations')
+    .update({ archived_at: nowIso, updated_at: nowIso })
+    .eq('id', conversationId)
+    .eq('user_id', userId);
+  if (supabaseError) {
+    return { ok: false, errorMessage: supabaseError.message };
+  }
+  const db = await getDatabase();
+  await db.runAsync(
+    `UPDATE chat_conversations_local
+       SET archived_at = ?, updated_at = ?, cached_at = datetime('now')
+     WHERE id = ? AND user_id = ?`,
+    [nowIso, nowIso, conversationId, userId],
+  );
+  return { ok: true };
+}
+
+/** Hard-delete a conversation + cascade-delete its messages on
+ *  Supabase, then mirror locally. Irreversible — the server-side
+ *  `chat_messages.conversation_id FK ON DELETE CASCADE` (Phase
+ *  1.1 migration) handles the message cleanup automatically. */
+export async function deleteConversation(
+  userId: string,
+  conversationId: string,
+): Promise<{ ok: boolean; errorMessage?: string }> {
+  if (!supabase) {
+    return {
+      ok: false,
+      errorMessage: 'オフラインのため削除できません',
+    };
+  }
+  const { error: supabaseError } = await supabase
+    .from('chat_conversations')
+    .delete()
+    .eq('id', conversationId)
+    .eq('user_id', userId);
+  if (supabaseError) {
+    return { ok: false, errorMessage: supabaseError.message };
+  }
+  const db = await getDatabase();
+  // Local cascade — Phase 1.1 v31 migration declared the same FK
+  // ON DELETE CASCADE on chat_messages_local, so the messages
+  // disappear automatically once the parent row goes.
+  await db.runAsync(
+    `DELETE FROM chat_conversations_local WHERE id = ? AND user_id = ?`,
+    [conversationId, userId],
+  );
+  return { ok: true };
+}
+
 export async function deleteMessage(messageId: string): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(

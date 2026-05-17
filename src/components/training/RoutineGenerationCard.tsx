@@ -150,8 +150,25 @@ export function RoutineGenerationCard({
 
   const handleDiscard = useCallback(() => {
     if (!draft) return;
-    void discardDraft({ userId, generationId: draft.id });
-    setIntentText('');
+    // Phase 1.6 Codex round 1 Important fix — destructive action
+    // gets a confirm dialog before clearing. The manual dogfood
+    // checklist's "Discard prompts before clearing" item is now
+    // accurate.
+    Alert.alert(
+      '下書きを破棄しますか',
+      `「${draft.generatedRoutine.routineName}」 を破棄します。 元に戻せません。`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '破棄する',
+          style: 'destructive',
+          onPress: () => {
+            void discardDraft({ userId, generationId: draft.id });
+            setIntentText('');
+          },
+        },
+      ],
+    );
   }, [draft, userId, discardDraft]);
 
   const handleRetry = useCallback(() => {
@@ -233,6 +250,8 @@ export function RoutineGenerationCard({
             onPress={handleGenerate}
             accessibilityRole="button"
             accessibilityLabel="ルーティンを生成"
+            accessibilityHint="入力した意図に合わせて、 ミー先生がルーティンを設計します"
+            accessibilityState={{ disabled: !intentText.trim() }}
             disabled={!intentText.trim()}
             style={[
               styles.primaryButton,
@@ -304,6 +323,7 @@ export function RoutineGenerationCard({
               onPress={handleDiscard}
               accessibilityRole="button"
               accessibilityLabel="破棄"
+              accessibilityHint="破棄確認を表示します"
               style={[
                 styles.secondaryButton,
                 { borderColor: colors.border },
@@ -320,6 +340,7 @@ export function RoutineGenerationCard({
               onPress={handleApply}
               accessibilityRole="button"
               accessibilityLabel="このルーティンを適用"
+              accessibilityHint="生成されたルーティンをトレーニングメニューに追加します"
               style={[styles.primaryButton, { backgroundColor: colors.primary }]}
               testID="routine-gen-apply-button"
             >
@@ -339,6 +360,7 @@ export function RoutineGenerationCard({
             onPress={handleRetry}
             accessibilityRole="button"
             accessibilityLabel="再試行"
+            accessibilityHint="ルーティン生成をもう一度試します"
             style={[styles.secondaryButton, { borderColor: colors.primary }]}
             testID="routine-gen-retry-button"
           >

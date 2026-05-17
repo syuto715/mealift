@@ -101,6 +101,9 @@ export function AdviceCard({ scope, testID }: Props): React.ReactElement | null 
             borderColor: colors.border,
           },
         ]}
+        accessible
+        accessibilityRole="summary"
+        accessibilityLabel={`ミー先生からの${scopeLabel}のアドバイス。 Plus プランで利用可能`}
         testID={testID ?? 'advice-card-locked'}
       >
         <View style={styles.headerRow}>
@@ -145,6 +148,13 @@ export function AdviceCard({ scope, testID }: Props): React.ReactElement | null 
           borderColor: colors.border,
         },
       ]}
+      accessible
+      accessibilityRole="summary"
+      accessibilityLabel={`ミー先生からの${scopeLabel}のアドバイス`}
+      accessibilityState={{
+        busy: cardState === 'loading',
+        disabled: cardState === 'error',
+      }}
       testID={testID ?? `advice-card-${scope}`}
     >
       <View style={styles.headerRow}>
@@ -175,6 +185,7 @@ export function AdviceCard({ scope, testID }: Props): React.ReactElement | null 
             onPress={handleRetry}
             accessibilityRole="button"
             accessibilityLabel="再試行"
+            accessibilityHint="アドバイスをもう一度取得します"
             style={[styles.retryButton, { borderColor: colors.primary }]}
             testID="advice-card-retry"
           >

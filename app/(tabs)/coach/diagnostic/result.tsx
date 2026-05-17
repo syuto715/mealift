@@ -161,24 +161,40 @@ export default function DiagnosticResult() {
 
   const handleDiscard = useCallback(async () => {
     if (!draft) return;
-    // Codex round 1 Important fix + round 2 follow-up —
-    // `discardDraft` doesn't throw on failure (it sets
-    // `routineGenStore.error` instead). After awaiting, we
-    // inspect the store's latest error reference: if the
-    // discard FAILED, we surface the message + stay on this
-    // screen so the user can retry / close manually. If it
-    // SUCCEEDED, we clear the wizard + navigate.
-    await discardDraft({ userId, generationId: draft.id });
-    const storeError = useRoutineGenStore.getState().error;
-    if (storeError) {
-      Alert.alert(
-        '破棄に失敗しました',
-        storeError.message,
-      );
-      return;
-    }
-    if (userId) clearWizard(userId);
-    router.replace('/(tabs)/coach');
+    // Phase 1.6 round 2 Important fix — destructive action gets
+    // an `Alert.alert` confirm dialog matching the
+    // RoutineGenerationCard discard pattern. The user can back
+    // out before the irreversible `routine_generations.status =
+    // 'discarded'` write hits Supabase.
+    Alert.alert(
+      '下書きを破棄しますか',
+      `「${draft.generatedRoutine.routineName}」 を破棄します。 元に戻せません。`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '破棄する',
+          style: 'destructive',
+          onPress: async () => {
+            // Codex round 1 Important fix + round 2 follow-up —
+            // `discardDraft` doesn't throw on failure (it sets
+            // `routineGenStore.error` instead). After awaiting,
+            // we inspect the store's latest error reference: if
+            // the discard FAILED, we surface the message + stay
+            // on this screen so the user can retry / close
+            // manually. If it SUCCEEDED, we clear the wizard +
+            // navigate.
+            await discardDraft({ userId, generationId: draft.id });
+            const storeError = useRoutineGenStore.getState().error;
+            if (storeError) {
+              Alert.alert('破棄に失敗しました', storeError.message);
+              return;
+            }
+            if (userId) clearWizard(userId);
+            router.replace('/(tabs)/coach');
+          },
+        },
+      ],
+    );
   }, [draft, userId, discardDraft, clearWizard]);
 
   // Codex round 1 Important fix — the top-bar close button now
@@ -218,6 +234,11 @@ export default function DiagnosticResult() {
           onPress={handleClose}
           accessibilityRole="button"
           accessibilityLabel="閉じる"
+          accessibilityHint={
+            draft && draft.status === 'draft'
+              ? '閉じる前に破棄確認を表示します'
+              : '診断結果を閉じます'
+          }
           style={styles.backButton}
           testID="diagnostic-result-close"
         >
@@ -254,6 +275,7 @@ export default function DiagnosticResult() {
             onPress={() => router.replace('/(tabs)/coach/diagnostic')}
             accessibilityRole="button"
             accessibilityLabel="最初からやり直す"
+            accessibilityHint="診断を最初の質問からやり直します"
             style={[styles.secondaryButton, { borderColor: colors.primary }]}
           >
             <Text style={[styles.secondaryButtonLabel, { color: colors.primary }]}>
@@ -299,6 +321,7 @@ export default function DiagnosticResult() {
             onPress={handleDiscard}
             accessibilityRole="button"
             accessibilityLabel="破棄"
+            accessibilityHint="破棄確認を表示します"
             disabled={isApplying}
             style={[styles.secondaryButton, { borderColor: colors.border }]}
             testID="diagnostic-result-discard"
@@ -311,6 +334,7 @@ export default function DiagnosticResult() {
             onPress={handleApply}
             accessibilityRole="button"
             accessibilityLabel="このルーティンを適用"
+            accessibilityHint="生成されたルーティンをトレーニングメニューに追加します"
             disabled={isApplying}
             style={[
               styles.primaryButton,

@@ -193,6 +193,7 @@ export default function CoachConversationScreen() {
           onPress={() => router.back()}
           accessibilityRole="button"
           accessibilityLabel="戻る"
+          accessibilityHint="会話一覧に戻ります"
           style={styles.backButton}
           testID="coach-back-button"
         >
@@ -230,6 +231,7 @@ export default function CoachConversationScreen() {
           onPress={dismissOffline}
           accessibilityRole="button"
           accessibilityLabel="オフライン通知を閉じる"
+          accessibilityHint="この通知を閉じます"
           style={[styles.banner, { backgroundColor: colors.warning + '22' }]}
           testID="offline-banner"
         >
@@ -249,6 +251,7 @@ export default function CoachConversationScreen() {
           onPress={dismissError}
           accessibilityRole="button"
           accessibilityLabel="エラー通知を閉じる"
+          accessibilityHint="この通知を閉じます"
           style={[styles.banner, { backgroundColor: colors.error + '22' }]}
           testID="error-banner"
         >
@@ -317,6 +320,7 @@ export default function CoachConversationScreen() {
               onPress={abortStream}
               accessibilityRole="button"
               accessibilityLabel="停止"
+              accessibilityHint="進行中の応答を中止します"
               style={[styles.sendButton, { backgroundColor: colors.error }]}
               testID="coach-abort-button"
             >
@@ -327,6 +331,15 @@ export default function CoachConversationScreen() {
               onPress={handleSend}
               accessibilityRole="button"
               accessibilityLabel="送信"
+              accessibilityHint={
+                isOffline
+                  ? 'ネット接続を確認してください'
+                  : quota.isExhausted
+                    ? '今月のチャット上限に達しました'
+                    : !draft.trim()
+                      ? 'メッセージを入力してください'
+                      : 'ミー先生にメッセージを送信します'
+              }
               accessibilityState={{ disabled: sendDisabled }}
               style={[
                 styles.sendButton,

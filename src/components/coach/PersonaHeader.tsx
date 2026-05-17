@@ -22,7 +22,7 @@ export function PersonaHeader({
     <View
       style={styles.container}
       accessibilityRole="header"
-      accessibilityLabel="ミー先生、 AI コーチ"
+      accessibilityLabel="ミー先生 AI コーチ"
       testID={testID}
     >
       <Text style={[styles.persona, { color: colors.textPrimary }]}>

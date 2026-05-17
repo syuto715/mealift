@@ -62,10 +62,15 @@ export function MessageBubble({
           { backgroundColor: bubbleBg },
           isUser ? styles.bubbleUser : styles.bubbleAssistant,
         ]}
+        accessible
         accessibilityRole="text"
         accessibilityLabel={`${
           isUser ? 'あなた' : 'ミー先生'
-        }: ${message.content || (isInFlight ? '応答中' : '')}`}
+        }: ${message.content || (isInFlight ? '応答を生成中' : '')}`}
+        accessibilityState={{
+          busy: isInFlight,
+          disabled: message.status === 'error',
+        }}
       >
         {message.content.length > 0 && (
           <Text style={[styles.text, { color: textColor }]}>
@@ -94,6 +99,7 @@ export function MessageBubble({
           onPress={() => onRegenerate(message.id)}
           accessibilityRole="button"
           accessibilityLabel="再生成"
+          accessibilityHint="このメッセージの応答をもう一度生成します"
           testID={`regenerate-${message.id}`}
           style={styles.regenButton}
         >

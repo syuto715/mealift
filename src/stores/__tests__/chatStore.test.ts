@@ -12,8 +12,9 @@
 //      counter).
 //   5. error event surfaces AIError + flips assistant row to
 //      status='error'.
-//   6. aborted event flips assistant row to 'partial' and sets
-//      isOffline=true (reactive offline detection).
+//   6. aborted event flips assistant row to 'partial' but does
+//      NOT set isOffline=true (Codex round 1 Important #2 fix;
+//      user-initiated abort isn't a connectivity event).
 //   7. regenerateMessage deletes the prior assistant row + re-runs
 //      sendMessage with a NEW idempotencyKey.
 //   8. AbortController.abort() flows through abortStream().

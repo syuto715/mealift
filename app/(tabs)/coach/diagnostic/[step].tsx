@@ -136,6 +136,7 @@ export default function DiagnosticStep() {
             onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="戻る"
+            accessibilityHint="コーチタブに戻ります"
             style={[styles.secondaryButton, { borderColor: colors.border }]}
           >
             <Text style={[styles.secondaryButtonLabel, { color: colors.textSecondary }]}>
@@ -161,6 +162,7 @@ export default function DiagnosticStep() {
             onPress={() => router.replace('/(tabs)/coach/diagnostic')}
             accessibilityRole="button"
             accessibilityLabel="最初に戻る"
+            accessibilityHint="診断の最初の質問に戻ります"
             style={[styles.secondaryButton, { borderColor: colors.border }]}
           >
             <Text style={[styles.secondaryButtonLabel, { color: colors.textSecondary }]}>
@@ -182,6 +184,7 @@ export default function DiagnosticStep() {
           onPress={() => router.back()}
           accessibilityRole="button"
           accessibilityLabel="戻る"
+          accessibilityHint="前の質問に戻ります"
           style={styles.backButton}
           testID="diagnostic-back-button"
         >
@@ -222,6 +225,11 @@ export default function DiagnosticStep() {
           onPress={handleAdvance}
           accessibilityRole="button"
           accessibilityLabel={isLastStep ? '送信する' : '次へ'}
+          accessibilityHint={
+            isLastStep
+              ? '回答を送信してルーティンを生成します'
+              : '次の質問へ進みます'
+          }
           accessibilityState={{ disabled: !canAdvance || submitting }}
           disabled={!canAdvance || submitting}
           style={[
@@ -284,6 +292,9 @@ function QuestionInput({
               onPress={() => onChange(opt.value)}
               accessibilityRole="radio"
               accessibilityLabel={opt.label}
+              accessibilityHint={
+                isSelected ? '選択中の項目です' : 'この項目を選択します'
+              }
               accessibilityState={{ selected: isSelected }}
               style={[
                 inputStyles.optionRow,
@@ -333,6 +344,11 @@ function QuestionInput({
               }}
               accessibilityRole="checkbox"
               accessibilityLabel={opt.label}
+              accessibilityHint={
+                isSelected
+                  ? '選択中の項目です。 タップで解除'
+                  : 'この項目を選択します'
+              }
               accessibilityState={{ checked: isSelected }}
               style={[
                 inputStyles.optionRow,
@@ -378,6 +394,7 @@ function QuestionInput({
           onPress={() => onChange(Math.max(min, current - 1))}
           accessibilityRole="button"
           accessibilityLabel="減らす"
+          accessibilityHint="値を 1 つ減らします"
           style={[
             inputStyles.numberStepButton,
             { backgroundColor: colors.surfaceSecondary },
@@ -403,6 +420,7 @@ function QuestionInput({
           onPress={() => onChange(Math.min(max, current + 1))}
           accessibilityRole="button"
           accessibilityLabel="増やす"
+          accessibilityHint="値を 1 つ増やします"
           style={[
             inputStyles.numberStepButton,
             { backgroundColor: colors.surfaceSecondary },
