@@ -268,6 +268,66 @@ describe('subscriptionService — production gating (__DEV__ = false)', () => {
       expect(hasFeature('oneRepMaxRecommendation', 'pro')).toBe(true);
     });
   });
+
+  describe('aiCoachChat / aiCoachChatMonthlyLimit (v1.5 Stage 1 Phase 1.2)', () => {
+    // Numbers must stay in lockstep with
+    // supabase/functions/coach-chat/index.ts MONTHLY_QUOTA — the EF
+    // is the authoritative gate; this flag drives the client's
+    // "今月の残り N/M" badge.
+    it('grants chat access at every tier', () => {
+      expect(getFeaturesForTier('free').aiCoachChat).toBe(true);
+      expect(getFeaturesForTier('plus').aiCoachChat).toBe(true);
+      expect(getFeaturesForTier('pro').aiCoachChat).toBe(true);
+    });
+
+    it('matches the per-tier monthly quota the EF enforces', () => {
+      expect(getFeaturesForTier('free').aiCoachChatMonthlyLimit).toBe(5);
+      expect(getFeaturesForTier('plus').aiCoachChatMonthlyLimit).toBe(200);
+      // Pro is unlimited; -1 is the sentinel used by the EF.
+      expect(getFeaturesForTier('pro').aiCoachChatMonthlyLimit).toBe(-1);
+    });
+
+    it('aiCoachGeneration / Limit pair locks free out (Decision 2)', () => {
+      expect(getFeaturesForTier('free').aiCoachGeneration).toBe(false);
+      expect(getFeaturesForTier('plus').aiCoachGeneration).toBe(true);
+      expect(getFeaturesForTier('pro').aiCoachGeneration).toBe(true);
+      expect(getFeaturesForTier('free').aiCoachGenerationMonthlyLimit).toBe(0);
+      expect(getFeaturesForTier('plus').aiCoachGenerationMonthlyLimit).toBe(5);
+      expect(getFeaturesForTier('pro').aiCoachGenerationMonthlyLimit).toBe(20);
+    });
+
+    it('aiCoachAdviceWeekly is Plus+, aiCoachAdviceDaily is Pro-only', () => {
+      expect(getFeaturesForTier('free').aiCoachAdviceWeekly).toBe(false);
+      expect(getFeaturesForTier('plus').aiCoachAdviceWeekly).toBe(true);
+      expect(getFeaturesForTier('pro').aiCoachAdviceWeekly).toBe(true);
+      expect(getFeaturesForTier('free').aiCoachAdviceDaily).toBe(false);
+      expect(getFeaturesForTier('plus').aiCoachAdviceDaily).toBe(false);
+      expect(getFeaturesForTier('pro').aiCoachAdviceDaily).toBe(true);
+    });
+
+    it('FEATURE_MATRIX treats trial as Plus-equivalent for all four boolean coach flags', () => {
+      expect(hasFeature('aiCoachChat', 'trial')).toBe(true);
+      expect(hasFeature('aiCoachGeneration', 'trial')).toBe(true);
+      expect(hasFeature('aiCoachAdviceWeekly', 'trial')).toBe(true);
+      // Daily is Pro-only; trial = Plus-equivalent does NOT grant
+      // Pro features (the I3 resolution is Plus-equivalent, not
+      // Pro-equivalent).
+      expect(hasFeature('aiCoachAdviceDaily', 'trial')).toBe(false);
+    });
+
+    it('drift guard — boolean and number stay in lockstep for chat + generation', () => {
+      const tiers: PlanTier[] = ['free', 'plus', 'pro'];
+      for (const t of tiers) {
+        const f = getFeaturesForTier(t);
+        // Chat: boolean is always true, but the limit varies (-1
+        // for unlimited, >0 for capped). Use limit !== 0 as the
+        // "access" signal.
+        expect(f.aiCoachChat).toBe(f.aiCoachChatMonthlyLimit !== 0);
+        // Generation: boolean true ↔ limit > 0.
+        expect(f.aiCoachGeneration).toBe(f.aiCoachGenerationMonthlyLimit > 0);
+      }
+    });
+  });
 });
 
 describe('subscriptionService — dev mode (__DEV__ = true)', () => {

@@ -97,6 +97,26 @@ export interface FeatureFlags {
   // assignment to avoid collision. Build 16+ TODO 25 tracks the
   // letter table reorganization.
   muscleHeatmap: boolean;
+  // v1.5 Stage 1 Phase 1.2 — AI Coach (ミー先生) surfaces.
+  //
+  // §9.1 tier table:
+  //   aiCoachChat            : free + plus + pro (true everywhere)
+  //   aiCoachChatMonthlyLimit: 5 / 200 / -1 (unlimited)
+  //   aiCoachGeneration      : false / true  / true
+  //   aiCoachGenerationMonthlyLimit: 0 / 5 / 20
+  //   aiCoachAdviceWeekly    : false / true  / true
+  //   aiCoachAdviceDaily     : false / false / true
+  //
+  // Trial = Plus-equivalent for all six flags (I3 resolution,
+  // §2.6). Server-side EFs (coach-chat etc.) duplicate the limit
+  // constants in their own `MONTHLY_QUOTA` table; keep them in
+  // lockstep — drift means UI shows a quota the server rejects.
+  aiCoachChat: boolean;
+  aiCoachChatMonthlyLimit: number;
+  aiCoachGeneration: boolean;
+  aiCoachGenerationMonthlyLimit: number;
+  aiCoachAdviceWeekly: boolean;
+  aiCoachAdviceDaily: boolean;
 }
 
 const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
@@ -142,6 +162,12 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     autoDeload: false,
     periodizationPresets: false,
     muscleHeatmap: false,
+    aiCoachChat: true,
+    aiCoachChatMonthlyLimit: 5,
+    aiCoachGeneration: false,
+    aiCoachGenerationMonthlyLimit: 0,
+    aiCoachAdviceWeekly: false,
+    aiCoachAdviceDaily: false,
   },
   plus: {
     maxRoutines: Infinity,
@@ -176,6 +202,12 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     autoDeload: false,
     periodizationPresets: false,
     muscleHeatmap: false,
+    aiCoachChat: true,
+    aiCoachChatMonthlyLimit: 200,
+    aiCoachGeneration: true,
+    aiCoachGenerationMonthlyLimit: 5,
+    aiCoachAdviceWeekly: true,
+    aiCoachAdviceDaily: false,
   },
   pro: {
     maxRoutines: Infinity,
@@ -210,6 +242,12 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     autoDeload: true,
     periodizationPresets: true,
     muscleHeatmap: true,
+    aiCoachChat: true,
+    aiCoachChatMonthlyLimit: -1,
+    aiCoachGeneration: true,
+    aiCoachGenerationMonthlyLimit: 20,
+    aiCoachAdviceWeekly: true,
+    aiCoachAdviceDaily: true,
   },
 };
 
@@ -334,6 +372,15 @@ export interface PlanSnapshot {
   trialDaysRemaining: number | null;
   planExpiresAt: string | null;
   billingCycle: Profile['planBillingCycle'];
+  // v1.5 Stage 1 Phase 1.2 — chat quota limit for the user's
+  // current tier. -1 means unlimited (Pro). The "remaining"
+  // counter is surfaced via `useAiCoachChatQuota()` instead of
+  // here: remaining depends on the local chat-mirror message
+  // count, which makes it reactive state rather than a pure
+  // derivation of the Profile row. Keeping the limit here lets
+  // a non-React caller (server log narration, etc.) recover the
+  // tier cap without re-deriving the tier.
+  aiCoachChatMonthlyLimit: number;
 }
 
 export function derivePlanSnapshot(
@@ -355,6 +402,7 @@ export function derivePlanSnapshot(
       trialDaysRemaining: null,
       planExpiresAt,
       billingCycle,
+      aiCoachChatMonthlyLimit: PLAN_FEATURES[tier].aiCoachChatMonthlyLimit,
     };
   }
 
@@ -376,6 +424,10 @@ export function derivePlanSnapshot(
           trialDaysRemaining: daysLeft,
           planExpiresAt: null,
           billingCycle: null,
+          // Trial maps to Plus-equivalent feature access (I3
+          // resolution, §2.6). Use the Plus tier's cap so the
+          // counter matches what `hasFeature()` reports.
+          aiCoachChatMonthlyLimit: PLAN_FEATURES.plus.aiCoachChatMonthlyLimit,
         };
       }
     }
@@ -393,5 +445,6 @@ export function derivePlanSnapshot(
     trialDaysRemaining: 0,
     planExpiresAt,
     billingCycle,
+    aiCoachChatMonthlyLimit: PLAN_FEATURES.free.aiCoachChatMonthlyLimit,
   };
 }

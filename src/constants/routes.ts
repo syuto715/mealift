@@ -30,6 +30,8 @@ export const ROUTES = {
   TRAINING: '/(tabs)/training' as const,
   NUTRITION: '/(tabs)/nutrition' as const,
   PROGRESS: '/(tabs)/progress' as const,
+  COACH: '/(tabs)/coach' as const,
+  COACH_NEW: '/(tabs)/coach/new' as const,
   SETTINGS: '/(tabs)/settings' as const,
 
   // Settings sub-routes — currently only the Pro CTA target
