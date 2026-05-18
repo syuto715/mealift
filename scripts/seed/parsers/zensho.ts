@@ -19,8 +19,12 @@
 
 import type { MenuItemRecord } from '../types';
 
-// 認識する size labels (Zensho 牛丼 + 寿司 + サイドメニュー共通)
+// 認識する size labels (Zensho 牛丼 + 寿司 + サイドメニュー共通)。
+// `小盛` は nakau の最小サイズ (Phase 2.2b Sprint 2A.2 で追加);
+// nakau は ミニ を持たず、 (小盛, 並盛, 大盛) の 3-size chain が
+// 主流。 sukiya は ミニ / 中盛 / メガ / N倍盛 を併用。
 const SIZE_LABELS = [
+  '小盛',
   'ミニ',
   '並盛',
   '中盛',
@@ -36,7 +40,7 @@ const SIZE_LABELS = [
 // "ミニ 488 15.8 16.1 69.8 2.8" を捕捉。
 // 数値は整数 (kcal) または 小数点付き (g)。
 const SIZE_ROW_REGEX =
-  /^(ミニ|並盛|中盛|大盛|特盛|メガ|[2-5]倍盛|[２-５]倍盛)\s+(\d+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)$/;
+  /^(小盛|ミニ|並盛|中盛|大盛|特盛|メガ|[2-5]倍盛|[２-５]倍盛)\s+(\d+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)$/;
 
 export interface ZenshoSizeRow {
   size: string;

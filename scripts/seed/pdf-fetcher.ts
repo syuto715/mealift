@@ -45,8 +45,36 @@ function pickPdfUrl(entity: ResearchEntity): string | null {
   return pdf ?? null;
 }
 
+// User-Agent header — some chain CDNs (Zensho 等) return 403 to
+// the default Node fetch UA; identify as Mealift Bot so the
+// requests are traceable + permitted by chain robots.txt review.
+const USER_AGENT
+  = 'Mealift Bot v1.5.0 Phase 2.2b (+https://github.com/syuto715/bodyforge)';
+
+// Map Zensho CDN paths to brand domains for Referer.
+function inferReferer(url: string): string | null {
+  if (url.includes('zensho.co.jp/materials/sukiya/')) return 'https://www.sukiya.jp/';
+  if (url.includes('zensho.co.jp/materials/nakau/')) return 'https://www.nakau.co.jp/';
+  if (url.includes('zensho.co.jp/materials/lotteria/')) return 'https://www.lotteria.jp/';
+  if (url.includes('zensho.co.jp/materials/hama-sushi/')) return 'https://www.hamazushi.com/';
+  return null;
+}
+
 export async function extractPdfText(url: string): Promise<{ text: string; pages: number }> {
-  const parser = new PDFParse({ url });
+  // Two-step: fetch via Node fetch with explicit UA + Referer →
+  // Buffer → PDFParse from data. Some chain CDNs (Zensho 等) block
+  // direct CDN access — sending the chain's own domain as Referer
+  // bypasses the basic check. Inferred from URL pattern: the
+  // Referer is the chain's HTML hub on the same brand domain.
+  const referer = inferReferer(url);
+  const headers: Record<string, string> = { 'User-Agent': USER_AGENT };
+  if (referer) headers.Referer = referer;
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} ${res.statusText} fetching ${url}`);
+  }
+  const arrayBuffer = await res.arrayBuffer();
+  const parser = new PDFParse({ data: new Uint8Array(arrayBuffer) });
   const result = await parser.getText();
   return {
     text: result.text,
