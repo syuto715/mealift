@@ -1,0 +1,586 @@
+{
+  "version": 1,
+  "generated_at": "2026-05-18",
+  "scope": "v1.5.0 Stage 2 MVP — 30 dining + 6 convenience = 36 entities",
+  "legal_principles": [
+    "公開情報限定 (公式企業ドメイン + 公式 CDN のみ)",
+    "出典明示 (source_url + last_fetched_at を 全 record に embed)",
+    "推定値明示 (source: ai_estimated / industry_standard を UI で区別表示)",
+    "専門医 disclaimer (アレルゲン UI 必須表示)"
+  ],
+  "difficulty_distribution": {
+    "easy": 13,
+    "medium": 14,
+    "hard": 7,
+    "blocked": 2
+  },
+  "preflight_required": [
+    "seicomart: sitemap / robots.txt 再確認 (blocked → hard 格上げ可能性)",
+    "daily_yamazaki: sitemap / robots.txt 再確認 (blocked → hard 格上げ可能性)",
+    "skylark / saizeriya / starbucks: Playwright render で DOM 構造確認、 難易度再判定"
+  ],
+  "entities": [
+    {
+      "chain_slug": "mcdonalds",
+      "chain_name": "マクドナルド",
+      "restaurant_type": "dining",
+      "category": "fast_food",
+      "official_urls": [
+        "https://www.mcdonalds.co.jp/quality/allergy_Nutrition/",
+        "https://www.mcdonalds.co.jp/quality/allergy_Nutrition/nutrient/",
+        "https://www.mcdonalds.co.jp/quality/allergy_Nutrition/allergy/"
+      ],
+      "data_format": "HTML 一覧 + 商品個別 HTML",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "8品目+20品目+PFC+食塩。 別ツール「栄養バランスチェック」は厚労省『日本人の食事摂取基準(2025年版)』ベース"
+    },
+    {
+      "chain_slug": "mos_burger",
+      "chain_name": "モスバーガー",
+      "restaurant_type": "dining",
+      "category": "fast_food",
+      "official_urls": [
+        "https://www.mos.jp/menu/nutrition/",
+        "https://www.mos.jp/menu/pdf/nutrition.pdf",
+        "https://www.mos.jp/omoi/quality/product_info/"
+      ],
+      "data_format": "HTML 一覧 + 統合 PDF + 個別 HTML",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "PDF ヘッダー記載の更新日 2026/5/7 (検査機関分析値ベース)"
+    },
+    {
+      "chain_slug": "lotteria",
+      "chain_name": "ロッテリア",
+      "restaurant_type": "dining",
+      "category": "fast_food",
+      "official_urls": [
+        "https://www.lotteria.jp/quality/eiyou/",
+        "https://images.zensho.co.jp/materials/lotteria/allergen/nutrition.pdf",
+        "https://images.zensho.co.jp/materials/lotteria/allergen/allergy.pdf"
+      ],
+      "data_format": "HTML hub + Zensho CDN PDF",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "PDF 冒頭「更新日：2026.3.18」。 schema は すき家/なか卯/はま寿司/ゼッテリア と共通"
+    },
+    {
+      "chain_slug": "kfc",
+      "chain_name": "KFC 日本ケンタッキー",
+      "restaurant_type": "dining",
+      "category": "fast_food",
+      "official_urls": [
+        "https://www.kfc.co.jp/food_information",
+        "https://assets.ctfassets.net/jax7ylg56usf/3zgh9vHAvLBwmyuhXQaJOO/c1380188d778ace74fdf63d23d7a06bd/240403KFC________________.pdf"
+      ],
+      "data_format": "SPA (要 JS) + Contentful CDN PDF",
+      "coverage": "full",
+      "difficulty": "hard",
+      "fallback_required": false,
+      "memo": "food_information は React SPA で JS なし空。 PDF を直 fetch 推奨。 PFC+食塩+B1/B2/ナイアシン/C+ミネラル"
+    },
+    {
+      "chain_slug": "burger_king",
+      "chain_name": "バーガーキング 日本",
+      "restaurant_type": "dining",
+      "category": "fast_food",
+      "official_urls": [
+        "https://www.burgerking.co.jp/images/org/pdf/2025/05/29/d5b23dc0-980f-4cc5-88ee-cd9511d26468.pdf"
+      ],
+      "data_format": "PDF (date-encoded URL)",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "PDF 内部記載『最終更新日 2025.5.30』(URL 日付 2025/05/29 と 1 日ズレ)。 バーガーカテゴリだけで Jr. 含め 40 SKU、 全体 50+ SKU"
+    },
+    {
+      "chain_slug": "freshness_burger",
+      "chain_name": "フレッシュネスバーガー",
+      "restaurant_type": "dining",
+      "category": "fast_food",
+      "official_urls": [
+        "https://www.freshnessburger.co.jp/pdf/seibun.pdf",
+        "https://www.freshnessburger.co.jp/menu/hamburger/classic_burger"
+      ],
+      "data_format": "PDF + 個別 HTML",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "フード 2026/5/13、ドリンク 2026/3/4 更新"
+    },
+    {
+      "chain_slug": "yoshinoya",
+      "chain_name": "吉野家",
+      "restaurant_type": "dining",
+      "category": "gyudon",
+      "official_urls": [
+        "https://www.yoshinoya.com/pdf/allergy/",
+        "https://www.yoshinoya.com/pdf/allergy_cc_list/",
+        "https://www.yoshinoya.com/pdf/karaage-zenkoku_allergy/"
+      ],
+      "data_format": "PDF (16+ pages)",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "「吉野家メニュー情報 248号」 で版管理、2026/5/14 現在。 C&C / 地域別 PDF 完備"
+    },
+    {
+      "chain_slug": "sukiya",
+      "chain_name": "すき家",
+      "restaurant_type": "dining",
+      "category": "gyudon",
+      "official_urls": [
+        "https://www.sukiya.jp/about/safety.html",
+        "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf"
+      ],
+      "data_format": "HTML hub + Zensho CDN PDF",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "Zensho 共通 schema"
+    },
+    {
+      "chain_slug": "matsuya",
+      "chain_name": "松屋フーズ",
+      "restaurant_type": "dining",
+      "category": "gyudon",
+      "official_urls": [
+        "https://www.matsuyafoods.co.jp/matsuya/safety/allergen.html",
+        "https://www.matsuyafoods.co.jp/matsuya/pdf/260224_nutritional_matsuya.pdf",
+        "https://www.matsuyafoods.co.jp/matsunoya/safety/allergen.html"
+      ],
+      "data_format": "HTML hub + 日付付き PDF",
+      "coverage": "full",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "PDF URL に YYMMDD prefix。 hub HTML から link discovery 必要。 松のや/マイカリー食堂は別系統"
+    },
+    {
+      "chain_slug": "nakau",
+      "chain_name": "なか卯",
+      "restaurant_type": "dining",
+      "category": "gyudon",
+      "official_urls": [
+        "https://www.nakau.co.jp/jp/pdf/n_eiyouseibun_list.pdf",
+        "https://www.nakau.co.jp/jp/pdf/n_allergen_list.pdf",
+        "https://images.zensho.co.jp/materials/nakau/allergen/nutrition.pdf"
+      ],
+      "data_format": "PDF (2 系統)",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "Zensho CDN 版で schema 統一"
+    },
+    {
+      "chain_slug": "sushiro",
+      "chain_name": "スシロー",
+      "restaurant_type": "dining",
+      "category": "sushi",
+      "official_urls": [
+        "https://www.akindo-sushiro.co.jp/menu/allergy.html",
+        "https://www3.akindo-sushiro.co.jp/pdf/menu/allergy.pdf"
+      ],
+      "data_format": "HTML hub + PDF",
+      "coverage": "partial",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "2026/4/20 更新版。 PFC は限定、 道頓堀店専用 PDF あり"
+    },
+    {
+      "chain_slug": "kura_sushi",
+      "chain_name": "くら寿司",
+      "restaurant_type": "dining",
+      "category": "sushi",
+      "official_urls": [
+        "https://www.kurasushi.co.jp/app/app_allergen.html",
+        "https://www.kurasushi.co.jp/common/pdf/kura_allergen.pdf",
+        "https://www.kurasushi.co.jp/common/pdf/mutenkura_allergen.pdf"
+      ],
+      "data_format": "HTML hub + PDF (複数)",
+      "coverage": "full",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "くら/無添蔵/関東無添蔵/宇和島店専用 で PDF 分散"
+    },
+    {
+      "chain_slug": "kappa_sushi",
+      "chain_name": "かっぱ寿司",
+      "restaurant_type": "dining",
+      "category": "sushi",
+      "official_urls": [
+        "https://www.kappasushi.jp/master_data/pdf/info_allergen.pdf"
+      ],
+      "data_format": "PDF",
+      "coverage": "partial",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "アレルゲン中心、 PFC の網羅性低い"
+    },
+    {
+      "chain_slug": "hama_sushi",
+      "chain_name": "はま寿司",
+      "restaurant_type": "dining",
+      "category": "sushi",
+      "official_urls": [
+        "https://www.hamazushi.com/menu/allergen/",
+        "https://images.zensho.co.jp/materials/hama-sushi/allergen/allergen.pdf",
+        "https://images.zensho.co.jp/materials/hama-sushi/allergen/allergen_to.pdf"
+      ],
+      "data_format": "HTML hub + Zensho CDN PDF (一覧 + 持ち帰り別)",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "Zensho 共通 schema"
+    },
+    {
+      "chain_slug": "genki_sushi",
+      "chain_name": "元気寿司",
+      "restaurant_type": "dining",
+      "category": "sushi",
+      "official_urls": [
+        "https://en.genki-gdc.co.jp/",
+        "https://files.genki-gdc.co.jp/v=1763730974/files/user/GU_winter_fair_allergen_20251128.pdf"
+      ],
+      "data_format": "PDF (春/夏/秋/冬フェア各別)",
+      "coverage": "partial",
+      "difficulty": "hard",
+      "fallback_required": false,
+      "memo": "通年マスター不在。 季節フェア毎 PDF crawl 設計必要"
+    },
+    {
+      "chain_slug": "gusto",
+      "chain_name": "ガスト / すかいらーくグループ",
+      "restaurant_type": "dining",
+      "category": "family_restaurant",
+      "official_urls": [
+        "https://allergy.skylark.co.jp/",
+        "https://corp.skylark.co.jp/sustainability/social/customer/safe_and_secure/allergy.html"
+      ],
+      "data_format": "SPA (React)",
+      "coverage": "partial",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "8 大アレルゲン + カロリー + 塩分のみ。 PFC フル非公開"
+    },
+    {
+      "chain_slug": "saizeriya",
+      "chain_name": "サイゼリヤ",
+      "restaurant_type": "dining",
+      "category": "family_restaurant",
+      "official_urls": [
+        "https://allergy.saizeriya.co.jp/",
+        "https://allergy.saizeriya.co.jp/allergy",
+        "https://book.saizeriya.co.jp/allergen2007_j/book/"
+      ],
+      "data_format": "SPA + flip-book",
+      "coverage": "partial",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "店舗 QR 誘導設計、 要 JS"
+    },
+    {
+      "chain_slug": "bamiyan",
+      "chain_name": "バーミヤン",
+      "restaurant_type": "dining",
+      "category": "chinese",
+      "official_urls": [
+        "https://allergy.skylark.co.jp/scene?shop=171099",
+        "https://allergy.skylark.co.jp/"
+      ],
+      "data_format": "SPA",
+      "coverage": "partial",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "shop=171099 でバーミヤン選択。 PFC 非公開"
+    },
+    {
+      "chain_slug": "dennys",
+      "chain_name": "デニーズ",
+      "restaurant_type": "dining",
+      "category": "family_restaurant",
+      "official_urls": [
+        "https://www.dennys.jp/safety/nutritional/",
+        "https://www.dennys.jp/safety/pdf/nutritive_value.pdf",
+        "https://www.dennys-jp.com/catering-allergy/",
+        "https://www.dennys-jp.com/pdf/allergen.pdf"
+      ],
+      "data_format": "HTML hub + PDF (通常店/特別店/宅配)",
+      "coverage": "full",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "エネルギー + PFC + 食塩 + 食物繊維 + 糖質 + 28 品目。 月次更新 (2026/4/8 版)"
+    },
+    {
+      "chain_slug": "starbucks_jp",
+      "chain_name": "スターバックスコーヒー",
+      "restaurant_type": "cafe_bakery",
+      "category": "cafe_bakery",
+      "official_urls": [
+        "https://product.starbucks.co.jp/allergy/",
+        "https://product.starbucks.co.jp/allergy/nutrient/",
+        "https://product.starbucks.co.jp/item/beverage/{JAN}/"
+      ],
+      "data_format": "HTML 一覧 + 商品個別 HTML",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "URL pattern が JAN-based。 PFC + 食塩 + カフェイン + 28 品目 + 原料原産地。 日英 (?lang=en)"
+    },
+    {
+      "chain_slug": "tullys",
+      "chain_name": "タリーズコーヒー",
+      "restaurant_type": "cafe_bakery",
+      "category": "cafe_bakery",
+      "official_urls": [
+        "https://www.tullys.co.jp/menu/allergy.html",
+        "https://www.tullys.co.jp/menu/pdf/drink.pdf",
+        "https://www.tullys.co.jp/menu/pdf/food.pdf",
+        "https://www.tullys.co.jp/and_tea/pdf/food.pdf"
+      ],
+      "data_format": "HTML hub + PDF カテゴリ別",
+      "coverage": "full",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "ドリンク/フード/&TEA で PDF 分離"
+    },
+    {
+      "chain_slug": "doutor",
+      "chain_name": "ドトールコーヒー",
+      "restaurant_type": "cafe_bakery",
+      "category": "cafe_bakery",
+      "official_urls": [
+        "https://allergy.doutor.co.jp/",
+        "https://www.doutor.co.jp/dcs/allergy/",
+        "https://www.doutor.co.jp/dcs/allergy/pdf/N-9kitchen.pdf"
+      ],
+      "data_format": "SPA 検索 + 多数 PDF",
+      "coverage": "full",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "ドトール / エクセルシオール / カフェコロラド 等ブランド別 PDF。 PFC + 食塩 + アルコール + 28 品目"
+    },
+    {
+      "chain_slug": "komeda",
+      "chain_name": "コメダ珈琲店",
+      "restaurant_type": "cafe_bakery",
+      "category": "cafe_bakery",
+      "official_urls": [
+        "https://www.komeda.co.jp/allergy_check/",
+        "https://www.komeda.co.jp/pdf/ichibutenpoyou.pdf",
+        "https://www.komeda.co.jp/pdf/tokusetsupageyou.pdf"
+      ],
+      "data_format": "SPA 検索 + PDF",
+      "coverage": "partial",
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "カロリー + 28 品目のみ。 PFC + 食塩 + 糖質 非公開 (公式 FAQ 明記)。 KOMEDA is□ (ヴィーガン業態) は別 PDF。 PFC は ai_estimated で seed"
+    },
+    {
+      "chain_slug": "pronto",
+      "chain_name": "プロント",
+      "restaurant_type": "cafe_bakery",
+      "category": "cafe_bakery",
+      "official_urls": [
+        "https://www.pronto.co.jp/commitment.html",
+        "https://www.pronto.co.jp/epronto/commitment.html",
+        "https://www.pronto.co.jp/epronto/pdf/241008_food_allergy_calorie.pdf"
+      ],
+      "data_format": "HTML hub + 日付付き PDF + SPA",
+      "coverage": "partial",
+      "difficulty": "medium",
+      "fallback_required": true,
+      "memo": "エネルギー + 28 品目中心。 PFC は FAQ 経由問い合わせのみ → ai_estimated fallback"
+    },
+    {
+      "chain_slug": "cocoichi",
+      "chain_name": "CoCo壱番屋",
+      "restaurant_type": "dining",
+      "category": "curry",
+      "official_urls": [
+        "https://www.ichibanya.co.jp/menu/info.html",
+        "https://www.ichibanya.co.jp/menu/pdf/nutrition.pdf",
+        "https://www.ichibanya.co.jp/menu/pdf/allergy.pdf"
+      ],
+      "data_format": "HTML hub + PDF",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "PFC + 食塩 + 28 品目。 ライス量変更時はお問い合わせ"
+    },
+    {
+      "chain_slug": "ohsho",
+      "chain_name": "餃子の王将",
+      "restaurant_type": "dining",
+      "category": "chinese",
+      "official_urls": [
+        "https://www.ohsho.co.jp/menu/allergy/",
+        "https://www.ohsho.co.jp/menu/pdf/allergy.pdf"
+      ],
+      "data_format": "HTML hub + PDF",
+      "coverage": "partial",
+      "difficulty": "medium",
+      "fallback_required": true,
+      "memo": "アレルゲン中心、 PFC ai_estimated fallback。 大阪王将 (osaka-ohsho.com) は別会社、 区別必須"
+    },
+    {
+      "chain_slug": "marugame_seimen",
+      "chain_name": "丸亀製麺",
+      "restaurant_type": "dining",
+      "category": "udon",
+      "official_urls": [
+        "https://jp.marugame.com/en/menu/allergic/",
+        "https://marugame-seimen-cms.s3.ap-northeast-1.amazonaws.com/uploads/allergics/file1_path5fdb06801a471.pdf"
+      ],
+      "data_format": "HTML hub + S3-hosted PDF",
+      "coverage": "partial",
+      "difficulty": "medium",
+      "fallback_required": true,
+      "memo": "27 品目アレルゲン中心。 PDF は AWS S3。 PFC ai_estimated fallback"
+    },
+    {
+      "chain_slug": "ringer_hut",
+      "chain_name": "リンガーハット",
+      "restaurant_type": "dining",
+      "category": "chinese",
+      "official_urls": [
+        "https://www.ringerhut.jp/quality/allergy-nutrition_value/",
+        "https://www.ringerhut.jp/quality/allergy-nutrition_value/pdf/allergy-nutrition_value_1.pdf"
+      ],
+      "data_format": "HTML hub + PDF (_1.pdf, _2.pdf, ...)",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "栄養成分とアレルゲンを 1 ファイル統合"
+    },
+    {
+      "chain_slug": "ippudo",
+      "chain_name": "一風堂",
+      "restaurant_type": "dining",
+      "category": "ramen",
+      "official_urls": [
+        "https://www.ippudo.com/menu/",
+        "https://storage.googleapis.com/studio-design-asset-files/projects/JpOL0L4xOQ/s-1x1_da3e772d-ae83-43cb-84d8-c867ddfe2fc7.pdf"
+      ],
+      "data_format": "SPA + GCS PDF",
+      "coverage": "partial",
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "アレルゲンのみ。 PFC は ai_estimated fallback。 GCS URL 不安定"
+    },
+    {
+      "chain_slug": "ootoya",
+      "chain_name": "大戸屋",
+      "restaurant_type": "dining",
+      "category": "japanese",
+      "official_urls": [
+        "https://www.ootoya.com/menu_about/",
+        "https://www.ootoya.com/menu_list/info/nutrition/22355",
+        "https://www.ootoya.com/sp/menu/detail/004341.html"
+      ],
+      "data_format": "HTML 店舗別 + 商品個別 HTML",
+      "coverage": "full",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "店舗別 ID URL pattern。 個別 page pattern: /sp/menu/detail/{6桁}.html"
+    },
+    {
+      "chain_slug": "seven_eleven",
+      "chain_name": "セブン-イレブン",
+      "restaurant_type": "convenience",
+      "category": "convenience",
+      "official_urls": [
+        "https://www.sej.co.jp/products/info_allergy.html",
+        "https://www.sej.co.jp/products/a/7premium/",
+        "https://7premium.jp/product/search/detail?id={id}"
+      ],
+      "data_format": "HTML カテゴリ + 商品個別 + PB hub",
+      "coverage": "partial",
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "セブンプレミアム hub (7premium.jp) は PFC+糖質+食物繊維+食塩+原材料 全公開、 v1.5.0 主軸。 中食 (弁当/おにぎり) は個別 page 体系未掲載、 ai_estimated fallback で代表 SKU 5-10 件"
+    },
+    {
+      "chain_slug": "family_mart",
+      "chain_name": "ファミリーマート",
+      "restaurant_type": "convenience",
+      "category": "convenience",
+      "official_urls": [
+        "https://www.family.co.jp/goods/safety.html",
+        "https://www.family.co.jp/goods/famimaru.html",
+        "https://www.family.co.jp/goods/safety/oden.html"
+      ],
+      "data_format": "HTML カテゴリ別一覧表",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "PB 「ファミマル」 hub: /goods/famimaru.html。 28 品目 + PFC + 食塩 + 糖質/食物繊維 + 原産地。 沖縄は別 (okinawa-familymart.jp/allergy)"
+    },
+    {
+      "chain_slug": "lawson",
+      "chain_name": "ローソン",
+      "restaurant_type": "convenience",
+      "category": "convenience",
+      "official_urls": [
+        "https://www.lawson.co.jp/recommend/allergy/detail/index.html",
+        "https://www.lawson.co.jp/recommend/original/",
+        "https://www.lawson.co.jp/recommend/original/detail/1500440_1996.html"
+      ],
+      "data_format": "HTML カテゴリ + 商品個別 HTML",
+      "coverage": "full",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "URL pattern: /recommend/original/detail/{7桁}_{4桁}.html。 おにぎり・寿司の特定原材料 7 品目と栄養成分を商品ページに掲載開始済。 ナチュラルローソン は別 (natural.lawson.co.jp)"
+    },
+    {
+      "chain_slug": "ministop",
+      "chain_name": "ミニストップ",
+      "restaurant_type": "convenience",
+      "category": "convenience",
+      "official_urls": [
+        "https://www.ministop.co.jp/syohin/nutrition/",
+        "https://www.ministop.co.jp/syohin/products/detail046290.html",
+        "https://www.ministop.co.jp/syohin/nutrition/results.html"
+      ],
+      "data_format": "HTML 検索 SPA + 商品個別 HTML",
+      "coverage": "full",
+      "difficulty": "medium",
+      "fallback_required": false,
+      "memo": "店内 FF で 28 品目 + PFC + 食塩。 中食 は限定。 27 品目別「含む/含まない」 検索"
+    },
+    {
+      "chain_slug": "daily_yamazaki",
+      "chain_name": "デイリーヤマザキ",
+      "restaurant_type": "convenience",
+      "category": "convenience",
+      "official_urls": [
+        "https://www.daily-yamazaki.jp/dh/",
+        "https://www.daily-yamazaki.jp/new/"
+      ],
+      "data_format": "HTML (PR ページのみ)",
+      "coverage": "blocked",
+      "difficulty": "blocked",
+      "fallback_required": true,
+      "memo": "旧 /dh/calorie/index.html は 404。 fallback: 山崎製パン (yamazakipan.co.jp) + manual entry + ai_estimated 代表 SKU 5-10 件 seed。 UI バッジ「公式公開なし、 値は推定」 必須"
+    },
+    {
+      "chain_slug": "seicomart",
+      "chain_name": "セイコーマート",
+      "restaurant_type": "convenience",
+      "category": "convenience",
+      "official_urls": [
+        "https://www.seicomart.co.jp/instore/",
+        "https://secoma.co.jp/",
+        "https://online.seicomart.co.jp/delivery/goods_list/"
+      ],
+      "data_format": "HTML 商品紹介 (新商品/おすすめ中心)",
+      "coverage": "blocked",
+      "difficulty": "blocked",
+      "fallback_required": true,
+      "memo": "アレルゲン・PFC・食塩 hub 不在。 ホットシェフ は店頭限定。 fallback: ai_estimated + ユーザー manual entry。 UI バッジ「公式公開なし、 値は推定」 必須"
+    }
+  ]
+}
