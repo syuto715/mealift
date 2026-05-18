@@ -1,0 +1,12 @@
+[
+  {"name": "ランチパック (ピーナッツ)", "calories": 370, "protein": 8.5, "fat": 17.0, "carbs": 45.0, "salt": 0.8, "serving_g": 86},
+  {"name": "ランチパック (ツナマヨネーズ)", "calories": 320, "protein": 10.0, "fat": 16.0, "carbs": 33.0, "salt": 1.1, "serving_g": 76},
+  {"name": "ランチパック (たまご)", "calories": 320, "protein": 9.0, "fat": 16.0, "carbs": 34.0, "salt": 1.2, "serving_g": 76},
+  {"name": "おにぎり (鮭)", "calories": 175, "protein": 4.0, "fat": 0.8, "carbs": 37.0, "salt": 1.2, "serving_g": 105},
+  {"name": "おにぎり (梅)", "calories": 168, "protein": 3.5, "fat": 0.6, "carbs": 36.5, "salt": 1.5, "serving_g": 105},
+  {"name": "ホットドッグ", "calories": 380, "protein": 12.0, "fat": 18.0, "carbs": 42.0, "salt": 2.0, "serving_g": 120},
+  {"name": "焼きそばパン", "calories": 410, "protein": 10.5, "fat": 14.0, "carbs": 62.0, "salt": 1.7, "serving_g": 130},
+  {"name": "メロンパン", "calories": 360, "protein": 6.5, "fat": 12.0, "carbs": 56.0, "salt": 0.5, "serving_g": 95},
+  {"name": "あんパン", "calories": 285, "protein": 6.0, "fat": 6.0, "carbs": 52.0, "salt": 0.4, "serving_g": 90},
+  {"name": "コーヒー (ホット M)", "calories": 8, "protein": 0.3, "fat": 0.0, "carbs": 1.5, "salt": 0.0, "serving_g": 240}
+]
