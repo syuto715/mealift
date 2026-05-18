@@ -328,6 +328,65 @@ describe('subscriptionService — production gating (__DEV__ = false)', () => {
       }
     });
   });
+
+  describe('restaurantMenu* (v1.5 Stage 2 Phase 2.1)', () => {
+    // Server-side EFs (restaurant-menu-lookup + restaurant-menu-estimate)
+    // duplicate these limit constants in their own MONTHLY_QUOTA table —
+    // keep them in lockstep with §9 of the epic doc.
+    it('grants lookup access at every tier with per-tier caps', () => {
+      expect(getFeaturesForTier('free').restaurantMenuLookup).toBe(true);
+      expect(getFeaturesForTier('plus').restaurantMenuLookup).toBe(true);
+      expect(getFeaturesForTier('pro').restaurantMenuLookup).toBe(true);
+      expect(getFeaturesForTier('free').restaurantMenuLookupMonthlyLimit).toBe(20);
+      expect(getFeaturesForTier('plus').restaurantMenuLookupMonthlyLimit).toBe(200);
+      expect(getFeaturesForTier('pro').restaurantMenuLookupMonthlyLimit).toBe(-1);
+    });
+
+    it('grants quick-log at every tier; free is capped, Plus+ unlimited', () => {
+      expect(getFeaturesForTier('free').restaurantMenuQuickLog).toBe(true);
+      expect(getFeaturesForTier('plus').restaurantMenuQuickLog).toBe(true);
+      expect(getFeaturesForTier('pro').restaurantMenuQuickLog).toBe(true);
+      expect(getFeaturesForTier('free').restaurantMenuQuickLogMonthlyLimit).toBe(50);
+      expect(getFeaturesForTier('plus').restaurantMenuQuickLogMonthlyLimit).toBe(-1);
+      expect(getFeaturesForTier('pro').restaurantMenuQuickLogMonthlyLimit).toBe(-1);
+    });
+
+    it('restaurantMenuAiEstimate is Plus+, miCoachRestaurantTool is Pro-only', () => {
+      expect(getFeaturesForTier('free').restaurantMenuAiEstimate).toBe(false);
+      expect(getFeaturesForTier('plus').restaurantMenuAiEstimate).toBe(true);
+      expect(getFeaturesForTier('pro').restaurantMenuAiEstimate).toBe(true);
+      expect(getFeaturesForTier('free').miCoachRestaurantTool).toBe(false);
+      expect(getFeaturesForTier('plus').miCoachRestaurantTool).toBe(false);
+      expect(getFeaturesForTier('pro').miCoachRestaurantTool).toBe(true);
+    });
+
+    it('trial = Plus-equivalent for Stage 2 boolean flags', () => {
+      expect(hasFeature('restaurantMenuLookup', 'trial')).toBe(true);
+      expect(hasFeature('restaurantMenuQuickLog', 'trial')).toBe(true);
+      expect(hasFeature('restaurantMenuAiEstimate', 'trial')).toBe(true);
+      // miCoachRestaurantTool is Pro-only; trial doesn't grant it.
+      expect(hasFeature('miCoachRestaurantTool', 'trial')).toBe(false);
+    });
+
+    it('FEATURE_MATRIX places restaurant tool flags at the right tier', () => {
+      expect(FEATURE_MATRIX.restaurantMenuLookup).toBe('free');
+      expect(FEATURE_MATRIX.restaurantMenuQuickLog).toBe('free');
+      expect(FEATURE_MATRIX.restaurantMenuAiEstimate).toBe('plus');
+      expect(FEATURE_MATRIX.miCoachRestaurantTool).toBe('pro');
+    });
+
+    it('drift guard — limit unlimited (-1) on Pro lookup; quick-log Plus+ unlimited', () => {
+      // Pro lookup is unlimited.
+      expect(getFeaturesForTier('pro').restaurantMenuLookupMonthlyLimit).toBe(-1);
+      // Plus + Pro quick-log are both unlimited.
+      expect(getFeaturesForTier('plus').restaurantMenuQuickLogMonthlyLimit).toBe(-1);
+      expect(getFeaturesForTier('pro').restaurantMenuQuickLogMonthlyLimit).toBe(-1);
+      // Free has both gates as a positive number, never 0.
+      const free = getFeaturesForTier('free');
+      expect(free.restaurantMenuLookupMonthlyLimit).toBeGreaterThan(0);
+      expect(free.restaurantMenuQuickLogMonthlyLimit).toBeGreaterThan(0);
+    });
+  });
 });
 
 describe('subscriptionService — dev mode (__DEV__ = true)', () => {

@@ -117,6 +117,26 @@ export interface FeatureFlags {
   aiCoachGenerationMonthlyLimit: number;
   aiCoachAdviceWeekly: boolean;
   aiCoachAdviceDaily: boolean;
+  // v1.5 Stage 2 Phase 2.1 — restaurant + コンビニメニュー DB.
+  //
+  // §9 tier table (epic doc v1.5_stage_2_restaurant_menu_db_epic.md):
+  //   restaurantMenuLookup            : true / true  / true
+  //   restaurantMenuLookupMonthlyLimit: 20   / 200   / -1 (unlimited)
+  //   restaurantMenuQuickLog          : true / true  / true
+  //   restaurantMenuQuickLogMonthlyLimit: 50 / -1    / -1
+  //   restaurantMenuAiEstimate        : false / true / true   (Phase 2.5)
+  //   miCoachRestaurantTool           : false / false / true  (Phase 2.6)
+  //
+  // Trial = Plus-equivalent for all six (§9 Trial behavior; same
+  // I3 resolution from Stage 1). Server-side EFs duplicate the
+  // limit constants in their own MONTHLY_QUOTA table; keep them in
+  // lockstep.
+  restaurantMenuLookup: boolean;
+  restaurantMenuLookupMonthlyLimit: number;
+  restaurantMenuQuickLog: boolean;
+  restaurantMenuQuickLogMonthlyLimit: number;
+  restaurantMenuAiEstimate: boolean;
+  miCoachRestaurantTool: boolean;
 }
 
 const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
@@ -168,6 +188,12 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     aiCoachGenerationMonthlyLimit: 0,
     aiCoachAdviceWeekly: false,
     aiCoachAdviceDaily: false,
+    restaurantMenuLookup: true,
+    restaurantMenuLookupMonthlyLimit: 20,
+    restaurantMenuQuickLog: true,
+    restaurantMenuQuickLogMonthlyLimit: 50,
+    restaurantMenuAiEstimate: false,
+    miCoachRestaurantTool: false,
   },
   plus: {
     maxRoutines: Infinity,
@@ -208,6 +234,12 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     aiCoachGenerationMonthlyLimit: 5,
     aiCoachAdviceWeekly: true,
     aiCoachAdviceDaily: false,
+    restaurantMenuLookup: true,
+    restaurantMenuLookupMonthlyLimit: 200,
+    restaurantMenuQuickLog: true,
+    restaurantMenuQuickLogMonthlyLimit: -1,
+    restaurantMenuAiEstimate: true,
+    miCoachRestaurantTool: false,
   },
   pro: {
     maxRoutines: Infinity,
@@ -248,6 +280,12 @@ const PLAN_FEATURES: Record<PlanTier, FeatureFlags> = {
     aiCoachGenerationMonthlyLimit: 20,
     aiCoachAdviceWeekly: true,
     aiCoachAdviceDaily: true,
+    restaurantMenuLookup: true,
+    restaurantMenuLookupMonthlyLimit: -1,
+    restaurantMenuQuickLog: true,
+    restaurantMenuQuickLogMonthlyLimit: -1,
+    restaurantMenuAiEstimate: true,
+    miCoachRestaurantTool: true,
   },
 };
 

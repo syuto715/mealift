@@ -7,15 +7,19 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // retention prose + §10 Phase 1.1 cron job spec.
 //
 // Operation: NULLs `idempotency_key` columns on the coach-related
-// tables (`chat_messages`, `routine_generations`) for rows older
-// than 24h. Each table has a partial unique index that drops
-// NULLed rows from the keyspace automatically, freeing the keys
-// for reuse:
+// tables (`chat_messages`, `routine_generations`) and the Stage 2
+// `ai_lookup_logs` table for rows older than 24h. Each table has a
+// partial unique index that drops NULLed rows from the keyspace
+// automatically, freeing the keys for reuse:
 //   - `chat_messages_idempotency_key_unique`
 //     (migration 20260518000000)
 //   - `routine_generations_idempotency_key_unique`
 //     (migration 20260519000000; Phase 1.5 Codex round 2 fix —
 //     coach-routine race-safe ordering at STEP 7)
+//   - `ai_lookup_logs_idempotency_key_unique`
+//     (migration 20260520000002; Phase 2.1 — restaurant-menu-lookup
+//     + restaurant-menu-estimate idempotency keys; Drafting 109
+//     applied — partial unique at initial migration)
 //
 // Trigger: hourly cron (pg_cron). Same mechanism as
 // `send-push-notifications`. The cron secret is verified against
@@ -115,10 +119,34 @@ serve(async (req) => {
     );
   }
 
+  // Stage 2 Phase 2.1 extension — `ai_lookup_logs.idempotency_key`
+  // follows the same 24h retention. The partial unique index from
+  // migration 20260520000002 drops NULL rows automatically. Quota
+  // counter rows survive (response_status filter on STEP 4 quota
+  // gate uses created_at, not idempotency_key).
+  const { count: lookupCleared, error: lookupError } = await admin
+    .from('ai_lookup_logs')
+    .update({ idempotency_key: null })
+    .lt('created_at', cutoffIso)
+    .not('idempotency_key', 'is', null)
+    .select('id', { count: 'exact', head: true });
+
+  if (lookupError) {
+    return jsonResponse(
+      {
+        error: 'internal_error',
+        message: `ai_lookup_logs cleanup failed: ${lookupError.message}`,
+        function_name: FUNCTION_NAME,
+      },
+      500,
+    );
+  }
+
   return jsonResponse(
     {
       cleared_chat_messages: chatCleared ?? 0,
       cleared_routine_generations: routineCleared ?? 0,
+      cleared_ai_lookup_logs: lookupCleared ?? 0,
       cutoff: cutoffIso,
       function_name: FUNCTION_NAME,
     },
