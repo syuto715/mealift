@@ -62,11 +62,11 @@
         "https://images.zensho.co.jp/materials/lotteria/allergen/nutrition.pdf",
         "https://images.zensho.co.jp/materials/lotteria/allergen/allergy.pdf"
       ],
-      "data_format": "HTML hub + Zensho CDN PDF",
-      "coverage": "full",
-      "difficulty": "easy",
-      "fallback_required": false,
-      "memo": "PDF 冒頭「更新日：2026.3.18」。 schema は すき家/なか卯/はま寿司/ゼッテリア と共通"
+      "data_format": "HTML hub + Zensho CDN PDF (Phase 2.2b 検証で 403 確認、 ai_estimate fallback に切替)",
+      "coverage": "partial",
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "PDF 冒頭「更新日：2026.3.18」。 schema は すき家/なか卯/はま寿司/ゼッテリア と共通。 Phase 2.2b Sprint 2A.3 で `images.zensho.co.jp/materials/lotteria/allergen/nutrition.pdf` が CDN file-level 403、 hub HTML にも inline 公開なし → AI-estimate path で代表 40 items 投入 (`source: ai_estimate` ラベル必須)。 次の CDN 状態回復で official_disclosure 再 seed 可。"
     },
     {
       "chain_slug": "kfc",
@@ -230,11 +230,11 @@
         "https://images.zensho.co.jp/materials/hama-sushi/allergen/allergen.pdf",
         "https://images.zensho.co.jp/materials/hama-sushi/allergen/allergen_to.pdf"
       ],
-      "data_format": "HTML hub + Zensho CDN PDF (一覧 + 持ち帰り別)",
-      "coverage": "full",
-      "difficulty": "easy",
-      "fallback_required": false,
-      "memo": "Zensho 共通 schema"
+      "data_format": "HTML hub + Zensho CDN PDF (PDF は allergen のみ、 nutrition は CDN 403、 ai_estimate fallback に切替)",
+      "coverage": "partial",
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "Zensho 共通 schema 想定だったが、 Phase 2.2b Sprint 2A.3 で `allergen.pdf` は 28 アレルゲン grid のみ、 同 CDN の `nutrition.pdf` は 403 (sukiya/nakau は同 CDN OK)。 hub HTML にも inline 公開なし → AI-estimate path で代表 60 寿司皿 + 巻物 + サイド (`source: ai_estimate` ラベル必須)。 持ち帰り PDF も同状態の見込みで 一覧版で代表化。"
     },
     {
       "chain_slug": "genki_sushi",

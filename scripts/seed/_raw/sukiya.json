@@ -1,0 +1,14 @@
+[
+  {"name": "牛丼 ミニ", "calories": 464, "protein": 14.8, "fat": 16.0, "carbs": 65.7, "salt": 1.7, "category": "牛丼"},
+  {"name": "牛丼 並盛", "calories": 695, "protein": 21.7, "fat": 23.4, "carbs": 99.8, "salt": 2.4, "category": "牛丼"},
+  {"name": "牛丼 中盛", "calories": 752, "protein": 26.6, "fat": 33.4, "carbs": 86.5, "salt": 2.8, "category": "牛丼"},
+  {"name": "牛丼 大盛", "calories": 908, "protein": 28.4, "fat": 30.7, "carbs": 130.1, "salt": 3.1, "category": "牛丼"},
+  {"name": "牛丼 特盛", "calories": 1100, "protein": 37.8, "fat": 45.6, "carbs": 134.9, "salt": 4.2, "category": "牛丼"},
+  {"name": "牛丼 メガ", "calories": 1365, "protein": 50.8, "fat": 66.3, "carbs": 141.6, "salt": 5.6, "category": "牛丼"},
+  {"name": "牛皿 ミニ", "calories": 204, "protein": 10.4, "fat": 15.1, "carbs": 7.0, "salt": 1.7, "category": "牛皿"},
+  {"name": "牛皿 並盛", "calories": 297, "protein": 15.0, "fat": 22.0, "carbs": 9.9, "salt": 2.4, "category": "牛皿"},
+  {"name": "牛皿 中盛", "calories": 423, "protein": 21.1, "fat": 32.3, "carbs": 12.2, "salt": 2.8, "category": "牛皿"},
+  {"name": "ねぎ玉牛丼 並盛", "calories": 802, "protein": 29.4, "fat": 29.9, "carbs": 104.8, "salt": 3.2, "category": "牛丼"},
+  {"name": "高菜明太マヨ牛丼 並盛", "calories": 871, "protein": 32.9, "fat": 36.7, "carbs": 102.8, "salt": 3.5, "category": "牛丼"},
+  {"name": "おろしポン酢牛丼 並盛", "calories": 716, "protein": 23.5, "fat": 23.5, "carbs": 103.5, "salt": 3.3, "category": "牛丼"}
+]
