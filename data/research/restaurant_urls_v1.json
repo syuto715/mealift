@@ -424,7 +424,7 @@
       "coverage": "partial",
       "difficulty": "medium",
       "fallback_required": true,
-      "memo": "アレルゲン中心、 PFC ai_estimated fallback。 大阪王将 (osaka-ohsho.com) は別会社、 区別必須"
+      "memo": "Phase 2.2b Sprint 2B.7 検証: hub HTML はアレルゲン情報を画像で掲載 (inline text 抽出不可)、 PDF (`ohsho.co.jp/menu/pdf/allergy.pdf`) は image-based で pdf-parse text 抽出が 16 chars のみ。 mixed-source (allergen official + PFC AI) パス想定だったが、 allergen も text 抽出不可 → 純粋 AI fallback path (lotteria/hama_sushi と同 pattern)、 75 representative items を seed。 大阪王将 (osaka-ohsho.com) は別会社、 区別必須。 Sprint 5 OCR 検討候補: PDF 画像 OCR で allergen 抽出復活、 v1.6+ で official_disclosure に upgrade 可能"
     },
     {
       "chain_slug": "marugame_seimen",
@@ -439,7 +439,7 @@
       "coverage": "partial",
       "difficulty": "medium",
       "fallback_required": true,
-      "memo": "27 品目アレルゲン中心。 PDF は AWS S3。 PFC ai_estimated fallback"
+      "memo": "Phase 2.2b Sprint 2B.7 検証: S3 PDF (13 pages) は allergen 27 品目 grid のみ、 PFC/kcal データ不在。 純粋 AI fallback path で代表 55 udon + 天ぷら + ご飯 items を seed。 Sprint 5 OCR 対象外 (text 抽出は機能、 そもそも PFC データが PDF に存在しない)"
     },
     {
       "chain_slug": "ringer_hut",
