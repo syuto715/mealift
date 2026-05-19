@@ -13,6 +13,9 @@ import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { SearchFilterChips } from './SearchFilterChips';
 import { SearchSortControl } from './SearchSortControl';
+import { EmptyStateView } from './EmptyStateView';
+import { computeEmptyState } from '../../utils/computeEmptyState';
+import { useUIStore } from '../../stores/uiStore';
 import { getColors } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
@@ -70,6 +73,9 @@ export function FoodSearchResult({
   const query = useSearchStore((s) => s.query);
   const setQuery = useSearchStore((s) => s.setQuery);
   const clear = useSearchStore((s) => s.clear);
+  const filters = useSearchStore((s) => s.filters);
+  const setFilters = useSearchStore((s) => s.setFilters);
+  const showToast = useUIStore((s) => s.showToast);
   const {
     items,
     isFetching,
@@ -77,13 +83,18 @@ export function FoodSearchResult({
     isError,
     hasNextPage,
     fetchNextPage,
+    refetch,
     debouncedQuery,
   } = useSearchFoodItems();
 
-  const trimmedQuery = debouncedQuery.trim();
-  const showEmptyHint = trimmedQuery.length === 0;
-  const showNoResult = !showEmptyHint && !isFetching && items.length === 0;
-  const showError = isError;
+  const emptyState = computeEmptyState({
+    query: debouncedQuery,
+    isError,
+    isFetching,
+    itemCount: items.length,
+  });
+  const hasActiveFilters =
+    filters.sourceTypes.length > 0 || filters.sourceLabels.length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -109,41 +120,26 @@ export function FoodSearchResult({
       {!hideFilters && <SearchFilterChips />}
       {!hideSort && <SearchSortControl />}
 
-      {showError && (
-        <View style={styles.stateBox}>
-          <Ionicons name="alert-circle" size={28} color={colors.error} />
-          <Text style={[styles.stateText, { color: colors.textSecondary }]}>
-            検索エラーが発生しました
-          </Text>
-        </View>
-      )}
-
-      {!showError && showEmptyHint && (
-        <View style={styles.stateBox}>
-          <Ionicons name="search" size={32} color={colors.textTertiary} />
-          <Text style={[styles.stateText, { color: colors.textSecondary }]}>
-            検索ワードを入力してください
-          </Text>
-        </View>
-      )}
-
-      {!showError && !showEmptyHint && isFetching && items.length === 0 && (
-        <View style={styles.stateBox}>
-          <ActivityIndicator color={colors.primary} />
-          <Text style={[styles.stateText, { color: colors.textSecondary }]}>検索中…</Text>
-        </View>
-      )}
-
-      {!showError && showNoResult && (
-        <View style={styles.stateBox}>
-          <Ionicons name="file-tray" size={32} color={colors.textTertiary} />
-          <Text style={[styles.stateText, { color: colors.textSecondary }]}>
-            該当する結果がありません
-          </Text>
-        </View>
-      )}
-
-      {!showError && !showEmptyHint && items.length > 0 && (
+      {emptyState ? (
+        <EmptyStateView
+          state={emptyState}
+          query={debouncedQuery}
+          hasFilters={hasActiveFilters}
+          onClearFilters={() =>
+            setFilters({ sourceTypes: [], sourceLabels: [] })
+          }
+          onAIFallback={() => {
+            // Sprint 2.3.5 — Phase 2.5 forwarding stub. Drafting 152's
+            // estimate-nutrition-vision EF + aiNutritionService client
+            // already exist; this turn just surfaces the entry point so
+            // Syuto can verify the empty-state copy. Phase 2.5 will swap
+            // the toast for the actual Gemini-Vision flow.
+            showToast('AI 推定機能は Phase 2.5 で提供予定です', 'info');
+            console.log('[search-v2] AI fallback CTA query=', debouncedQuery);
+          }}
+          onRetry={() => refetch()}
+        />
+      ) : (
         <FlatList
           data={items}
           keyExtractor={(item) => `${item.sourceType}:${item.sourceId}`}

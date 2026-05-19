@@ -31,6 +31,8 @@ export interface UseSearchFoodItemsResult {
   error: unknown;
   hasNextPage: boolean;
   fetchNextPage: () => void;
+  /** Manual refetch trigger (Sprint 2.3.5 — exposed for the empty-state retry CTA). */
+  refetch: () => void;
   debouncedQuery: string;
   query: UseInfiniteQueryResult<InfiniteData<SearchIndexHit[]>>;
 }
@@ -58,6 +60,13 @@ export function useSearchFoodItems(): UseSearchFoodItemsResult {
     enabled: debouncedQuery.trim().length > 0,
     staleTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,
+    // Sprint 2.3.5 — retry the FTS5 fetch twice with exponential backoff
+    // before surfacing an error state. Most failures here will be device
+    // SQLite hiccups (DB locked / migration races); a short backoff is
+    // enough to ride them out. Hard 30s cap so a flaky device doesn't
+    // block the UI indefinitely.
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // Flatten across pages — the FlatList consumer doesn't care about
@@ -75,6 +84,7 @@ export function useSearchFoodItems(): UseSearchFoodItemsResult {
     error: tanstackQuery.error,
     hasNextPage: Boolean(tanstackQuery.hasNextPage),
     fetchNextPage: () => { void tanstackQuery.fetchNextPage(); },
+    refetch: () => { void tanstackQuery.refetch(); },
     debouncedQuery,
     query: tanstackQuery,
   };
