@@ -497,11 +497,11 @@
         "https://www.sej.co.jp/products/a/7premium/",
         "https://7premium.jp/product/search/detail?id={id}"
       ],
-      "data_format": "HTML カテゴリ + 商品個別 + PB hub",
+      "data_format": "HTML カテゴリ + 商品個別 + PB hub (両 sub-source nutrition 不在)",
       "coverage": "partial",
       "difficulty": "hard",
       "fallback_required": true,
-      "memo": "セブンプレミアム hub (7premium.jp) は PFC+糖質+食物繊維+食塩+原材料 全公開、 v1.5.0 主軸。 中食 (弁当/おにぎり) は個別 page 体系未掲載、 ai_estimated fallback で代表 SKU 5-10 件"
+      "memo": "Phase 2.2b Sprint 4.4 検証: 7premium.jp PB hub (例 detail?id=12995) は product showcase page (image + 価格 + 説明) で **inline nutrition 不在**、 sej.co.jp 中食も SPA で同状態。 research の 「7premium hub は PFC+糖質+食物繊維+食塩 全公開」 claim は実態と乖離 (時系列で disclosure policy 変更可能性)。 chain-level 純粋 AI fallback path で 81 representative items (PB 金/プレミアム/おにぎり/弁当/サラダチキン/ホットスナック/おでん/中華まん/サンド/パン/デザート/ドリンク/アルコール) を seed。 Sprint 6 retrofit 候補: 別の official disclosure source (sej.co.jp/products/info_allergy.html 等) を再探索"
     },
     {
       "chain_slug": "family_mart",
