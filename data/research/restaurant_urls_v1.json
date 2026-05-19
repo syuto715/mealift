@@ -513,11 +513,11 @@
         "https://www.family.co.jp/goods/famimaru.html",
         "https://www.family.co.jp/goods/safety/oden.html"
       ],
-      "data_format": "HTML カテゴリ別一覧表",
-      "coverage": "full",
-      "difficulty": "easy",
-      "fallback_required": false,
-      "memo": "PB 「ファミマル」 hub: /goods/famimaru.html。 28 品目 + PFC + 食塩 + 糖質/食物繊維 + 原産地。 沖縄は別 (okinawa-familymart.jp/allergy)"
+      "data_format": "HTML カテゴリ別一覧表 (per-item nutrition 不在)",
+      "coverage": "partial",
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 4.2 検証: famimaru hub から category URLs (omusubi/obento/sandwich 等 21 categories) 発見、 per-item URL pattern /goods/<category>/<7桁>.html OK だが **per-item HTML に nutrition data 不在** (kcal/PFC keyword 不在、 image or JS-loaded、 lawson と異なる schema)。 AI fallback で 74 representative items (ファミマル PB 中心: ホットスナック/おにぎり/サンド/弁当/麺/パスタ/デザート/ドリンク等) を seed。 Sprint 4.4 retrofit 候補: famimaru-premium PDF discovery or SPA crawl 再評価。 沖縄は別 (okinawa-familymart.jp) で v1.6+"
     },
     {
       "chain_slug": "lawson",
@@ -545,11 +545,11 @@
         "https://www.ministop.co.jp/syohin/products/detail046290.html",
         "https://www.ministop.co.jp/syohin/nutrition/results.html"
       ],
-      "data_format": "HTML 検索 SPA + 商品個別 HTML",
-      "coverage": "full",
-      "difficulty": "medium",
-      "fallback_required": false,
-      "memo": "店内 FF で 28 品目 + PFC + 食塩。 中食 は限定。 27 品目別「含む/含まない」 検索"
+      "data_format": "HTML カテゴリ + 商品個別 HTML (一部 official PFC 確認)",
+      "coverage": "partial",
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 4.2 検証: 商品個別 HTML (例: detail046290.html) は **inline structured nutrition table OK** (エネルギー Kcal/たんぱく質/脂質/炭水化物/ナトリウム/食塩相当量) — lawson type per-item walk path 可能。 ただし category listing URL pattern が descriptive (e.g. /syohin/sweets/softcream/hokkaido-milksoft/) で numeric ID 不一貫、 listing→per-item URL discovery 工数大。 v1.5.0 範囲は AI fallback で 66 representative items (ソフトクリーム/ハロハロ/パフェ/おにぎり/弁当/中華まん/おでん 等)。 Sprint 6 retrofit 候補: descriptive URL crawler 設計で per-item walk full coverage 可能"
     },
     {
       "chain_slug": "daily_yamazaki",
