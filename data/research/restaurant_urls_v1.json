@@ -214,11 +214,11 @@
       "official_urls": [
         "https://www.kappasushi.jp/master_data/pdf/info_allergen.pdf"
       ],
-      "data_format": "PDF",
+      "data_format": "PDF (allergen-only、 季節フェア多数)",
       "coverage": "partial",
       "difficulty": "medium",
-      "fallback_required": false,
-      "memo": "アレルゲン中心、 PFC の網羅性低い"
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 2B.9 検証: PDF (18 pages, 45KB) は allergen 28 品目 grid のみ、 PFC/kcal データ source PDF 不在。 437 menu rows のうち大半が 季節フェア (5/7 / 4/30 / 4/16 等)、 通年定番は限定。 純粋 AI fallback path で標準寿司握り + 軍艦 + 巻物 + サイド + デザート 中心の 75 representative items を seed。 季節限定は v1.6+ 自動追跡 work で増分追加可能"
     },
     {
       "chain_slug": "hama_sushi",
