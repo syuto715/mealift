@@ -341,11 +341,11 @@
         "https://www.tullys.co.jp/menu/pdf/food.pdf",
         "https://www.tullys.co.jp/and_tea/pdf/food.pdf"
       ],
-      "data_format": "HTML hub + PDF カテゴリ別",
-      "coverage": "full",
-      "difficulty": "medium",
-      "fallback_required": false,
-      "memo": "ドリンク/フード/&TEA で PDF 分離"
+      "data_format": "HTML hub + PDF カテゴリ別 (drink + food + &TEA)",
+      "coverage": "partial",
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 3.3 検証: food.pdf 取得 OK (6 pages, 18KB) だが multilingual table (JA/EN/CN/KR) + group-name schema (allergen marks + 5 numerics、 menu name 別位置)、 構造解析に Codex round 必要。 v1.5.0 範囲で AI fallback 68 representative items (drink + food + ベーカリー + デザート、 cafe-bakery ratio 既存適用) を seed。 Sprint 6 retrofit 候補: tullys group-name parser + Codex menu name 抽出。 &TEA / 季節限定 は v1.6+ defer"
     },
     {
       "chain_slug": "doutor",
@@ -357,11 +357,11 @@
         "https://www.doutor.co.jp/dcs/allergy/",
         "https://www.doutor.co.jp/dcs/allergy/pdf/N-9kitchen.pdf"
       ],
-      "data_format": "SPA 検索 + 多数 PDF",
-      "coverage": "full",
-      "difficulty": "medium",
-      "fallback_required": false,
-      "memo": "ドトール / エクセルシオール / カフェコロラド 等ブランド別 PDF。 PFC + 食塩 + アルコール + 28 品目"
+      "data_format": "SPA 検索 + 多数 PDF (主力 ドトール本体)",
+      "coverage": "partial",
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 3.3 検証: allergy.doutor.co.jp は SPA brand-selection、 主要 PDF (N-9kitchen.pdf 等) は redirect 経由で InvalidPDFException (likely HTML wrapper、 PDF stream 不在)。 AI fallback で主力 ドトール本体 menu 66 representative items (cafe-bakery ratio 既存適用) を seed。 Excelsior / EDIYA / カフェコロラド 等 sub-brand は v1.6+ defer"
     },
     {
       "chain_slug": "komeda",
