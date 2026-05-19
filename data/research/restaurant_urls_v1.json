@@ -186,9 +186,9 @@
       ],
       "data_format": "HTML hub + PDF",
       "coverage": "partial",
-      "difficulty": "medium",
-      "fallback_required": false,
-      "memo": "2026/4/20 更新版。 PFC は限定、 道頓堀店専用 PDF あり"
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 2B.8 検証: PDF (18 pages, 22KB) は allergen 27 品目 grid のみ、 561 menu rows extract OK だが PFC データ source PDF 不在。 純粋 AI fallback path で代表 79 寿司握り/軍艦/巻物/サイド/うどん/ラーメン/デザート items を seed (561 全件は v1.6+ Sprint 5 OCR or 公式 menu page nutrition discovery 待ち)。 道頓堀店専用 PDF も同 schema 想定で skip"
     },
     {
       "chain_slug": "kura_sushi",
@@ -200,11 +200,11 @@
         "https://www.kurasushi.co.jp/common/pdf/kura_allergen.pdf",
         "https://www.kurasushi.co.jp/common/pdf/mutenkura_allergen.pdf"
       ],
-      "data_format": "HTML hub + PDF (複数)",
-      "coverage": "full",
+      "data_format": "HTML hub + PDF (複数、 kcal + allergen)",
+      "coverage": "partial",
       "difficulty": "medium",
-      "fallback_required": false,
-      "memo": "くら/無添蔵/関東無添蔵/宇和島店専用 で PDF 分散"
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 2B.8 検証: PDF (5 pages, 13KB) は inline-name + kcal + allergen marks。 kcal は public disclosed、 但し P/F/C は PDF 未開示 → 専用 parser (parsers/kura_sushi.ts) で kcal extract、 PFC は Atwater-anchored ratio (P 18% / F 18% / C 64%) で AI 推定。 chain-level conservative で source = ai_estimate 採用 (Drafting 130 deferred)。 無添蔵 PDF も同 schema 想定で v1.6+ で iterate"
     },
     {
       "chain_slug": "kappa_sushi",
