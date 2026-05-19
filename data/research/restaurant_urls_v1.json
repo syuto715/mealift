@@ -533,7 +533,7 @@
       "coverage": "full",
       "difficulty": "easy",
       "fallback_required": false,
-      "memo": "URL pattern: /recommend/original/detail/{7桁}_{4桁}.html。 おにぎり・寿司の特定原材料 7 品目と栄養成分を商品ページに掲載開始済。 ナチュラルローソン は別 (natural.lawson.co.jp)"
+      "memo": "Phase 2.2b Sprint 4.1 検証: robots.txt clean (/recommend/ 許可)、 per-item walk path 確立。 scripts/seed/crawl-lawson.ts (1 req/sec rate limit + Mealift Bot UA + raw HTML parse) で 7 category × 5-15 items = 58 items 取得 (rice/bento/sandwich/bakery/dessert/noodle/salad)。 全 source = official_disclosure (inline HTML nutrition table: kcal/P/F/C/糖質/食物繊維/食塩相当量)。 Sprint 4.2+ で limit 拡張 + 残 category (coffee/fry/select 等) で 200+ items target 可。 ナチュラルローソン は別 (natural.lawson.co.jp) で v1.6+"
     },
     {
       "chain_slug": "ministop",
