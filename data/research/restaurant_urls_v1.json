@@ -245,11 +245,11 @@
         "https://en.genki-gdc.co.jp/",
         "https://files.genki-gdc.co.jp/v=1763730974/files/user/GU_winter_fair_allergen_20251128.pdf"
       ],
-      "data_format": "PDF (春/夏/秋/冬フェア各別)",
+      "data_format": "PDF (春/夏/秋/冬フェア各別、 通年マスター不在)",
       "coverage": "partial",
       "difficulty": "hard",
-      "fallback_required": false,
-      "memo": "通年マスター不在。 季節フェア毎 PDF crawl 設計必要"
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 2C.2 検証: 公式 winter fair PDF (20251128) は URL stale (404)、 通年マスター 公式 PDF 不在。 kappa_sushi precedent (season-fair 除外、 通年 representative) と同 path で AI fallback、 60 representative items を seed。 季節フェア追跡は v1.6+ 自動 work"
     },
     {
       "chain_slug": "gusto",
