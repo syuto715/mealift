@@ -324,11 +324,11 @@
         "https://product.starbucks.co.jp/allergy/nutrient/",
         "https://product.starbucks.co.jp/item/beverage/{JAN}/"
       ],
-      "data_format": "HTML 一覧 + 商品個別 HTML",
-      "coverage": "full",
-      "difficulty": "easy",
-      "fallback_required": false,
-      "memo": "URL pattern が JAN-based。 PFC + 食塩 + カフェイン + 28 品目 + 原料原産地。 日英 (?lang=en)"
+      "data_format": "HTML 一覧 SPA + 商品個別 HTML (JAN-based)",
+      "coverage": "partial",
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 4.3 検証: 集約 page (/allergy/nutrient/) は SPA (filter UI only)、 per-JAN page は inline 確認だが JAN range discovery が SPA 経由で listing → 全 JAN 抽出が困難。 v1.5.0 範囲は AI fallback で 75 representative items (ドリップコーヒー多 size + ラテ系 + フラペチーノ + ベーカリー + デザート + サンドイッチ + 植物性ミルク variants) を seed。 Sprint 6 retrofit 候補: Playwright SPA で JAN listing 取得 → per-JAN HTML walk で full coverage 可"
     },
     {
       "chain_slug": "tullys",
@@ -485,7 +485,7 @@
       "coverage": "full",
       "difficulty": "medium",
       "fallback_required": false,
-      "memo": "店舗別 ID URL pattern。 個別 page pattern: /sp/menu/detail/{6桁}.html"
+      "memo": "Phase 2.2b Sprint 4.3 検証: /sp/menu/detail/{6桁}.html は store-dependent (一部 stale URL、 アクセスエラー)、 但し /menu_list/info/nutrition/{店舗 ID} (例: 22355 = 円山公園店) は **店舗別 全 menu nutrition listing OK** で kcal+P+F+C+salt 完全公開。 Sprint 4.3 で 22355 (円山公園店、 100+ items) を WebFetch 抽出、 84 representative items を seed (おかず増量 variants は除外、 representative 主力 + 弁当各種)。 全 source = official_disclosure。 店舗別差異は v1.6+ で多店舗統合判断"
     },
     {
       "chain_slug": "seven_eleven",
