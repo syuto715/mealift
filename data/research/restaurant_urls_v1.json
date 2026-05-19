@@ -260,11 +260,11 @@
         "https://allergy.skylark.co.jp/",
         "https://corp.skylark.co.jp/sustainability/social/customer/safe_and_secure/allergy.html"
       ],
-      "data_format": "SPA (React)",
+      "data_format": "SPA (React、 allergen-filter UI)",
       "coverage": "partial",
-      "difficulty": "medium",
-      "fallback_required": false,
-      "memo": "8 大アレルゲン + カロリー + 塩分のみ。 PFC フル非公開"
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 3.1 検証: Playwright SPA crawl 試行、 allergy.skylark.co.jp/consideration?mode=top で brand=010016 (gusto) を選択可能、 /allergen?brand=010016&usage=1 が menu search page。 但し SPA UI は **allergen-filter selection** (除外検索) 設計で 「全 menu 表示」 path 不在、 bulk extraction には不向き。 AI fallback path で標準 representative 75 items (ハンバーグ/鶏料理/パスタ/ピザ/カレー/サラダ/モーニング/お子様/デザート/ドリンク) を seed。 v1.6+ で allergen-filter SPA を逆操作 (全 allergen 未選択で submit) する crawl 設計を再評価可能"
     },
     {
       "chain_slug": "saizeriya",
