@@ -545,11 +545,11 @@
         "https://www.ministop.co.jp/syohin/products/detail046290.html",
         "https://www.ministop.co.jp/syohin/nutrition/results.html"
       ],
-      "data_format": "HTML カテゴリ + 商品個別 HTML (一部 official PFC 確認)",
-      "coverage": "partial",
-      "difficulty": "hard",
-      "fallback_required": true,
-      "memo": "Phase 2.2b Sprint 4.2 検証: 商品個別 HTML (例: detail046290.html) は **inline structured nutrition table OK** (エネルギー Kcal/たんぱく質/脂質/炭水化物/ナトリウム/食塩相当量) — lawson type per-item walk path 可能。 ただし category listing URL pattern が descriptive (e.g. /syohin/sweets/softcream/hokkaido-milksoft/) で numeric ID 不一貫、 listing→per-item URL discovery 工数大。 v1.5.0 範囲は AI fallback で 66 representative items (ソフトクリーム/ハロハロ/パフェ/おにぎり/弁当/中華まん/おでん 等)。 Sprint 6 retrofit 候補: descriptive URL crawler 設計で per-item walk full coverage 可能"
+      "data_format": "HTML aggregator nutrition table (4 in-store cats) + AI residual for packaged",
+      "coverage": "hybrid (4 cats official / 4 cats AI residual)",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "Phase 2.2b Sprint 6.4 retrofit: descriptive item URL (/syohin/<cat>/<sub>/<name>/) は写真+宣伝のみで nutrition なし — Sprint 4.2 想定の per-item walk path は誤判定。 実態は `/syohin/nutrition/results.html?search_category[]=<JP-cat>` の **server-rendered aggregator** に 4 cat (ソフトクリーム/コールドスイーツ/ホットスナック/店内加工ドリンク) の official PFC が集約 (16+20+20+20 = 76 items)。 scripts/seed/crawl-ministop.ts (1.2sec rate limit + Mealift Bot UA + table regex parse) で 4 fetch → 76 official_disclosure。 packaged 19 items (おにぎり/弁当/サンド/おでん) は aggregator 開示外 → ai_estimate 残置 hybrid (Option B 採用)。 robots.txt は `/syohin/nutrition/pdf/` のみ disallow、 results.html clean。 累計 95 items (76 official + 19 ai)"
     },
     {
       "chain_slug": "daily_yamazaki",
