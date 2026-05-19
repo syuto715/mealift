@@ -35,8 +35,10 @@ import { migrateV32 } from './migrations/v32';
 import { migrateV33 } from './migrations/v33';
 import { migrateV34 } from './migrations/v34';
 import { migrateV35 } from './migrations/v35';
+import { migrateV36 } from './migrations/v36';
 import { seedExercisesV2 } from '../../../scripts/seed-exercises-v2/run';
 import { seedFoods, seedExercises } from './seed/foods';
+import { seedSearchIndex } from './seed/searchIndex';
 import { seedDishes } from './seed/dishes';
 import { seedFitnessDishes } from './seed/fitnessDishes';
 import { seedBarcodeProducts } from './seed/barcodeProducts';
@@ -212,6 +214,10 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
       await migrateV35(db);
       await db.execAsync('PRAGMA user_version = 35;');
     }
+    if (currentVersion < 36) {
+      await migrateV36(db);
+      await db.execAsync('PRAGMA user_version = 36;');
+    }
 
   } catch (error) {
     console.error('Migration failed:', error);
@@ -268,6 +274,14 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     if (!barcodeCount || barcodeCount.count === 0) {
       await seedBarcodeProducts(db);
     }
+  } catch (error) {
+  }
+
+  // v1.5 Phase 2.3 Sprint 2.3.1 — unified search_index seed (Option B).
+  // Idempotent UPSERT against the v36 table; ~8K rows / ~1 sec per boot.
+  // FTS5 triggers fire automatically.
+  try {
+    await seedSearchIndex(db);
   } catch (error) {
   }
 
