@@ -324,11 +324,11 @@
         "https://product.starbucks.co.jp/allergy/nutrient/",
         "https://product.starbucks.co.jp/item/beverage/{JAN}/"
       ],
-      "data_format": "HTML 一覧 SPA + 商品個別 HTML (JAN-based)",
-      "coverage": "partial",
-      "difficulty": "hard",
-      "fallback_required": true,
-      "memo": "Phase 2.2b Sprint 4.3 検証: 集約 page (/allergy/nutrient/) は SPA (filter UI only)、 per-JAN page は inline 確認だが JAN range discovery が SPA 経由で listing → 全 JAN 抽出が困難。 v1.5.0 範囲は AI fallback で 75 representative items (ドリップコーヒー多 size + ラテ系 + フラペチーノ + ベーカリー + デザート + サンドイッチ + 植物性ミルク variants) を seed。 Sprint 6 retrofit 候補: Playwright SPA で JAN listing 取得 → per-JAN HTML walk で full coverage 可"
+      "data_format": "Static aggregator JSON (nutritions.json) + multi-size × multi-milk records",
+      "coverage": "full (STARBUCKS selling store)",
+      "difficulty": "easy",
+      "fallback_required": false,
+      "memo": "Phase 2.2b Sprint 6.6 retrofit: Sprint 4.3 想定の Playwright SPA は **誤り** — Vue.js SPA index.vue.js を解析した結果、 axios で fetch される `https://product.starbucks.co.jp/allergy/json/nutritions.json` (968 KB single fetch) が **完全 official 栄養成分 aggregator** と判明。 Schema = 4 selling stores (STARBUCKS / RESERVE / ROASTERY / ONLINE_STORE) × beverage/food × kbn_N segment × categories c0X × menu_groups (各 product = url_jan_code / product_name_ja / nutrition_by_milk {SHORT/TALL/GRANDE/VENTI/STANDARD: [{_milk_type: milk/low_fat/non_fat/soy/almond/oat/breve, calory, protein, lipid, carbohydrate, salt_eq, sodium}]})。 v1.5.0 範囲 (STARBUCKS store filter、 multi-size + multi-milk 全保持 = Scope F) で 1,281 official_disclosure records (76 AI 比 17x expansion ✨)。 RESERVE/ROASTERY/ONLINE_STORE は v1.5.x 拡張。 Playwright は seven_eleven 専用化 (Drafting 154 集約 install 当初想定不要)"
     },
     {
       "chain_slug": "tullys",
@@ -501,7 +501,7 @@
       "coverage": "partial",
       "difficulty": "hard",
       "fallback_required": true,
-      "memo": "Phase 2.2b Sprint 6.5 Drafting 153 再探索: 7 aggregator URL 候補 (info_allergy/foodlist/nutrition/recipe csv 等) を網羅 probe — 全 404、 sej.co.jp robots.txt 自身も 404 (policy 不在)。 7premium.jp は **Incapsula WAF で blocked** (000 connection)。 /products/a/<cat>/ category listing は 200 ✓、 /products/a/item/<6 digit ID>/ per-item page は **inline `<th>栄養成分</th><td>熱量:NNNkcal、たんぱく質...</td>` row 完全構造化 ✓** (Sprint 4.4 の SPA 判定は誤り、 per-item HTML は server-rendered)。 Drafting 149 per-item walk path 設計試行 (scripts/seed/crawl-seven-eleven.ts、 18 cat、 1.2 sec rate limit) → onigiri 9/18 / sushi 0/0 / bento 0/0 / sandwich 0/15 で **Incapsula JS challenge が item-walk 規模で発動** (212-byte stub returned)。 v1.5.0 範囲は AI fallback 80 items 維持 (Sprint 4.4 seed そのまま)。 Sprint 6.6 retrofit: Playwright (real browser、 Incapsula JS challenge solve + cookie 永続) path で完全 crawl 試行、 starbucks_jp と pair で Playwright install ROI 集約予定"
+      "memo": "Phase 2.2b Sprint 6.6 retrofit 完了: Drafting 154 application 成功 — Playwright chromium で warm-up navigation 1 回 (Incapsula JS challenge を browser-side で自動解決 + cookie 永続) 後 14 cat per-item walk 完遂 (164 official items / 13 cat 100% / ice_cream 5/12 のみ部分 — 残 7 items は seasonal で nutrition disclosure 未公開)。 5 連続 fail 閾値 0 trigger (max 2 連続 only)。 scripts/seed/crawl-seven-eleven-pw.ts (1.5 sec rate limit + Mealift Bot UA + 商品名 from <title> + nutrition from `<th>栄養成分</th>` row regex)。 80 AI → 164 official = 2x expansion + source upgrade ✨。 Spot check: 金の食パン 258 / ガーリックチキン弁当 656 / 海老天とじ丼 632 / 唐揚げ弁当 609 / 焼き鳥（塩）66 / バニラバーマルチ 67 全て公知値完全一致 ✓。 7premium.jp PB 系統は引き続き Incapsula で全 path blocked (v1.6+ defer)、 現状 164 は中食 + おでん + 中華まん + デザート + ホットスナック + セブンカフェ representative coverage"
     },
     {
       "chain_slug": "family_mart",
