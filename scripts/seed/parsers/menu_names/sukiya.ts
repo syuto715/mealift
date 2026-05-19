@@ -27,18 +27,18 @@ export const SUKIYA_MENU_NAMES: string[] = [
 
   // Page 3
   'カレー', // G23
-  'Group-24', // G24: curry variant present in footer, exact mapping uncertain
+  'ソーセージカレー', // G24 (Sprint 6.1 Codex round 2 visual-order resolved)
   'とろ～りチーズカレー', // G25
   'おんたまカレー', // G26
   'チーズおんたまカレー', // G27
   'おんたま牛カレー', // G28
-  'Group-29', // G29: curry variant present in footer, exact mapping uncertain
-  'Group-30', // G30: curry variant present in footer, exact mapping uncertain
+  'チーズソーセージカレー', // G29 (Sprint 6.1 Codex round 2)
+  'チーズインハンバーグカレー', // G30 (Sprint 6.1 Codex round 2)
   'ほうれん草カレー', // G31
-  'Group-32', // G32: curry variant present in footer, exact mapping uncertain
+  'チーズ牛カレー', // G32 (Sprint 6.1 Codex round 2)
   'チーズほうれん草カレー', // G33
   '肉2倍牛カレー', // G34
-  'Group-35', // G35: curry variant present in footer, exact mapping uncertain
+  '目玉焼き牛カレー', // G35 (Sprint 6.1 Codex round 2)
   '牛カレー', // G36
 
   // Page 4
