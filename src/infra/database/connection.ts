@@ -36,6 +36,7 @@ import { migrateV33 } from './migrations/v33';
 import { migrateV34 } from './migrations/v34';
 import { migrateV35 } from './migrations/v35';
 import { migrateV36 } from './migrations/v36';
+import { migrateV37 } from './migrations/v37';
 import { seedExercisesV2 } from '../../../scripts/seed-exercises-v2/run';
 import { seedFoods, seedExercises } from './seed/foods';
 import { seedSearchIndex } from './seed/searchIndex';
@@ -217,6 +218,10 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     if (currentVersion < 36) {
       await migrateV36(db);
       await db.execAsync('PRAGMA user_version = 36;');
+    }
+    if (currentVersion < 37) {
+      await migrateV37(db);
+      await db.execAsync('PRAGMA user_version = 37;');
     }
 
   } catch (error) {

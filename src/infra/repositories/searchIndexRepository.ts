@@ -23,6 +23,8 @@ export type SearchSourceLabel =
   | 'package_label'
   | 'manual';
 
+// Subset of fields the unified search list needs from each hit;
+// see `SearchIndexNutrition` for the detail-view payload.
 export interface SearchIndexHit {
   rowid: number;
   sourceType: SearchSourceType;
@@ -34,6 +36,46 @@ export interface SearchIndexHit {
   useCount: number;
   isCommon: boolean;
   rank: number;
+}
+
+// Embedded nutrition payload stored as JSON in `search_index.nutrition_json`
+// (added in v37). Optional fields reflect provenance-dependent completeness:
+// 八訂 rows populate the full 17-micronutrient grid, restaurant menu rows
+// fill only the subset disclosed by the chain (kcal/P/F/C + occasionally
+// fiber/sugar/salt/sodium/saturated_fat/cholesterol).
+export interface SearchIndexNutrition {
+  servingSizeG?: number;
+  servingUnit?: string;
+  servingDescription?: string | null;
+  caloriesPerServing: number;
+  proteinG: number;
+  fatG: number;
+  carbG: number;
+  fiberG?: number | null;
+  sugarG?: number | null;
+  saltG?: number | null;
+  sodiumMg?: number | null;
+  saturatedFatG?: number | null;
+  cholesterolMg?: number | null;
+  calciumMg?: number | null;
+  ironMg?: number | null;
+  magnesiumMg?: number | null;
+  zincMg?: number | null;
+  potassiumMg?: number | null;
+  vitaminAUg?: number | null;
+  vitaminB1Mg?: number | null;
+  vitaminB2Mg?: number | null;
+  vitaminB6Mg?: number | null;
+  vitaminB12Ug?: number | null;
+  folateUg?: number | null;
+  vitaminCMg?: number | null;
+  vitaminDUg?: number | null;
+  vitaminEMg?: number | null;
+  sourceUrl?: string | null;
+}
+
+export interface SearchIndexDetail extends SearchIndexHit {
+  nutrition: SearchIndexNutrition;
 }
 
 export interface SearchOptions {
@@ -55,6 +97,42 @@ function rowToHit(row: Record<string, unknown>): SearchIndexHit {
     useCount: (row.use_count as number) ?? 0,
     isCommon: Boolean(row.is_common),
     rank: (row.rank as number) ?? 0,
+  };
+}
+
+function safeParseNutrition(json: unknown): SearchIndexNutrition | null {
+  if (typeof json !== 'string' || !json) return null;
+  try {
+    const parsed = JSON.parse(json) as SearchIndexNutrition;
+    if (typeof parsed.caloriesPerServing !== 'number') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+// Detail-view fetch — Sprint 2.3.3 v37 path. Returns null when the
+// (sourceType, sourceId) pair is unknown to the index.
+export async function getDetailByRef(
+  sourceType: SearchSourceType,
+  sourceId: string,
+): Promise<SearchIndexDetail | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<Record<string, unknown>>(
+    `SELECT rowid, source_type, source_id, name_ja, name_en, brand,
+            source_label, use_count, is_common, nutrition_json
+       FROM search_index
+      WHERE source_type = ? AND source_id = ?
+      LIMIT 1`,
+    [sourceType, sourceId],
+  );
+  if (!row) return null;
+  const nutrition = safeParseNutrition(row.nutrition_json);
+  if (!nutrition) return null;
+  return {
+    ...rowToHit(row),
+    rank: 0,
+    nutrition,
   };
 }
 

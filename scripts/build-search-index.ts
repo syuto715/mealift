@@ -60,20 +60,98 @@ interface MextFoodRow {
   nameEn: string | null;
   brand: string | null;
   isCommon: boolean;
+  servingSizeG: number;
+  servingUnit: string;
+  caloriesPerServing: number;
+  proteinG: number;
+  fatG: number;
+  carbG: number;
+  fiberG: number | null;
+  sodiumMg: number | null;
+  calciumMg: number | null;
+  ironMg: number | null;
+  vitaminAUg: number | null;
+  vitaminB1Mg: number | null;
+  vitaminB2Mg: number | null;
+  vitaminB6Mg: number | null;
+  vitaminB12Ug: number | null;
+  folateUg: number | null;
+  vitaminCMg: number | null;
+  vitaminDUg: number | null;
+  vitaminEMg: number | null;
+  potassiumMg: number | null;
+  magnesiumMg: number | null;
+  zincMg: number | null;
+  cholesterolMg: number | null;
+  saturatedFatG: number | null;
+  sugarG: number | null;
+  saltG: number | null;
 }
 interface MextAliasRow {
   foodId: string;
   aliasName: string;
 }
 
+interface RestaurantMenuItemRow {
+  name: string;
+  aliases?: string[];
+  source: string;
+  category?: string | null;
+  servingSizeG?: number;
+  servingUnit?: string;
+  servingDescription?: string | null;
+  caloriesPerServing: number;
+  proteinG: number;
+  fatG: number;
+  carbG: number;
+  fiberG?: number | null;
+  sugarG?: number | null;
+  saltG?: number | null;
+  sodiumMg?: number | null;
+  saturatedFatG?: number | null;
+  cholesterolMg?: number | null;
+  sourceUrl?: string | null;
+}
+
 interface RestaurantScrapeOutput {
   chainSlug: string;
   chainName: string;
-  menuItems: Array<{
-    name: string;
-    aliases?: string[];
-    source: string;
-  }>;
+  menuItems: RestaurantMenuItemRow[];
+}
+
+// Shape stored in `search_index.nutrition_json`. Optional fields
+// reflect provenance-dependent completeness: 八訂 rows fill the
+// full grid, restaurant menu rows fill only the disclosed subset.
+// Missing fields render as "—" in the detail view.
+export interface SearchIndexNutritionJson {
+  servingSizeG?: number;
+  servingUnit?: string;
+  servingDescription?: string | null;
+  caloriesPerServing: number;
+  proteinG: number;
+  fatG: number;
+  carbG: number;
+  fiberG?: number | null;
+  sugarG?: number | null;
+  saltG?: number | null;
+  sodiumMg?: number | null;
+  saturatedFatG?: number | null;
+  cholesterolMg?: number | null;
+  calciumMg?: number | null;
+  ironMg?: number | null;
+  magnesiumMg?: number | null;
+  zincMg?: number | null;
+  potassiumMg?: number | null;
+  vitaminAUg?: number | null;
+  vitaminB1Mg?: number | null;
+  vitaminB2Mg?: number | null;
+  vitaminB6Mg?: number | null;
+  vitaminB12Ug?: number | null;
+  folateUg?: number | null;
+  vitaminCMg?: number | null;
+  vitaminDUg?: number | null;
+  vitaminEMg?: number | null;
+  sourceUrl?: string | null;
 }
 
 interface SearchIndexRow {
@@ -85,6 +163,57 @@ interface SearchIndexRow {
   aliases_concat: string;
   source_label: string;
   is_common: 0 | 1;
+  nutrition_json: string;
+}
+
+function foodToNutrition(food: MextFoodRow): SearchIndexNutritionJson {
+  return {
+    servingSizeG: food.servingSizeG,
+    servingUnit: food.servingUnit,
+    caloriesPerServing: food.caloriesPerServing,
+    proteinG: food.proteinG,
+    fatG: food.fatG,
+    carbG: food.carbG,
+    fiberG: food.fiberG,
+    sugarG: food.sugarG,
+    saltG: food.saltG,
+    sodiumMg: food.sodiumMg,
+    saturatedFatG: food.saturatedFatG,
+    cholesterolMg: food.cholesterolMg,
+    calciumMg: food.calciumMg,
+    ironMg: food.ironMg,
+    magnesiumMg: food.magnesiumMg,
+    zincMg: food.zincMg,
+    potassiumMg: food.potassiumMg,
+    vitaminAUg: food.vitaminAUg,
+    vitaminB1Mg: food.vitaminB1Mg,
+    vitaminB2Mg: food.vitaminB2Mg,
+    vitaminB6Mg: food.vitaminB6Mg,
+    vitaminB12Ug: food.vitaminB12Ug,
+    folateUg: food.folateUg,
+    vitaminCMg: food.vitaminCMg,
+    vitaminDUg: food.vitaminDUg,
+    vitaminEMg: food.vitaminEMg,
+  };
+}
+
+function menuItemToNutrition(item: RestaurantMenuItemRow): SearchIndexNutritionJson {
+  return {
+    servingSizeG: item.servingSizeG,
+    servingUnit: item.servingUnit,
+    servingDescription: item.servingDescription,
+    caloriesPerServing: item.caloriesPerServing,
+    proteinG: item.proteinG,
+    fatG: item.fatG,
+    carbG: item.carbG,
+    fiberG: item.fiberG,
+    sugarG: item.sugarG,
+    saltG: item.saltG,
+    sodiumMg: item.sodiumMg,
+    saturatedFatG: item.saturatedFatG,
+    cholesterolMg: item.cholesterolMg,
+    sourceUrl: item.sourceUrl,
+  };
 }
 
 async function loadKuromoji(): Promise<kuromoji.Tokenizer<kuromoji.IpadicFeatures>> {
@@ -154,6 +283,7 @@ async function buildFoodRows(
       // search-result badge (Drafting 152).
       source_label: 'official_disclosure',
       is_common: food.isCommon ? 1 : 0,
+      nutrition_json: JSON.stringify(foodToNutrition(food)),
     });
   }
   return out;
@@ -191,6 +321,7 @@ async function buildRestaurantRows(
         aliases_concat: buildAliasesConcat(reading, item.aliases ?? []),
         source_label: sourceLabel,
         is_common: 0,
+        nutrition_json: JSON.stringify(menuItemToNutrition(item)),
       });
     }
   }

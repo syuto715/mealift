@@ -23,6 +23,7 @@ interface SearchIndexSeedRow {
   aliases_concat: string;
   source_label: string;
   is_common: 0 | 1;
+  nutrition_json: string;
 }
 
 export async function seedSearchIndex(db: SQLite.SQLiteDatabase): Promise<void> {
@@ -33,8 +34,8 @@ export async function seedSearchIndex(db: SQLite.SQLiteDatabase): Promise<void> 
   try {
     for (const row of rows) {
       await db.runAsync(
-        `INSERT INTO search_index (source_type, source_id, name_ja, name_en, brand, aliases_concat, source_label, is_common, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `INSERT INTO search_index (source_type, source_id, name_ja, name_en, brand, aliases_concat, source_label, is_common, nutrition_json, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
          ON CONFLICT(source_type, source_id) DO UPDATE SET
            name_ja = excluded.name_ja,
            name_en = excluded.name_en,
@@ -42,6 +43,7 @@ export async function seedSearchIndex(db: SQLite.SQLiteDatabase): Promise<void> 
            aliases_concat = excluded.aliases_concat,
            source_label = excluded.source_label,
            is_common = excluded.is_common,
+           nutrition_json = excluded.nutrition_json,
            updated_at = datetime('now')`,
         [
           row.source_type,
@@ -52,6 +54,7 @@ export async function seedSearchIndex(db: SQLite.SQLiteDatabase): Promise<void> 
           row.aliases_concat,
           row.source_label,
           row.is_common,
+          row.nutrition_json,
         ],
       );
     }

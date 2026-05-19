@@ -29,11 +29,17 @@ export interface UseSearchFoodItemsResult {
 export function useSearchFoodItems(): UseSearchFoodItemsResult {
   const query = useSearchStore((s) => s.query);
   const pageSize = useSearchStore((s) => s.pageSize);
+  const filters = useSearchStore((s) => s.filters);
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS);
 
   const tanstackQuery = useQuery({
-    queryKey: ['searchFoodItems', debouncedQuery, pageSize] as const,
-    queryFn: () => searchUnified(debouncedQuery, { limit: pageSize }),
+    queryKey: ['searchFoodItems', debouncedQuery, pageSize, filters] as const,
+    queryFn: () =>
+      searchUnified(debouncedQuery, {
+        limit: pageSize,
+        sourceTypes: filters.sourceTypes,
+        sourceLabels: filters.sourceLabels,
+      }),
     enabled: debouncedQuery.trim().length > 0,
     staleTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,

@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
+import { SearchFilterChips } from './SearchFilterChips';
 import { getColors } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
@@ -47,13 +48,19 @@ const SOURCE_LABEL_BADGE: Record<SearchSourceLabel, BadgeStyle> = {
 };
 
 interface FoodSearchResultProps {
-  /** Tap handler — Sprint 2.3.3 wires this into navigation. */
+  /** Tap handler — typically pushes to the detail route. */
   onSelect?: (hit: SearchIndexHit) => void;
   /** Hide the search input (when a parent owns the input). */
   hideInput?: boolean;
+  /** Hide the filter chip row. */
+  hideFilters?: boolean;
 }
 
-export function FoodSearchResult({ onSelect, hideInput = false }: FoodSearchResultProps) {
+export function FoodSearchResult({
+  onSelect,
+  hideInput = false,
+  hideFilters = false,
+}: FoodSearchResultProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
   const query = useSearchStore((s) => s.query);
@@ -86,6 +93,8 @@ export function FoodSearchResult({ onSelect, hideInput = false }: FoodSearchResu
           />
         </View>
       )}
+
+      {!hideFilters && <SearchFilterChips />}
 
       {showError && (
         <View style={styles.stateBox}>

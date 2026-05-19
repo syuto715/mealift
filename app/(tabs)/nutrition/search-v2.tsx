@@ -32,15 +32,12 @@ export default function SearchV2Screen() {
   }, [clear]);
 
   const handleSelect = useCallback((hit: SearchIndexHit) => {
-    // Sprint 2.3.3 wires this into the detail screen + addFood
-    // backend bridge. For Sprint 2.3.2 we surface the hit in a
-    // dev console so the row tap is verifiable end-to-end.
-    console.log('[search-v2] selected', {
-      sourceType: hit.sourceType,
-      sourceId: hit.sourceId,
-      name: hit.nameJa,
-      brand: hit.brand,
-      label: hit.sourceLabel,
+    // Sprint 2.3.3 — push into the v37 detail route. addFood
+    // backend bridging stays Sprint 2.3.5+ scope, so the detail
+    // screen is read-only for now (Drafting 161 production safety).
+    router.push({
+      pathname: '/(tabs)/nutrition/food-detail-v2',
+      params: { ref: `${hit.sourceType}:${hit.sourceId}` },
     });
   }, []);
 
