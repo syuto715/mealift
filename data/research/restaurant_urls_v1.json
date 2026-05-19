@@ -276,11 +276,11 @@
         "https://allergy.saizeriya.co.jp/allergy",
         "https://book.saizeriya.co.jp/allergen2007_j/book/"
       ],
-      "data_format": "SPA + flip-book",
+      "data_format": "SPA + flip-book (両者 JS-interactive)",
       "coverage": "partial",
-      "difficulty": "medium",
-      "fallback_required": false,
-      "memo": "店舗 QR 誘導設計、 要 JS"
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 3.2 検証: flip-book book.saizeriya.co.jp/allergen2007_j/book/ は JS interactive viewer (静的 PDF link 不在)、 SPA allergy.saizeriya.co.jp も同様。 AI fallback path で 75 representative items を seed。 新規 italian-family ratio (TBN) で Atwater-anchored AI 推定。 ミラノ風ドリア / マルゲリータ ピッツァ / カルボナーラ 等 イタリアン family chain の代表 menu 中心"
     },
     {
       "chain_slug": "bamiyan",
@@ -291,11 +291,11 @@
         "https://allergy.skylark.co.jp/scene?shop=171099",
         "https://allergy.skylark.co.jp/"
       ],
-      "data_format": "SPA",
+      "data_format": "SPA (Skylark allergen-filter)",
       "coverage": "partial",
-      "difficulty": "medium",
-      "fallback_required": false,
-      "memo": "shop=171099 でバーミヤン選択。 PFC 非公開"
+      "difficulty": "hard",
+      "fallback_required": true,
+      "memo": "Phase 2.2b Sprint 3.2 検証: Playwright で bamiyan brand=170001 取得、 /allergen?brand=170001&usage=1 navigate OK。 但し Drafting 137 適用 (gusto と同 allergen-filter UI、 bulk extraction 不向き)。 AI fallback で 74 representative items (中華料理 family) を seed。 新規 chinese-family ratio (TBN) で Atwater-anchored AI 推定"
     },
     {
       "chain_slug": "dennys",
