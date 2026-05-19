@@ -33,6 +33,7 @@ interface YoshinoyaRow {
   fat: number;
   carb: number;
   salt: number;
+  implicitSingleton?: boolean;
 }
 
 // Family A: main rice-bowl sizes (sukiya / nakau overlap + yoshinoya
@@ -63,13 +64,20 @@ const FAMILY_C: Record<string, number> = {
 // Family E: unit-prefixed singletons. Detected by regex; each row is
 // its own group regardless of value.
 const FAMILY_E_RE
-  = /^(?:\d+(?:P|袋|個|皿|パック|本|g|ml|杯)|ご飯増量|肉2倍盛|鰻2倍盛)$/;
+  = /^(?:\d+(?:P|袋|個|皿|パック|本|g|ml|杯)|ご飯増量|肉2倍盛|鰻2倍盛|ミニ)$/;
+
+const BARE_ROW_RE = new RegExp(
+  '^'
+  + String.raw`([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)`
+  + String.raw`(?:\s+.*)?$`,
+);
 
 const SIZE_RE = new RegExp(
   '^(' + [
     ...Object.keys(FAMILY_A),
     ...Object.keys(FAMILY_B),
     ...Object.keys(FAMILY_C),
+    'ミニ',
     'ご飯増量', '肉2倍盛', '鰻2倍盛',
     String.raw`\d+P`, String.raw`\d+袋`, String.raw`\d+個`, String.raw`\d+皿`,
     String.raw`\d+パック`, String.raw`\d+本`, String.raw`\d+g`,
@@ -99,19 +107,40 @@ function toNumber(s: string): number {
   return Number(s.replace(/,/g, ''));
 }
 
+function normalizeYoshinoyaText(text: string): string {
+  const japaneseSection = text.split('-- 7 of 16 --')[0];
+  return japaneseSection
+    .replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    .replace(/ｇ/g, 'g')
+    .replace(/㎖/g, 'ml')
+    .replace(/ｍｌ/g, 'ml')
+    .replace(/　/g, ' ');
+}
+
 export function extractYoshinoyaRows(text: string): YoshinoyaRow[] {
   const rows: YoshinoyaRow[] = [];
-  for (const line of text.split(/\r?\n/)) {
+  const normalizedText = normalizeYoshinoyaText(text);
+  for (const line of normalizedText.split(/\r?\n/)) {
     const trimmed = line.trim();
-    const m = trimmed.match(SIZE_RE);
-    if (!m) continue;
-    const calories = toNumber(m[2]);
-    const protein = toNumber(m[3]);
-    const fat = toNumber(m[4]);
-    const carb = toNumber(m[5]);
-    const salt = toNumber(m[6]);
+    if (!trimmed) continue;
+
+    const explicit = trimmed.match(SIZE_RE);
+    const bare = explicit ? null : trimmed.match(BARE_ROW_RE);
+    if (!explicit && !bare) continue;
+
+    const size = explicit?.[1] ?? '';
+    const numericFields = explicit ? explicit.slice(2, 7) : bare!.slice(1, 6);
+    const [calories, protein, fat, carb, salt] = numericFields.map(toNumber);
     if (![calories, protein, fat, carb, salt].every(Number.isFinite)) continue;
-    rows.push({ size: m[1], calories, protein, fat, carb, salt });
+    rows.push({
+      size,
+      calories,
+      protein,
+      fat,
+      carb,
+      salt,
+      implicitSingleton: !explicit,
+    });
   }
   return rows;
 }
@@ -122,6 +151,15 @@ export function groupYoshinoyaRows(rows: YoshinoyaRow[]): YoshinoyaRow[][] {
   let prevFamily: Family | null = null;
   let prevIdx = -1;
   for (const row of rows) {
+    if (row.implicitSingleton) {
+      if (current.length > 0) groups.push(current);
+      groups.push([row]);
+      current = [];
+      prevFamily = null;
+      prevIdx = -1;
+      continue;
+    }
+
     const fam = familyOf(row.size);
     if (!fam) continue;
     const idx = indexInFamily(row.size, fam);
@@ -163,7 +201,7 @@ export function parseYoshinoya(opts: YoshinoyaParseOptions): RestaurantScrapeOut
     const menuName = YOSHINOYA_MENU_NAMES[i];
     for (const row of groups[i]) {
       items.push({
-        name: `${menuName} ${row.size}`,
+        name: row.size ? `${menuName} ${row.size}` : menuName,
         servingSizeG: 100,
         servingUnit: 'g',
         caloriesPerServing: row.calories,

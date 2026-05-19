@@ -507,7 +507,20 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "スタミナ超特盛丼（マヨソースを含む） 並盛",
+      "name": "スタミナ超特盛丼（マヨソースを含む）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 2031,
+      "proteinG": 64.8,
+      "fatG": 111.3,
+      "carbG": 196.7,
+      "saltG": 9.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "焦がしネギ焼き鳥丼 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 720,
@@ -520,7 +533,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "スタミナ超特盛丼（マヨソースを含む） 大盛",
+      "name": "焦がしネギ焼き鳥丼 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 970,
@@ -533,7 +546,20 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "焦がしネギ焼き鳥丼 一枚盛",
+      "name": "絶品牛重",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 972,
+      "proteinG": 25.9,
+      "fatG": 42.6,
+      "carbG": 125.5,
+      "saltG": 6.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "鰻重 一枚盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 718,
@@ -546,7 +572,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "焦がしネギ焼き鳥丼 二枚盛",
+      "name": "鰻重 二枚盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1031,
@@ -559,7 +585,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "絶品牛重 並盛",
+      "name": "鰻皿 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 281,
@@ -572,7 +598,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "絶品牛重 大盛",
+      "name": "鰻皿 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 344,
@@ -585,7 +611,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "絶品牛重 特盛",
+      "name": "鰻皿 特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 532,
@@ -598,7 +624,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "鰻重 三人前",
+      "name": "牛皿 三人前",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 843,
@@ -611,7 +637,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "鰻重 四人前",
+      "name": "牛皿 四人前",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1124,
@@ -624,7 +650,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "鰻皿 並盛",
+      "name": "牛皿ファミリーパック 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 232,
@@ -637,7 +663,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "鰻皿 大盛",
+      "name": "牛皿ファミリーパック 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 288,
@@ -650,7 +676,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "鰻皿 特盛",
+      "name": "牛皿ファミリーパック 特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 465,
@@ -663,7 +689,59 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛皿 一枚盛",
+      "name": "豚皿",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 456,
+      "proteinG": 20.5,
+      "fatG": 33.8,
+      "carbG": 17.1,
+      "saltG": 3.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛鉄板カルビ皿",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 310,
+      "proteinG": 10.5,
+      "fatG": 24.2,
+      "carbG": 9.9,
+      "saltG": 3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩豚皿",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 425,
+      "proteinG": 18.8,
+      "fatG": 34.6,
+      "carbG": 9.1,
+      "saltG": 4.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩牛カルビ皿",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 489,
+      "proteinG": 20.2,
+      "fatG": 33.3,
+      "carbG": 27.1,
+      "saltG": 3.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛鉄板焼肉皿 一枚盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 337,
@@ -676,7 +754,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛皿 二枚盛",
+      "name": "牛鉄板焼肉皿 二枚盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 651,
@@ -689,7 +767,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛皿 三枚盛",
+      "name": "牛鉄板焼肉皿 三枚盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 964,
@@ -702,7 +780,98 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛皿ファミリーパック 並盛",
+      "name": "牛鮭定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 662,
+      "proteinG": 26.4,
+      "fatG": 23.4,
+      "carbG": 88,
+      "saltG": 4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ほっけ定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 463,
+      "proteinG": 20.4,
+      "fatG": 5,
+      "carbG": 88.9,
+      "saltG": 3.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛ほっけ定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 636,
+      "proteinG": 28.9,
+      "fatG": 19.8,
+      "carbG": 90.2,
+      "saltG": 4.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩豚定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 869,
+      "proteinG": 29.1,
+      "fatG": 35,
+      "carbG": 111.4,
+      "saltG": 6.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩牛カルビ定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 682,
+      "proteinG": 17.7,
+      "fatG": 25.5,
+      "carbG": 95.6,
+      "saltG": 4.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛鉄板焼肉定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 797,
+      "proteinG": 26,
+      "fatG": 35.9,
+      "carbG": 94.8,
+      "saltG": 5.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛皿定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 928,
+      "proteinG": 33.1,
+      "fatG": 39.7,
+      "carbG": 111.4,
+      "saltG": 5.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "鰻重牛小鉢セット 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 719,
@@ -715,7 +884,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛皿ファミリーパック 大盛",
+      "name": "鰻重牛小鉢セット 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 783,
@@ -728,7 +897,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛皿ファミリーパック 特盛",
+      "name": "鰻重牛小鉢セット 特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 970,
@@ -741,7 +910,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "豚皿 一枚盛",
+      "name": "牛皿・牛鉄板カルビ定食 一枚盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 896,
@@ -754,7 +923,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "豚皿 二枚盛",
+      "name": "牛皿・牛鉄板カルビ定食 二枚盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1210,
@@ -767,7 +936,111 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛鉄板カルビ皿 並盛",
+      "name": "牛皿・ねぎ塩豚定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1101,
+      "proteinG": 40.8,
+      "fatG": 57.9,
+      "carbG": 106.4,
+      "saltG": 6.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛皿・ねぎ塩牛カルビ定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 955,
+      "proteinG": 30.8,
+      "fatG": 48.3,
+      "carbG": 99.3,
+      "saltG": 6.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛皿・から揚げ定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1070,
+      "proteinG": 39.1,
+      "fatG": 58.7,
+      "carbG": 98.4,
+      "saltG": 7.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "納豆定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1134,
+      "proteinG": 40.5,
+      "fatG": 57.4,
+      "carbG": 116.4,
+      "saltG": 6.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "焼魚定食（鮭）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1244,
+      "proteinG": 46.7,
+      "fatG": 67.4,
+      "carbG": 112.2,
+      "saltG": 5.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "特朝定食（鮭）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 544,
+      "proteinG": 21.3,
+      "fatG": 11.1,
+      "carbG": 92,
+      "saltG": 2.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "玉子セット",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 478,
+      "proteinG": 17.8,
+      "fatG": 8.2,
+      "carbG": 84.8,
+      "saltG": 2.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "半熟玉子セット",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 653,
+      "proteinG": 31.7,
+      "fatG": 18,
+      "carbG": 92,
+      "saltG": 3.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "お新香セット 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 943,
@@ -780,7 +1053,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛鉄板カルビ皿 アタマの大盛",
+      "name": "お新香セット アタマの大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1172,
@@ -793,7 +1066,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛鉄板カルビ皿 大盛",
+      "name": "お新香セット 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1264,
@@ -806,7 +1079,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛鉄板カルビ皿 特盛",
+      "name": "お新香セット 特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1461,
@@ -819,7 +1092,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ねぎ塩豚皿 並盛",
+      "name": "ミニサラダセット 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 886,
@@ -832,7 +1105,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ねぎ塩豚皿 アタマの大盛",
+      "name": "ミニサラダセット アタマの大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1114,
@@ -845,7 +1118,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ねぎ塩豚皿 大盛",
+      "name": "ミニサラダセット 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1208,
@@ -858,7 +1131,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ねぎ塩豚皿 特盛",
+      "name": "ミニサラダセット 特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1405,
@@ -871,7 +1144,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ねぎ塩牛カルビ皿 並盛",
+      "name": "納豆セット 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1230,
@@ -884,7 +1157,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ねぎ塩牛カルビ皿 アタマの大盛",
+      "name": "納豆セット アタマの大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1458,
@@ -897,7 +1170,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ねぎ塩牛カルビ皿 大盛",
+      "name": "納豆セット 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1550,
@@ -910,7 +1183,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ねぎ塩牛カルビ皿 特盛",
+      "name": "納豆セット 特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1746,
@@ -923,7 +1196,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛鉄板焼肉皿 並盛",
+      "name": "納豆牛小鉢定食 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1168,
@@ -936,7 +1209,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛鉄板焼肉皿 大盛",
+      "name": "納豆牛小鉢定食 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1366,
@@ -949,7 +1222,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛鉄板焼肉皿 特盛",
+      "name": "納豆牛小鉢定食 特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1563,
@@ -962,7 +1235,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛鮭定食 並盛",
+      "name": "焼魚牛小鉢定食 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1454,
@@ -975,7 +1248,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛鮭定食 大盛",
+      "name": "焼魚牛小鉢定食 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1651,
@@ -988,7 +1261,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛鮭定食 特盛",
+      "name": "焼魚牛小鉢定食 特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1849,
@@ -1001,7 +1274,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ほっけ定食 並盛",
+      "name": "ハムエッグ納豆定食 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 480,
@@ -1014,7 +1287,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛ほっけ定食 ご飯増量",
+      "name": "ハムエッグ牛小鉢定食 ご飯増量",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 605,
@@ -1027,7 +1300,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ねぎ塩豚定食 並盛",
+      "name": "Wハムエッグ納豆定食 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 622,
@@ -1040,7 +1313,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ねぎ塩牛カルビ定食 ご飯増量",
+      "name": "Wハムエッグ牛小鉢定食 ご飯増量",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 746,
@@ -1053,7 +1326,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛鉄板焼肉定食 並盛",
+      "name": "から揚げ丼 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 761,
@@ -1066,7 +1339,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛皿定食 ご飯増量",
+      "name": "から牛 ご飯増量",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 886,
@@ -1079,7 +1352,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "鰻重牛小鉢セット 並盛",
+      "name": "タルタル南蛮から揚げ丼 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 750,
@@ -1092,7 +1365,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛皿・牛鉄板カルビ定食 ご飯増量",
+      "name": "にんにくマシマシから揚げ超特盛丼（マヨソース含む） ご飯増量",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 875,
@@ -1105,7 +1378,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛皿・ねぎ塩豚定食 並盛",
+      "name": "から揚げ定食 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 892,
@@ -1118,7 +1391,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛皿・ねぎ塩牛カルビ定食 ご飯増量",
+      "name": "から揚げお新香定食 ご飯増量",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1016,
@@ -1131,7 +1404,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛皿・から揚げ定食 並盛",
+      "name": "タルタル南蛮から揚げ定食 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 874,
@@ -1144,7 +1417,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "納豆定食 ご飯増量",
+      "name": "から揚げ ご飯増量",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 998,
@@ -1157,7 +1430,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "焼魚定食（鮭） 並盛",
+      "name": "タルタルソース 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 643,
@@ -1170,7 +1443,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "特朝定食（鮭） ご飯増量",
+      "name": "黒カレー ご飯増量",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 767,
@@ -1183,7 +1456,20 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "玉子セット 並盛",
+      "name": "牛黒カレー ミニ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 276,
+      "proteinG": 7.1,
+      "fatG": 12.5,
+      "carbG": 32.3,
+      "saltG": 1.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "肉だく牛黒カレー 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 551,
@@ -1196,7 +1482,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "半熟玉子セット 1P",
+      "name": "牛カルビ黒カレー 1P",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1,
@@ -1209,7 +1495,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "お新香セット 1P",
+      "name": "牛×牛カルビ黒カレー 1P",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 12,
@@ -1222,7 +1508,33 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ミニサラダセット 2本",
+      "name": "から揚げ黒カレー",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 352,
+      "proteinG": 9,
+      "fatG": 14,
+      "carbG": 49.5,
+      "saltG": 1.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "魯肉黒カレー",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 271,
+      "proteinG": 5,
+      "fatG": 2,
+      "carbG": 59.9,
+      "saltG": 1.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "セット油そば 2本",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 86,
@@ -1235,7 +1547,33 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "納豆セット 1個",
+      "name": "パック酢 1P",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 11,
+      "proteinG": 0.1,
+      "fatG": 0.1,
+      "carbG": 2.5,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "パックラー油 1袋",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 11,
+      "proteinG": 0.6,
+      "fatG": 0.5,
+      "carbG": 1,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ミニ牛丼 1個",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 58,
@@ -1248,7 +1586,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "納豆牛小鉢定食 1個",
+      "name": "ミニカレー 1個",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 11,
@@ -1261,7 +1599,33 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "焼魚牛小鉢定食 並盛",
+      "name": "ウィンナー",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 16,
+      "proteinG": 0.7,
+      "fatG": 0.1,
+      "carbG": 3.1,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "トマトケチャップ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 88,
+      "proteinG": 1.7,
+      "fatG": 4.8,
+      "carbG": 9.7,
+      "saltG": 0.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ふりかけ（たまごふりかけ） 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 343,
@@ -1274,7 +1638,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "焼魚牛小鉢定食 大盛",
+      "name": "ふりかけ（たまごふりかけ） 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 468,
@@ -1287,7 +1651,267 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ハムエッグ納豆定食 1皿",
+      "name": "お子様ジュース（リンゴジュース）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 20,
+      "proteinG": 1.3,
+      "fatG": 0.6,
+      "carbG": 2.5,
+      "saltG": 1.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "プチゼリー（りんご・みかん・ぶどう）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 49,
+      "proteinG": 7.3,
+      "fatG": 1.2,
+      "carbG": 2.8,
+      "saltG": 1.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "生野菜サラダ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 41,
+      "proteinG": 4.3,
+      "fatG": 1.1,
+      "carbG": 3.3,
+      "saltG": 1.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ポテトサラダ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 143,
+      "proteinG": 5,
+      "fatG": 7.7,
+      "carbG": 13.8,
+      "saltG": 3.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ご飯",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 76,
+      "proteinG": 6.2,
+      "fatG": 5.2,
+      "carbG": 0.2,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "みそ汁",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 76,
+      "proteinG": 6.2,
+      "fatG": 5.2,
+      "carbG": 0.2,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "あさり汁",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 107,
+      "proteinG": 8,
+      "fatG": 5.7,
+      "carbG": 5.4,
+      "saltG": 1.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "しじみ汁",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 110,
+      "proteinG": 1.5,
+      "fatG": 8.5,
+      "carbG": 7.2,
+      "saltG": 0.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "豚汁",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 103,
+      "proteinG": 7.4,
+      "fatG": 7.9,
+      "carbG": 0.6,
+      "saltG": 0.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "玉子",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 33,
+      "proteinG": 0.9,
+      "fatG": 0,
+      "carbG": 7.9,
+      "saltG": 1.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "半熟玉子",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 162,
+      "proteinG": 4.1,
+      "fatG": 11.4,
+      "carbG": 11.4,
+      "saltG": 1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ玉子",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 120,
+      "proteinG": 3.6,
+      "fatG": 9.7,
+      "carbG": 4.5,
+      "saltG": 0.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎラー油",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 41,
+      "proteinG": 2,
+      "fatG": 1.4,
+      "carbG": 5,
+      "saltG": 2.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "チーズ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 5,
+      "proteinG": 0.6,
+      "fatG": 0.1,
+      "carbG": 0.6,
+      "saltG": 0.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "鬼おろしポン酢（単品）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 99,
+      "proteinG": 7.8,
+      "fatG": 4.7,
+      "carbG": 7.1,
+      "saltG": 0.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "肉味噌ねぎ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 109,
+      "proteinG": 10.5,
+      "fatG": 6.9,
+      "carbG": 0.1,
+      "saltG": 1.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "オム玉子",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 83,
+      "proteinG": 12.9,
+      "fatG": 3.3,
+      "carbG": 2.2,
+      "saltG": 1.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "明太高菜マヨ（マヨソース含む）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 142,
+      "proteinG": 6.8,
+      "fatG": 11.5,
+      "carbG": 2.8,
+      "saltG": 1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "のり",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 48,
+      "proteinG": 1.7,
+      "fatG": 0.7,
+      "carbG": 8.6,
+      "saltG": 1.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "納豆（タレ・カラシ・ネギ含む）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 40,
+      "proteinG": 1.5,
+      "fatG": 1.5,
+      "carbG": 5.4,
+      "saltG": 2.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "鮭（単品） 1皿",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 17,
@@ -1300,7 +1924,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "ハムエッグ牛小鉢定食 1皿",
+      "name": "ほっけ（単品） 1皿",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 26,
@@ -1313,7 +1937,85 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "Wハムエッグ納豆定食 1パック",
+      "name": "肉だく（牛小鉢） 5g",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1,
+      "proteinG": 0,
+      "fatG": 0,
+      "carbG": 0.2,
+      "saltG": 0.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎだく",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 49,
+      "proteinG": 0.3,
+      "fatG": 4.5,
+      "carbG": 1.7,
+      "saltG": 0.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩だれ（単品）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 6,
+      "proteinG": 0.3,
+      "fatG": 0,
+      "carbG": 1.2,
+      "saltG": 0.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "お新香",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 21,
+      "proteinG": 0.1,
+      "fatG": 1.9,
+      "carbG": 0.6,
+      "saltG": 0.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "キムチ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 11,
+      "proteinG": 0.1,
+      "fatG": 0,
+      "carbG": 2.7,
+      "saltG": 0.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "紅生姜",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 7,
+      "proteinG": 0.8,
+      "fatG": 0,
+      "carbG": 0.9,
+      "saltG": 1.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "焙煎ごまドレッシング 1パック",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1,
@@ -1326,7 +2028,46 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "Wハムエッグ牛小鉢定食 並盛",
+      "name": "ノンオイル和風ドレッシング 2g",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 5,
+      "proteinG": 0.1,
+      "fatG": 0.1,
+      "carbG": 0.8,
+      "saltG": 0.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "マヨソース",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1,
+      "proteinG": 0,
+      "fatG": 0,
+      "carbG": 0.1,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "スマイルソース",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1,
+      "proteinG": 0,
+      "fatG": 0,
+      "carbG": 0.2,
+      "saltG": 0.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "しょうゆ 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 752,
@@ -1339,7 +2080,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "Wハムエッグ牛小鉢定食 大盛",
+      "name": "しょうゆ 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 960,
@@ -1352,7 +2093,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から揚げ丼 並盛",
+      "name": "山椒 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 788,
@@ -1365,7 +2106,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から揚げ丼 大盛",
+      "name": "山椒 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 872,
@@ -1378,7 +2119,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から牛 並盛",
+      "name": "和からし 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 408,
@@ -1391,7 +2132,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から牛 大盛",
+      "name": "和からし 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 492,
@@ -1404,7 +2145,267 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "タルタル南蛮から揚げ丼 並盛",
+      "name": "テイクアウト用 七味",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1047,
+      "proteinG": 42.9,
+      "fatG": 50.2,
+      "carbG": 105.2,
+      "saltG": 5.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "テイクアウト用 紅生姜",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 45,
+      "proteinG": 0,
+      "fatG": 0,
+      "carbG": 11.3,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "大判豚肩ロース焼き丼（旨ダレ生姜）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 44,
+      "proteinG": 0.2,
+      "fatG": 0,
+      "carbG": 10.9,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "大判豚肩ロース焼き定食（旨ダレ生姜）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 39,
+      "proteinG": 0.2,
+      "fatG": 0,
+      "carbG": 9.8,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "大判豚肩ロース焼き皿（旨ダレ生姜）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 0,
+      "proteinG": 0,
+      "fatG": 0,
+      "carbG": 0.1,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛皿・大判豚肩ロース焼き定食（旨ダレ生姜）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 50,
+      "proteinG": 0,
+      "fatG": 0,
+      "carbG": 12.6,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "コカ・コーラ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 46,
+      "proteinG": 0.1,
+      "fatG": 0.1,
+      "carbG": 11.2,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "カルピス",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 4,
+      "proteinG": 0.2,
+      "fatG": 0,
+      "carbG": 0.7,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "カルピスソーダ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 44,
+      "proteinG": 1.3,
+      "fatG": 1.4,
+      "carbG": 6.5,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "煌（ファン）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 54,
+      "proteinG": 0.8,
+      "fatG": 1,
+      "carbG": 10.5,
+      "saltG": 0.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ファンタメロンソーダ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 54,
+      "proteinG": 0.6,
+      "fatG": 1.1,
+      "carbG": 10.6,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ミニッツメイドオレンジ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 8,
+      "proteinG": 0.4,
+      "fatG": 0,
+      "carbG": 1.4,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ホットブレンドコーヒー",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 64,
+      "proteinG": 1.9,
+      "fatG": 2,
+      "carbG": 9.4,
+      "saltG": 0.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ホットカフェオレ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 68,
+      "proteinG": 1,
+      "fatG": 1.3,
+      "carbG": 13.3,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ホットカフェモカ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 83,
+      "proteinG": 1,
+      "fatG": 1.7,
+      "carbG": 16.3,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ホットココア",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 32,
+      "proteinG": 0,
+      "fatG": 0,
+      "carbG": 8,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "アイスコーヒー",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 12,
+      "proteinG": 0,
+      "fatG": 0,
+      "carbG": 3,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "アイスカフェオレ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 10,
+      "proteinG": 0.2,
+      "fatG": 1,
+      "carbG": 0.2,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "アイスカフェモカ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 561,
+      "proteinG": 27,
+      "fatG": 7.9,
+      "carbG": 97.5,
+      "saltG": 3.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "アイスココア",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 838,
+      "proteinG": 24.6,
+      "fatG": 31.1,
+      "carbG": 118.4,
+      "saltG": 4.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ガムシロップ 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 587,
@@ -1417,7 +2418,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "タルタル南蛮から揚げ丼 大盛",
+      "name": "ガムシロップ 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 786,
@@ -1430,7 +2431,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "にんにくマシマシから揚げ超特盛丼（マヨソース含む） 並盛",
+      "name": "スティックシュガー 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 705,
@@ -1443,7 +2444,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から揚げ定食 肉2倍盛",
+      "name": "コーヒーフレッシュ 肉2倍盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 986,
@@ -1456,7 +2457,46 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から揚げお新香定食 並盛",
+      "name": "オーストリッチ丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 86,
+      "proteinG": 3.6,
+      "fatG": 0.4,
+      "carbG": 18.1,
+      "saltG": 1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "鉄板バタービーフカレー",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1003,
+      "proteinG": 35.4,
+      "fatG": 45.6,
+      "carbG": 116.5,
+      "saltG": 1.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛麦とろ丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1626,
+      "proteinG": 63.4,
+      "fatG": 89.9,
+      "carbG": 145.8,
+      "saltG": 2.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛皿麦とろ御膳 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1168,
@@ -1469,7 +2509,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "タルタル南蛮から揚げ定食 ご飯増量",
+      "name": "とろろ（単品） ご飯増量",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1332,
@@ -1482,7 +2522,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から揚げ 並盛",
+      "name": "ロースかつ定食 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1791,
@@ -1495,7 +2535,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "タルタルソース ご飯増量",
+      "name": "ダブルロースかつ定食 ご飯増量",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1956,
@@ -1508,7 +2548,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "黒カレー 並盛",
+      "name": "かつ丼 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 988,
@@ -1521,7 +2561,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛黒カレー ご飯増量",
+      "name": "ダブルかつ丼 ご飯増量",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1144,
@@ -1534,7 +2574,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "肉だく牛黒カレー 並盛",
+      "name": "ソースかつ丼 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 978,
@@ -1547,7 +2587,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛カルビ黒カレー ご飯増量",
+      "name": "おろしロースかつ丼 ご飯増量",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1134,
@@ -1560,7 +2600,267 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛×牛カルビ黒カレー 小盛",
+      "name": "ロースかつ（単品）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 623,
+      "proteinG": 27.9,
+      "fatG": 44.3,
+      "carbG": 29.3,
+      "saltG": 0.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "とんかつソース 30g",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 44,
+      "proteinG": 0.5,
+      "fatG": 0,
+      "carbG": 10.5,
+      "saltG": 1.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "和からし 2g",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 5,
+      "proteinG": 0.1,
+      "fatG": 0.1,
+      "carbG": 0.8,
+      "saltG": 0.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "トマトケチャップ（オレンジドリーム号）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 54,
+      "proteinG": 0.7,
+      "fatG": 0.3,
+      "carbG": 12.3,
+      "saltG": 1.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ジンギスカン定食",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 791,
+      "proteinG": 28.9,
+      "fatG": 30.4,
+      "carbG": 106.4,
+      "saltG": 7.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "カルビ弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 804,
+      "proteinG": 26.2,
+      "fatG": 34.5,
+      "carbG": 99.3,
+      "saltG": 3.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "から揚げ弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1139,
+      "proteinG": 40.1,
+      "fatG": 58.9,
+      "carbG": 110.2,
+      "saltG": 2.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "タルタル南蛮から揚げ弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1421,
+      "proteinG": 42.5,
+      "fatG": 84,
+      "carbG": 121.9,
+      "saltG": 5.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "豚生姜焼き弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 650,
+      "proteinG": 16.4,
+      "fatG": 22.8,
+      "carbG": 94.9,
+      "saltG": 2.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛鮭弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 737,
+      "proteinG": 29.6,
+      "fatG": 30.6,
+      "carbG": 87.5,
+      "saltG": 3.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛皿・豚生姜焼き弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 926,
+      "proteinG": 29.7,
+      "fatG": 45.6,
+      "carbG": 99.5,
+      "saltG": 4.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛皿・牛カルビ生姜焼き弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 763,
+      "proteinG": 24.5,
+      "fatG": 34,
+      "carbG": 92.1,
+      "saltG": 3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛カルビ生姜焼き弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1128,
+      "proteinG": 42.2,
+      "fatG": 65.2,
+      "carbG": 95.3,
+      "saltG": 4.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "から揚げW弁当（牛焼肉）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1094,
+      "proteinG": 38.7,
+      "fatG": 52,
+      "carbG": 118.5,
+      "saltG": 5.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛プルコギ弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 718,
+      "proteinG": 21.7,
+      "fatG": 26.1,
+      "carbG": 102.6,
+      "saltG": 3.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩豚弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 596,
+      "proteinG": 14.3,
+      "fatG": 20,
+      "carbG": 90.4,
+      "saltG": 3.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛皿ねぎ塩豚弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 934,
+      "proteinG": 30,
+      "fatG": 47,
+      "carbG": 97.9,
+      "saltG": 5.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩牛カルビ弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 672,
+      "proteinG": 20,
+      "fatG": 27,
+      "carbG": 89.8,
+      "saltG": 3.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛皿ねぎ塩カルビ弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1058,
+      "proteinG": 38.4,
+      "fatG": 58.2,
+      "carbG": 97.3,
+      "saltG": 6.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩から揚げ弁当",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 964,
+      "proteinG": 33.5,
+      "fatG": 44.6,
+      "carbG": 110.3,
+      "saltG": 4.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "豚生姜焼き丼 小盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 441,
@@ -1573,7 +2873,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛×牛カルビ黒カレー 並盛",
+      "name": "豚生姜焼き丼 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 595,
@@ -1586,7 +2886,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛×牛カルビ黒カレー アタマの大盛",
+      "name": "豚生姜焼き丼 アタマの大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 679,
@@ -1599,7 +2899,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛×牛カルビ黒カレー 大盛",
+      "name": "豚生姜焼き丼 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 773,
@@ -1612,7 +2912,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛×牛カルビ黒カレー 特盛",
+      "name": "豚生姜焼き丼 特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 968,
@@ -1625,7 +2925,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "牛×牛カルビ黒カレー 超特盛",
+      "name": "豚生姜焼き丼 超特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1062,
@@ -1638,7 +2938,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から揚げ黒カレー 小盛",
+      "name": "牛カルビ生姜丼 小盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 503,
@@ -1651,7 +2951,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から揚げ黒カレー 並盛",
+      "name": "牛カルビ生姜丼 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 658,
@@ -1664,7 +2964,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から揚げ黒カレー アタマの大盛",
+      "name": "牛カルビ生姜丼 アタマの大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 790,
@@ -1677,7 +2977,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から揚げ黒カレー 大盛",
+      "name": "牛カルビ生姜丼 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 884,
@@ -1690,7 +2990,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から揚げ黒カレー 特盛",
+      "name": "牛カルビ生姜丼 特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1107,
@@ -1703,7 +3003,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "から揚げ黒カレー 超特盛",
+      "name": "牛カルビ生姜丼 超特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1249,
@@ -1716,7 +3016,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "魯肉黒カレー 並盛",
+      "name": "から揚げ親子丼 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1065,
@@ -1729,7 +3029,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "魯肉黒カレー 大盛",
+      "name": "から揚げ親子丼 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1447,
@@ -1742,7 +3042,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "セット油そば 並盛",
+      "name": "タルタル南蛮から揚げ丼 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1228,
@@ -1755,7 +3055,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "セット油そば アタマの大盛",
+      "name": "タルタル南蛮から揚げ丼 アタマの大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1456,
@@ -1768,7 +3068,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "セット油そば 大盛",
+      "name": "タルタル南蛮から揚げ丼 大盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1550,
@@ -1781,7 +3081,7 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "セット油そば 特盛",
+      "name": "タルタル南蛮から揚げ丼 特盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 1747,
@@ -1794,7 +3094,85 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "パック酢 並盛",
+      "name": "ねぎ塩牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 670,
+      "proteinG": 20.5,
+      "fatG": 24.9,
+      "carbG": 93.9,
+      "saltG": 4.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩豚丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 592,
+      "proteinG": 14.1,
+      "fatG": 19.9,
+      "carbG": 89.8,
+      "saltG": 2.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩牛カルビ丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 668,
+      "proteinG": 19.8,
+      "fatG": 26.9,
+      "carbG": 89.1,
+      "saltG": 3.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩から揚げ丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 960,
+      "proteinG": 33.3,
+      "fatG": 44.4,
+      "carbG": 109.7,
+      "saltG": 4.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "豚生姜焼き皿",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 318,
+      "proteinG": 11.2,
+      "fatG": 22.2,
+      "carbG": 15.5,
+      "saltG": 3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "牛カルビ生姜皿",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 416,
+      "proteinG": 18.8,
+      "fatG": 33.2,
+      "carbG": 9.8,
+      "saltG": 2.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "きざみ鰻丼弁当 並盛",
       "servingSizeG": 100,
       "servingUnit": "g",
       "caloriesPerServing": 564,
@@ -1807,13 +3185,429 @@
       "sourceCapturedAt": "2026-05-18"
     },
     {
-      "name": "パックラー油 100ml",
+      "name": "きざみ鰻丼・牛皿弁当 鰻2倍盛",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 0,
+      "caloriesPerServing": 755,
+      "proteinG": 37.2,
+      "fatG": 28.8,
+      "carbG": 92.3,
+      "saltG": 3.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ピリ辛青ねぎ（単品）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 849,
+      "proteinG": 35.5,
+      "fatG": 37.8,
+      "carbG": 96.1,
+      "saltG": 4.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "鬼おろしポン酢（単品）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 32,
+      "proteinG": 1.9,
+      "fatG": 0.6,
+      "carbG": 5.2,
+      "saltG": 1.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "鬼おろしわさび（単品）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 33,
+      "proteinG": 0.9,
+      "fatG": 0,
+      "carbG": 7.9,
+      "saltG": 1.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "高菜明太マヨ（単品）（マヨソース含む）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 16,
+      "proteinG": 0.4,
+      "fatG": 0.2,
+      "carbG": 3.8,
+      "saltG": 0.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ねぎ塩（単品）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 48,
+      "proteinG": 2,
+      "fatG": 2.2,
+      "carbG": 5,
+      "saltG": 2.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "エビフライ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 28,
+      "proteinG": 0.6,
+      "fatG": 0.8,
+      "carbG": 4.7,
+      "saltG": 2.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "コロッケ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 76,
+      "proteinG": 3.9,
+      "fatG": 3.8,
+      "carbG": 6.3,
+      "saltG": 0.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ヒレカツ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 231,
+      "proteinG": 3.6,
+      "fatG": 12.5,
+      "carbG": 26.2,
+      "saltG": 0.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "メンチカツ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 102,
+      "proteinG": 5.2,
+      "fatG": 5.1,
+      "carbG": 8.4,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "沖縄そば",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 306,
+      "proteinG": 8,
+      "fatG": 23.6,
+      "carbG": 15.4,
+      "saltG": 1.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "タコライス（サルサソース）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 315,
+      "proteinG": 11.2,
+      "fatG": 13.1,
+      "carbG": 36.3,
+      "saltG": 4.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "タコライス（トマトソース）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 678,
+      "proteinG": 27.4,
+      "fatG": 21.5,
+      "carbG": 97.4,
+      "saltG": 2.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ビフタコ（サルサソース）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 681,
+      "proteinG": 27.3,
+      "fatG": 21.5,
+      "carbG": 98.4,
+      "saltG": 2.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ビフタコ（トマトソース）",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 861,
+      "proteinG": 36.1,
+      "fatG": 36.8,
+      "carbG": 100.1,
+      "saltG": 3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "激辛ソース",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 865,
+      "proteinG": 36.1,
+      "fatG": 36.7,
+      "carbG": 101.1,
+      "saltG": 3.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール バニラ 1パック",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1,
       "proteinG": 0,
       "fatG": 0,
-      "carbG": 0,
+      "carbG": 0.1,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール チョコレート",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 86,
+      "proteinG": 1.9,
+      "fatG": 4.4,
+      "carbG": 9.3,
+      "saltG": 0.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール シークヮーサーソルベ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 84,
+      "proteinG": 1.8,
+      "fatG": 3.9,
+      "carbG": 10.4,
+      "saltG": 0.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール 紅イモ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 62,
+      "proteinG": 0,
+      "fatG": 0,
+      "carbG": 16.1,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール グレープ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 85,
+      "proteinG": 1.7,
+      "fatG": 4,
+      "carbG": 10.3,
+      "saltG": 0.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール フレアコーン",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 63,
+      "proteinG": 0,
+      "fatG": 0,
+      "carbG": 16.2,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール バニラ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 16,
+      "proteinG": 0.3,
+      "fatG": 0,
+      "carbG": 3.6,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール チョコレート",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 166,
+      "proteinG": 3.7,
+      "fatG": 8.6,
+      "carbG": 18,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール バニラ＆クッキー",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 162,
+      "proteinG": 3.5,
+      "fatG": 7.5,
+      "carbG": 20,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール ブルーウェーブ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 187,
+      "proteinG": 3.9,
+      "fatG": 9.6,
+      "carbG": 21.5,
+      "saltG": 0.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール サンフランシスコミントチョコ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 135,
+      "proteinG": 1.8,
+      "fatG": 3.7,
+      "carbG": 23.9,
+      "saltG": 0.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール 紅イモ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 188,
+      "proteinG": 3.7,
+      "fatG": 10.5,
+      "carbG": 19.6,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール ショコラクッキースワール",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 163,
+      "proteinG": 3.4,
+      "fatG": 7.7,
+      "carbG": 19.8,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール 塩ちんすこう",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 164,
+      "proteinG": 1.4,
+      "fatG": 3.3,
+      "carbG": 7.5,
+      "saltG": 0.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "ブルーシール ストロベリーチーズケーキ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 189,
+      "proteinG": 3.8,
+      "fatG": 9.7,
+      "carbG": 21.1,
+      "saltG": 0.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "コカ・コーラ",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 171,
+      "proteinG": 3.5,
+      "fatG": 8.3,
+      "carbG": 20.4,
+      "saltG": 0.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
+      "sourceCapturedAt": "2026-05-18"
+    },
+    {
+      "name": "さんぴん茶",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 45,
+      "proteinG": 0,
+      "fatG": 0,
+      "carbG": 11.3,
       "saltG": 0,
       "source": "official_disclosure",
       "sourceUrl": "https://www.yoshinoya.com/pdf/allergy/",
