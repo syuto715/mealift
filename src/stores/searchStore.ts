@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import type {
+  SearchSortKey,
   SearchSourceLabel,
   SearchSourceType,
 } from '../infra/repositories/searchIndexRepository';
+
+export type { SearchSortKey };
 
 // v1.5 Phase 2.3 Sprint 2.3.2 + 2.3.3 — unified search store.
 //
@@ -23,14 +26,17 @@ interface SearchState {
   query: string;
   pageSize: number;
   filters: SearchFilters;
+  sort: SearchSortKey;
   setQuery: (q: string) => void;
   setFilters: (f: SearchFilters) => void;
   toggleSourceType: (t: SearchSourceType) => void;
   toggleSourceLabel: (l: SearchSourceLabel) => void;
+  setSort: (s: SearchSortKey) => void;
   clear: () => void;
 }
 
 const EMPTY_FILTERS: SearchFilters = { sourceTypes: [], sourceLabels: [] };
+const DEFAULT_SORT: SearchSortKey = 'relevance';
 
 function toggleIn<T>(arr: T[], value: T): T[] {
   return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
@@ -40,6 +46,7 @@ export const useSearchStore = create<SearchState>((set) => ({
   query: '',
   pageSize: 20,
   filters: EMPTY_FILTERS,
+  sort: DEFAULT_SORT,
   setQuery: (q: string) => set({ query: q }),
   setFilters: (f: SearchFilters) => set({ filters: f }),
   toggleSourceType: (t: SearchSourceType) =>
@@ -50,5 +57,6 @@ export const useSearchStore = create<SearchState>((set) => ({
     set((state) => ({
       filters: { ...state.filters, sourceLabels: toggleIn(state.filters.sourceLabels, l) },
     })),
-  clear: () => set({ query: '', filters: EMPTY_FILTERS }),
+  setSort: (s: SearchSortKey) => set({ sort: s }),
+  clear: () => set({ query: '', filters: EMPTY_FILTERS, sort: DEFAULT_SORT }),
 }));

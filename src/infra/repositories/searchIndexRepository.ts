@@ -1,5 +1,11 @@
 import { getDatabase } from '../database/connection';
 import { buildMatchExpression } from '../../utils/buildMatchExpression';
+import {
+  buildSearchOrderBy,
+  type SearchSortKey,
+} from '../../utils/buildSearchOrderBy';
+
+export type { SearchSortKey };
 
 // v1.5 Phase 2.3 Sprint 2.3.1 — unified search query repository
 // (Option B path).
@@ -81,6 +87,7 @@ export interface SearchIndexDetail extends SearchIndexHit {
 export interface SearchOptions {
   sourceTypes?: SearchSourceType[];
   sourceLabels?: SearchSourceLabel[];
+  sort?: SearchSortKey;
   limit?: number;
   offset?: number;
 }
@@ -147,6 +154,7 @@ export async function searchUnified(
   const offset = options.offset ?? 0;
   const sourceTypes = options.sourceTypes ?? [];
   const sourceLabels = options.sourceLabels ?? [];
+  const sort: SearchSortKey = options.sort ?? 'relevance';
 
   const filters: string[] = [];
   const bindings: unknown[] = [match];
@@ -159,6 +167,7 @@ export async function searchUnified(
     bindings.push(...sourceLabels);
   }
   const whereTail = filters.length ? ` AND ${filters.join(' AND ')}` : '';
+  const orderBy = buildSearchOrderBy(sort);
   bindings.push(limit, offset);
 
   const db = await getDatabase();
@@ -169,7 +178,7 @@ export async function searchUnified(
        FROM search_index_fts
        JOIN search_index s ON s.rowid = search_index_fts.rowid
       WHERE search_index_fts MATCH ?${whereTail}
-      ORDER BY rank ASC, s.is_common DESC, s.use_count DESC, s.name_ja
+      ORDER BY ${orderBy}
       LIMIT ? OFFSET ?`,
     bindings as never[],
   );

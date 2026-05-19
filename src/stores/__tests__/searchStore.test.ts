@@ -57,4 +57,21 @@ describe('useSearchStore (Sprint 2.3.2 + 2.3.3)', () => {
     expect(state.filters.sourceTypes).toEqual(['food', 'restaurant_menu']);
     expect(state.filters.sourceLabels).toEqual(['ai_estimate']);
   });
+
+  it("default sort is 'relevance' and setSort switches the axis (Sprint 2.3.4)", () => {
+    expect(useSearchStore.getState().sort).toBe('relevance');
+    useSearchStore.getState().setSort('kcal_desc');
+    expect(useSearchStore.getState().sort).toBe('kcal_desc');
+  });
+
+  it('clear resets sort back to the relevance default along with query+filters', () => {
+    useSearchStore.getState().setSort('protein_desc');
+    useSearchStore.getState().setQuery('スタバ');
+    useSearchStore.getState().toggleSourceType('food');
+    useSearchStore.getState().clear();
+    const state = useSearchStore.getState();
+    expect(state.sort).toBe('relevance');
+    expect(state.query).toBe('');
+    expect(state.filters.sourceTypes).toEqual([]);
+  });
 });

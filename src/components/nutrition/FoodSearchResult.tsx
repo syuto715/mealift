@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { SearchFilterChips } from './SearchFilterChips';
+import { SearchSortControl } from './SearchSortControl';
 import { getColors } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
@@ -54,23 +55,34 @@ interface FoodSearchResultProps {
   hideInput?: boolean;
   /** Hide the filter chip row. */
   hideFilters?: boolean;
+  /** Hide the sort control. */
+  hideSort?: boolean;
 }
 
 export function FoodSearchResult({
   onSelect,
   hideInput = false,
   hideFilters = false,
+  hideSort = false,
 }: FoodSearchResultProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
   const query = useSearchStore((s) => s.query);
   const setQuery = useSearchStore((s) => s.setQuery);
   const clear = useSearchStore((s) => s.clear);
-  const { data, isFetching, isError, debouncedQuery } = useSearchFoodItems();
+  const {
+    items,
+    isFetching,
+    isFetchingNextPage,
+    isError,
+    hasNextPage,
+    fetchNextPage,
+    debouncedQuery,
+  } = useSearchFoodItems();
 
   const trimmedQuery = debouncedQuery.trim();
   const showEmptyHint = trimmedQuery.length === 0;
-  const showNoResult = !showEmptyHint && !isFetching && data && data.length === 0;
+  const showNoResult = !showEmptyHint && !isFetching && items.length === 0;
   const showError = isError;
 
   return (
@@ -95,6 +107,7 @@ export function FoodSearchResult({
       )}
 
       {!hideFilters && <SearchFilterChips />}
+      {!hideSort && <SearchSortControl />}
 
       {showError && (
         <View style={styles.stateBox}>
@@ -114,7 +127,7 @@ export function FoodSearchResult({
         </View>
       )}
 
-      {!showError && !showEmptyHint && isFetching && (
+      {!showError && !showEmptyHint && isFetching && items.length === 0 && (
         <View style={styles.stateBox}>
           <ActivityIndicator color={colors.primary} />
           <Text style={[styles.stateText, { color: colors.textSecondary }]}>検索中…</Text>
@@ -130,9 +143,9 @@ export function FoodSearchResult({
         </View>
       )}
 
-      {!showError && !showEmptyHint && data && data.length > 0 && (
+      {!showError && !showEmptyHint && items.length > 0 && (
         <FlatList
-          data={data}
+          data={items}
           keyExtractor={(item) => `${item.sourceType}:${item.sourceId}`}
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
@@ -142,6 +155,17 @@ export function FoodSearchResult({
           ItemSeparatorComponent={() => (
             <View style={[styles.separator, { backgroundColor: colors.border }]} />
           )}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : null
+          }
         />
       )}
     </View>
@@ -208,4 +232,5 @@ const styles = StyleSheet.create({
   brand: { ...typography.bodySmall },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   separator: { height: StyleSheet.hairlineWidth, marginLeft: spacing.md },
+  footerLoader: { paddingVertical: spacing.md, alignItems: 'center' },
 });
