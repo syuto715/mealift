@@ -377,7 +377,7 @@
       "coverage": "partial",
       "difficulty": "hard",
       "fallback_required": true,
-      "memo": "カロリー + 28 品目のみ。 PFC + 食塩 + 糖質 非公開 (公式 FAQ 明記)。 KOMEDA is□ (ヴィーガン業態) は別 PDF。 PFC は ai_estimated で seed"
+      "memo": "Phase 2.2b Sprint 2C.1 検証: 公式 hub HTML (allergy_check) は interactive web app (商品検索)、 main 標準メニュー bulk PDF は不在。 取得済 PDF (ichibutenpoyou.pdf 15 pages, 11KB) は店舗別・期間限定 subset のみで標準メニュー網羅できず。 純粋 AI fallback で標準メニュー 72 representative items (シロノワール / カツパン / モーニング / ドリンク等) を seed。 Drafting 133 partial-source は適用不可だった (kcal も bulk 取得できず、 web app から手動 scrape は v1.6+ Sprint 5 work)。 KOMEDA is□ (ヴィーガン業態) は別 PDF (v1.6+)。"
     },
     {
       "chain_slug": "pronto",
@@ -393,7 +393,7 @@
       "coverage": "partial",
       "difficulty": "medium",
       "fallback_required": true,
-      "memo": "エネルギー + 28 品目中心。 PFC は FAQ 経由問い合わせのみ → ai_estimated fallback"
+      "memo": "Phase 2.2b Sprint 2C.1 検証: PDF (3 pages, 10KB) は inline-name + kcal + allergen の partial-source schema (kura_sushi 型、 Drafting 133 本命適用)。 kcal は public disclosed、 PFC は Atwater-anchored ratio (P 12% / F 30% / C 58% — cafe/bakery 混在) で AI 推定。 chain-level conservative で source = ai_estimate (Drafting 130 deferred)"
     },
     {
       "chain_slug": "cocoichi",
