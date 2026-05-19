@@ -345,7 +345,7 @@
       "coverage": "partial",
       "difficulty": "hard",
       "fallback_required": true,
-      "memo": "Phase 2.2b Sprint 3.3 検証: food.pdf 取得 OK (6 pages, 18KB) だが multilingual table (JA/EN/CN/KR) + group-name schema (allergen marks + 5 numerics、 menu name 別位置)、 構造解析に Codex round 必要。 v1.5.0 範囲で AI fallback 68 representative items (drink + food + ベーカリー + デザート、 cafe-bakery ratio 既存適用) を seed。 Sprint 6 retrofit 候補: tullys group-name parser + Codex menu name 抽出。 &TEA / 季節限定 は v1.6+ defer"
+      "memo": "Phase 2.2b Sprint 6.5 拡張完了: food.pdf (6 pages、 Sprint 6.3 で 54 official) + drink.pdf (7 pages、 947 KB、 Sprint 6.5 新 parser で 222 multi-size official) = **276 全 official_disclosure**。 drink.pdf は food.pdf と schema 根本相違 (3-size triplet × 6 nutrition = 18 numeric cells、 caffeine 新列、 ー no-data marker、 page 2 espresso は caffeine 列無で 15-cell、 page 1 seasonal は 17-cell pdf-parse 末尾 ー drop)、 multi-attempt fallback parser (scripts/seed/parsers/tullys_drink.ts) を新規実装。 Codex round 1 visual-order curation (per-page 12/20/19/18/11/6/8 名 calibrated)。 servingDescription field で Short/Tall/Grande 表記。 and_tea/food.pdf は 404 確認、 業態 URL なし。 全 official 維持。 Sprint 6 cleanup 候補: 一部 FROZEN drink が temperature prefix ICED で誤表示 (v1.5.x)"
     },
     {
       "chain_slug": "doutor",
@@ -501,7 +501,7 @@
       "coverage": "partial",
       "difficulty": "hard",
       "fallback_required": true,
-      "memo": "Phase 2.2b Sprint 4.4 検証: 7premium.jp PB hub (例 detail?id=12995) は product showcase page (image + 価格 + 説明) で **inline nutrition 不在**、 sej.co.jp 中食も SPA で同状態。 research の 「7premium hub は PFC+糖質+食物繊維+食塩 全公開」 claim は実態と乖離 (時系列で disclosure policy 変更可能性)。 chain-level 純粋 AI fallback path で 81 representative items (PB 金/プレミアム/おにぎり/弁当/サラダチキン/ホットスナック/おでん/中華まん/サンド/パン/デザート/ドリンク/アルコール) を seed。 Sprint 6 retrofit 候補: 別の official disclosure source (sej.co.jp/products/info_allergy.html 等) を再探索"
+      "memo": "Phase 2.2b Sprint 6.5 Drafting 153 再探索: 7 aggregator URL 候補 (info_allergy/foodlist/nutrition/recipe csv 等) を網羅 probe — 全 404、 sej.co.jp robots.txt 自身も 404 (policy 不在)。 7premium.jp は **Incapsula WAF で blocked** (000 connection)。 /products/a/<cat>/ category listing は 200 ✓、 /products/a/item/<6 digit ID>/ per-item page は **inline `<th>栄養成分</th><td>熱量:NNNkcal、たんぱく質...</td>` row 完全構造化 ✓** (Sprint 4.4 の SPA 判定は誤り、 per-item HTML は server-rendered)。 Drafting 149 per-item walk path 設計試行 (scripts/seed/crawl-seven-eleven.ts、 18 cat、 1.2 sec rate limit) → onigiri 9/18 / sushi 0/0 / bento 0/0 / sandwich 0/15 で **Incapsula JS challenge が item-walk 規模で発動** (212-byte stub returned)。 v1.5.0 範囲は AI fallback 80 items 維持 (Sprint 4.4 seed そのまま)。 Sprint 6.6 retrofit: Playwright (real browser、 Incapsula JS challenge solve + cookie 永続) path で完全 crawl 試行、 starbucks_jp と pair で Playwright install ROI 集約予定"
     },
     {
       "chain_slug": "family_mart",
