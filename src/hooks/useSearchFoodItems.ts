@@ -52,6 +52,7 @@ export function useSearchFoodItems(): UseSearchFoodItemsResult {
         offset: pageParam * pageSize,
         sourceTypes: filters.sourceTypes,
         sourceLabels: filters.sourceLabels,
+        favoritesOnly: filters.favoritesOnly,
         sort,
       }),
     initialPageParam: 0,

@@ -16,6 +16,7 @@ import type { SearchSortKey } from '../../infra/repositories/searchIndexReposito
 
 const SORT_OPTIONS: Array<{ key: SearchSortKey; label: string }> = [
   { key: 'relevance', label: '関連度' },
+  { key: 'favorite_first', label: '★ 優先' },
   { key: 'kcal_asc', label: 'kcal ↑' },
   { key: 'kcal_desc', label: 'kcal ↓' },
   { key: 'protein_desc', label: 'タンパク質 ↓' },

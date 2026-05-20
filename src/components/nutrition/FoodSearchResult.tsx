@@ -14,6 +14,7 @@ import { Badge } from '../ui/Badge';
 import { SearchFilterChips } from './SearchFilterChips';
 import { SearchSortControl } from './SearchSortControl';
 import { EmptyStateView } from './EmptyStateView';
+import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { computeEmptyState } from '../../utils/computeEmptyState';
 import { useUIStore } from '../../stores/uiStore';
 import { getColors } from '../../theme/tokens';
@@ -126,7 +127,7 @@ export function FoodSearchResult({
           query={debouncedQuery}
           hasFilters={hasActiveFilters}
           onClearFilters={() =>
-            setFilters({ sourceTypes: [], sourceLabels: [] })
+            setFilters({ sourceTypes: [], sourceLabels: [], favoritesOnly: false })
           }
           onAIFallback={() => {
             // Sprint 2.3.5 — Phase 2.5 forwarding stub. Drafting 152's
@@ -201,6 +202,11 @@ function SearchResultRow({ item, onSelect }: SearchResultRowProps) {
             <Badge label={badge.label} color={badgeBg} textColor={badgeText} size="sm" />
           </View>
         </View>
+        <FavoriteToggleButton
+          target={{ sourceType: item.sourceType, sourceId: item.sourceId }}
+          initialIsFavorite={item.isFavorite}
+          size="sm"
+        />
       </View>
     </TouchableOpacity>
   );

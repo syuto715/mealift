@@ -22,7 +22,8 @@ export type SearchSortKey =
   | 'kcal_asc'
   | 'kcal_desc'
   | 'protein_desc'
-  | 'use_count_desc';
+  | 'use_count_desc'
+  | 'favorite_first';
 
 const NUTRITION_PATH = {
   caloriesPerServing: "json_extract(s.nutrition_json, '$.caloriesPerServing')",
@@ -50,5 +51,13 @@ export function buildSearchOrderBy(sort: SearchSortKey): string {
       // the right behaviour — 「よく使う」 with no usage history just
       // surfaces 八訂 staples in name order.
       return `s.use_count DESC, ${TIEBREAKERS}`;
+    case 'favorite_first':
+      // v38 path (Sprint 2.4.2) — `sf.created_at` is non-null for favorited
+      // rows (LEFT JOIN search_favorites). The CASE WHEN below pushes
+      // every favorite to the head regardless of bm25 / kcal / etc.;
+      // within the favorites block we keep relevance ordering so the
+      // user sees the most-relevant favorite first. Non-favorites
+      // follow in bm25-ranked order.
+      return `CASE WHEN sf.source_id IS NULL THEN 1 ELSE 0 END ASC, rank ASC, ${TIEBREAKERS}`;
   }
 }

@@ -52,6 +52,7 @@ describe('useSearchStore (Sprint 2.3.2 + 2.3.3)', () => {
     useSearchStore.getState().setFilters({
       sourceTypes: ['food', 'restaurant_menu'],
       sourceLabels: ['ai_estimate'],
+      favoritesOnly: false,
     });
     const state = useSearchStore.getState();
     expect(state.filters.sourceTypes).toEqual(['food', 'restaurant_menu']);
@@ -73,5 +74,19 @@ describe('useSearchStore (Sprint 2.3.2 + 2.3.3)', () => {
     expect(state.sort).toBe('relevance');
     expect(state.query).toBe('');
     expect(state.filters.sourceTypes).toEqual([]);
+    expect(state.filters.favoritesOnly).toBe(false);
+  });
+
+  it('toggleFavoritesOnly flips the boolean while leaving other axes alone (Sprint 2.4.2)', () => {
+    expect(useSearchStore.getState().filters.favoritesOnly).toBe(false);
+    useSearchStore.getState().toggleSourceType('food');
+    useSearchStore.getState().toggleFavoritesOnly();
+    let state = useSearchStore.getState();
+    expect(state.filters.favoritesOnly).toBe(true);
+    expect(state.filters.sourceTypes).toEqual(['food']);
+    useSearchStore.getState().toggleFavoritesOnly();
+    state = useSearchStore.getState();
+    expect(state.filters.favoritesOnly).toBe(false);
+    expect(state.filters.sourceTypes).toEqual(['food']);
   });
 });

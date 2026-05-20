@@ -20,6 +20,8 @@ export type { SearchSortKey };
 export interface SearchFilters {
   sourceTypes: SearchSourceType[];
   sourceLabels: SearchSourceLabel[];
+  /** v38 — Sprint 2.4.2: limit results to rows present in search_favorites. */
+  favoritesOnly: boolean;
 }
 
 interface SearchState {
@@ -31,11 +33,12 @@ interface SearchState {
   setFilters: (f: SearchFilters) => void;
   toggleSourceType: (t: SearchSourceType) => void;
   toggleSourceLabel: (l: SearchSourceLabel) => void;
+  toggleFavoritesOnly: () => void;
   setSort: (s: SearchSortKey) => void;
   clear: () => void;
 }
 
-const EMPTY_FILTERS: SearchFilters = { sourceTypes: [], sourceLabels: [] };
+const EMPTY_FILTERS: SearchFilters = { sourceTypes: [], sourceLabels: [], favoritesOnly: false };
 const DEFAULT_SORT: SearchSortKey = 'relevance';
 
 function toggleIn<T>(arr: T[], value: T): T[] {
@@ -56,6 +59,10 @@ export const useSearchStore = create<SearchState>((set) => ({
   toggleSourceLabel: (l: SearchSourceLabel) =>
     set((state) => ({
       filters: { ...state.filters, sourceLabels: toggleIn(state.filters.sourceLabels, l) },
+    })),
+  toggleFavoritesOnly: () =>
+    set((state) => ({
+      filters: { ...state.filters, favoritesOnly: !state.filters.favoritesOnly },
     })),
   setSort: (s: SearchSortKey) => set({ sort: s }),
   clear: () => set({ query: '', filters: EMPTY_FILTERS, sort: DEFAULT_SORT }),

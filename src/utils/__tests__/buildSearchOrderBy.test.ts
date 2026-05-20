@@ -30,11 +30,24 @@ describe('buildSearchOrderBy (Sprint 2.3.4)', () => {
   });
 
   it('every clause appends the shared (is_common, name_ja) tiebreakers', () => {
-    const keys = ['relevance', 'kcal_asc', 'kcal_desc', 'protein_desc', 'use_count_desc'] as const;
+    const keys = [
+      'relevance',
+      'kcal_asc',
+      'kcal_desc',
+      'protein_desc',
+      'use_count_desc',
+      'favorite_first',
+    ] as const;
     for (const key of keys) {
       const clause = buildSearchOrderBy(key);
       expect(clause).toContain('s.is_common DESC');
       expect(clause).toContain('s.name_ja');
     }
+  });
+
+  it("favorite_first (Sprint 2.4.2) uses the LEFT JOIN search_favorites CASE", () => {
+    const clause = buildSearchOrderBy('favorite_first');
+    expect(clause).toContain('CASE WHEN sf.source_id IS NULL THEN 1 ELSE 0 END ASC');
+    expect(clause).toContain('rank ASC');
   });
 });

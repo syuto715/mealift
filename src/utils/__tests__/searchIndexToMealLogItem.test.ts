@@ -19,6 +19,8 @@ function buildDetail(
     useCount: 0,
     isCommon: false,
     rank: 0,
+    isFavorite: false,
+    favoritedAt: null,
     nutrition: {
       caloriesPerServing: 343,
       proteinG: 11.3,

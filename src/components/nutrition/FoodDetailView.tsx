@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Badge } from '../ui/Badge';
 import { Card } from '../ui/Card';
+import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { getColors } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
@@ -123,6 +124,11 @@ export function FoodDetailView({ detail, onBack }: FoodDetailViewProps) {
             </Text>
           ) : null}
         </View>
+        <FavoriteToggleButton
+          target={{ sourceType: detail.sourceType, sourceId: detail.sourceId }}
+          initialIsFavorite={detail.isFavorite}
+          size="lg"
+        />
         <Badge label={badge.label} color={badgeBg} textColor={badgeText} size="sm" />
       </View>
 

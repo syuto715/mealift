@@ -65,6 +65,7 @@ export function SearchFilterChips() {
   const filters = useSearchStore((s) => s.filters);
   const toggleSourceType = useSearchStore((s) => s.toggleSourceType);
   const toggleSourceLabel = useSearchStore((s) => s.toggleSourceLabel);
+  const toggleFavoritesOnly = useSearchStore((s) => s.toggleFavoritesOnly);
 
   return (
     <View style={styles.container}>
@@ -92,6 +93,11 @@ export function SearchFilterChips() {
               onPress={() => toggleSourceLabel(chip.key)}
             />
           ))}
+          <Chip
+            label="★ お気に入りのみ"
+            selected={filters.favoritesOnly}
+            onPress={toggleFavoritesOnly}
+          />
         </View>
       </View>
     </View>
