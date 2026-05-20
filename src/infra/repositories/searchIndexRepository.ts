@@ -4,6 +4,7 @@ import {
   buildSearchOrderBy,
   type SearchSortKey,
 } from '../../utils/buildSearchOrderBy';
+import { INCREMENT_SEARCH_INDEX_USE_COUNT_SQL } from '../../utils/searchIndexUseCountSql';
 
 export type { SearchSortKey };
 
@@ -191,6 +192,36 @@ export async function isSearchFavorite(
     [sourceType, sourceId],
   );
   return Boolean(row);
+}
+
+// v1.5 Phase 2.4 Sprint 2.4.3 — use_count bumper.
+//
+// Drafting 162 application: the v36 schema already carries
+// `search_index.use_count` (`INTEGER NOT NULL DEFAULT 0` +
+// `idx_search_index_recency` on the column), and Sprint 2.3.4's
+// `use_count_desc` sort already references it — Sprint 2.4.3 just
+// wires the increment side of the contract without any schema
+// touch. Mirrors the existing
+// `foodRepository.incrementFoodUseCount` / dish / meal-template
+// patterns (single `UPDATE ... SET use_count = use_count + 1`).
+//
+// Idempotency / safety: hitting a (source_type, source_id) pair
+// that does not exist in `search_index` is a silent no-op (zero
+// rows affected) — meaningful because user-submitted rows that
+// haven't been indexed yet shouldn't crash the meal-log path.
+//
+// Drafting 161 alignment: this is a NEW exported function on the
+// repository; existing production paths are not modified. The
+// useAddMealLog hook calls it sequentially after `useNutrition
+// .addFood` succeeds (Option iii — hook-driven, no transaction
+// wrapping required, best-effort metric consistent with the
+// existing `foods.use_count` bump pattern).
+export async function incrementSearchIndexUseCount(
+  sourceType: SearchSourceType,
+  sourceId: string,
+): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(INCREMENT_SEARCH_INDEX_USE_COUNT_SQL, [sourceType, sourceId]);
 }
 
 export async function searchUnified(

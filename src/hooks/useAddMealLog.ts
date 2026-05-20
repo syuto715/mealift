@@ -1,10 +1,12 @@
 import { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNutrition } from './useNutrition';
 import { useUIStore } from '../stores/uiStore';
 import { searchIndexToMealLogItem } from '../utils/searchIndexToMealLogItem';
 import { detectMealTypeByTime } from '../utils/detectMealTypeByTime';
 import {
   getDetailByRef,
+  incrementSearchIndexUseCount,
   type SearchIndexHit,
 } from '../infra/repositories/searchIndexRepository';
 import type { MealType } from '../types/common';
@@ -36,6 +38,7 @@ interface AddMealLogOptions {
 export function useAddMealLog() {
   const { addFood } = useNutrition();
   const showToast = useUIStore((s) => s.showToast);
+  const queryClient = useQueryClient();
 
   return useCallback(
     async (hit: SearchIndexHit, options: AddMealLogOptions = {}) => {
@@ -51,12 +54,29 @@ export function useAddMealLog() {
         });
         const mealType = options.mealType ?? detectMealTypeByTime();
         await addFood(mealType, item);
+
+        // Sprint 2.4.3 — best-effort use_count bump for the
+        // 'use_count_desc' sort axis (Drafting 162). Failures here
+        // are deliberately non-fatal: the meal log already landed,
+        // and the sort metric is a soft hint, not a correctness
+        // invariant. We still log in dev so drift is visible.
+        try {
+          await incrementSearchIndexUseCount(hit.sourceType, hit.sourceId);
+          // Invalidate the unified search list so the next render
+          // reflects the new use_count (the dedicated favorite query
+          // is untouched; only the bm25-or-use_count-sorted list
+          // benefits from refetch).
+          void queryClient.invalidateQueries({ queryKey: ['searchFoodItems'] });
+        } catch (incErr) {
+          if (__DEV__) console.warn('[useAddMealLog] use_count bump failed', incErr);
+        }
+
         showToast(`${detail.nameJa} をミールログに追加しました`, 'success');
       } catch (e) {
         showToast('ミールログ追加に失敗しました', 'error');
         if (__DEV__) console.warn('[useAddMealLog]', e);
       }
     },
-    [addFood, showToast],
+    [addFood, showToast, queryClient],
   );
 }
