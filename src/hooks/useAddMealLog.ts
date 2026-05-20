@@ -71,6 +71,12 @@ export function useAddMealLog() {
           if (__DEV__) console.warn('[useAddMealLog] use_count bump failed', incErr);
         }
 
+        // Sprint 2.4.4 — invalidate the meal-log timeline read path
+        // so the new snapshot row surfaces on the timeline screen
+        // without a manual refresh. Independent of the use_count
+        // bump above (the snapshot insert is the strict event).
+        void queryClient.invalidateQueries({ queryKey: ['mealLogTimeline'] });
+
         showToast(`${detail.nameJa} をミールログに追加しました`, 'success');
       } catch (e) {
         showToast('ミールログ追加に失敗しました', 'error');
