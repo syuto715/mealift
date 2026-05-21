@@ -9,6 +9,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { SearchFilterChips } from './SearchFilterChips';
@@ -16,7 +17,6 @@ import { SearchSortControl } from './SearchSortControl';
 import { EmptyStateView } from './EmptyStateView';
 import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { computeEmptyState } from '../../utils/computeEmptyState';
-import { useUIStore } from '../../stores/uiStore';
 import { getColors } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
@@ -76,7 +76,6 @@ export function FoodSearchResult({
   const clear = useSearchStore((s) => s.clear);
   const filters = useSearchStore((s) => s.filters);
   const setFilters = useSearchStore((s) => s.setFilters);
-  const showToast = useUIStore((s) => s.showToast);
   const {
     items,
     isFetching,
@@ -130,13 +129,16 @@ export function FoodSearchResult({
             setFilters({ sourceTypes: [], sourceLabels: [], favoritesOnly: false })
           }
           onAIFallback={() => {
-            // Sprint 2.3.5 — Phase 2.5 forwarding stub. Drafting 152's
-            // estimate-nutrition-vision EF + aiNutritionService client
-            // already exist; this turn just surfaces the entry point so
-            // Syuto can verify the empty-state copy. Phase 2.5 will swap
-            // the toast for the actual Gemini-Vision flow.
-            showToast('AI 推定機能は Phase 2.5 で提供予定です', 'info');
-            console.log('[search-v2] AI fallback CTA query=', debouncedQuery);
+            // Sprint 2.5.1 — Drafting 164 design payoff materialization.
+            // Production `/(tabs)/nutrition/scan-dish` already owns the
+            // canonical AI photo flow (camera → decomposeFromImage →
+            // mealLoggingOcrStore → add.tsx). We just push into it from
+            // the search empty-state — modification is exactly one line
+            // of swap, no parallel re-implementation. Drafting 161 is
+            // honored at its strongest form: linking *into* the
+            // production route reuses the existing flow without touching
+            // it.
+            router.push('/(tabs)/nutrition/scan-dish');
           }}
           onRetry={() => refetch()}
         />
