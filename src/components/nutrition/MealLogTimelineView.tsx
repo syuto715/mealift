@@ -1,15 +1,17 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  TouchableOpacity,
   useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../ui/Card';
 import { EmptyState } from '../shared/EmptyState';
+import { MealLogItemEditSheet } from './MealLogItemEditSheet';
 import { getColors } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
@@ -74,6 +76,7 @@ export function MealLogTimelineView({ scope }: MealLogTimelineViewProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
   const { summaries, isFetching, isError, refetch } = useMealLogTimeline(scope);
+  const [editingItem, setEditingItem] = useState<MealLogItem | null>(null);
 
   const totals = useMemo(() => aggregateNutritionTotals(summaries), [summaries]);
   const isEmpty = totals.calories === 0 && summaries.every((s) => s.meals.length === 0);
@@ -116,14 +119,21 @@ export function MealLogTimelineView({ scope }: MealLogTimelineViewProps) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scroll}>
-      <DailyTotalsCard totals={totals} scope={scope} colors={colors} />
-      {scope === 'week' ? (
-        <WeeklyBreakdown summaries={summaries} colors={colors} />
-      ) : (
-        <DayMealSections summaries={summaries} colors={colors} />
-      )}
-    </ScrollView>
+    <>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <DailyTotalsCard totals={totals} scope={scope} colors={colors} />
+        {scope === 'week' ? (
+          <WeeklyBreakdown summaries={summaries} colors={colors} />
+        ) : (
+          <DayMealSections
+            summaries={summaries}
+            colors={colors}
+            onItemPress={setEditingItem}
+          />
+        )}
+      </ScrollView>
+      <MealLogItemEditSheet item={editingItem} onClose={() => setEditingItem(null)} />
+    </>
   );
 }
 
@@ -169,16 +179,23 @@ function TotalsCell({ label, value, colors }: TotalsCellProps) {
 interface DayMealSectionsProps {
   summaries: DailyNutritionSummary[];
   colors: ReturnType<typeof getColors>;
+  onItemPress: (item: MealLogItem) => void;
 }
 
-function DayMealSections({ summaries, colors }: DayMealSectionsProps) {
+function DayMealSections({ summaries, colors, onItemPress }: DayMealSectionsProps) {
   // today/yesterday — exactly one summary
   const summary = summaries[0];
   const grouped = groupMealItemsByType(summary);
   return (
     <>
       {MEAL_TYPES.map((mt) => (
-        <MealTypeSection key={mt} mealType={mt} items={grouped[mt]} colors={colors} />
+        <MealTypeSection
+          key={mt}
+          mealType={mt}
+          items={grouped[mt]}
+          colors={colors}
+          onItemPress={onItemPress}
+        />
       ))}
     </>
   );
@@ -188,9 +205,10 @@ interface MealTypeSectionProps {
   mealType: MealType;
   items: MealLogItem[];
   colors: ReturnType<typeof getColors>;
+  onItemPress: (item: MealLogItem) => void;
 }
 
-function MealTypeSection({ mealType, items, colors }: MealTypeSectionProps) {
+function MealTypeSection({ mealType, items, colors, onItemPress }: MealTypeSectionProps) {
   return (
     <Card style={styles.card}>
       <View style={styles.sectionHeader}>
@@ -205,8 +223,11 @@ function MealTypeSection({ mealType, items, colors }: MealTypeSectionProps) {
         </Text>
       ) : (
         items.map((item, idx) => (
-          <View
+          <TouchableOpacity
             key={item.id}
+            onPress={() => onItemPress(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.foodName} を編集`}
             style={[
               styles.itemRow,
               idx < items.length - 1 && {
@@ -226,7 +247,7 @@ function MealTypeSection({ mealType, items, colors }: MealTypeSectionProps) {
             <Text style={[styles.itemCalories, { color: colors.textPrimary }]}>
               {`${formatNutritionValue(item.calories, 0)} kcal`}
             </Text>
-          </View>
+          </TouchableOpacity>
         ))
       )}
     </Card>
