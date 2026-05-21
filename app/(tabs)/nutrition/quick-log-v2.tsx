@@ -63,6 +63,14 @@ export default function QuickLogV2Screen() {
             {`タップで${MEAL_TYPE_LABEL[currentMealType]}に追加`}
           </Text>
         </View>
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/nutrition/meal-log-v2')}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="ミールログを表示"
+        >
+          <Ionicons name="clipboard-outline" size={22} color={colors.primary} />
+        </TouchableOpacity>
       </View>
       <FoodSearchResult onSelect={handleSelect} />
     </SafeAreaView>
