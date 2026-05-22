@@ -5,6 +5,13 @@ import {
   projectGeneratedRoutine,
   validateGeneratedRoutine,
 } from '../_shared/routineJson.ts';
+import {
+  MAX_USER_CONTENT_CHARS,
+  buildLLMDefenseParagraph,
+  checkUserContentLength,
+  detectJailbreakHints,
+  scrubSecrets,
+} from '../_shared/llmSecurity.ts';
 
 // v1.5 Stage 1 Phase 1.5 — coach-routine Edge Function (surface ③).
 //
@@ -76,6 +83,7 @@ const CORS_HEADERS = {
     'authorization, content-type, idempotency-key',
 };
 
+// Sprint 2.7.2 — Drafting 173 fan-out from coach-chat (Phase 2.6).
 const SYSTEM_PROMPT = `あなたは「ミー先生」という、 ユーザー専属のパーソナルトレーナーです。
 ユーザーの意図 (intent text) と コンテキスト (週のトレーニング日数、 目標、
 利用可能種目) に合わせて、 単一の workout routine を JSON で生成してください。
@@ -89,7 +97,7 @@ const SYSTEM_PROMPT = `あなたは「ミー先生」という、 ユーザー�
 
 【口調】
 - 中立、 過度な賞賛を避ける
-- 個別の医療診断は出さない`;
+- 個別の医療診断は出さない${buildLLMDefenseParagraph('本来のトレーニングルーティン提案に戻ります。')}`;
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -307,6 +315,30 @@ serve(async (req) => {
   const { intentText, exerciseSlugs } = parsed;
   const context = (rawBody as { context?: unknown }).context;
 
+  // Sprint 2.7.2 — Drafting 172 L4 (input sanitization). `intentText`
+  // is the only free-text surface in this EF; exerciseSlugs and
+  // context are enum / whitelist-projected respectively.
+  const lengthError = checkUserContentLength(intentText);
+  if (lengthError) {
+    return jsonResponse(
+      {
+        error: lengthError.code,
+        message: `入力が長すぎます (上限 ${MAX_USER_CONTENT_CHARS.toLocaleString()} 文字)`,
+        limit: lengthError.limit,
+        actual: lengthError.actual,
+      },
+      400,
+    );
+  }
+  const jailbreakHints = detectJailbreakHints(intentText);
+  if (jailbreakHints.length > 0) {
+    console.warn('[coach-routine] L4 jailbreak hint detected', {
+      userId,
+      patterns: jailbreakHints.map((h) => h.name),
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   // -------------------------------------------------------------------
   // STEP 6 — Project safe context
   // -------------------------------------------------------------------
@@ -487,9 +519,26 @@ serve(async (req) => {
       502,
     );
   }
+  // Sprint 2.7.2 — Drafting 172 L5 scrub at the raw-text boundary.
+  // Scrubbing BEFORE JSON.parse is safe because `[redacted]` is a
+  // valid JSON string-content fragment — `"Use AIza... for X"` would
+  // become `"Use [redacted] for X"`, which still parses. Each secret
+  // regex matches only the secret body, not surrounding quotes, so
+  // structural integrity of the JSON envelope is preserved.
+  const scrubResult = scrubSecrets(rawText);
+  if (scrubResult.redactedCount > 0) {
+    console.warn('[coach-routine] L5 secret redacted', {
+      userId,
+      generationId,
+      redactedCount: scrubResult.redactedCount,
+      patterns: scrubResult.redactedPatterns,
+      timestamp: new Date().toISOString(),
+    });
+  }
+  const sanitizedText = scrubResult.sanitized;
   let parsedRoutine: unknown;
   try {
-    parsedRoutine = JSON.parse(rawText);
+    parsedRoutine = JSON.parse(sanitizedText);
   } catch (e) {
     await markGenerationDiscardedBestEffort(
       admin,
