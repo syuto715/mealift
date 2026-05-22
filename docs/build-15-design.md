@@ -569,10 +569,21 @@ Estimated 11 files touched, ~600–800 lines.
 
 ### 5.1 Current state
 
+> **Sprint 2.7.4 retrospective note (2026-05-23)**: the legacy
+> `app/(tabs)/nutrition/search.tsx` (530 lines) referenced below was
+> orphan-cleaned in Sprint 2.7.4 (commit `acd2b78`). Phase 4B
+> (commit `4f487ee`) had already absorbed the production search flow
+> into `app/(tabs)/nutrition/add.tsx`'s nested 「検索」 sub-tab; the
+> empty-state CTA pattern documented below was preserved end-to-end
+> through that move. Only the file path moved (search.tsx → add.tsx
+> 検索 sub-tab); the discoverability gap analysis still applies.
+
 - **Search-then-submit CTA already exists**:
   `app/(tabs)/nutrition/search.tsx:248-293` shows a prominent CTA
   card "最初の投稿者になりませんか?" with `prefillName` deeplink to
-  `food-submit-public` when search returns zero results.
+  `food-submit-public` when search returns zero results. (Post-
+  Sprint 2.7.4: the equivalent CTA lives in `add.tsx`'s 「検索」
+  sub-tab.)
 - **Barcode-then-submit CTA already exists**:
   `app/(tabs)/nutrition/barcode.tsx:587` similar pattern.
 - **My Submissions screen exists** at

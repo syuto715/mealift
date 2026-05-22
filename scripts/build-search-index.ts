@@ -35,9 +35,15 @@ const SEED_DIR = path.join(REPO_ROOT, 'src/infra/database/seed/data');
 const RESTAURANT_DATA_DIR = path.join(REPO_ROOT, 'scripts/seed/data');
 const OUT_PATH = path.join(SEED_DIR, 'search-index.json');
 
-// Mirror normalizeForSearch (src/utils/normalizeForSearch.ts) — the
-// runtime util pulls in TypeScript-only sources, so we duplicate the
-// 3-step normalization here. Tests below verify the two stay in sync.
+// Sprint 2.7.4 orphan cleanup removed the runtime
+// `src/utils/normalizeForSearch.ts` and its dedicated test (the v2 dev-
+// preview tree was the only consumer). The normalization logic now
+// lives ONLY here, as the build-time step that bakes katakana
+// yomigana + cross-script collapse into `aliases_concat` in
+// `search-index.json`. Phase 2.7c (Exercises master seed) may
+// re-introduce a runtime normalizer — when that happens, share this
+// function across runtime + build script and re-add a cross-script
+// collapse test against the deduped helper.
 function normalizeForSearch(input: string): string {
   if (!input) return '';
   const nfkc = input.normalize('NFKC');
