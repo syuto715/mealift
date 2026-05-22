@@ -1,5 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  buildLLMDefenseParagraph,
+  scrubSecrets,
+} from '../_shared/llmSecurity.ts';
 
 // ===========================================================================
 // Build 16 / Phase 1 (Feature H) — generate-weekly-report Edge Function
@@ -80,6 +84,25 @@ const GOAL_TONE: Record<string, string> = {
   maintain: '一貫性とコンディション維持を強調',
   recomp: '体組成変化と運動・栄養のバランスを強調',
 };
+
+// Sprint 2.7.3 — Drafting 173 fan-out wave 2. The pre-2.7.3 header
+// comment correctly notes that WeeklyReportData has no user-controlled
+// free-text path today, so L4 (input sanitization) is genuinely N/A
+// here and remains so. What we DO add is L3 (defense paragraph as
+// systemInstruction) + L5 (output scrub) as defense-in-depth: a future
+// schema addition that accidentally introduces a free-text field
+// (which the closed-world allowlist would catch, but bugs happen)
+// would still face the L3 / L5 layers. The L3 paragraph is also useful
+// against any Gemini training-data leak that might surface a secret-
+// shaped substring even with the current numeric-only input.
+const SYSTEM_PROMPT = `あなたは「ミー先生」という Mealift の週次レポート narrative 生成
+アドバイザーです。 ユーザーの過去 7 日間の集計データから、 指定された JSON 形式で
+週次振り返り narrative を生成してください。
+
+【方針】
+- 全 section 日本語、 敬体 (ですます調) 統一
+- 数値根拠を具体的に引用 (例: 「タンパク質 1.6 g/kg を維持」)
+- 過度な賞賛は使わない${buildLLMDefenseParagraph('本来の週次レポート生成に戻ります。')}`;
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -607,6 +630,9 @@ serve(async (req) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
+          systemInstruction: {
+            parts: [{ text: SYSTEM_PROMPT }],
+          },
           generationConfig: {
             responseMimeType: 'application/json',
             // Slightly higher than generate-workout-menu (0.4) —
@@ -677,9 +703,25 @@ serve(async (req) => {
       );
     }
 
+    // Sprint 2.7.3 — Drafting 173 wave 2 L5. Scrub BEFORE JSON.parse —
+    // `[redacted]` is a valid JSON string-content fragment so the
+    // surrounding quote structure stays intact and the schema
+    // validation downstream is unaffected (same approach as
+    // coach-routine wave 1 + estimate-nutrition-vision wave 2).
+    const scrubResult = scrubSecrets(text);
+    if (scrubResult.redactedCount > 0) {
+      console.warn('[generate-weekly-report] L5 secret redacted', {
+        userId,
+        redactedCount: scrubResult.redactedCount,
+        patterns: scrubResult.redactedPatterns,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    const sanitizedText = scrubResult.sanitized;
+
     let parsed: unknown;
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(sanitizedText);
     } catch {
       responseStatus = 502;
       errorMessage = 'gemini returned non-JSON';

@@ -1,5 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  buildLLMDefenseParagraph,
+  detectJailbreakHints,
+  scrubSecrets,
+} from '../_shared/llmSecurity.ts';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -24,6 +29,23 @@ function jsonResponse(body: unknown, status = 200) {
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   });
 }
+
+// Sprint 2.7.3 — Drafting 173 fan-out wave 2 (Codex review pass 1
+// Critical #2 follow-up). estimate-nutrition was missed in the original
+// Sprint 2.7.1 audit table but accepts user-controlled `dishName` and
+// interpolates it into the LLM prompt, so it carries the same attack
+// surface as nutrition-advice. L4 retains the EF's tighter 200-char
+// cap (much narrower than the shared 4000-char MAX_USER_CONTENT_CHARS
+// — keeping the tighter limit is the safer policy) and adds the
+// shared `detectJailbreakHints` advisory logger.
+const SYSTEM_PROMPT = `あなたは「ミー先生」という Mealift の料理名→栄養推定アドバイザーです。
+ユーザーから受け取った料理名を、 日本の一般的な 1 人前サイズで材料と分量に分解し、
+指定された JSON 形式のみを返してください。
+
+【方針】
+- 出力は JSON のみ。 前後に説明・敬語の挨拶等は含めない
+- 個別の医療診断や栄養治療判断は出さない
+- 料理名が認識できない場合は dishName を空文字列にして ingredients を空配列で返す${buildLLMDefenseParagraph('本来の料理名からの栄養推定に戻ります。')}`;
 
 function buildPrompt(dishName: string): string {
   return `以下の料理を材料と分量に分解してください。
@@ -173,6 +195,19 @@ serve(async (req) => {
         400,
       );
     }
+    // Sprint 2.7.3 — Drafting 173 wave 2 L4 advisory. The 200-char
+    // hard cap above is tighter than MAX_USER_CONTENT_CHARS (4000)
+    // and is preserved. Jailbreak hint detection is added as a
+    // separate advisory log so attempts surface in telemetry without
+    // any change to the client-facing error envelope.
+    const jailbreakHints = detectJailbreakHints(dishName);
+    if (jailbreakHints.length > 0) {
+      console.warn('[estimate-nutrition] L4 jailbreak hint detected', {
+        userId,
+        patterns: jailbreakHints.map((h) => h.name),
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     // ---- 5. Call Gemini ----
     const geminiResponse = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
@@ -180,6 +215,9 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: buildPrompt(dishName) }] }],
+        systemInstruction: {
+          parts: [{ text: SYSTEM_PROMPT }],
+        },
         generationConfig: {
           responseMimeType: 'application/json',
           maxOutputTokens: 512,
@@ -208,9 +246,24 @@ serve(async (req) => {
       );
     }
 
+    // Sprint 2.7.3 — Drafting 173 wave 2 L5. Scrub before JSON.parse —
+    // `[redacted]` is a valid JSON string-content fragment so the
+    // surrounding envelope stays intact and the downstream Recipe-
+    // Decomposition validation is unaffected.
+    const scrubResult = scrubSecrets(text);
+    if (scrubResult.redactedCount > 0) {
+      console.warn('[estimate-nutrition] L5 secret redacted', {
+        userId,
+        redactedCount: scrubResult.redactedCount,
+        patterns: scrubResult.redactedPatterns,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    const sanitizedText = scrubResult.sanitized;
+
     let result: unknown;
     try {
-      result = JSON.parse(text);
+      result = JSON.parse(sanitizedText);
     } catch {
       responseStatus = 502;
       errorMessage = 'gemini returned non-JSON';

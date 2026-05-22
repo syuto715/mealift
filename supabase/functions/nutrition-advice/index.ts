@@ -1,5 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  buildLLMDefenseParagraph,
+  checkUserContentLength,
+  detectJailbreakHints,
+  scrubSecrets,
+} from '../_shared/llmSecurity.ts';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -24,6 +30,26 @@ function jsonResponse(body: unknown, status = 200) {
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   });
 }
+
+// Sprint 2.7.3 — Drafting 173 fan-out wave 2. Pre-2.7.3 this EF sent the
+// user prompt to Gemini with NO systemInstruction at all (legacy
+// vestige — the EF predates the unified systemInstruction pattern that
+// coach-chat / coach-advice adopted in Phase 2.6+). Adding the
+// systemInstruction here closes the L3 gap; the defense paragraph
+// content is identical to the other Mealift-persona EFs via
+// `buildLLMDefenseParagraph`.
+const SYSTEM_PROMPT = `あなたは「ミー先生」という、 ユーザー専属の栄養相談アドバイザーです。
+ユーザーからの栄養に関する質問に、 具体的で実行可能な日本語アドバイスを 1-3 段落で
+返してください。
+
+【口調 / トーン】
+- 丁寧な日本語、 落ち着いた声色
+- 過度な賞賛は使わない
+- 数値は具体的に (g, kcal, P/F/C 等)
+
+【方針】
+- ユーザーの体重 / 目標などの個別事情を尋ねられたら一般論で答え、 個別診断は出さない
+- 医療診断 / 薬の服用判断 / 病気の治療指示は出さない (専門家への相談を促す)${buildLLMDefenseParagraph('本来の栄養に関するご相談に戻ります。')}`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -136,13 +162,38 @@ serve(async (req) => {
       body && typeof body.prompt === 'string' ? body.prompt.trim() : '';
     // Only log prompt length — full prompt may contain personal nutrition data.
     inputForLog = { promptLength: prompt.length };
-    if (!prompt || prompt.length < 1 || prompt.length > 4000) {
+    if (!prompt) {
       responseStatus = 400;
       errorMessage = 'invalid prompt';
+      return jsonResponse(
+        { error: 'invalid_request', message: 'プロンプトを入力してください' },
+        400,
+      );
+    }
+    // Sprint 2.7.3 — Drafting 173 wave 2 L4. The shared
+    // `checkUserContentLength` cap (4000 chars) matches the EF's
+    // existing hand-rolled limit, but we deliberately preserve the
+    // pre-2.7.3 error envelope (`invalid_request` 400 + the same
+    // Japanese message) so callers like `aiNutritionService.ts`
+    // (whose `AIErrorCode` union does not yet include
+    // `input_too_long`) keep their existing branch. Drafting 161:
+    // internal-only hardening, no client-visible surface change.
+    const lengthError = checkUserContentLength(prompt);
+    if (lengthError) {
+      responseStatus = 400;
+      errorMessage = `invalid prompt (length ${lengthError.actual} > ${lengthError.limit})`;
       return jsonResponse(
         { error: 'invalid_request', message: 'プロンプトを1〜4000文字で指定してください' },
         400,
       );
+    }
+    const jailbreakHints = detectJailbreakHints(prompt);
+    if (jailbreakHints.length > 0) {
+      console.warn('[nutrition-advice] L4 jailbreak hint detected', {
+        userId,
+        patterns: jailbreakHints.map((h) => h.name),
+        timestamp: new Date().toISOString(),
+      });
     }
 
     // ---- 5. Call Gemini ----
@@ -151,6 +202,9 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
+        systemInstruction: {
+          parts: [{ text: SYSTEM_PROMPT }],
+        },
         generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
       }),
     });
@@ -175,9 +229,22 @@ serve(async (req) => {
       );
     }
 
+    // Sprint 2.7.3 — Drafting 173 wave 2 L5. Scrub secrets out of the
+    // advice text before returning. Telemetry warn never includes the
+    // raw secret value.
+    const scrubResult = scrubSecrets(text);
+    if (scrubResult.redactedCount > 0) {
+      console.warn('[nutrition-advice] L5 secret redacted', {
+        userId,
+        redactedCount: scrubResult.redactedCount,
+        patterns: scrubResult.redactedPatterns,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     responseStatus = 200;
     errorMessage = null;
-    return jsonResponse({ advice: text }, 200);
+    return jsonResponse({ advice: scrubResult.sanitized }, 200);
   } catch (e) {
     responseStatus = 500;
     errorMessage = e instanceof Error ? e.message : String(e);
