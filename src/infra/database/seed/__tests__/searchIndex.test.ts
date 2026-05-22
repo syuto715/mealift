@@ -1,5 +1,4 @@
 import SEARCH_INDEX_JSON from '../data/search-index.json';
-import { normalizeForSearch } from '../../../../utils/normalizeForSearch';
 
 // v1.5 Phase 2.3 Sprint 2.3.1 — search-index snapshot integrity tests.
 //
@@ -57,16 +56,13 @@ describe('search-index snapshot (Drafting 159 build-time kuromoji)', () => {
     }
   });
 
-  it('cross-script collapse: 4 variants normalize to the same form', () => {
-    // Drafting 158 contract — searching any of these forms hits the same
-    // canonical katakana token, which the aliases_concat field embeds.
-    const variants = ['焼き鳥', 'やきとり', 'ヤキトリ', 'ﾔｷﾄﾘ'];
-    const normalized = variants.map(normalizeForSearch);
-    // 焼き鳥 contains a kanji, so it stays partially mixed (焼キ鳥) — but
-    // the other three should all collapse to the pure katakana form.
-    expect(new Set([normalized[1], normalized[2], normalized[3]]).size).toBe(1);
-    expect(normalized[1]).toBe('ヤキトリ');
-  });
+  // Sprint 2.7.4 orphan cleanup removed the runtime `normalizeForSearch`
+  // util (the v2 dev-preview tree was the only consumer). The
+  // cross-script collapse assertion that exercised it has been removed
+  // here too — the canonical normalization contract still lives in the
+  // build-time pipeline at scripts/build-search-index.ts, which can
+  // re-grow a dedicated test if Phase 2.7c reuses the search_index
+  // schema for the exercises master seed.
 
   it('restaurant_menu rows carry brand (chain name)', () => {
     const starbucks = rows.find(
