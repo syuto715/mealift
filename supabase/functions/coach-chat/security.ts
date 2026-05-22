@@ -110,3 +110,80 @@ export function detectJailbreakHints(
   }
   return out;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// L5 — Output filtering
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Defense-in-depth measure for the case where the LLM somehow returns a
+// secret-shaped substring (training-data echo, prompt-injection success
+// that L3 didn't catch, hallucinated example key, etc.). We don't trust
+// upstream to never leak; we scrub on the way out.
+//
+// Replacement is `[redacted]` — a fixed sentinel that:
+//   - Contains no newline (preserves NDJSON line integrity — every event
+//     is exactly one `\n`-terminated line).
+//   - Is short enough that streaming concatenation never breaks the FE.
+//   - Reads as obviously synthetic to a human (no chance of "is that the
+//     real value?" confusion).
+//
+// Patterns are intentionally conservative — false positives in CHAT
+// OUTPUT are far costlier than false negatives, because a chat that says
+// "[redacted]" instead of a legitimate alphanumeric string is annoying
+// but recoverable; leaked credentials are not. So the patterns target
+// only verifiable secret shapes that have no benign collision.
+
+interface SecretPattern {
+  name: string;
+  pattern: RegExp;
+}
+
+const SECRET_PATTERNS: ReadonlyArray<SecretPattern> = [
+  // Google API key (`AIza` + 35 base64-url-ish chars). Used by Gemini /
+  // Maps / etc. Mealift's only Google secret is the Gemini key.
+  { name: 'google_api_key', pattern: /AIza[0-9A-Za-z_-]{35}/g },
+  // OpenAI / Anthropic style key (`sk-` + optional `proj-` prefix + 20+
+  // chars). Mealift doesn't use these today but the chat could be tricked
+  // into producing one in an example, and we want defense-in-depth.
+  { name: 'openai_anthropic_key', pattern: /\bsk-(?:proj-)?[A-Za-z0-9_-]{20,}\b/g },
+  // JWT (`xxx.yyy.zzz`, each segment base64-url). Matches the structure
+  // tightly so a legitimate triple-dot literal in coaching copy (e.g.
+  // "Section 3.4.2") doesn't fire. Each segment requires ≥ 10 chars.
+  { name: 'jwt', pattern: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g },
+  // Supabase service-role / anon key prefix (`eyJh` literal followed by
+  // long base64 — caught by the JWT pattern above, but kept as a
+  // separate logical name so telemetry can attribute correctly).
+];
+
+export interface ScrubResult {
+  sanitized: string;
+  redactedCount: number;
+  /** Names of every pattern that fired at least once. Sorted/deduped. */
+  redactedPatterns: string[];
+}
+
+export const SECRET_REDACTION_SENTINEL = '[redacted]';
+
+/** L5 output scrubber. Pure-string in/out — telemetry is the caller's
+ *  responsibility (the EF wires a `console.warn` when redactedCount > 0
+ *  so the secret value itself is NEVER logged). */
+export function scrubSecrets(text: string | null | undefined): ScrubResult {
+  if (typeof text !== 'string' || text.length === 0) {
+    return { sanitized: text ?? '', redactedCount: 0, redactedPatterns: [] };
+  }
+  let sanitized = text;
+  let redactedCount = 0;
+  const firedSet = new Set<string>();
+  for (const { name, pattern } of SECRET_PATTERNS) {
+    sanitized = sanitized.replace(pattern, () => {
+      redactedCount += 1;
+      firedSet.add(name);
+      return SECRET_REDACTION_SENTINEL;
+    });
+  }
+  return {
+    sanitized,
+    redactedCount,
+    redactedPatterns: Array.from(firedSet).sort(),
+  };
+}

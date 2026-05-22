@@ -7,8 +7,10 @@
 import {
   JAILBREAK_HINT_PATTERNS,
   MAX_USER_CONTENT_CHARS,
+  SECRET_REDACTION_SENTINEL,
   checkUserContentLength,
   detectJailbreakHints,
+  scrubSecrets,
 } from '../security';
 
 describe('checkUserContentLength (L4 length cap)', () => {
@@ -102,6 +104,78 @@ describe('detectJailbreakHints (L4 advisory matcher)', () => {
   it('returns empty for null / empty content (no spurious matches)', () => {
     expect(detectJailbreakHints(null)).toEqual([]);
     expect(detectJailbreakHints('')).toEqual([]);
+  });
+});
+
+describe('scrubSecrets (L5 output filtering)', () => {
+  it('returns the input verbatim when no secret pattern fires', () => {
+    const text = '鶏むね肉のたんぱく質は 100g あたり約 22g です。';
+    const result = scrubSecrets(text);
+    expect(result.sanitized).toBe(text);
+    expect(result.redactedCount).toBe(0);
+    expect(result.redactedPatterns).toEqual([]);
+  });
+
+  it('redacts a Google API key (Gemini)', () => {
+    const key = 'AIzaSy' + 'A'.repeat(33); // AIza + 35 chars total = 39
+    const result = scrubSecrets(`Your key is ${key} keep it safe`);
+    expect(result.sanitized).toBe(
+      `Your key is ${SECRET_REDACTION_SENTINEL} keep it safe`,
+    );
+    expect(result.redactedCount).toBe(1);
+    expect(result.redactedPatterns).toEqual(['google_api_key']);
+  });
+
+  it('redacts OpenAI / Anthropic style sk- keys', () => {
+    const key = 'sk-' + 'a'.repeat(40);
+    const result = scrubSecrets(`Token: ${key}`);
+    expect(result.sanitized).toContain(SECRET_REDACTION_SENTINEL);
+    expect(result.sanitized).not.toContain('sk-aaaa');
+    expect(result.redactedPatterns).toContain('openai_anthropic_key');
+  });
+
+  it('redacts a JWT (three base64 segments separated by dots)', () => {
+    const jwt =
+      'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+    const result = scrubSecrets(`Auth header: Bearer ${jwt}.`);
+    expect(result.sanitized).toContain(SECRET_REDACTION_SENTINEL);
+    expect(result.sanitized).not.toContain(jwt);
+    expect(result.redactedPatterns).toContain('jwt');
+  });
+
+  it('does NOT misfire on benign triple-dotted text like "Section 3.4.2"', () => {
+    const text = 'See Section 3.4.2 for protein guidelines.';
+    const result = scrubSecrets(text);
+    expect(result.sanitized).toBe(text);
+    expect(result.redactedCount).toBe(0);
+  });
+
+  it('redacts multiple secrets in one chunk and reports counts', () => {
+    const key1 = 'AIza' + '1'.repeat(35);
+    const key2 = 'sk-' + 'X'.repeat(25);
+    const result = scrubSecrets(`${key1} and ${key2}`);
+    expect(result.redactedCount).toBe(2);
+    expect(result.redactedPatterns).toEqual(
+      expect.arrayContaining(['google_api_key', 'openai_anthropic_key']),
+    );
+  });
+
+  it('keeps the NDJSON line invariant (no newline introduced by the sentinel)', () => {
+    expect(SECRET_REDACTION_SENTINEL.includes('\n')).toBe(false);
+    expect(SECRET_REDACTION_SENTINEL.includes('\r')).toBe(false);
+  });
+
+  it('returns an empty result for null / empty inputs (no spurious sentinel)', () => {
+    expect(scrubSecrets(null)).toEqual({
+      sanitized: '',
+      redactedCount: 0,
+      redactedPatterns: [],
+    });
+    expect(scrubSecrets('')).toEqual({
+      sanitized: '',
+      redactedCount: 0,
+      redactedPatterns: [],
+    });
   });
 });
 

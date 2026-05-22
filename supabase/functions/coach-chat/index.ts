@@ -5,6 +5,7 @@ import {
   MAX_USER_CONTENT_CHARS,
   checkUserContentLength,
   detectJailbreakHints,
+  scrubSecrets,
 } from './security.ts';
 
 // v1.5 Stage 1 Phase 1.1 — coach-chat Edge Function.
@@ -706,12 +707,28 @@ serve(async (req) => {
                   parsed?.candidates?.[0]?.content?.parts ?? [];
                 for (const p of partsArr) {
                   if (typeof p?.text === 'string' && p.text.length > 0) {
-                    buffer += p.text;
+                    // Sprint 2.6.3 — Drafting 172 L5. Scrub any
+                    // secret-shaped substring before the chunk leaves
+                    // the EF. `buffer` (used for the final DB write)
+                    // gets the sanitized text too so the persisted
+                    // assistant message matches what the client saw.
+                    const { sanitized, redactedCount, redactedPatterns } =
+                      scrubSecrets(p.text);
+                    if (redactedCount > 0) {
+                      console.warn('[coach-chat] L5 secret redacted in chunk', {
+                        userId,
+                        conversationId,
+                        redactedCount,
+                        patterns: redactedPatterns,
+                        timestamp: new Date().toISOString(),
+                      });
+                    }
+                    buffer += sanitized;
                     try {
                       controller.enqueue(
                         ndjsonLine({
                           event: 'chunk',
-                          delta: p.text,
+                          delta: sanitized,
                         }),
                       );
                     } catch {
@@ -891,7 +908,23 @@ function replayStream(
         }),
       );
       if (content.length > 0) {
-        controller.enqueue(ndjsonLine({ event: 'chunk', delta: content }));
+        // Sprint 2.6.3 — L5 idempotency-replay scrub. The original
+        // chunk was already scrubbed on first emission (the live path
+        // above), so the persisted `content` should be clean — but we
+        // re-scrub on replay too, in case a pre-Sprint-2.6.3 row
+        // sneaks through.
+        const { sanitized, redactedCount, redactedPatterns } =
+          scrubSecrets(content);
+        if (redactedCount > 0) {
+          console.warn('[coach-chat] L5 secret redacted on idempotency replay', {
+            userId,
+            conversationId,
+            redactedCount,
+            patterns: redactedPatterns,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        controller.enqueue(ndjsonLine({ event: 'chunk', delta: sanitized }));
       }
       if (status === 'error') {
         controller.enqueue(
