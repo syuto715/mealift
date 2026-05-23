@@ -7,16 +7,17 @@
 // video URLs land later — form_cue_ja in Phase 2B (batched commits),
 // rep_range_low/high also in Phase 2B, video_url deferred to Build 16+.
 //
-// Coverage:
+// Coverage (Sprint 2.7c.1 recon audited count = 133 strength rows):
 //   - Existing 43 strength rows from src/constants/exercises.ts (ex_001..063)
 //     get their new v2 fields populated. v25 migration already
 //     backfilled slug + 8-cat equipment for these IDs; this file
 //     UPSERTs by slug to fill primary_muscle / movement_pattern /
 //     is_compound on top.
-//   - ~107 new strength entries (ex_064..ex_170) covering common
-//     variations the existing 43 lacked: incline/decline variants,
-//     cable / machine alternates, glute-focused movements, forearm
-//     work, additional core patterns, olympic lift accessories.
+//   - 90 new strength entries (ex_064..ex_193, with gaps) covering
+//     common variations the existing 43 lacked: incline/decline
+//     variants, cable / machine alternates, glute-focused movements,
+//     forearm work, additional core patterns, olympic lift accessories.
+//   - Total in this file: 43 (existing-by-slug) + 90 (new) = 133 rows.
 //
 // Cardio (ex_c001..c018), sports (ex_s001..s019), and other (ex_o001..o005)
 // are NOT in this file — they have no slug + their existing
