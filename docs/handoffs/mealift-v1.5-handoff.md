@@ -1,6 +1,6 @@
 # Mealift v1.5 Handoff Document
 
-**最終更新**: 2026-05-23 (Sprint 2.7.6 land — Phase 2.7 完了 milestone)
+**最終更新**: 2026-05-24 (Sprint 2.7c.4 land — Phase 2.7c 完了 milestone ✨🎯)
 **目的**: 新 chat-side session の context source として、 また必要に応じて Claude Code (agent) の context にも投入し、 v1.5 ship phase の継続作業を中断なく進める。
 
 ---
@@ -24,7 +24,7 @@
 **Tech stack**:
 - **Frontend**: Expo SDK 54 + Expo Router + React Native 0.81 + TypeScript strict
 - **State**: Zustand + TanStack Query + react-native-mmkv (persistence)
-- **Local DB**: expo-sqlite (migration head **v38**、 16 sprint 連続無変更 ✨)
+- **Local DB**: expo-sqlite (migration head **v38**、 19 sprint 連続無変更 ✨)
 - **Backend**: Supabase (Postgres + Edge Functions [Deno] + Auth + Storage)
 - **LLM**: Google Gemini 2.5 Flash / Flash-Lite (server-only key)
 - **Payments**: RevenueCat (iOS のみ、 Android key 未設定)
@@ -124,7 +124,7 @@ chat-side propose、 本 doc + Phase 2.7 完了 doc で literal codify)。
 | **2.5** AI estimate | ✅ 完了 (single sprint) | 1 (2.5.1) | scan-dish link-in (Drafting 164 literal payoff) | `e9e567b` |
 | **2.6** ミー先生 chat hardening | ✅ 完了 | 3 (2.6.1-2.6.3) | Drafting 172 7-layer security hardening (coach-chat EF) | `3b4d887` |
 | **2.7** Hardening fan-out + ship | ✅ **完了 (6/6)** | 6 (2.7.1-2.7.6) | LLMClient recon + Drafting 173 fan-out (7/7 EFs) + orphan cleanup + ship docs + Phase 2.7 完了 milestone | Sprint 2.7.6 commit (本 doc update 同 commit) |
-| **2.7c** Exercises master seed | ⏸ Phase 2.7 完了後 (design land 済) | 8-12 turn 想定 | Drafting 143 = 580 件 exercise seed (v38 `'exercise'` enum 既 future-proof)。 詳細 design: `docs/plans/v1.5-phase-2.7c-design.md` | — |
+| **2.7c** Exercises master seed | ✅ **完了 (4/4)** | 4 (2.7c.1-2.7c.4) | Drafting 143 literal 達成 — 580 件 exercise master ship (V2 286 + Legacy 337 − overlap 43)、 license clean (4 trademark fixes 累計: TRX + Animal Flow + BOSU + Spin Class)、 schema touch 0 (Drafting 162 honor、 19 sprint 連続 v38 維持 ✨)。 詳細: `docs/plans/v1.5-phase-2.7c-completion.md` | (Sprint 2.7c.4 land、 本 doc を含む同一 commit) |
 
 **Sprint-by-sprint detail** は `docs/plans/v1.5-phase-2.X-completion.md` (5 件、 Sprint 2.7.4 で retrospective 注記済) + 本 doc の各 section 参照。
 
@@ -139,7 +139,7 @@ Drafting は v1.4 期に 116 件まで chat-side で numbered、 v1.5 で 117-17
 | # | Title | 適用 phase | 役割 |
 |---|---|---|---|
 | **161** | Production safety + dev preview parallel | Phase 2.3 establish、 Sprint 2.7.4 で boundary semantics 明示 | Sprint 2.7.4: 「**surface 縮小 = boundary observed**」 vs 「**surface change = boundary violated**」 の区別。 zero-caller deletion は前者として acceptable |
-| **162** | Incremental migration / 不要な migration avoidance | Phase 2.4-2.7 全期 | **16 sprint 連続 migration head v38 維持** (literal 実証)、 Phase 2.7c も schema touch 0 で land 予定 |
+| **162** | Incremental migration / 不要な migration avoidance | Phase 2.4-2.7 + 2.7c 全期 | **19 sprint 連続 migration head v38 維持** (literal 実証、 baseline は v1.5-phase-2.7-completion.md 「15 sprint」 at Sprint 2.7.6 land + Phase 2.7c の 4 sprint = 19)、 Phase 2.7c も schema touch 0 で literal 達成 ✊ |
 | **164** | Phase forwarding stub literal payoff | Phase 2.5 single-sprint | 1-line swap で stub → 本実装 |
 | **166** | Point-in-time meal log snapshot | Phase 2.4.1 | `food_id = null` の snapshot path で v38 不要、 Drafting 167 への bridge |
 | **167** | Foreign-key-by-natural-pair | Phase 2.4.2 `search_favorites` PK | Phase 2.7c で `'exercise'` enum reuse 想定 |
@@ -170,7 +170,7 @@ Drafting は v1.4 期に 116 件まで chat-side で numbered、 v1.5 で 117-17
 - `src/infra/database/migrations/v37.ts` (search_index FTS5) **保持**
 - `src/infra/database/migrations/v38.ts` (search_favorites with `'exercise'` enum) **保持** — Phase 2.7c で reuse
 - `src/infra/database/seed/searchIndex.ts` (36 chains / 5,406 items snapshot loader) **保持** — connection.ts:43 から起動毎に呼ばれる
-- Migration head **v38、 16 sprint 連続無変更** (Drafting 162)
+- Migration head **v38、 19 sprint 連続無変更** (Drafting 162)
 
 ### 6.3 LLM EFs hardening 状態
 - 全 7 EF に Drafting 172 7-layer 適用済 (Phase 2.6 + Sprint 2.7.2-3 で完成)
@@ -229,12 +229,15 @@ v1.5 ship 直後に着手検討の strand (Phase 2.7c は v1.5.0 同梱 path
 - **追加 EF / 追加 secret pattern** (Drafting 172 + 173 reapplication)
 - **Nutrition UI modernize** (現 `add.tsx` 1000+ 行を search_index 利用形に rebuild、 schema 既 retain なので非破壊的)
 
-**v1.5.0 同梱 path 内 strand**:
-- **Phase 2.7c — Exercises master 580 件** (Drafting 143、 v1.5.0
-  ship に含む path (A) 採用)。 Sprint 2.7c.1-6 (8-12 turn 想定)、
-  詳細 design は `docs/plans/v1.5-phase-2.7c-design.md`。 schema 変更
-  0 で land 想定 (Drafting 162 honor 継続)。 v1.5.0 ship date target:
-  **2026 年 11-12 月** (Phase 2.7c 同梱で 10 月寄りから後ろ倒し)
+**v1.5.0 同梱 path 内 strand (Phase 2.7c は ✅ 完了)**:
+- **Phase 2.7c — Exercises master 580 件** ✅ **完了** (Sprint 2.7c.4
+  land、 Drafting 143 literal 達成 ✨🎯)。 4 sprints / agent-led batch
+  generation / Codex N=1+0+2+2+本 turn 累計、 schema touch 0
+  (Drafting 162 honor、 19 sprint 連続 v38 維持)、 license clean
+  (TRX + Animal Flow + BOSU + Spin Class brand-rename done、 全 580 件
+  trademark scan clean)。 詳細: `docs/plans/v1.5-phase-2.7c-completion.md`。
+  v1.5.0 ship date target: **2026 年 11-12 月** (残: Phase B device
+  verify / Phase C Supabase state / Phase D Promotion sequence)
 
 ---
 
@@ -260,6 +263,8 @@ v1.5 ship 直後に着手検討の strand (Phase 2.7c は v1.5.0 同梱 path
 | `docs/plans/v1.5-phase-2.7-design.md` | Phase 2.7 design (LLMClient recon + Drafting 173 fan-out) |
 | `docs/plans/v1.5-phase-2.7-completion.md` | Phase 2.7 完了 milestone (6 sprint summary + Drafting 161/162/171-177 integrity matrix + Codex review iteration 履歴 + v1.5.x cleanup queue 集約) |
 | `docs/plans/v1.5-phase-2.7c-design.md` | Phase 2.7c (Drafting 143 Exercises master 580 件 seed) design + sprint breakdown + v1.5 ship 統合判断 (A 採用) |
+| `docs/plans/v1.5-phase-2.7c-completion.md` | Phase 2.7c 完了 milestone — 4 sprint summary + Drafting 143 達成 + 161/162/175/177/178/179 integrity matrix + Codex iteration history |
+| `docs/plans/v1.5-phase-2.7c-style-guide.md` | Phase 2.7c style guide — naming convention / enum / Drafting 179 license clean state policy / Sprint 2.7c.1-4 actual delivery table |
 | `docs/plans/v1.5_ship_checklist.md` | Stage 1 AI Coach ship checklist (Phase 2.X 補強は本 sprint で land) |
 | `docs/release-notes/v1.5.md` | User-facing 日本語 release notes (本 sprint で land) |
 | `docs/app-store-listing-v1.5.md` | App Store listing copy draft (本 sprint で land) |
