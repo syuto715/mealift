@@ -7,17 +7,23 @@
 // video URLs land later — form_cue_ja in Phase 2B (batched commits),
 // rep_range_low/high also in Phase 2B, video_url deferred to Build 16+.
 //
-// Coverage (Sprint 2.7c.1 recon audited count = 133 strength rows):
-//   - Existing 43 strength rows from src/constants/exercises.ts (ex_001..063)
-//     get their new v2 fields populated. v25 migration already
-//     backfilled slug + 8-cat equipment for these IDs; this file
-//     UPSERTs by slug to fill primary_muscle / movement_pattern /
-//     is_compound on top.
-//   - 90 new strength entries (ex_064..ex_193, with gaps) covering
-//     common variations the existing 43 lacked: incline/decline
-//     variants, cable / machine alternates, glute-focused movements,
-//     forearm work, additional core patterns, olympic lift accessories.
-//   - Total in this file: 43 (existing-by-slug) + 90 (new) = 133 rows.
+// Coverage (Sprint 2.7c.2 post-dedup audited count = 185 strength rows):
+//   - Phase 2A (initial V2 land): 43 existing-by-slug strength rows from
+//     src/constants/exercises.ts (ex_001..063) get v2 fields populated.
+//     v25 migration already backfilled slug + 8-cat equipment for these
+//     IDs; this file UPSERTs by slug to fill primary_muscle /
+//     movement_pattern / is_compound on top.
+//   - Phase 2A new strength (ex_064..ex_193 with gaps): 90 rows covering
+//     incline/decline variants, cable / machine alternates,
+//     glute-focused movements, forearm work, additional core patterns,
+//     olympic lift accessories.
+//   - Phase 2.7c.2 strength batch (ex_194..ex_283 with gaps after dedup):
+//     52 new rows (90 initially authored, 38 removed in Codex pass 1
+//     fix due to slug collisions with the Phase 2A entries above).
+//     Covers chest/back/shoulders/legs/arms/core variations not yet
+//     present in Phase 2A.
+//   - Total in this file: 43 (existing-by-slug) + 90 (Phase 2A new) + 52
+//     (Phase 2.7c.2 new) = 185 rows.
 //
 // Cardio (ex_c001..c018), sports (ex_s001..s019), and other (ex_o001..o005)
 // are NOT in this file — they have no slug + their existing
@@ -245,4 +251,76 @@ export const EXERCISES_V2: readonly ExerciseV2Row[] = [
   { id: 'ex_191', slug: 'thruster_barbell', name_ja: 'スラスター', name_en: 'Thruster', muscle_group: 'full_body', primary_muscle: 'legs_quad', equipment: 'barbell', is_compound: true, movement_pattern: 'squat', sort_order: 191, form_cue_ja: 'バーを肩に乗せフロントスクワット姿勢から立ち上がる勢いで頭上に押し上げる。下半身の爆発力を上半身に伝える。', rep_range_low: 5, rep_range_high: 10 },
   { id: 'ex_192', slug: 'turkish_get_up', name_ja: 'ターキッシュゲットアップ', name_en: 'Turkish Get-Up', muscle_group: 'full_body', primary_muscle: 'shoulder_front', equipment: 'kettlebell', is_compound: true, movement_pattern: 'other', sort_order: 192, form_cue_ja: '仰向けでケトルベルを片手で頭上に保持。視線をケトルベルから離さず、肘→手→膝→立位の順で立ち上がり、逆順で戻る。各段階をゆっくり制御。', rep_range_low: 3, rep_range_high: 5 },
   { id: 'ex_193', slug: 'man_maker', name_ja: 'マンメーカー', name_en: 'Man Maker', muscle_group: 'full_body', primary_muscle: 'shoulder_front', equipment: 'dumbbell', is_compound: true, movement_pattern: 'other', sort_order: 193, form_cue_ja: 'ダンベルを両手に持ち、腕立て→ダンベルロウ左右→ジャンプして立ち上がり→クリーン→スラスターを 1 連で行う。各動作を制御して。', rep_range_low: 5, rep_range_high: 8 },
+
+  // ============================================================
+  // Phase 2.7c Sprint 2.7c.2 — Strength batch (ex_194..ex_283 with gaps,
+  // 52 件 post-dedup; 90 initially authored, 38 removed in Codex pass 1
+  // fix due to slug collisions with Phase 2A entries above)
+  // Anthropic training data (一般 fitness knowledge) + 既 175 件 seed ベース
+  // License clean: wger / OpenExercise 等 copyleft 不使用 (Drafting 179)
+  // ============================================================
+
+  // === CHEST additions (ex_194..ex_206, 13 件) ===
+  { id: 'ex_194', slug: 'svend_press', name_ja: 'スベンドプレス', name_en: 'Svend Press', muscle_group: 'chest', primary_muscle: 'chest_mid', equipment: 'dumbbell', is_compound: false, movement_pattern: 'isolation_fly', sort_order: 194, form_cue_ja: 'プレートまたは小さなダンベルを両手で挟むように胸の前で持ち、前方に押し出す。胸の内側を絞り込む意識で。', rep_range_low: 10, rep_range_high: 15 },
+  { id: 'ex_195', slug: 'landmine_press', name_ja: 'ランドマインプレス', name_en: 'Landmine Press', muscle_group: 'chest', primary_muscle: 'chest_upper', equipment: 'barbell', is_compound: true, movement_pattern: 'vertical_push', sort_order: 195, form_cue_ja: 'バーの一端を床に固定し、立位で反対側を片手で握る。斜め上に押し出す動作で胸上部と肩前部を狙う。', rep_range_low: 8, rep_range_high: 12 },
+  { id: 'ex_196', slug: 'single_arm_dumbbell_press', name_ja: 'シングルアームダンベルプレス', name_en: 'Single Arm Dumbbell Press', muscle_group: 'chest', primary_muscle: 'chest_mid', equipment: 'dumbbell', is_compound: true, movement_pattern: 'horizontal_push', sort_order: 196, form_cue_ja: 'ベンチに仰向け、片手のみダンベルを持つ。反対側の体幹が回旋しないよう腹圧で安定。左右バランス改善に有効。', rep_range_low: 8, rep_range_high: 12 },
+  { id: 'ex_197', slug: 'floor_press_barbell', name_ja: 'フロアプレス', name_en: 'Floor Press (Barbell)', muscle_group: 'chest', primary_muscle: 'chest_mid', equipment: 'barbell', is_compound: true, movement_pattern: 'horizontal_push', sort_order: 197, form_cue_ja: '床に仰向けでバーを胸上に構える。肘が床に触れるまで下ろし、可動域を制限。肩痛時の代替動作。', rep_range_low: 5, rep_range_high: 10 },
+  { id: 'ex_198', slug: 'guillotine_press_barbell', name_ja: 'ギロチンプレス', name_en: 'Guillotine Press', muscle_group: 'chest', primary_muscle: 'chest_upper', equipment: 'barbell', is_compound: true, movement_pattern: 'horizontal_push', sort_order: 198, form_cue_ja: 'バーを首元に下ろす変形ベンチプレス。肘を 90 度開き胸上部を最大伸展。重量管理を慎重に。', rep_range_low: 6, rep_range_high: 10 },
+  { id: 'ex_199', slug: 'plate_pinch_press', name_ja: 'プレートピンチプレス', name_en: 'Plate Pinch Press', muscle_group: 'chest', primary_muscle: 'chest_mid', equipment: 'other', is_compound: false, movement_pattern: 'isolation_fly', sort_order: 199, form_cue_ja: '両手のひらでプレートを挟み、胸の前で押し合う。等尺性収縮で胸の内側を強烈に刺激。', rep_range_low: 8, rep_range_high: 12 },
+  { id: 'ex_200', slug: 'archer_push_up', name_ja: 'アーチャープッシュアップ', name_en: 'Archer Push Up', muscle_group: 'chest', primary_muscle: 'chest_mid', equipment: 'bodyweight', is_compound: true, movement_pattern: 'horizontal_push', sort_order: 200, form_cue_ja: '両手を肩幅より広く置き、片側に体重を寄せて下ろす。反対腕は伸ばす。片側ずつ強度を上げる移行種目。', rep_range_low: 6, rep_range_high: 12 },
+  { id: 'ex_201', slug: 'pseudo_planche_push_up', name_ja: 'プランシェ式プッシュアップ', name_en: 'Pseudo Planche Push Up', muscle_group: 'chest', primary_muscle: 'chest_lower', equipment: 'bodyweight', is_compound: true, movement_pattern: 'horizontal_push', sort_order: 201, form_cue_ja: '手のひらを腰の横に置き、指を後方に向ける。前傾姿勢でプッシュアップ。肩前部と胸下部を強く刺激。', rep_range_low: 5, rep_range_high: 10 },
+  { id: 'ex_202', slug: 'spoto_press_barbell', name_ja: 'スポトプレス', name_en: 'Spoto Press', muscle_group: 'chest', primary_muscle: 'chest_mid', equipment: 'barbell', is_compound: true, movement_pattern: 'horizontal_push', sort_order: 202, form_cue_ja: 'ベンチプレスで胸に触れる手前 1-2cm で 1-2 秒静止しから押し戻す。スティッキングポイント克服に有効。', rep_range_low: 5, rep_range_high: 8 },
+  { id: 'ex_203', slug: 'incline_dumbbell_press_neutral_grip', name_ja: 'ニュートラルグリップインクラインダンベルプレス', name_en: 'Neutral Grip Incline Dumbbell Press', muscle_group: 'chest', primary_muscle: 'chest_upper', equipment: 'dumbbell', is_compound: true, movement_pattern: 'horizontal_push', sort_order: 203, form_cue_ja: 'インクラインベンチで両手の手のひらを向かい合わせ、ダンベルを縦に握る。肩への負担軽減で胸上部を狙う。', rep_range_low: 8, rep_range_high: 12 },
+  { id: 'ex_204', slug: 'reverse_grip_bench_press', name_ja: 'リバースグリップベンチプレス', name_en: 'Reverse Grip Bench Press', muscle_group: 'chest', primary_muscle: 'chest_upper', equipment: 'barbell', is_compound: true, movement_pattern: 'horizontal_push', sort_order: 204, form_cue_ja: '逆手 (アンダーハンド) でバーを握り、ベンチプレス。胸上部と上腕二頭筋を同時に刺激。重量は通常より軽く。', rep_range_low: 8, rep_range_high: 12 },
+  { id: 'ex_205', slug: 'cable_chest_press_standing', name_ja: 'ケーブルチェストプレス', name_en: 'Cable Chest Press (Standing)', muscle_group: 'chest', primary_muscle: 'chest_mid', equipment: 'machine', is_compound: true, movement_pattern: 'horizontal_push', sort_order: 205, form_cue_ja: '立位でケーブルの前に立ち、両手で前方に押し出す。体幹安定が必要、機能的胸筋トレーニング。', rep_range_low: 10, rep_range_high: 15 },
+  { id: 'ex_206', slug: 'medicine_ball_chest_throw', name_ja: 'メディシンボールチェストスロー', name_en: 'Medicine Ball Chest Throw', muscle_group: 'chest', primary_muscle: 'chest_mid', equipment: 'other', is_compound: true, movement_pattern: 'horizontal_push', sort_order: 206, form_cue_ja: 'メディシンボールを胸の前で構え、壁や相手に爆発的に投げる。爆発的押す力 (パワー) 養成。', rep_range_low: 6, rep_range_high: 10 },
+
+  // === BACK additions (ex_207..ex_220, 14 件) ===
+  { id: 'ex_207', slug: 'pendlay_row_barbell', name_ja: 'ペンドレイロウ', name_en: 'Pendlay Row', muscle_group: 'back', primary_muscle: 'back_mid', equipment: 'barbell', is_compound: true, movement_pattern: 'horizontal_pull', sort_order: 207, form_cue_ja: '床から毎回バーを爆発的に引き上げ、毎レップ床に戻す。背中の爆発的引く力養成。', rep_range_low: 5, rep_range_high: 8 },
+  { id: 'ex_208', slug: 'meadows_row', name_ja: 'メドウズロウ', name_en: 'Meadows Row', muscle_group: 'back', primary_muscle: 'back_lat', equipment: 'barbell', is_compound: true, movement_pattern: 'horizontal_pull', sort_order: 208, form_cue_ja: 'ランドマインバーを片手で握り、前傾姿勢で肘を後方に引き上げる。広背筋下部に強い刺激。', rep_range_low: 8, rep_range_high: 12 },
+  { id: 'ex_209', slug: 'chest_supported_row_dumbbell', name_ja: 'チェストサポートロウ', name_en: 'Chest Supported Row (Dumbbell)', muscle_group: 'back', primary_muscle: 'back_mid', equipment: 'dumbbell', is_compound: true, movement_pattern: 'horizontal_pull', sort_order: 209, form_cue_ja: 'インクラインベンチに胸を当て、両手のダンベルを後方に引く。腰背部の負担軽減で背中ピンポイント狙い。', rep_range_low: 10, rep_range_high: 15 },
+  { id: 'ex_213', slug: 'wide_grip_pull_up', name_ja: 'ワイドグリッププルアップ', name_en: 'Wide Grip Pull Up', muscle_group: 'back', primary_muscle: 'back_lat', equipment: 'bodyweight', is_compound: true, movement_pattern: 'vertical_pull', sort_order: 213, form_cue_ja: '肩幅より広く順手で握り、胸をバーに引き寄せる。広背筋の横幅形成に最も有効。', rep_range_low: 4, rep_range_high: 10 },
+  { id: 'ex_214', slug: 'single_arm_lat_pulldown', name_ja: 'シングルアームラットプルダウン', name_en: 'Single Arm Lat Pulldown', muscle_group: 'back', primary_muscle: 'back_lat', equipment: 'machine', is_compound: false, movement_pattern: 'vertical_pull', sort_order: 214, form_cue_ja: 'ハンドルを片手で握り、ラットの収縮を意識して引き下ろす。左右バランス改善に効果。', rep_range_low: 10, rep_range_high: 15 },
+  { id: 'ex_216', slug: 'rack_pull_barbell', name_ja: 'ラックプル', name_en: 'Rack Pull', muscle_group: 'back', primary_muscle: 'back_mid', equipment: 'barbell', is_compound: true, movement_pattern: 'hinge', sort_order: 216, form_cue_ja: 'パワーラックで膝上付近にバーをセット、デッドリフトの上半分のみ。背中上部の重量挙げに集中。', rep_range_low: 4, rep_range_high: 8 },
+  { id: 'ex_219', slug: 'face_pull_cable', name_ja: 'フェイスプル', name_en: 'Face Pull', muscle_group: 'back', primary_muscle: 'back_upper', equipment: 'machine', is_compound: false, movement_pattern: 'horizontal_pull', sort_order: 219, form_cue_ja: 'ハイケーブルにロープを取り付け、顔の高さまで引いて両拳を外側に回す。後ろ肩 + 僧帽筋中下部のリハビリ的種目。', rep_range_low: 12, rep_range_high: 20 },
+  { id: 'ex_220', slug: 'reverse_fly_cable', name_ja: 'ケーブルリアフライ', name_en: 'Cable Reverse Fly', muscle_group: 'back', primary_muscle: 'back_upper', equipment: 'machine', is_compound: false, movement_pattern: 'isolation_fly', sort_order: 220, form_cue_ja: 'ケーブルクロス位置に立ち、両手で反対側のケーブルを握り、横に開く。三角筋後部と菱形筋を狙う。', rep_range_low: 12, rep_range_high: 15 },
+
+  // === SHOULDERS additions (ex_221..ex_234, 14 件) ===
+  { id: 'ex_225', slug: 'cable_face_pull', name_ja: 'ケーブルフェイスプル', name_en: 'Cable Face Pull', muscle_group: 'shoulders', primary_muscle: 'shoulder_rear', equipment: 'machine', is_compound: false, movement_pattern: 'horizontal_pull', sort_order: 225, form_cue_ja: 'ハイケーブルにロープ、両手で顔の高さに引き、両拳を外側に回す。三角筋後部を集中刺激。', rep_range_low: 12, rep_range_high: 20 },
+  { id: 'ex_226', slug: 'rear_delt_machine', name_ja: 'リアデルトマシン', name_en: 'Rear Delt Machine', muscle_group: 'shoulders', primary_muscle: 'shoulder_rear', equipment: 'machine', is_compound: false, movement_pattern: 'isolation_fly', sort_order: 226, form_cue_ja: 'リバースペックデック。胸をパッドに当て、腕を後方へ広げる。三角筋後部のアイソレーション。', rep_range_low: 12, rep_range_high: 15 },
+  { id: 'ex_227', slug: 'bent_over_lateral_raise', name_ja: 'ベントオーバーリアレイズ', name_en: 'Bent Over Lateral Raise', muscle_group: 'shoulders', primary_muscle: 'shoulder_rear', equipment: 'dumbbell', is_compound: false, movement_pattern: 'isolation_fly', sort_order: 227, form_cue_ja: '股関節から前傾し、ダンベルを両手に持ち横に広げる。背中ではなく後ろ肩に効かせる軌道。', rep_range_low: 12, rep_range_high: 15 },
+  { id: 'ex_228', slug: 'incline_lateral_raise', name_ja: 'インクラインサイドレイズ', name_en: 'Incline Lateral Raise', muscle_group: 'shoulders', primary_muscle: 'shoulder_side', equipment: 'dumbbell', is_compound: false, movement_pattern: 'isolation_raise', sort_order: 228, form_cue_ja: 'インクラインベンチに横向きに寝て、片手のダンベルを真上に上げる。三角筋側部のレンジ最大化。', rep_range_low: 10, rep_range_high: 15 },
+  { id: 'ex_229', slug: 'lying_rear_delt_fly', name_ja: 'ライイングリアデルトフライ', name_en: 'Lying Rear Delt Fly', muscle_group: 'shoulders', primary_muscle: 'shoulder_rear', equipment: 'dumbbell', is_compound: false, movement_pattern: 'isolation_fly', sort_order: 229, form_cue_ja: 'インクラインベンチにうつ伏せ、両手のダンベルを横に広げる。背中の関与最小化で後ろ肩を絞る。', rep_range_low: 12, rep_range_high: 15 },
+  { id: 'ex_230', slug: 'cuban_press_dumbbell', name_ja: 'キューバンプレス', name_en: 'Cuban Press', muscle_group: 'shoulders', primary_muscle: 'shoulder_rear', equipment: 'dumbbell', is_compound: true, movement_pattern: 'vertical_push', sort_order: 230, form_cue_ja: 'アップライトロウから外旋し、頭上へ押し上げる 3 段階動作。回旋筋腱板の強化に効果。', rep_range_low: 8, rep_range_high: 12 },
+  { id: 'ex_231', slug: 'plate_front_raise', name_ja: 'プレートフロントレイズ', name_en: 'Plate Front Raise', muscle_group: 'shoulders', primary_muscle: 'shoulder_front', equipment: 'other', is_compound: false, movement_pattern: 'isolation_raise', sort_order: 231, form_cue_ja: '10-20kg のプレートを両手で握り、肩の高さまで真っ直ぐ前に上げる。三角筋前部を集中刺激。', rep_range_low: 12, rep_range_high: 15 },
+  { id: 'ex_234', slug: 'kettlebell_overhead_press', name_ja: 'ケトルベルショルダープレス', name_en: 'Kettlebell Overhead Press', muscle_group: 'shoulders', primary_muscle: 'shoulder_front', equipment: 'kettlebell', is_compound: true, movement_pattern: 'vertical_push', sort_order: 234, form_cue_ja: 'ケトルベルを片手のラックポジションから頭上へ押し上げる。前腕背屈で体幹も巻き込む。', rep_range_low: 6, rep_range_high: 12 },
+
+  // === LEGS additions (ex_235..ex_254, 20 件) ===
+  { id: 'ex_236', slug: 'box_squat_barbell', name_ja: 'ボックススクワット', name_en: 'Box Squat', muscle_group: 'legs', primary_muscle: 'legs_glute', equipment: 'barbell', is_compound: true, movement_pattern: 'squat', sort_order: 236, form_cue_ja: 'バックスクワットでボックスに座る深さまで下ろし一瞬静止してから立ち上がる。フォーム矯正と爆発力養成。', rep_range_low: 5, rep_range_high: 10 },
+  { id: 'ex_237', slug: 'pause_squat_barbell', name_ja: 'ポーズスクワット', name_en: 'Pause Squat', muscle_group: 'legs', primary_muscle: 'legs_quad', equipment: 'barbell', is_compound: true, movement_pattern: 'squat', sort_order: 237, form_cue_ja: '最下点で 2-3 秒静止してから立ち上がる。スティッキングポイント克服 + 筋力向上。', rep_range_low: 4, rep_range_high: 8 },
+  { id: 'ex_238', slug: 'zercher_squat_barbell', name_ja: 'ザーチャースクワット', name_en: 'Zercher Squat', muscle_group: 'legs', primary_muscle: 'legs_quad', equipment: 'barbell', is_compound: true, movement_pattern: 'squat', sort_order: 238, form_cue_ja: '肘の内側でバーを抱え込みスクワット。体幹と背中の関与も大きく、ユニークな刺激。', rep_range_low: 5, rep_range_high: 10 },
+  { id: 'ex_239', slug: 'split_squat_dumbbell', name_ja: 'スプリットスクワット', name_en: 'Split Squat (Dumbbell)', muscle_group: 'legs', primary_muscle: 'legs_quad', equipment: 'dumbbell', is_compound: true, movement_pattern: 'lunge', sort_order: 239, form_cue_ja: '足を前後に開いた姿勢で固定し、両手のダンベルを持ちその場でしゃがむ。片脚集中で左右バランス改善。', rep_range_low: 8, rep_range_high: 12 },
+  { id: 'ex_242', slug: 'lateral_lunge_dumbbell', name_ja: 'サイドランジ', name_en: 'Lateral Lunge', muscle_group: 'legs', primary_muscle: 'legs_adductor', equipment: 'dumbbell', is_compound: true, movement_pattern: 'lunge', sort_order: 242, form_cue_ja: '片足を真横に大きく踏み込み、その脚側にしゃがむ。内転筋と臀筋外側を狙う。', rep_range_low: 10, rep_range_high: 15 },
+  { id: 'ex_243', slug: 'curtsy_lunge_dumbbell', name_ja: 'カーツィランジ', name_en: 'Curtsy Lunge', muscle_group: 'legs', primary_muscle: 'legs_glute', equipment: 'dumbbell', is_compound: true, movement_pattern: 'lunge', sort_order: 243, form_cue_ja: '片足を斜め後方に交差させて踏み込む。臀筋中部 (中臀筋) のピンポイント刺激。', rep_range_low: 10, rep_range_high: 15 },
+  { id: 'ex_246', slug: 'glute_bridge_barbell', name_ja: 'グルートブリッジ', name_en: 'Glute Bridge', muscle_group: 'legs', primary_muscle: 'legs_glute', equipment: 'barbell', is_compound: true, movement_pattern: 'hinge', sort_order: 246, form_cue_ja: '床に仰向け、骨盤上にバーを乗せて股関節を浮かす。ヒップスラストより低強度の代替。', rep_range_low: 10, rep_range_high: 15 },
+  { id: 'ex_247', slug: 'single_leg_deadlift_dumbbell', name_ja: 'シングルレッグデッドリフト', name_en: 'Single Leg Deadlift', muscle_group: 'legs', primary_muscle: 'legs_hamstring', equipment: 'dumbbell', is_compound: true, movement_pattern: 'hinge', sort_order: 247, form_cue_ja: '片足で立ち、反対足を後方に伸ばしながら前傾。ダンベルを床近くまで下ろす。バランス + ハム強化。', rep_range_low: 8, rep_range_high: 12 },
+  { id: 'ex_251', slug: 'belt_squat', name_ja: 'ベルトスクワット', name_en: 'Belt Squat', muscle_group: 'legs', primary_muscle: 'legs_quad', equipment: 'machine', is_compound: true, movement_pattern: 'squat', sort_order: 251, form_cue_ja: '腰にベルトを巻きケーブル / マシンで荷重をかけ、両手フリーでスクワット。脊椎負担なしで脚を追い込む。', rep_range_low: 10, rep_range_high: 15 },
+  { id: 'ex_254', slug: 'jefferson_curl_dumbbell', name_ja: 'ジェファーソンカール', name_en: 'Jefferson Curl', muscle_group: 'legs', primary_muscle: 'legs_hamstring', equipment: 'dumbbell', is_compound: false, movement_pattern: 'hinge', sort_order: 254, form_cue_ja: 'ダンベル両手持ちで脊椎を丸めながらゆっくり前屈し、戻す。ハムストリングのフレキシビリティ + 制御。', rep_range_low: 10, rep_range_high: 15 },
+
+  // === ARMS additions (ex_255..ex_270, 16 件) ===
+  { id: 'ex_259', slug: 'reverse_curl_barbell', name_ja: 'リバースカール', name_en: 'Reverse Curl', muscle_group: 'arms', primary_muscle: 'arms_forearm', equipment: 'barbell', is_compound: false, movement_pattern: 'isolation_curl', sort_order: 259, form_cue_ja: '順手 (オーバーハンド) でバーを握りカール。上腕筋と前腕屈筋を強く刺激。', rep_range_low: 10, rep_range_high: 15 },
+  { id: 'ex_260', slug: 'zottman_curl_dumbbell', name_ja: 'ゾットマンカール', name_en: 'Zottman Curl', muscle_group: 'arms', primary_muscle: 'arms_biceps', equipment: 'dumbbell', is_compound: false, movement_pattern: 'isolation_curl', sort_order: 260, form_cue_ja: 'カールの上りは逆手で挙げて、頂点で手を反転させ順手で下ろす。二頭筋 + 前腕の同時刺激。', rep_range_low: 8, rep_range_high: 12 },
+  { id: 'ex_262', slug: 'reverse_wrist_curl_barbell', name_ja: 'リバースリストカール', name_en: 'Reverse Wrist Curl', muscle_group: 'arms', primary_muscle: 'arms_forearm', equipment: 'barbell', is_compound: false, movement_pattern: 'isolation_extension', sort_order: 262, form_cue_ja: '順手で前腕を乗せ、手首だけでバーを引き上げる。前腕伸筋 (背側) を強化。', rep_range_low: 12, rep_range_high: 20 },
+  { id: 'ex_265', slug: 'french_press_barbell', name_ja: 'フレンチプレス', name_en: 'French Press', muscle_group: 'arms', primary_muscle: 'arms_triceps', equipment: 'barbell', is_compound: false, movement_pattern: 'isolation_extension', sort_order: 265, form_cue_ja: 'EZ バーを頭上で構え、肘を曲げて頭の後ろまで下ろし伸展。三頭筋全頭をストレッチ刺激。', rep_range_low: 10, rep_range_high: 12 },
+  { id: 'ex_270', slug: 'tate_press_dumbbell', name_ja: 'テイトプレス', name_en: 'Tate Press', muscle_group: 'arms', primary_muscle: 'arms_triceps', equipment: 'dumbbell', is_compound: false, movement_pattern: 'isolation_extension', sort_order: 270, form_cue_ja: '仰向けでダンベルを真上に構え、肘を曲げてダンベルを胸の中央付近に下ろし伸展。三頭筋内側に効く。', rep_range_low: 10, rep_range_high: 12 },
+
+  // === CORE additions (ex_271..ex_283, 13 件) ===
+  { id: 'ex_272', slug: 'bird_dog', name_ja: 'バードドッグ', name_en: 'Bird Dog', muscle_group: 'core', primary_muscle: 'core_lower_back', equipment: 'bodyweight', is_compound: false, movement_pattern: 'core_anti_extension', sort_order: 272, form_cue_ja: '四つん這いから対角の腕と脚を伸ばし水平に保つ。体幹と脊柱起立筋の協調を強化。', rep_range_low: 8, rep_range_high: 12 },
+  { id: 'ex_275', slug: 'weighted_russian_twist', name_ja: 'ウェイテッドロシアンツイスト', name_en: 'Weighted Russian Twist', muscle_group: 'core', primary_muscle: 'core_obliques', equipment: 'dumbbell', is_compound: false, movement_pattern: 'rotation', sort_order: 275, form_cue_ja: 'ダンベルまたはプレートを両手で持ちロシアンツイスト。重量で腹斜筋への負荷を上乗せ。', rep_range_low: 10, rep_range_high: 20 },
+  { id: 'ex_278', slug: 'l_sit', name_ja: 'Lシット', name_en: 'L-Sit', muscle_group: 'core', primary_muscle: 'core_abs', equipment: 'bodyweight', is_compound: true, movement_pattern: 'core_flexion', sort_order: 278, form_cue_ja: '床またはパラレットバーに手を置き、脚を前方に伸ばして L 字に保持。腹筋 + 股関節屈筋を強烈に。', rep_range_low: 10, rep_range_high: 30 },
+  { id: 'ex_279', slug: 'dragon_flag', name_ja: 'ドラゴンフラッグ', name_en: 'Dragon Flag', muscle_group: 'core', primary_muscle: 'core_abs', equipment: 'bodyweight', is_compound: true, movement_pattern: 'core_anti_extension', sort_order: 279, form_cue_ja: 'ベンチに肩甲骨を当て両手で頭側を掴み、体を一直線に保ったまま脚を上下に動かす。上級腹筋種目。', rep_range_low: 4, rep_range_high: 10 },
+  { id: 'ex_280', slug: 'farmer_walk_dumbbell', name_ja: 'ファーマーズウォーク', name_en: 'Farmer Walk', muscle_group: 'core', primary_muscle: 'core_lower_back', equipment: 'dumbbell', is_compound: true, movement_pattern: 'carry', sort_order: 280, form_cue_ja: '両手に重いダンベルを持ち、姿勢を保ちながら歩く。前腕握力 + 体幹安定 + 全身機能性。', rep_range_low: 20, rep_range_high: 60 },
+  { id: 'ex_281', slug: 'suitcase_carry_dumbbell', name_ja: 'スーツケースキャリー', name_en: 'Suitcase Carry', muscle_group: 'core', primary_muscle: 'core_obliques', equipment: 'dumbbell', is_compound: true, movement_pattern: 'carry', sort_order: 281, form_cue_ja: '片手のみ重いダンベルを持ち姿勢を保ったまま歩く。体幹の側屈に抗するアンチラテラル動作。', rep_range_low: 20, rep_range_high: 60 },
+  { id: 'ex_282', slug: 'cable_woodchopper_low_to_high', name_ja: 'ロートゥハイチョッパー', name_en: 'Low to High Woodchopper', muscle_group: 'core', primary_muscle: 'core_obliques', equipment: 'machine', is_compound: false, movement_pattern: 'rotation', sort_order: 282, form_cue_ja: 'ローケーブルから斜め上に振り上げる。腹斜筋を逆方向回旋で刺激。', rep_range_low: 10, rep_range_high: 15 },
+  { id: 'ex_283', slug: 'ab_wheel_rollout_standing', name_ja: 'スタンディングアブローラー', name_en: 'Standing Ab Wheel Rollout', muscle_group: 'core', primary_muscle: 'core_abs', equipment: 'other', is_compound: true, movement_pattern: 'core_anti_extension', sort_order: 283, form_cue_ja: '立位からアブローラーを前方に転がし体を伸展、戻す。腹直筋への最大ストレッチ刺激、上級者向け。', rep_range_low: 5, rep_range_high: 12 },
 ];
