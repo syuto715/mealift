@@ -58,6 +58,7 @@ import {
   softDeleteMyDish,
   duplicateMyDish,
 } from '../../../src/infra/repositories/dishRepository';
+import { searchSearchIndex } from '../../../src/infra/repositories/searchIndexRepository';
 import {
   getTemplates,
   incrementTemplateUseCount,
@@ -159,6 +160,12 @@ export default function AddFoodScreen() {
   const [dishResults, setDishResults] = useState<Dish[]>([]);
   const [selectedDish, setSelectedDish] = useState<DishWithIngredients | null>(null);
   const [dishModalVisible, setDishModalVisible] = useState(false);
+
+  // v1.5 hotfix Issue 2 — restaurant_menu rows from search_index_fts.
+  // Adapted to Food via searchIndexRepository.rowToFood, surfaced as a
+  // dedicated 「外食メニュー」 section in combinedSearchResults so chain
+  // disclosure data is visually separable from 八訂 generic foods.
+  const [restaurantResults, setRestaurantResults] = useState<Food[]>([]);
 
   // Food detail modal state
   const [foodDetailVisible, setFoodDetailVisible] = useState(false);
@@ -327,19 +334,23 @@ export default function AddFoodScreen() {
     if (searchQuery.length < 1) {
       setSearchResults([]);
       setDishResults([]);
+      setRestaurantResults([]);
       return;
     }
     const timer = setTimeout(async () => {
       try {
-        const [foods, dishes] = await Promise.all([
+        const [foods, dishes, restaurants] = await Promise.all([
           searchFoods(searchQuery, 30),
           searchDishes(searchQuery, 20),
+          searchSearchIndex(searchQuery, 30),
         ]);
         setSearchResults(foods);
         setDishResults(dishes);
+        setRestaurantResults(restaurants);
       } catch (error) {
         setSearchResults([]);
         setDishResults([]);
+        setRestaurantResults([]);
       }
     }, 300);
     return () => clearTimeout(timer);
@@ -719,7 +730,11 @@ export default function AddFoodScreen() {
 
   // (nutrition preview is now inside ServingQuantityModal)
 
-  type SearchItem = { type: 'food'; data: Food } | { type: 'dish'; data: Dish } | { type: 'header'; label: string };
+  type SearchItem =
+    | { type: 'food'; data: Food }
+    | { type: 'dish'; data: Dish }
+    | { type: 'restaurant'; data: Food }
+    | { type: 'header'; label: string };
 
   const combinedSearchResults = useMemo((): SearchItem[] => {
     const items: SearchItem[] = [];
@@ -735,8 +750,14 @@ export default function AddFoodScreen() {
         items.push({ type: 'food', data: f });
       }
     }
+    if (restaurantResults.length > 0) {
+      items.push({ type: 'header', label: `外食メニュー（${restaurantResults.length}件）` });
+      for (const f of restaurantResults) {
+        items.push({ type: 'restaurant', data: f });
+      }
+    }
     return items;
-  }, [searchResults, dishResults]);
+  }, [searchResults, dishResults, restaurantResults]);
 
   const combinedFavorites = useMemo((): SearchItem[] => {
     const items: SearchItem[] = [];
@@ -793,6 +814,66 @@ export default function AddFoodScreen() {
             <Ionicons name="heart" size={16} color={colors.calorie} style={{ marginRight: spacing.xs }} />
           )}
           <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+        </TouchableOpacity>
+      );
+    }
+    if (item.type === 'restaurant') {
+      // v1.5 hotfix Issue 2 — restaurant_menu row.  brand is mandatory:
+      // 「牛丼」 hits 吉野家 / 松屋 / すき家 simultaneously, so without a
+      // brand subtitle the user can't tell which chain's nutrition row
+      // they're picking. Codex Critical (b) regression prevention.
+      // Long-press favorite is intentionally OMITTED — restaurant rows
+      // carry id='' so toggleFoodFavorite would silently no-op against
+      // foods table; v38 search_favorites natural-key plumbing is a
+      // post-hotfix cleanup queue item.
+      const food = item.data;
+      return (
+        <TouchableOpacity
+          style={[styles.foodRow, { borderBottomColor: colors.border }]}
+          onPress={() => openQuantityModal(food)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.foodRowInfo}>
+            <View style={styles.foodNameRow}>
+              <Text
+                style={[styles.foodRowName, { color: colors.textPrimary }]}
+                numberOfLines={1}
+              >
+                {food.nameJa}
+              </Text>
+              {food.brand && (
+                <Text
+                  style={[
+                    styles.sourceBadge,
+                    {
+                      color: colors.primary,
+                      backgroundColor: colors.primary + '18',
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {food.brand}
+                </Text>
+              )}
+            </View>
+            <Text style={[styles.foodRowMeta, { color: colors.textSecondary }]}>
+              {formatServingHint(food.servingUnit, food.servingSizeG, Math.round(food.caloriesPerServing))}
+            </Text>
+            <Text style={[styles.foodRowPfc, { color: colors.textTertiary }]}>
+              P {food.proteinG}g F {food.fatG}g C {food.carbG}g
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              openFoodDetailModal(food);
+            }}
+            hitSlop={8}
+            style={{ marginRight: spacing.sm }}
+          >
+            <Ionicons name="information-circle-outline" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
         </TouchableOpacity>
       );
     }
