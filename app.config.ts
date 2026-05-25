@@ -12,16 +12,24 @@ const config: ExpoConfig = {
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
-  // OTA updates via EAS Update — a JS/asset bundle published to the
-  // `production` (or `preview`) channel ships to users on launch without an
-  // App Store re-review. Required for emergency hotfixes; native changes
-  // still need a new binary. `runtimeVersion: appVersion` ties the bundle
-  // to `version` above, so a 1.0.0 build only accepts 1.0.0 OTA payloads
-  // — bump `version` whenever native code or this config changes.
+  // OTA updates via EAS Update — disabled in v1.5.0 ship.
+  //
+  // A Build 24 TestFlight crash landed in expo-updates' deliberate
+  // last-resort path (`ErrorRecovery.crash()` →
+  // `runNextTask` → `notify(newRemoteLoadStatus:)`); see the v1.5
+  // Issue 1 hotfix sprint doc for crash-log evidence and root-cause
+  // investigation. Setting `enabled: false` (and `checkAutomatically:
+  // 'NEVER'` as a belt-and-braces guard) keeps the embedded bundle
+  // as the only execution path until the root JS-bundle error is
+  // isolated.
+  //
+  // `runtimeVersion.policy: 'appVersion'` is retained so a future
+  // re-enable doesn't require schema changes — the URL + policy
+  // pair is the durable EAS Update infrastructure.
   updates: {
     url: 'https://u.expo.dev/22e7739f-d13b-4080-b8ec-d2943e71767d',
-    enabled: true,
-    checkAutomatically: 'ON_LOAD',
+    enabled: false,
+    checkAutomatically: 'NEVER',
     fallbackToCacheTimeout: 0,
   },
   runtimeVersion: {
