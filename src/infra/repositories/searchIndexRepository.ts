@@ -64,6 +64,10 @@ interface SearchIndexRow {
 interface NutritionJson {
   servingSizeG?: number;
   servingUnit?: string;
+  /** v1.5.1 — restaurant rows that disclose a kcal basis qualifier
+   * (e.g. CoCo壱 「ライス量「普通(300g)」の場合」) carry it here so the
+   * display layer can surface the basis alongside the unit count. */
+  servingDescription?: string | null;
   caloriesPerServing?: number;
   proteinG?: number;
   fatG?: number;
@@ -84,14 +88,42 @@ function escapeFts5Phrase(raw: string): string {
   return `"${raw.replace(/"/g, '""')}"`;
 }
 
+// v1.5.1 — runtime mirror of the build-time `normalizeForSearch`
+// helper in scripts/build-search-index.ts. `aliases_concat` is built
+// after NFKC + lowercase + hiragana→katakana, so a user typing
+// hiragana (e.g. 「よしのや」, 「すきや」) needs the same transform
+// applied to the query before FTS5 MATCH — otherwise stored
+// 「ヨシノヤ」 won't hit. Codex Round 1 Important called out this
+// asymmetry on v1.5.1's brand-alias bulk. Kept in sync manually until
+// the cleanup queue revives a shared helper (Sprint 2.7.4 removed the
+// original runtime `normalizeForSearch` as orphaned).
+function normalizeForSearch(input: string): string {
+  if (!input) return '';
+  const nfkc = input.normalize('NFKC');
+  const lowered = nfkc.toLowerCase();
+  let out = '';
+  for (let i = 0; i < lowered.length; i += 1) {
+    const code = lowered.charCodeAt(i);
+    if (code >= 0x3041 && code <= 0x3096) {
+      out += String.fromCharCode(code + 0x60);
+    } else {
+      out += lowered[i];
+    }
+  }
+  return out;
+}
+
 function buildFts5Query(raw: string): string {
   // Whitespace-split so a query like 「吉野家 牛丼」 becomes two
   // independent phrase literals joined by FTS5's implicit AND. This
   // lets brand (in one indexed column) and menu term (in another)
   // both contribute to a match. Empty tokens are filtered so a
   // trailing space doesn't produce `... ""` which FTS5 rejects.
+  // Each token is normalized identically to the build-time alias
+  // pipeline so cross-script queries (hiragana → katakana) hit.
   return raw
     .split(/\s+/)
+    .map((token) => normalizeForSearch(token))
     .filter((token) => token.length > 0)
     .map(escapeFts5Phrase)
     .join(' ');
@@ -113,6 +145,7 @@ function rowToFood(row: SearchIndexRow): Food {
     barcode: null,
     servingSizeG: parsed.servingSizeG ?? 100,
     servingUnit: parsed.servingUnit ?? 'g',
+    servingDescription: parsed.servingDescription ?? null,
     caloriesPerServing: parsed.caloriesPerServing ?? 0,
     proteinG: parsed.proteinG ?? 0,
     fatG: parsed.fatG ?? 0,

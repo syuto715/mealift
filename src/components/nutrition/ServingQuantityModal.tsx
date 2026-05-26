@@ -156,10 +156,23 @@ export function ServingQuantityModal({
     if (item.type === 'dish') {
       return `1人前 / ${Math.round(item.dish.totalCalories)}kcal`;
     }
+    // v1.5.1 Gap 2 — drop the (Xg) parenthetical for non-g serving
+    // units so chain rows read 「1 杯 / 425 kcal」 (あすけん-style)
+    // instead of 「杯 (100g) / 425 kcal」. When the food carries a
+    // `servingDescription` (e.g. CoCo壱 「ライス量「普通(300g)」の場合」)
+    // surface it so the kcal basis stays explicit — Codex Round 1
+    // Critical fix. The gram-mode toggle still exposes the raw gram
+    // value for users who need it. Per-100g chains (servingUnit: 'g')
+    // fall through to the existing helper.
+    const food = item.food;
+    if (food.servingUnit !== 'g') {
+      const desc = food.servingDescription ? ` (${food.servingDescription})` : '';
+      return `1 ${getCounterJa(food.servingUnit)}${desc} / ${Math.round(food.caloriesPerServing)}kcal`;
+    }
     return formatServingHint(
-      item.food.servingUnit,
-      item.food.servingSizeG,
-      Math.round(item.food.caloriesPerServing),
+      food.servingUnit,
+      food.servingSizeG,
+      Math.round(food.caloriesPerServing),
     );
   }, [item]);
 

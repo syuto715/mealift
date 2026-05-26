@@ -60,6 +60,72 @@ function normalizeForSearch(input: string): string {
   return out;
 }
 
+// v1.5.1 Gap 1 fix — brand aliases per chain.
+//
+// Phase 2.2b seeded each restaurant menu row with the chain's full
+// official name as `brand` (e.g., "セブン-イレブン", "KFC 日本ケンタッキー",
+// "ガスト / すかいらーくグループ"). FTS5 indexes `brand` directly, so the
+// canonical-name query path already works. But customers type colloquial
+// shorthand — 「マック」, 「スタバ」, 「セブンイレブン」 (no hyphen),
+// 「吉牛」, 「ファミマ」, 「KFC」 — and none of those appear in `brand`,
+// `name_ja`, or `aliases_concat` today, so the search returns 0 hits
+// (TestFlight Build 25 dogfood, Syuto report 2026-05-26).
+//
+// Keys MUST match the literal `chain.chainName` value emitted into the
+// `brand` column at build time. Phase 0 recon verified all 36 chains.
+// When a future chain is added to scripts/seed/data/, add an entry
+// here (empty array if no colloquial shorthand exists).
+const BRAND_ALIASES: Record<string, string[]> = {
+  // Convenience stores
+  'セブン-イレブン': ['セブンイレブン', 'セブン', 'セブイレ', '7-Eleven', '7eleven'],
+  'ファミリーマート': ['ファミマ'],
+  'ローソン': ['LAWSON'],
+  'ミニストップ': [],
+  'デイリーヤマザキ': ['デイリー'],
+  'セイコーマート': ['セコマ'],
+  // Burger chains
+  'マクドナルド': ['マック', 'マクド'],
+  'モスバーガー': ['モス', 'MOS'],
+  'バーガーキング': ['BK', 'バーキン'],
+  'フレッシュネスバーガー': ['フレッシュネス'],
+  'ロッテリア': ['LOTTERIA'],
+  'KFC 日本ケンタッキー': ['KFC', 'ケンタッキー', 'ケンタ'],
+  // Gyudon / set-meal chains
+  '吉野家': ['吉牛', 'よしのや'],
+  'すき家': ['すきや'],
+  '松屋': ['松屋フーズ'],
+  'なか卯': ['なかう'],
+  '大戸屋': ['大戸屋ごはん処'],
+  // Sushi chains
+  'スシロー': ['寿司郎'],
+  'くら寿司': ['くらずし'],
+  'かっぱ寿司': ['かっぱ'],
+  'はま寿司': ['はまずし'],
+  '元気寿司': ['元気'],
+  // Family restaurants
+  'ガスト / すかいらーくグループ': ['ガスト'],
+  'サイゼリヤ': ['サイゼ'],
+  'バーミヤン': [],
+  'デニーズ': ["Denny's"],
+  // Coffee chains
+  'スターバックスコーヒー': ['スターバックス', 'スタバ'],
+  'タリーズコーヒー': ['タリーズ', 'TULLYS', "TULLY'S"],
+  'ドトールコーヒー': ['ドトール', 'DOUTOR'],
+  'コメダ珈琲店': ['コメダ', 'コメダ珈琲'],
+  'プロント': ['PRONTO'],
+  // Specialty
+  'CoCo壱番屋': ['ココイチ', 'CoCo壱', 'ココ壱'],
+  '餃子の王将': ['王将', '餃王'],
+  '丸亀製麺': ['丸亀'],
+  'リンガーハット': ['リンガー'],
+  '一風堂': ['IPPUDO'],
+};
+
+function aliasesForBrand(brand: string | null): string[] {
+  if (!brand) return [];
+  return BRAND_ALIASES[brand] ?? [];
+}
+
 interface MextFoodRow {
   id: string;
   nameJa: string;
@@ -318,13 +384,20 @@ async function buildRestaurantRows(
       // and the search-index seed loader matches on this id when
       // an upsert is needed.
       const sourceId = `${chain.chainSlug}_${i.toString().padStart(4, '0')}`;
+      // v1.5.1 — fold the chain's colloquial-shorthand aliases into every
+      // menu row so 「マック ポテト」「スタバ ラテ」「吉牛 並盛」 hit via
+      // brand-shorthand + menu-term token-wise FTS5 AND.
+      const brandAliases = aliasesForBrand(chain.chainName);
       out.push({
         source_type: 'restaurant_menu',
         source_id: sourceId,
         name_ja: item.name,
         name_en: null,
         brand: chain.chainName,
-        aliases_concat: buildAliasesConcat(reading, item.aliases ?? []),
+        aliases_concat: buildAliasesConcat(reading, [
+          ...(item.aliases ?? []),
+          ...brandAliases,
+        ]),
         source_label: sourceLabel,
         is_common: 0,
         nutrition_json: JSON.stringify(menuItemToNutrition(item)),

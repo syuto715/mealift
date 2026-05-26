@@ -73,7 +73,7 @@ import { canUse } from '../../../src/infra/services/subscriptionService';
 import { DishDetailModal } from '../../../src/components/nutrition/DishDetailModal';
 import { FoodDetailModal } from '../../../src/components/nutrition/FoodDetailModal';
 import { UpgradePromptModal } from '../../../src/components/subscription/UpgradePromptModal';
-import { formatServingHint } from '../../../src/constants/servingUnits';
+import { formatServingHint, getCounterJa } from '../../../src/constants/servingUnits';
 import { UNIT_SEGMENTS_FULL } from '../../../src/constants/units';
 import { useMealLoggingOcrStore } from '../../../src/stores/mealLoggingOcrStore';
 import { mapParsedLabelToFood } from '../../../src/domain/parsedLabelToFood';
@@ -857,7 +857,21 @@ export default function AddFoodScreen() {
               )}
             </View>
             <Text style={[styles.foodRowMeta, { color: colors.textSecondary }]}>
-              {formatServingHint(food.servingUnit, food.servingSizeG, Math.round(food.caloriesPerServing))}
+              {/* v1.5.1 Gap 2 — for chain rows with a non-g serving unit
+                  (e.g. Starbucks 「杯」 with Tall/Grande already in name_ja),
+                  drop the (Xg) parenthetical so the hint reads as the
+                  あすけん-style 「1 杯 / 425 kcal」 instead of mixing kcal
+                  with raw grams. When the seed carries a
+                  `servingDescription` (e.g. CoCo壱 「ライス量「普通(300g)」
+                  の場合」) we surface it in the parenthetical so the kcal
+                  basis stays explicit — Codex Round 1 Critical fix.
+                  Chains that disclose per-100g (McDonald's etc.) keep
+                  `servingUnit: 'g'` in the seed JSON, so they fall through
+                  to formatServingHint and continue to show
+                  「100g / 408 kcal」 unchanged. */}
+              {food.servingUnit !== 'g'
+                ? `1 ${getCounterJa(food.servingUnit)}${food.servingDescription ? ` (${food.servingDescription})` : ''} / ${Math.round(food.caloriesPerServing)}kcal`
+                : formatServingHint(food.servingUnit, food.servingSizeG, Math.round(food.caloriesPerServing))}
             </Text>
             <Text style={[styles.foodRowPfc, { color: colors.textTertiary }]}>
               P {food.proteinG}g F {food.fatG}g C {food.carbG}g

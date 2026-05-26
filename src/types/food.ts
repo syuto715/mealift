@@ -65,6 +65,14 @@ export interface Food extends ExtendedNutrients {
   barcode: string | null;
   servingSizeG: number;
   servingUnit: string;
+  /** Optional descriptor that disambiguates the kcal basis when the
+   * serving unit alone is ambiguous (e.g. CoCo壱 「ライス量「普通(300g)」
+   * の場合」 for `servingUnit: "皿"`). Restaurant rows carry this from
+   * `nutrition_json.servingDescription`; foods table rows leave it
+   * undefined. v1.5.1 hotfix Gap 2 — surfaced after Codex Round 1
+   * flagged that hiding gram size on `1 皿 / 918 kcal` rows would
+   * mask the rice-quantity basis of the calorie value. */
+  servingDescription?: string | null;
   caloriesPerServing: number;
   proteinG: number;
   fatG: number;
