@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Alert,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -32,11 +33,36 @@ export default function DiagnosticEntry() {
   const clearWizard = useDiagnosticStore((s) => s.clearWizard);
 
   const handleStart = () => {
-    // Fresh start — wipe any prior incomplete wizard for this
-    // user. Cross-account safety already lives in
-    // diagnosticStore.reset (called from authStore.logout).
-    if (userId) clearWizard(userId);
-    router.push('/(tabs)/coach/diagnostic/0');
+    // v1.5.2-instr — Alert.alert breadcrumb chain (Steps 1 → 2).
+    //
+    // Codex Round 1 Critical fix — chain via `onPress` callbacks so
+    // each alert blocks the next call until Syuto taps OK. Without
+    // the chain, both alerts + the zustand mutation + router.push
+    // would queue in the same JS turn and the modal stack would
+    // surface them in an order not guaranteed to match code order.
+    //
+    // Step 1: handler entry — confirms the button onPress dispatched
+    //         (rules out a gesture-handler-side crash before JS).
+    // Step 2: about to router.push — fires after clearWizard, so if
+    //         Step 1 fires but Step 2 doesn't, the crash is in the
+    //         clearWizard / zustand mutation pipeline.
+    Alert.alert('🔍 Step 1', 'handler entry', [
+      {
+        text: 'OK',
+        onPress: () => {
+          // Fresh start — wipe any prior incomplete wizard for this
+          // user. Cross-account safety already lives in
+          // diagnosticStore.reset (called from authStore.logout).
+          if (userId) clearWizard(userId);
+          Alert.alert('🔍 Step 2', 'about to router.push', [
+            {
+              text: 'OK',
+              onPress: () => router.push('/(tabs)/coach/diagnostic/0'),
+            },
+          ]);
+        },
+      },
+    ]);
   };
 
   return (

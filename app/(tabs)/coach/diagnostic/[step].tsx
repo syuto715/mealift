@@ -36,28 +36,85 @@ import type {
 // `/(tabs)/coach/diagnostic/result`. Free user deep-link access
 // is blocked here by `hasFeature('aiCoachGeneration')`.
 
+// v1.5.2-instr — module-level guard so the render-body Alert.alert
+// breadcrumbs fire only on the first mount of this component in the
+// app session. Codex Round 1 Critical #1 fix: writing answers via
+// `setAnswer` triggers a re-render, and unguarded body-level alerts
+// would re-fire on every subsequent render and make the screen
+// unusable. The flag is flipped at Step 10 once the full hook chain
+// has been observed; a mid-render Hermes crash never reaches the
+// assignment, so a next mount attempt (if the app survives) would
+// re-instrument. The entire instrumentation block is reverted in the
+// next sprint (cleanup queue item).
+let diagnosticStepInstrumented = false;
+
 export default function DiagnosticStep() {
+  // Snapshot the guard once per render so a re-entrant Alert callback
+  // doesn't observe a flipped flag mid-chain. The 8 body breadcrumbs
+  // below either ALL fire (first render) or NONE fire (subsequent).
+  //
+  // Codex Round 1 Critical #2 acknowledgment: these alerts share the
+  // same JS turn, so iOS surfaces them via the modal stack — Syuto
+  // dismisses them in FIFO order, and the LAST alert visible before
+  // the crash bounds the failing hook. True "blocking" semantics are
+  // unavailable mid-render (hooks can't be paused on a Promise), so
+  // the handler-side chain in diagnostic/index.tsx is the part with
+  // tight ordering; the body-level chain here is a queue snapshot of
+  // "everything that ran before the crash."
+  const instrument = !diagnosticStepInstrumented;
+
+  if (instrument) Alert.alert('🔍 Step 3', 'component body entered');
+
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
+  if (instrument) Alert.alert('🔍 Step 4', 'useColorScheme + getColors OK');
 
   const { step } = useLocalSearchParams<{ step: string }>();
   const stepIndex = Math.max(0, Number.parseInt(step ?? '0', 10) || 0);
   const question = getQuestionByIndex(stepIndex);
+  if (instrument) Alert.alert('🔍 Step 5', 'useLocalSearchParams + getQuestionByIndex OK');
 
   const profile = useProfileStore((s) => s.profile);
   const userId = profile?.id ?? '';
   const profileId = profile?.id ?? '';
+  if (instrument) Alert.alert('🔍 Step 6', 'useProfileStore OK');
 
   const sub = useSubscription();
+  // H6-γ candidate gate — if Step 6 fires but Step 7 doesn't, the
+  // crash is inside useSubscription's setup chain (RevenueCat init
+  // race or useState/useMemo binding inside the hook).
+  if (instrument) Alert.alert('🔍 Step 7', 'useSubscription OK');
+
   const hasAccess = sub.hasFeature('aiCoachGeneration');
+  // H6-γ / H6-ε candidate gate — functionPrototypeBind is the crash
+  // frame; if Step 7 fires but Step 8 doesn't, the .bind() target
+  // is somewhere in hasFeature's call chain (subscriptionService.ts,
+  // which has `if (__DEV__) return true;` early-returns that are
+  // skipped in preview/production builds — H6-ε).
+  if (instrument) Alert.alert('🔍 Step 8', 'sub.hasFeature OK');
 
   const answers = useDiagnosticStore((s) => s.getAnswers(userId));
   const setAnswer = useDiagnosticStore((s) => s.setAnswer);
   const submitToGeneration = useDiagnosticStore((s) => s.submitToGeneration);
+  // H6-α / H6-δ candidate gate — getAnswers returns a fresh `{}` on
+  // each call when wizards is empty (diagnosticStore.ts:62), so
+  // selector-instability-driven re-renders combined with .bind()
+  // somewhere downstream would surface between Step 8 and Step 9.
+  if (instrument) Alert.alert('🔍 Step 9', 'useDiagnosticStore × 3 selectors OK');
+
   const [submitting, setSubmitting] = useState(false);
 
   const isLastStep = stepIndex === DIAGNOSTIC_QUESTIONS.length - 1;
   const currentValue = question ? answers[question.id] : undefined;
+  // Step 10 — if Step 9 fires but Step 10 doesn't, the crash is
+  // between the zustand selectors and useState (vanishingly unlikely
+  // — useState is among the simplest hooks). The guard flip lives
+  // here so subsequent renders (e.g. after `setAnswer` mutates the
+  // answers store) skip the entire alert chain.
+  if (instrument) {
+    diagnosticStepInstrumented = true;
+    Alert.alert('🔍 Step 10', 'useState + derived values OK — render starts next');
+  }
 
   const canAdvance = useMemo(() => {
     if (!question) return false;
