@@ -22,6 +22,7 @@ import { bootstrapAuthSession } from '../src/infra/auth/authBootstrap';
 import { makeAuthListener } from '../src/infra/auth/authListener';
 import { buildAuthListenerDeps } from '../src/infra/auth/buildAuthListenerDeps';
 import { Toast } from '../src/components/ui';
+import { ErrorBoundary } from '../src/components/shared/ErrorBoundary';
 import { useUIStore } from '../src/stores/uiStore';
 import { bootstrapNotifications } from '../src/infra/services/notificationService';
 import {
@@ -323,33 +324,35 @@ export default function RootLayout() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutReady}>
-        <SafeAreaProvider>
-          <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              headerBackTitle: '戻る',
-              contentStyle: { backgroundColor: colors.background },
-              animation: 'slide_from_right',
-            }}
-          >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(onboarding)" />
-            <Stack.Screen name="(tabs)" />
-          </Stack>
-          {toastMessage && toastType && (
-            <Toast
-              message={toastMessage}
-              type={toastType}
-              visible={true}
-              onHide={hideToast}
-            />
-          )}
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutReady}>
+          <SafeAreaProvider>
+            <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                headerBackTitle: '戻る',
+                contentStyle: { backgroundColor: colors.background },
+                animation: 'slide_from_right',
+              }}
+            >
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(onboarding)" />
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+            {toastMessage && toastType && (
+              <Toast
+                message={toastMessage}
+                type={toastType}
+                visible={true}
+                onHide={hideToast}
+              />
+            )}
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

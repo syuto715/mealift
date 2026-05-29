@@ -55,11 +55,28 @@ function wizardKey(userId: string): string {
   return userId;
 }
 
+// v1.5.2-A Fix 1 (H6-δ — leading Hermes-crash hypothesis, verify pending) —
+// stable empty-answers reference. `getAnswers` is consumed as the zustand
+// selector (getSnapshot) in app/(tabs)/coach/diagnostic/[step].tsx:96.
+// Returning a fresh `{}` literal on every call when the user has no wizard
+// state made getSnapshot return a new reference each render — the canonical
+// React "getSnapshot should be cached to avoid an infinite loop" trigger.
+// The working theory is that the resulting re-render storm destabilises the
+// Hermes heap and surfaces as the functionPrototypeBind / allocateNewSlotStorage
+// SIGSEGV (incident 2726719B); this is static-evidence-based inference and is
+// confirmed only when the 2026-06-01 preview build no longer crashes. The fix
+// is correct regardless of that confirmation: a stable snapshot is required for
+// any useSyncExternalStore selector. A single frozen empty object keeps the
+// snapshot referentially stable across renders. Frozen so a stray write can
+// never leak into a second consumer.
+const EMPTY_ANSWERS: DiagnosticAnswers = Object.freeze({});
+
 export const useDiagnosticStore = create<DiagnosticStoreState>(
   (set, get) => ({
     wizards: {},
 
-    getAnswers: (userId) => get().wizards[wizardKey(userId)]?.answers ?? {},
+    getAnswers: (userId) =>
+      get().wizards[wizardKey(userId)]?.answers ?? EMPTY_ANSWERS,
 
     setAnswer: (userId, questionId, value) => {
       set((state) => {

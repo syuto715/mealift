@@ -170,6 +170,28 @@ export default function DiagnosticStep() {
     profileId,
   ]);
 
+  // v1.5.2-A Fix 2 (H6-γ — defensive). RevenueCat init can briefly leave the
+  // subscription snapshot mid-resolution; gate the `hasFeature`-driven branch
+  // behind the hook's loading flag so the gating decision is never taken
+  // against a half-initialised plan state. `useSubscription().isLoading` is
+  // false at mount (it only flips during an in-flight subscribe/restore, which
+  // this screen never triggers), so this gate is a low-probability safety net,
+  // NOT the primary crash fix — that is Fix 1's selector-stability change in
+  // diagnosticStore. It cannot loop: nothing on this screen sets isLoading, so
+  // the gate resolves on the first render.
+  if (sub.isLoading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        edges={['top']}
+      >
+        <View style={styles.lockedView} testID="diagnostic-step-loading">
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!hasAccess) {
     return (
       <SafeAreaView

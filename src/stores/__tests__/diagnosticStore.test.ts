@@ -75,6 +75,19 @@ describe('diagnosticStore.setAnswer + getAnswers', () => {
       'advanced',
     );
   });
+
+  // v1.5.2-A Fix 1 (H6-δ) regression guard. getAnswers is used as a zustand
+  // selector (getSnapshot) in diagnostic/[step].tsx; for a user with no wizard
+  // state it MUST return the same object reference on every call. A reversion
+  // to `?? {}` would still pass the deep-equality tests above but reintroduce
+  // the getSnapshot-instability re-render storm (incident 2726719B candidate).
+  // Referential equality (toBe) is the invariant that actually matters.
+  it('returns a referentially stable empty object for a missing wizard', () => {
+    const first = useDiagnosticStore.getState().getAnswers('no-such-user');
+    const second = useDiagnosticStore.getState().getAnswers('no-such-user');
+    expect(first).toEqual({});
+    expect(first).toBe(second);
+  });
 });
 
 describe('diagnosticStore.clearWizard + reset (Drafting 106)', () => {
