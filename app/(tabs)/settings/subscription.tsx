@@ -98,6 +98,10 @@ const FEATURE_GROUPS: FeatureGroup[] = [
       { label: '食事・体重・トレーニング記録', free: true, plus: true, pro: true },
       { label: '食品検索（八訂 2,500品）', free: true, plus: true, pro: true },
       { label: '通知リマインダー', free: true, plus: true, pro: true },
+      // v1.5 UI sprint Phase 1b — HealthKit / Health Connect は全 tier 無料
+      // (healthSync は free/plus/pro すべて true、 health 連携は paywall しない
+      // 方針)。 旧「Pro 限定」表記は機能実装と矛盾していたため是正。
+      { label: 'HealthKit / Health Connect 連携', free: true, plus: true, pro: true },
     ],
   },
   {
@@ -105,6 +109,11 @@ const FEATURE_GROUPS: FeatureGroup[] = [
     rows: [
       { label: '履歴保存期間', free: '30日', plus: '無制限', pro: '無制限' },
       { label: '進捗写真', free: '3枚', plus: '無制限', pro: '無制限' },
+      // v1.5 UI sprint Phase 1 表記一貫性 — CSV エクスポート は exportData が
+      // Plus/Pro ともに true (subscriptionService PLAN_FEATURES) かつ
+      // 設定の export handler も Plus+ で gate。 旧「Pro 限定」表記は実 gate と
+      // 矛盾していたため Plus+ に是正 (HealthKit 是正と同種)。
+      { label: 'CSV エクスポート', free: false, plus: true, pro: true },
     ],
   },
   {
@@ -131,8 +140,6 @@ const FEATURE_GROUPS: FeatureGroup[] = [
     rows: [
       { label: 'AI 栄養推定 (Gemini)', free: false, plus: false, pro: true },
       { label: 'AI 食事アドバイス', free: false, plus: false, pro: true },
-      { label: 'HealthKit / Health Connect 連携', free: false, plus: false, pro: true },
-      { label: 'CSV エクスポート', free: false, plus: false, pro: true },
     ],
   },
 ];
@@ -145,6 +152,7 @@ const FREE_FEATURES = [
   '食事・体重・トレーニング記録',
   '食品検索（八訂 2,500品）',
   'バーコードスキャン',
+  'HealthKit / Health Connect 連携',
   '通知リマインダー',
   '履歴30日、進捗写真3枚まで',
 ];
@@ -158,13 +166,12 @@ const PLUS_FEATURES = [
   'カスタム種目登録・PR履歴',
   '週次レポート完全版',
   'シェア画像生成',
+  'CSV エクスポート',
 ];
 
 const PRO_FEATURES = [
   'Plus のすべての機能',
   'AI 栄養推定 (Gemini)',
-  'HealthKit / Health Connect 連携',
-  'CSV エクスポート',
   'AI コーチング（近日実装）',
 ];
 

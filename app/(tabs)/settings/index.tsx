@@ -331,7 +331,10 @@ export default function SettingsScreen() {
           <Text
             style={[styles.aiDescription, { color: colors.textSecondary }]}
           >
-            {canUse('aiNutritionEstimate')
+            {/* v1.5 UI sprint Phase 1a — render-path gate moved to reactive
+                sub.hasFeature (was canUse). The export handler at L109 keeps
+                canUse intentionally (one-shot). Same tier gated. */}
+            {sub.hasFeature('aiNutritionEstimate')
               ? 'Pro プランで料理名から AI が栄養素を推定します。'
               : 'Pro プランで料理名から AI が栄養素を推定できます。'}
           </Text>

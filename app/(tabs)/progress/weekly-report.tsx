@@ -16,7 +16,6 @@ import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { Card, ProgressRing, Button } from '../../../src/components/ui';
-import { canUse } from '../../../src/infra/services/subscriptionService';
 import { useSubscription } from '../../../src/hooks/useSubscription';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import {
@@ -79,11 +78,12 @@ export default function WeeklyReportScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
   const profile = useProfileStore((s) => s.profile);
-  const hasDetailAccess = canUse('weeklyReport');
-  // Phase 1.4 — separate gate for the AI narrative. Trial users get
-  // Plus access via hasFeature (Phase 9.1 lesson) so canUse won't
-  // do here; useSubscription is the right call.
   const sub = useSubscription();
+  // v1.5 UI sprint Phase 1a — detail-access gate moved to reactive
+  // useSubscription (was canUse, non-reactive module currentTier). Same tier
+  // gated (weeklyReport); only reactivity added. Trial users correctly get
+  // Plus access via hasFeature (Phase 9.1 lesson) — same as the AI narrative.
+  const hasDetailAccess = sub.hasFeature('weeklyReport');
   const aiNarrativeUnlocked = sub.hasFeature('aiWeeklyReport');
 
   // autoGenerate=1 from the weekly-report push notification deep

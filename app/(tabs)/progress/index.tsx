@@ -29,6 +29,7 @@ import { PredictionChart } from '../../../src/components/progress/PredictionChar
 import { useBodyLogs } from '../../../src/hooks/useBodyLogs';
 import { usePrediction } from '../../../src/hooks/usePrediction';
 import { useProfileStore } from '../../../src/stores/profileStore';
+import { useHealthKitStore } from '../../../src/stores/healthKitStore';
 import { formatWeight, formatDateRelative, formatDate } from '../../../src/utils/format';
 import { subDays, parseISO, format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -204,6 +205,15 @@ export default function ProgressScreen() {
     const totalBurn = calculateDailyBurn(tdee, todayWorkoutCal);
     return { bmr, tdee, workoutCal: todayWorkoutCal, totalBurn };
   }, [profile, todayWorkoutCal]);
+
+  // v1.5 UI sprint Phase 1c — read the REAL HealthKit authorization state from
+  // the same single source of truth the Settings screen uses
+  // (useHealthKitStore). The records screen previously hard-coded "未接続",
+  // which contradicted Settings showing "連携済み" for an authorized user.
+  const healthKitEnabled = useHealthKitStore((s) => s.enabled);
+  const healthKitPermission = useHealthKitStore((s) => s.permissionStatus);
+  const healthKitConnected = healthKitEnabled && healthKitPermission === 'granted';
+  const healthKitDenied = healthKitPermission === 'denied';
 
   // Notes state
   const [noteCategory, setNoteCategory] = useState<string>('training');
@@ -649,9 +659,34 @@ export default function ProgressScreen() {
               </View>
             </View>
             <View style={[styles.healthKitStatus, { backgroundColor: colors.surfaceSecondary }]}>
-              <Ionicons name="heart-outline" size={16} color={colors.textTertiary} />
-              <Text style={[styles.healthKitText, { color: colors.textTertiary }]}>
-                ヘルスケア連携: 未接続（設定から有効化）
+              <Ionicons
+                name="heart-outline"
+                size={16}
+                color={
+                  healthKitConnected
+                    ? colors.success
+                    : healthKitDenied
+                      ? colors.error
+                      : colors.textTertiary
+                }
+              />
+              <Text
+                style={[
+                  styles.healthKitText,
+                  {
+                    color: healthKitConnected
+                      ? colors.success
+                      : healthKitDenied
+                        ? colors.error
+                        : colors.textTertiary,
+                  },
+                ]}
+              >
+                {healthKitConnected
+                  ? 'ヘルスケア連携: 連携済み'
+                  : healthKitDenied
+                    ? 'ヘルスケア連携: アクセス拒否'
+                    : 'ヘルスケア連携: 未連携（設定から有効化）'}
               </Text>
             </View>
           </Card>

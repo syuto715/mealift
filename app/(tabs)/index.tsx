@@ -54,7 +54,7 @@ import { getOrGenerateCurrentReport } from '../../src/domain/weeklyReport';
 import { WorkoutSuggestionCard } from '../../src/components/home/WorkoutSuggestionCard';
 import { WorkoutSuggestion } from '../../src/types/workoutSuggestion';
 import { getWorkoutSuggestion } from '../../src/domain/workoutSuggestion';
-import { canUse } from '../../src/infra/services/subscriptionService';
+import { useSubscription } from '../../src/hooks/useSubscription';
 import { updateWidgetData } from '../../src/infra/services/widgetService';
 import { TrialBadge } from '../../src/components/subscription/TrialBadge';
 import { subDays, subWeeks, startOfWeek, endOfWeek, addDays, format, isToday, isMonday } from 'date-fns';
@@ -91,6 +91,10 @@ export default function HomeScreen() {
   const profile = useProfileStore((s) => s.profile);
   const updateProfile = useProfileStore((s) => s.updateProfile);
   const profileId = profile?.id ?? '';
+  // v1.5 UI sprint Phase 1a — reactive plan source for the weekly-report /
+  // workout-suggestion render gates below (was canUse, non-reactive module
+  // currentTier). Same tiers gated; only reactivity added.
+  const sub = useSubscription();
 
   const screenWidth = Dimensions.get('window').width;
   const miniChartWidth = screenWidth - spacing.lg * 2 - spacing.xl * 2;
@@ -871,7 +875,7 @@ export default function HomeScreen() {
         )}
 
         {/* Weekly Report */}
-        {weeklyReport && canUse('weeklyReport') && (
+        {weeklyReport && sub.hasFeature('weeklyReport') && (
           <WeeklyReportCard
             report={weeklyReport}
             onPress={() => router.push('/(tabs)/progress/weekly-report')}
@@ -879,7 +883,7 @@ export default function HomeScreen() {
         )}
 
         {/* Workout Suggestion */}
-        {workoutSuggestion && canUse('workoutSuggestion') && (
+        {workoutSuggestion && sub.hasFeature('workoutSuggestion') && (
           <WorkoutSuggestionCard
             suggestion={workoutSuggestion}
             onPress={() => router.push('/(tabs)/training')}

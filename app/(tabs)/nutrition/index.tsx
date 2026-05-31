@@ -111,7 +111,10 @@ export default function NutritionScreen() {
   const [copyMealType, setCopyMealType] = useState<MealType | null>(null);
   const [copyToast, setCopyToast] = useState<string | null>(null);
 
-  const { status: planStatus } = useSubscription();
+  // v1.5 UI sprint Phase 1a — `hasFeature` (reactive) drives the render-path
+  // gates below (icon/border colors). The two onPress handlers keep canUse()
+  // intentionally (one-shot, reactivity not needed). Same tiers gated.
+  const { status: planStatus, hasFeature } = useSubscription();
   const historyWindowDays = historyWindowDaysFor(planStatus);
   const pendingSubmissionCount = usePendingSubmissionCount();
 
@@ -557,7 +560,7 @@ export default function NutritionScreen() {
                     <Ionicons
                       name="stats-chart"
                       size={16}
-                      color={canUse('mealNutrientBalance') ? colors.primary : colors.textTertiary}
+                      color={hasFeature('mealNutrientBalance') ? colors.primary : colors.textTertiary}
                     />
                   </TouchableOpacity>
                   <Text
@@ -678,7 +681,7 @@ export default function NutritionScreen() {
                     styles.addButton,
                     styles.mealActionRight,
                     {
-                      borderColor: canUse('aiNutritionEstimate')
+                      borderColor: hasFeature('aiNutritionEstimate')
                         ? colors.primary
                         : colors.textTertiary,
                     },
@@ -700,7 +703,7 @@ export default function NutritionScreen() {
                     name="camera"
                     size={16}
                     color={
-                      canUse('aiNutritionEstimate')
+                      hasFeature('aiNutritionEstimate')
                         ? colors.primary
                         : colors.textTertiary
                     }
@@ -709,7 +712,7 @@ export default function NutritionScreen() {
                     style={[
                       styles.addButtonText,
                       {
-                        color: canUse('aiNutritionEstimate')
+                        color: hasFeature('aiNutritionEstimate')
                           ? colors.primary
                           : colors.textTertiary,
                       },

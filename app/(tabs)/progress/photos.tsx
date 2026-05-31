@@ -19,7 +19,8 @@ import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { Button, Card, BottomSheet, SegmentedControl } from '../../../src/components/ui';
-import { canUse } from '../../../src/infra/services/subscriptionService';
+// v1.5 UI sprint Phase 1a — progressPhotos gate moved to reactive
+// useSubscription().hasFeature (was non-reactive canUse).
 import { useSubscription } from '../../../src/hooks/useSubscription';
 import {
   historyWindowDaysFor,
@@ -57,7 +58,6 @@ const POSE_SEGMENTS = [
 export default function PhotosScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
-  const hasAccess = canUse('progressPhotos');
   const profile = useProfileStore((s) => s.profile);
 
   const [photos, setPhotos] = useState<ProgressPhoto[]>([]);
@@ -70,7 +70,8 @@ export default function PhotosScreen() {
   const [viewerPhoto, setViewerPhoto] = useState<ProgressPhoto | null>(null);
   const [upgradeVisible, setUpgradeVisible] = useState(false);
 
-  const { status: planStatus } = useSubscription();
+  const { status: planStatus, hasFeature } = useSubscription();
+  const hasAccess = hasFeature('progressPhotos');
   const historyWindowDays = historyWindowDaysFor(planStatus);
 
   const loadPhotos = useCallback(async () => {

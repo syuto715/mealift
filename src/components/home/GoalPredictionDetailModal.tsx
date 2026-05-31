@@ -17,7 +17,7 @@ import { spacing } from '../../theme/spacing';
 import { GoalPrediction } from '../../types/goalPrediction';
 import { statusMessage } from '../../domain/goalPrediction';
 import { formatDate } from '../../utils/format';
-import { canUse } from '../../infra/services/subscriptionService';
+import { useSubscription } from '../../hooks/useSubscription';
 import { parseISO, differenceInCalendarDays } from 'date-fns';
 
 interface Props {
@@ -128,7 +128,9 @@ export function GoalPredictionDetailModal({ visible, prediction, onClose }: Prop
   const chartWidth = screenWidth - spacing.lg * 4;
 
   const msg = statusMessage(prediction.status);
-  const detailedAllowed = canUse('goalPredictionDetailed');
+  // v1.5 UI sprint Phase 1a — reactive gate (was canUse). Same tier gated.
+  const { hasFeature } = useSubscription();
+  const detailedAllowed = hasFeature('goalPredictionDetailed');
 
   return (
     <RNModal

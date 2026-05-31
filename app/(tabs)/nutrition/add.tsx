@@ -69,7 +69,7 @@ import {
   EstimatedNutrition,
   AIError,
 } from '../../../src/infra/services/aiNutritionService';
-import { canUse } from '../../../src/infra/services/subscriptionService';
+import { useSubscription } from '../../../src/hooks/useSubscription';
 import { DishDetailModal } from '../../../src/components/nutrition/DishDetailModal';
 import { FoodDetailModal } from '../../../src/components/nutrition/FoodDetailModal';
 import { UpgradePromptModal } from '../../../src/components/subscription/UpgradePromptModal';
@@ -146,6 +146,10 @@ export default function AddFoodScreen() {
     : 'search';
   const [topTab, setTopTab] = useState<TopTab>(initialTopTab);
 
+  // v1.5 UI sprint Phase 1a — reactive plan source for the two render-path
+  // gates below (barcode button visibility, AI-estimate box). Was canUse
+  // (non-reactive module currentTier). Same tiers gated; only reactivity added.
+  const sub = useSubscription();
   const [activeTab, setActiveTab] = useState('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Food[]>([]);
@@ -1185,7 +1189,7 @@ export default function AddFoodScreen() {
                   onChangeText={setSearchQuery}
                 />
               </View>
-              {canUse('barcodeScanner') && (
+              {sub.hasFeature('barcodeScanner') && (
                 <TouchableOpacity
                   style={styles.barcodeButton}
                   onPress={() => router.push({ pathname: '/(tabs)/nutrition/barcode', params: { mealType } })}
@@ -1217,7 +1221,7 @@ export default function AddFoodScreen() {
                 </Text>
                 {noSearchResults && (
                   <View style={styles.aiEstimateBox}>
-                    {canUse('aiNutritionEstimate') ? (
+                    {sub.hasFeature('aiNutritionEstimate') ? (
                       aiLoading ? (
                         <View style={styles.aiLoadingRow}>
                           <ActivityIndicator size="small" color={colors.primary} />

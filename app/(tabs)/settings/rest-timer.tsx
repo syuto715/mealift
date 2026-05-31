@@ -20,7 +20,7 @@ import {
   saveRestTimerSettings,
 } from '../../../src/infra/services/restTimerService';
 import { RestTimerSettings, DEFAULT_REST_TIMER_SETTINGS } from '../../../src/types/restTimer';
-import { canUse } from '../../../src/infra/services/subscriptionService';
+import { useSubscription } from '../../../src/hooks/useSubscription';
 
 const DURATION_SEGMENTS = [
   { label: '30秒', value: '30' },
@@ -34,6 +34,7 @@ const DURATION_SEGMENTS = [
 export default function RestTimerSettingsScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
+  const sub = useSubscription();
   const [settings, setSettings] = useState<RestTimerSettings>(DEFAULT_REST_TIMER_SETTINGS);
 
   useEffect(() => {
@@ -49,7 +50,9 @@ export default function RestTimerSettingsScreen() {
     [settings]
   );
 
-  const perExerciseLocked = !canUse('restTimerPerExercise');
+  // v1.5 UI sprint Phase 1a — reactive gate (was canUse, non-reactive module
+  // currentTier). Same tier gated (restTimerPerExercise); only reactivity added.
+  const perExerciseLocked = !sub.hasFeature('restTimerPerExercise');
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
