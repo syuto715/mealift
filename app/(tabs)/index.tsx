@@ -10,7 +10,7 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors } from '../../src/theme/tokens';
@@ -18,6 +18,7 @@ import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
 import { Card, ProgressRing, ProgressBar, Button, Badge, DateNavigator, Toast } from '../../src/components/ui';
 import { PredictionChart } from '../../src/components/progress/PredictionChart';
+import { LineChart } from '../../src/components/charts/LineChart';
 import { getISODate, formatDate } from '../../src/utils/format';
 import { getHomeGreeting } from '../../src/domain/homeGreeting';
 import { ProTeaser } from '../../src/components/shared/ProTeaser';
@@ -46,7 +47,8 @@ import {
   calculateNutritionCompliance,
   calculateTrainingCompliance,
 } from '../../src/domain/compliance';
-import { calculateAllCalories, calculateDailyBurn } from '../../src/domain/calories';
+// v1.5.2 v5 redesign — calculateAllCalories/calculateDailyBurn no longer used
+// on the home (消費/差引 rows removed; 運動分 is info-only from existing data).
 import { WorkoutSession } from '../../src/types/workout';
 import { WeeklyReportCard } from '../../src/components/home/WeeklyReportCard';
 import { WeeklyReportData } from '../../src/types/weeklyReport';
@@ -88,6 +90,7 @@ export default function HomeScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const profile = useProfileStore((s) => s.profile);
   const updateProfile = useProfileStore((s) => s.updateProfile);
   const profileId = profile?.id ?? '';
@@ -353,41 +356,10 @@ export default function HomeScreen() {
   const { calories: healthKitCalories, isActive: healthKitActive } =
     useHealthKitCalories(selectedDate);
 
-  // Calculate daily burn (TDEE + workout, or HealthKit + manual workout
-  // when HealthKit is active — calculateDailyBurn handles the branching).
-  const dailyBurn = useMemo(() => {
-    if (!profile) return 0;
-    const { tdee } = calculateAllCalories(
-      profile.currentWeightKg,
-      profile.heightCm,
-      profile.birthYear,
-      profile.gender,
-      profile.activityLevel,
-      profile.goalType,
-    );
-    return calculateDailyBurn(
-      tdee,
-      todayWorkoutCalories,
-      healthKitActive ? healthKitCalories : undefined,
-    );
-  }, [profile, todayWorkoutCalories, healthKitActive, healthKitCalories]);
-
-  const calorieBalance = consumedCalories - dailyBurn;
-
-  // Goal-aware coloring for balance
-  const balanceColor = useMemo(() => {
-    if (!profile) return colors.textPrimary;
-    const goalType = profile.goalType;
-    if (goalType === 'cut') {
-      // Deficit is good for cutting
-      return calorieBalance <= 0 ? colors.success : colors.warning;
-    } else if (goalType === 'bulk') {
-      // Surplus is good for bulking
-      return calorieBalance >= 0 ? colors.success : colors.warning;
-    }
-    // maintain / recomp: close to zero is good
-    return Math.abs(calorieBalance) <= 200 ? colors.success : colors.warning;
-  }, [profile, calorieBalance, colors]);
+  // v1.5.2 v5 redesign — the old 消費(dailyBurn) / 差引(calorieBalance,
+  // balanceColor) derivations were removed with the calorie card's 消費/差引
+  // rows. Under the authoritative model exercise burn is NOT part of the food
+  // budget; the card now shows 運動分 as info only (exerciseCal, derived below).
 
   const targetProteinG = profile?.targetProteinG ?? 0;
   const targetFatG = profile?.targetFatG ?? 0;
@@ -469,6 +441,62 @@ export default function HomeScreen() {
   // Feedback colors
   const feedbackIconColor = FEEDBACK_COLORS[feedback.type]?.(colors) ?? colors.primary;
   const feedbackBg = FEEDBACK_BG[feedback.type]?.(colors) ?? colors.primary + '08';
+
+  // -------------------------------------------------------------------------
+  // v1.5.2 v5 home-redesign derived values (presentation only — no new query,
+  // no business logic). The calorie model is the authoritative one from Phase 0:
+  // exercise burn is NOT added to the food budget. So:
+  //   ring (摂取進捗) = consumedCalories / targetCalories
+  //   残り            = max(0, targetCalories − consumedCalories)   (already above)
+  // 「運動分」is shown as +kcal info ONLY and never inflates 残り or the ring.
+  // -------------------------------------------------------------------------
+  const intakePct = targetCalories > 0
+    ? Math.round((consumedCalories / targetCalories) * 100)
+    : 0;
+  // Exercise-attributable kcal: HealthKit active energy when connected,
+  // otherwise the logged workout kcal. Informational only.
+  const exerciseCal = healthKitActive ? healthKitCalories : todayWorkoutCalories;
+
+  // Weight trend (reuses recentWeightsForPrediction: last 30d, asc, weighted-only).
+  const latestWeight = recentWeightsForPrediction.length
+    ? recentWeightsForPrediction[recentWeightsForPrediction.length - 1].value
+    : null;
+  const prevWeight = recentWeightsForPrediction.length >= 2
+    ? recentWeightsForPrediction[recentWeightsForPrediction.length - 2].value
+    : null;
+  const prevDelta = latestWeight !== null && prevWeight !== null
+    ? Number((latestWeight - prevWeight).toFixed(1))
+    : null;
+  const weight7d = useMemo(() => {
+    const cutoff = getISODate(subDays(new Date(), 7));
+    return recentWeightsForPrediction.filter((w) => w.date >= cutoff);
+  }, [recentWeightsForPrediction]);
+  const weight7dChange = weight7d.length >= 2
+    ? Number((weight7d[weight7d.length - 1].value - weight7d[0].value).toFixed(1))
+    : null;
+  const goalWeight = profile?.targetWeightKg ?? null;
+  const distanceToGoal = latestWeight !== null && goalWeight !== null
+    ? Number(Math.abs(latestWeight - goalWeight).toFixed(1))
+    : null;
+
+  // ミー先生のひとこと — deterministic copy from already-loaded data (no AI call,
+  // no query). Branches on intake state + protein progress.
+  const meeHitokoto = useMemo(() => {
+    if (targetCalories <= 0) {
+      return 'プロフィールで目標カロリーを設定すると、毎日のアドバイスをお届けします。';
+    }
+    if (consumedCalories === 0) {
+      return '今日はまだ記録がありません。まずは最初の一食を記録してみましょう。';
+    }
+    const proteinShort = targetProteinG > 0 && totalProteinG < targetProteinG * 0.7;
+    if (consumedCalories >= targetCalories) {
+      return '今日の目標カロリーに到達しました。お疲れさまです。水分補給も忘れずに。';
+    }
+    if (proteinShort) {
+      return `あと ${remaining} kcal。タンパク質がやや不足ぎみなので、次の食事で意識してみましょう。`;
+    }
+    return `あと ${remaining} kcal 記録できます。バランスよく栄養を摂りましょう。`;
+  }, [targetCalories, consumedCalories, remaining, totalProteinG, targetProteinG]);
 
   // Apply recommended calories
   const handleApplyRecommendation = useCallback(async () => {
@@ -654,62 +682,66 @@ export default function HomeScreen() {
           </Card>
         )}
 
-        {/* Calorie Summary Card */}
+        {/* Calorie Summary Card — v5 redesign.
+            Left: intake-progress ring (fills as you eat; empty at 0).
+            Right: 食事目標 / 摂取 / 運動分(info only, +green) / 残り(navy bold).
+            運動分 is NEVER added to 残り or the ring (Phase 0 calorie model). */}
         <Card variant="elevated" style={styles.calorieCard}>
           <View style={styles.calorieContent}>
-            <ProgressRing
-              progress={progress}
-              size={Math.round(screenWidth * 0.4)}
-              strokeWidth={12}
-              color={colors.calorie}
-            >
-              <Text style={[styles.remainingNumber, { color: colors.textPrimary }]}>
-                {remaining}
+            <View style={styles.ringColumn}>
+              <ProgressRing
+                progress={progress}
+                size={Math.round(screenWidth * 0.36)}
+                strokeWidth={12}
+                color={colors.calorie}
+              >
+                <Text style={[styles.remainingLabel, { color: colors.textSecondary }]}>
+                  残り
+                </Text>
+                <Text style={[styles.remainingNumber, { color: colors.textPrimary }]}>
+                  {remaining}
+                </Text>
+                <Text style={[styles.remainingUnit, { color: colors.textSecondary }]}>
+                  kcal
+                </Text>
+              </ProgressRing>
+              <Text style={[styles.ringCaption, { color: colors.textTertiary }]}>
+                摂取進捗 {intakePct}%
               </Text>
-              <Text style={[styles.remainingLabel, { color: colors.textSecondary }]}>
-                残り kcal
-              </Text>
-            </ProgressRing>
+            </View>
             <View style={styles.calorieDetails}>
               <View style={styles.calorieRow}>
-                <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>目標</Text>
+                <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>食事目標</Text>
                 <Text style={[styles.calorieValue, { color: colors.textPrimary }]}>
-                  {targetCalories}
+                  {targetCalories} kcal
                 </Text>
               </View>
               <View style={styles.calorieRow}>
                 <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>摂取</Text>
                 <Text style={[styles.calorieValue, { color: colors.calorie }]}>
-                  {consumedCalories}
+                  {consumedCalories} kcal
                 </Text>
               </View>
               <View style={styles.calorieRow}>
-                <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>消費</Text>
-                <Text style={[styles.calorieValue, { color: colors.primary }]}>
-                  {dailyBurn}
+                <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>運動分</Text>
+                <Text style={[styles.calorieValue, { color: colors.success }]}>
+                  +{exerciseCal} kcal
                 </Text>
               </View>
               {healthKitActive && healthKitCalories > 0 && (
                 <View style={styles.calorieAttributionRow}>
-                  <Ionicons
-                    name="heart"
-                    size={11}
-                    color={colors.textTertiary}
-                  />
+                  <Ionicons name="heart" size={11} color={colors.textTertiary} />
                   <Text
-                    style={[
-                      styles.calorieAttributionText,
-                      { color: colors.textTertiary },
-                    ]}
+                    style={[styles.calorieAttributionText, { color: colors.textTertiary }]}
                   >
                     Appleヘルスケアから取得
                   </Text>
                 </View>
               )}
               <View style={[styles.calorieRow, styles.balanceRow, { borderTopColor: colors.border }]}>
-                <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>差引</Text>
-                <Text style={[styles.calorieValue, { color: balanceColor }]}>
-                  {calorieBalance >= 0 ? '+' : ''}{calorieBalance}
+                <Text style={[styles.calorieLabel, styles.remainingRowLabel, { color: colors.textPrimary }]}>残り</Text>
+                <Text style={[styles.calorieValue, styles.remainingRowValue, { color: colors.textPrimary }]}>
+                  {remaining} kcal
                 </Text>
               </View>
             </View>
@@ -758,6 +790,132 @@ export default function HomeScreen() {
             <Ionicons name="chevron-forward" size={12} color={colors.primary} />
           </TouchableOpacity>
         </Card>
+
+        {/* ミー先生のひとこと — deterministic copy from loaded data (no AI/query). */}
+        <Card style={{ ...styles.meeCard, backgroundColor: colors.primary + '0D', borderColor: colors.primary + '22' }}>
+          <View style={styles.meeHeader}>
+            <View style={[styles.meeAvatar, { backgroundColor: colors.primary + '1A' }]}>
+              {/* TODO: 実機で最終アイコン確認 (ミー先生アバター) */}
+              <Ionicons name="sparkles" size={16} color={colors.primary} />
+            </View>
+            <Text style={[styles.meeLabel, { color: colors.primary }]}>ミー先生のひとこと</Text>
+          </View>
+          <Text style={[styles.meeBody, { color: colors.textPrimary }]}>{meeHitokoto}</Text>
+          <TouchableOpacity
+            style={[styles.meeButton, { backgroundColor: colors.primary + '14' }]}
+            onPress={() => router.push({ pathname: '/(tabs)/nutrition/add', params: { mealType: 'dinner' } })}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="夕食を記録する"
+          >
+            <Ionicons name="restaurant-outline" size={15} color={colors.primary} />
+            <Text style={[styles.meeButtonText, { color: colors.primary }]}>夕食を記録する</Text>
+          </TouchableOpacity>
+        </Card>
+
+        {/* 今日のアクション — primary 食事記録 + secondary ワークアウト/体重 */}
+        <View style={styles.actionsSection}>
+          <Text style={[styles.actionsHeading, { color: colors.textPrimary }]}>今日のアクション</Text>
+          <Button
+            title="食事を記録"
+            onPress={() => router.push('/(tabs)/nutrition')}
+            variant="primary"
+            fullWidth
+          />
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.secondaryAction, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}
+              onPress={() => router.push('/(tabs)/training')}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="ワークアウト"
+            >
+              <Ionicons name="barbell-outline" size={18} color={colors.primary} />
+              <Text style={[styles.secondaryActionText, { color: colors.primary }]}>ワークアウト</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.secondaryAction, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}
+              onPress={() => router.push('/(tabs)/progress')}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="体重を記録"
+            >
+              <Ionicons name="scale-outline" size={18} color={colors.primary} />
+              <Text style={[styles.secondaryActionText, { color: colors.primary }]}>体重を記録</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Water tracker (Feature I) — moved up to v5 position #7 */}
+        <WaterTrackerCard
+          totalMl={water.totalMl}
+          targetMl={water.targetMl}
+          onAdd={water.addWater}
+          onPress={() => router.push('/(tabs)/progress')}
+        />
+
+        {/* 体重トレンドカード — reuses bodyLogs / recentWeightsForPrediction. */}
+        <Card>
+          <View style={styles.weightHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>体重トレンド</Text>
+            {prevDelta !== null && (
+              <View style={styles.weightDeltaRow}>
+                <Ionicons
+                  name={prevDelta <= 0 ? 'arrow-down' : 'arrow-up'}
+                  size={14}
+                  color={prevDelta <= 0 ? colors.success : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.weightDeltaText,
+                    { color: prevDelta <= 0 ? colors.success : colors.textSecondary },
+                  ]}
+                >
+                  前回より {prevDelta > 0 ? '+' : ''}{prevDelta} kg
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.weightCurrent, { color: colors.textPrimary }]}>
+            {latestWeight !== null ? `${latestWeight.toFixed(1)} kg` : '--.- kg'}
+          </Text>
+          {weight7d.length >= 2 ? (
+            <View style={styles.weightChartWrap}>
+              <LineChart
+                data={weight7d}
+                width={miniChartWidth}
+                height={60}
+                color={colors.primary}
+              />
+            </View>
+          ) : (
+            <Text style={[styles.weightEmptyHint, { color: colors.textTertiary }]}>
+              7日分のデータがそろうとトレンドを表示します。
+            </Text>
+          )}
+          <Text style={[styles.weightSummary, { color: colors.textSecondary }]}>
+            {weight7dChange !== null
+              ? `7日で ${weight7dChange > 0 ? '+' : ''}${weight7dChange} kg`
+              : '7日分のデータが不足しています'}
+            {distanceToGoal !== null ? ` ・ 目標まであと ${distanceToGoal} kg` : ''}
+          </Text>
+          {latestWeight === null && (
+            <TouchableOpacity
+              style={[styles.weightCta, { borderColor: colors.primary + '40' }]}
+              onPress={() => router.push('/(tabs)/progress')}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="体重を記録する"
+            >
+              <Ionicons name="add" size={16} color={colors.primary} />
+              <Text style={[styles.weightCtaText, { color: colors.primary }]}>体重を記録する</Text>
+            </TouchableOpacity>
+          )}
+        </Card>
+
+        {/* 分析 — 「今日やること」の下に既存の補助カードを温存 (内部ロジック不可触)。
+            de-emphasized 見出しで「今日やること → 深掘り」の階層を明示。 */}
+        <Text style={[styles.analysisHeading, { color: colors.textTertiary }]}>分析</Text>
 
         {/* Workout Card */}
         <Card>
@@ -904,21 +1062,15 @@ export default function HomeScreen() {
           </View>
         </Card>
 
-        {/* Water tracker (Feature I) */}
-        <WaterTrackerCard
-          totalMl={water.totalMl}
-          targetMl={water.targetMl}
-          onAdd={water.addWater}
-          onPress={() => router.push('/(tabs)/progress')}
-        />
-
         {/* Phase D-6 — Plus 機能ティーザー (ホーム末尾).
             ProTeaser 内部で sub.isFree のみ表示する gate あり
             (trial / plus / pro は null 返却、 Handbook §15.4)。
             Plan §12.4 シナリオ 4「Plus でホーム末尾」 = 非表示 verify. */}
         <ProTeaser />
 
-        <View style={styles.bottomSpacer} />
+        {/* v5 下部余白 — safe-area bottom inset + ボトムタブ高さ + 余白。
+            補助カード含め最下部がタブに隠れないこと。 */}
+        <View style={{ height: insets.bottom + 64 + spacing.lg }} />
       </ScrollView>
 
       <Toast
@@ -1069,4 +1221,79 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bottomSpacer: { height: spacing.xxxl },
+  // v5 redesign styles
+  ringColumn: { alignItems: 'center', gap: spacing.xs },
+  remainingUnit: { ...typography.labelSmall },
+  ringCaption: { ...typography.labelSmall, marginTop: spacing.xs },
+  remainingRowLabel: { fontWeight: '700' },
+  remainingRowValue: { fontWeight: '700' },
+  meeCard: { borderWidth: 1, gap: spacing.sm },
+  meeHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  meeAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  meeLabel: { ...typography.labelMedium, fontWeight: '600' },
+  meeBody: { ...typography.bodyMedium, lineHeight: 21 },
+  meeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 9999,
+    alignSelf: 'flex-start',
+  },
+  meeButtonText: { ...typography.labelMedium, fontWeight: '600' },
+  actionsSection: { gap: spacing.sm },
+  actionsHeading: {
+    ...typography.titleSmall,
+    fontWeight: '700',
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  actionRow: { flexDirection: 'row', gap: spacing.sm },
+  secondaryAction: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  secondaryActionText: { ...typography.labelMedium, fontWeight: '600' },
+  weightHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  weightDeltaRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  weightDeltaText: { ...typography.labelMedium, fontWeight: '600' },
+  weightCurrent: { ...typography.displayMedium, marginTop: spacing.xs },
+  weightChartWrap: { alignItems: 'center', marginTop: spacing.sm },
+  weightEmptyHint: { ...typography.bodySmall, marginTop: spacing.sm },
+  weightSummary: { ...typography.bodySmall, marginTop: spacing.sm },
+  weightCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    borderRadius: 9999,
+    borderWidth: 1,
+    marginTop: spacing.md,
+  },
+  weightCtaText: { ...typography.labelMedium, fontWeight: '600' },
+  analysisHeading: {
+    ...typography.labelMedium,
+    fontWeight: '600',
+    marginTop: spacing.md,
+    opacity: 0.8,
+  },
 });
