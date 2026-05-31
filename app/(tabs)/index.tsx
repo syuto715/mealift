@@ -21,7 +21,6 @@ import { PredictionChart } from '../../src/components/progress/PredictionChart';
 import { LineChart } from '../../src/components/charts/LineChart';
 import { getISODate, formatDate } from '../../src/utils/format';
 import { getHomeGreeting } from '../../src/domain/homeGreeting';
-import { ProTeaser } from '../../src/components/shared/ProTeaser';
 import { getRecordedNutritionDates } from '../../src/infra/repositories/nutritionRepository';
 import { getRecordedSessionDates } from '../../src/infra/repositories/workoutRepository';
 import { useProfileStore } from '../../src/stores/profileStore';
@@ -565,11 +564,28 @@ export default function HomeScreen() {
                 <Text
                   style={[styles.greeting, { color: colors.textSecondary }]}
                   accessibilityRole="header"
+                  numberOfLines={1}
                 >
                   {fullLabel}
                 </Text>
               </View>
-              <TrialBadge />
+              {/* v1.5.2 nav 再設計 (0-B) — 設定をボトムタブから外すため、ホーム
+                  右上に設定/アカウント入口を配線。設定が孤立しないこと。 */}
+              <View style={styles.headerRight}>
+                <TrialBadge />
+                <TouchableOpacity
+                  onPress={() => router.push('/(tabs)/settings')}
+                  accessibilityRole="button"
+                  accessibilityLabel="設定"
+                  accessibilityHint="設定・アカウント画面を開きます"
+                  hitSlop={8}
+                  style={styles.headerSettingsBtn}
+                  testID="home-settings-button"
+                >
+                  {/* TODO: 実機で最終アイコン確認 (設定/アカウント) */}
+                  <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
             </View>
           );
         })()}
@@ -594,92 +610,6 @@ export default function HomeScreen() {
               今日に戻る
             </Text>
           </TouchableOpacity>
-        )}
-
-        {/* Weekly Review Card (Monday only) */}
-        {showWeeklyReview && (
-          <Card variant="elevated" style={{ backgroundColor: colors.primary + '08' }}>
-            <View style={styles.reviewHeader}>
-              <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-              <Text style={[styles.reviewTitle, { color: colors.textPrimary }]}>
-                先週のレビュー
-              </Text>
-            </View>
-            <View style={styles.reviewContent}>
-              {lastWeekAvgCalories !== null && (
-                <View style={styles.reviewRow}>
-                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>
-                    平均摂取カロリー
-                  </Text>
-                  <Text style={[styles.reviewValue, { color: colors.textPrimary }]}>
-                    {lastWeekAvgCalories} kcal
-                  </Text>
-                </View>
-              )}
-              {lastWeekWeightChange !== null && (
-                <View style={styles.reviewRow}>
-                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>
-                    体重変化
-                  </Text>
-                  <Text
-                    style={[
-                      styles.reviewValue,
-                      {
-                        color:
-                          lastWeekWeightChange === 0
-                            ? colors.textPrimary
-                            : profile?.goalType === 'cut'
-                              ? lastWeekWeightChange < 0
-                                ? colors.success
-                                : colors.error
-                              : profile?.goalType === 'bulk'
-                                ? lastWeekWeightChange > 0
-                                  ? colors.success
-                                  : colors.error
-                                : colors.textPrimary,
-                      },
-                    ]}
-                  >
-                    {lastWeekWeightChange >= 0 ? '+' : ''}
-                    {lastWeekWeightChange.toFixed(2)} kg
-                  </Text>
-                </View>
-              )}
-              {recommendedCalories !== null && (
-                <>
-                  <View style={[styles.reviewDivider, { borderTopColor: colors.border }]} />
-                  <Text style={[styles.recommendationText, { color: colors.textSecondary }]}>
-                    来週は{recommendedCalories}kcalに調整しましょう
-                  </Text>
-                  <View style={styles.reviewActions}>
-                    <Button
-                      title="適用"
-                      onPress={handleApplyRecommendation}
-                      variant="primary"
-                      size="sm"
-                      loading={applyingRecommendation}
-                    />
-                    <Button
-                      title="スキップ"
-                      onPress={() => setReviewDismissed(true)}
-                      variant="ghost"
-                      size="sm"
-                    />
-                  </View>
-                </>
-              )}
-              {recommendedCalories === null && (
-                <View style={styles.reviewActions}>
-                  <Button
-                    title="閉じる"
-                    onPress={() => setReviewDismissed(true)}
-                    variant="ghost"
-                    size="sm"
-                  />
-                </View>
-              )}
-            </View>
-          </Card>
         )}
 
         {/* Calorie Summary Card — v5 redesign.
@@ -917,6 +847,94 @@ export default function HomeScreen() {
             de-emphasized 見出しで「今日やること → 深掘り」の階層を明示。 */}
         <Text style={[styles.analysisHeading, { color: colors.textTertiary }]}>分析</Text>
 
+        {/* Weekly Review Card (Monday only) — v1.5.2 follow-up: moved from the
+            top (above calorie card) into the 分析 section so 「今日やること」が
+            先頭に来る階層を維持。 Monday 条件・内部ロジックは不変。 */}
+        {showWeeklyReview && (
+          <Card variant="elevated" style={{ backgroundColor: colors.primary + '08' }}>
+            <View style={styles.reviewHeader}>
+              <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+              <Text style={[styles.reviewTitle, { color: colors.textPrimary }]}>
+                先週のレビュー
+              </Text>
+            </View>
+            <View style={styles.reviewContent}>
+              {lastWeekAvgCalories !== null && (
+                <View style={styles.reviewRow}>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>
+                    平均摂取カロリー
+                  </Text>
+                  <Text style={[styles.reviewValue, { color: colors.textPrimary }]}>
+                    {lastWeekAvgCalories} kcal
+                  </Text>
+                </View>
+              )}
+              {lastWeekWeightChange !== null && (
+                <View style={styles.reviewRow}>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>
+                    体重変化
+                  </Text>
+                  <Text
+                    style={[
+                      styles.reviewValue,
+                      {
+                        color:
+                          lastWeekWeightChange === 0
+                            ? colors.textPrimary
+                            : profile?.goalType === 'cut'
+                              ? lastWeekWeightChange < 0
+                                ? colors.success
+                                : colors.error
+                              : profile?.goalType === 'bulk'
+                                ? lastWeekWeightChange > 0
+                                  ? colors.success
+                                  : colors.error
+                                : colors.textPrimary,
+                      },
+                    ]}
+                  >
+                    {lastWeekWeightChange >= 0 ? '+' : ''}
+                    {lastWeekWeightChange.toFixed(2)} kg
+                  </Text>
+                </View>
+              )}
+              {recommendedCalories !== null && (
+                <>
+                  <View style={[styles.reviewDivider, { borderTopColor: colors.border }]} />
+                  <Text style={[styles.recommendationText, { color: colors.textSecondary }]}>
+                    来週は{recommendedCalories}kcalに調整しましょう
+                  </Text>
+                  <View style={styles.reviewActions}>
+                    <Button
+                      title="適用"
+                      onPress={handleApplyRecommendation}
+                      variant="primary"
+                      size="sm"
+                      loading={applyingRecommendation}
+                    />
+                    <Button
+                      title="スキップ"
+                      onPress={() => setReviewDismissed(true)}
+                      variant="ghost"
+                      size="sm"
+                    />
+                  </View>
+                </>
+              )}
+              {recommendedCalories === null && (
+                <View style={styles.reviewActions}>
+                  <Button
+                    title="閉じる"
+                    onPress={() => setReviewDismissed(true)}
+                    variant="ghost"
+                    size="sm"
+                  />
+                </View>
+              )}
+            </View>
+          </Card>
+        )}
+
         {/* Workout Card */}
         <Card>
           <View style={styles.workoutCard}>
@@ -1062,11 +1080,8 @@ export default function HomeScreen() {
           </View>
         </Card>
 
-        {/* Phase D-6 — Plus 機能ティーザー (ホーム末尾).
-            ProTeaser 内部で sub.isFree のみ表示する gate あり
-            (trial / plus / pro は null 返却、 Handbook §15.4)。
-            Plan §12.4 シナリオ 4「Plus でホーム末尾」 = 非表示 verify. */}
-        <ProTeaser />
+        {/* v1.5.2 follow-up — ホーム末尾の Plus 訴求カード (ProTeaser) を削除。
+            課金は機能文脈 (各 gate / 設定のプラン画面) で出す方針。 */}
 
         {/* v5 下部余白 — safe-area bottom inset + ボトムタブ高さ + 余白。
             補助カード含め最下部がタブに隠れないこと。 */}
@@ -1097,8 +1112,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    // v1.5.2 — take remaining width and let the greeting truncate instead of
+    // pushing the right-side cluster (TrialBadge + settings) off-screen on
+    // narrow devices / long nicknames (Codex Important).
+    flex: 1,
   },
-  greeting: { ...typography.bodyMedium },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexShrink: 0,
+  },
+  headerSettingsBtn: {
+    padding: spacing.xs,
+  },
+  greeting: { ...typography.bodyMedium, flexShrink: 1 },
   date: { ...typography.titleLarge },
   calorieCard: { overflow: 'hidden' },
   calorieContent: {
