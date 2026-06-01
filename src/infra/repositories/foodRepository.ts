@@ -447,6 +447,46 @@ export async function getUserAddedFoods(limit: number = 200): Promise<Food[]> {
   }
 }
 
+/**
+ * v1.5.2 食品追加 redesign — 「最近」chip / 検索タブ初期表示のデータソース。
+ *
+ * READ-ONLY / additive: 既存 query (addFood / getFrequentFoods / 検索 /
+ * favorite / user-added) は一切変更しない。新 migration なし — 既存の
+ * `meal_log_items` + `foods` テーブルのみ参照。
+ *
+ * meal_log_items を food_id でログした「最近の食品」を、food_id ごとに最新の
+ * ログ時刻 (MAX(created_at)) で dedupe し、新しい順で返す。foods へ join して
+ * name/PFC を表示用に取得する。
+ * - food_id IS NULL の item (手入力 / 料理ベースで foods 行が無いもの) は除外。
+ * - soft-delete された meal_log_items / foods は除外。
+ */
+export async function getRecentlyLoggedFoods(limit: number = 20): Promise<Food[]> {
+  try {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<Record<string, unknown>>(
+      // created_at は TEXT で 2 形式が混在する: 通常 insert は datetime('now')
+      // の 'YYYY-MM-DD HH:MM:SS'、copyMealFromDate は ISO 'YYYY-MM-DDTHH:MM:SS'
+      // ('T' 区切り)。lexicographic 比較だと 'T'(0x54) > ' '(0x20) で copy 分が
+      // 常に「新しい」と誤判定されるため、SQLite datetime() で正規化してから
+      // MAX / ORDER する (datetime() は両形式を受理し canonical 形へ)。
+      `SELECT f.* FROM foods f
+       JOIN (
+         SELECT food_id, MAX(datetime(created_at)) AS last_logged
+         FROM meal_log_items
+         WHERE food_id IS NOT NULL AND deleted_at IS NULL
+         GROUP BY food_id
+       ) recent ON recent.food_id = f.id
+       WHERE f.deleted_at IS NULL
+       ORDER BY recent.last_logged DESC
+       LIMIT ?`,
+      [limit],
+    );
+    return rows.map(rowToFood);
+  } catch {
+    return [];
+  }
+}
+
 export async function updateUserFood(
   foodId: string,
   input: FoodInput,
