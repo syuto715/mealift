@@ -13,18 +13,18 @@ import { router, useFocusEffect } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
-import { getColors, radius } from '../../../src/theme/tokens';
-import { typography } from '../../../src/theme/typography';
-import { spacing } from '../../../src/theme/spacing';
-import { Button } from '../../../src/components/ui';
-import { useMealLoggingOcrStore } from '../../../src/stores/mealLoggingOcrStore';
+import { getColors, radius } from '../src/theme/tokens';
+import { typography } from '../src/theme/typography';
+import { spacing } from '../src/theme/spacing';
+import { Button } from '../src/components/ui';
+import { useMealLoggingOcrStore } from '../src/stores/mealLoggingOcrStore';
 import {
   recognizeText,
   OcrUnavailableError,
-} from '../../../src/infra/services/ocrService';
-import { parseNutritionLabel } from '../../../src/domain/submission/nutritionLabelParser';
-import { decomposeFromImage } from '../../../src/infra/services/aiNutritionService';
-import { canUse } from '../../../src/infra/services/subscriptionService';
+} from '../src/infra/services/ocrService';
+import { parseNutritionLabel } from '../src/domain/submission/nutritionLabelParser';
+import { decomposeFromImage } from '../src/infra/services/aiNutritionService';
+import { canUse } from '../src/infra/services/subscriptionService';
 
 // v1.4 ステージ 4 Phase 4D — meal-logging OCR scan screen.
 //

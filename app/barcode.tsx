@@ -16,21 +16,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { getColors, radius } from '../../../src/theme/tokens';
-import { typography } from '../../../src/theme/typography';
-import { spacing } from '../../../src/theme/spacing';
-import { Button, Card } from '../../../src/components/ui';
-import { useNutrition } from '../../../src/hooks/useNutrition';
-import { MealType } from '../../../src/types/common';
-import { BarcodeFood } from '../../../src/types/barcodeFood';
+import { getColors, radius } from '../src/theme/tokens';
+import { typography } from '../src/theme/typography';
+import { spacing } from '../src/theme/spacing';
+import { Button, Card } from '../src/components/ui';
+import { useNutrition } from '../src/hooks/useNutrition';
+import { MealType } from '../src/types/common';
+import { BarcodeFood } from '../src/types/barcodeFood';
 import {
   findByBarcode,
   saveBarcodeFood,
-} from '../../../src/infra/repositories/barcodeFoodRepository';
-import { saveFood } from '../../../src/infra/repositories/foodRepository';
-import { lookupBarcode } from '../../../src/infra/services/openFoodFactsService';
-import { BarcodeFoodInput } from '../../../src/types/barcodeFood';
-import { FoodInput } from '../../../src/types/food';
+} from '../src/infra/repositories/barcodeFoodRepository';
+import { saveFood } from '../src/infra/repositories/foodRepository';
+import { lookupBarcode } from '../src/infra/services/openFoodFactsService';
+import { BarcodeFoodInput } from '../src/types/barcodeFood';
+import { FoodInput } from '../src/types/food';
 
 function barcodeInputToFoodInput(b: BarcodeFoodInput): FoodInput {
   const name = b.brand ? `${b.brand} ${b.nameJa}` : b.nameJa;

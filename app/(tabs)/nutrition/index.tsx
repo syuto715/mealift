@@ -692,7 +692,7 @@ export default function NutritionScreen() {
                       return;
                     }
                     router.push({
-                      pathname: '/(tabs)/nutrition/scan-dish',
+                      pathname: '/scan-dish',
                       params: { mealType, date: selectedDate },
                     });
                   }}

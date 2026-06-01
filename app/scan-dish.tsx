@@ -18,16 +18,16 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 // so we use it here intentionally.
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
-import { getColors, radius } from '../../../src/theme/tokens';
-import { typography } from '../../../src/theme/typography';
-import { spacing } from '../../../src/theme/spacing';
-import { Button } from '../../../src/components/ui';
-import { useMealLoggingOcrStore } from '../../../src/stores/mealLoggingOcrStore';
+import { getColors, radius } from '../src/theme/tokens';
+import { typography } from '../src/theme/typography';
+import { spacing } from '../src/theme/spacing';
+import { Button } from '../src/components/ui';
+import { useMealLoggingOcrStore } from '../src/stores/mealLoggingOcrStore';
 import {
   decomposeFromImage,
   AIError,
-} from '../../../src/infra/services/aiNutritionService';
-import { canUse } from '../../../src/infra/services/subscriptionService';
+} from '../src/infra/services/aiNutritionService';
+import { canUse } from '../src/infra/services/subscriptionService';
 
 // v1.4 ステージ 4 Phase 4C-2 — meal-logging Vision (dish photo) scan
 // screen.

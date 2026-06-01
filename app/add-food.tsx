@@ -89,7 +89,7 @@ import { mapParsedLabelToFood } from '../src/domain/parsedLabelToFood';
 //             テンプレ) を内包
 //   - scan: Vision food scan placeholder (Turn 2 で Gemini Vision
 //           Edge Function integrate)
-//   - ocr: 栄養成分ラベル撮影 → /(tabs)/nutrition/scan-label route
+//   - ocr: 栄養成分ラベル撮影 → /scan-label route (root fullscreen modal)
 //          → ML Kit OCR + parser → mealLoggingOcrStore handoff
 const TOP_TAB_SEGMENTS = [
   { label: '検索', value: 'search' },
@@ -1160,7 +1160,7 @@ export default function AddFoodScreen() {
           </Text>
           <Button
             title="ラベルを撮影"
-            onPress={() => router.push('/(tabs)/nutrition/scan-label')}
+            onPress={() => router.push('/scan-label')}
             variant="primary"
             size="lg"
             testID="add-nutrition-ocr-cta"
@@ -1192,7 +1192,7 @@ export default function AddFoodScreen() {
               {sub.hasFeature('barcodeScanner') && (
                 <TouchableOpacity
                   style={styles.barcodeButton}
-                  onPress={() => router.push({ pathname: '/(tabs)/nutrition/barcode', params: { mealType } })}
+                  onPress={() => router.push({ pathname: '/barcode', params: { mealType, ...(targetDate ? { date: targetDate } : {}) } })}
                   hitSlop={8}
                 >
                   <Ionicons name="barcode-outline" size={22} color={colors.primary} />

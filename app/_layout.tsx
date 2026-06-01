@@ -348,6 +348,23 @@ export default function RootLayout() {
                 name="add-food"
                 options={{ presentation: 'fullScreenModal' }}
               />
+              {/* v1.5.2 食品追加 Sprint1 ②a — カメラ系 (写真で推定/バーコード/
+                  栄養ラベル) も root の fullscreen modal に。add-food modal の
+                  上に積まれ、完了時 store + router.back() で add-food (下・mount
+                  維持) に結果が返る。scan-dish のみ tab caller (nutrition) 用に
+                  内部で /add-food へ replace する経路を保持。 */}
+              <Stack.Screen
+                name="scan-dish"
+                options={{ presentation: 'fullScreenModal' }}
+              />
+              <Stack.Screen
+                name="barcode"
+                options={{ presentation: 'fullScreenModal' }}
+              />
+              <Stack.Screen
+                name="scan-label"
+                options={{ presentation: 'fullScreenModal' }}
+              />
             </Stack>
             {toastMessage && toastType && (
               <Toast
