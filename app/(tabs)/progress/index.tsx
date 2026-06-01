@@ -23,6 +23,7 @@ import {
   SegmentedControl,
   Badge,
   DateNavigator,
+  Modal,
 } from '../../../src/components/ui';
 import { LineChart } from '../../../src/components/charts/LineChart';
 import { PredictionChart } from '../../../src/components/progress/PredictionChart';
@@ -126,6 +127,8 @@ export default function ProgressScreen() {
   const [bodyFat, setBodyFat] = useState<number | null>(todayLog?.bodyFatPct ?? null);
   const [memo, setMemo] = useState(todayLog?.note ?? '');
   const [isSaving, setIsSaving] = useState(false);
+  // v1.5.2 Sprint 3 — 体重入力は in-screen modal (RN Modal ベースの UI Modal)。
+  const [weightModalVisible, setWeightModalVisible] = useState(false);
 
   // Calorie burn state
   const [todayWorkoutCal, setTodayWorkoutCal] = useState(0);
@@ -333,6 +336,7 @@ export default function ProgressScreen() {
           // silently fail - body log already saved
         }
       }
+      setWeightModalVisible(false);
     } finally {
       setIsSaving(false);
     }
@@ -382,6 +386,22 @@ export default function ProgressScreen() {
       .slice(0, 10);
   }, [logs]);
 
+  // v1.5.2 Sprint 3 — 「前回」体重 = 選択日より前の直近の体重記録。logs は
+  // date DESC (getBodyLogs) なので、date < selectedDate の最初の要素が直前の記録。
+  // (過去日を閲覧したとき新しい記録を「前回」にしないため、!== ではなく < で比較。)
+  const previousWeight = useMemo(() => {
+    const prior = logs.find(
+      (l) => l.weightKg !== null && l.date < selectedDate,
+    );
+    return prior?.weightKg ?? null;
+  }, [logs, selectedDate]);
+
+  // 目標まであと(kg): 7日平均と目標体重の差の絶対値 (presentation only)。
+  const distanceToGoal =
+    avg7d !== null && profile?.targetWeightKg != null
+      ? Math.abs(Number((avg7d - profile.targetWeightKg).toFixed(1)))
+      : null;
+
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
@@ -424,69 +444,66 @@ export default function ProgressScreen() {
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
             {isViewingToday ? '今日の体重' : `${format(parseISO(selectedDate), 'M/d')}の体重`}
           </Text>
+          {/* v1.5.2 Sprint 3 — 表示のみ。入力は in-screen modal。未記録は
+              100.0kg を出さず --.- kg。 */}
           {selectedDateLog?.weightKg != null ? (
-            <Text style={[styles.currentWeight, { color: colors.primary }]}>
-              {formatWeight(selectedDateLog.weightKg)}
-            </Text>
-          ) : (
-            <View>
-              <Text style={[styles.currentWeight, { color: colors.textTertiary }]}>未記録</Text>
-              <Text style={[styles.unrecordedHint, { color: colors.textSecondary }]}>
-                体重を記録して変化を追いましょう
+            <>
+              <Text style={[styles.currentWeight, { color: colors.primary }]}>
+                {formatWeight(selectedDateLog.weightKg)}
               </Text>
-            </View>
-          )}
-          <View style={styles.inputSection}>
-            <View style={styles.weightRow}>
-              <View style={styles.inputFlex}>
-                <NumberInput
-                  value={weight}
-                  onValueChange={setWeight}
-                  step={0.1}
-                  decimals={1}
-                  suffix="kg"
-                  min={20}
-                  max={300}
+              {previousWeight !== null && selectedDateLog.weightKg !== previousWeight ? (
+                (() => {
+                  const diff = Number(
+                    (selectedDateLog!.weightKg! - previousWeight).toFixed(1),
+                  );
+                  const down = diff <= 0;
+                  return (
+                    <View style={styles.weightDeltaRow}>
+                      <Ionicons
+                        name={down ? 'arrow-down' : 'arrow-up'}
+                        size={14}
+                        color={down ? colors.success : colors.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.weightDeltaText,
+                          { color: down ? colors.success : colors.textSecondary },
+                        ]}
+                      >
+                        前回より {diff > 0 ? '+' : ''}{diff} kg
+                      </Text>
+                    </View>
+                  );
+                })()
+              ) : null}
+              <View style={styles.weightCardCta}>
+                <Button
+                  title="修正する"
+                  onPress={() => setWeightModalVisible(true)}
+                  variant="outline"
+                  size="md"
                 />
               </View>
-              <Button
-                title="記録"
-                onPress={handleRecord}
-                variant="primary"
-                size="md"
-                loading={isSaving}
-                disabled={weight === null}
-              />
-            </View>
-            <NumberInput
-              value={bodyFat}
-              onValueChange={setBodyFat}
-              step={0.1}
-              decimals={1}
-              suffix="%"
-              label="体脂肪率（任意）"
-              min={1}
-              max={60}
-            />
-            <View style={styles.memoContainer}>
-              <Text style={[styles.memoLabel, { color: colors.textSecondary }]}>メモ（任意）</Text>
-              <TextInput
-                style={[
-                  styles.memoInput,
-                  {
-                    color: colors.textPrimary,
-                    backgroundColor: colors.surfaceSecondary,
-                    borderRadius: radius.md,
-                  },
-                ]}
-                value={memo}
-                onChangeText={setMemo}
-                placeholder="体調やコンディションなど"
-                placeholderTextColor={colors.textTertiary}
-                maxLength={100}
-              />
-            </View>
-          </View>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.currentWeight, { color: colors.textTertiary }]}>--.- kg</Text>
+              <Text style={[styles.unrecordedHint, { color: colors.textSecondary }]}>未記録</Text>
+              {previousWeight !== null && (
+                <Text style={[styles.unrecordedHint, { color: colors.textTertiary }]}>
+                  前回: {previousWeight.toFixed(1)} kg
+                </Text>
+              )}
+              <View style={styles.weightCardCta}>
+                <Button
+                  title="今日の体重を入力"
+                  onPress={() => setWeightModalVisible(true)}
+                  variant="primary"
+                  fullWidth
+                />
+              </View>
+            </>
+          )}
         </Card>
 
         {/* Weight chart */}
@@ -556,6 +573,11 @@ export default function ProgressScreen() {
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>目標到達予測</Text>
           {prediction !== null ? (
             <>
+              {distanceToGoal !== null && (
+                <Text style={[styles.goalDistance, { color: colors.textSecondary }]}>
+                  目標まであと <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{distanceToGoal} kg</Text>
+                </Text>
+              )}
               <View style={styles.predictionRow}>
                 <View>
                   <Text style={[styles.predictionDays, { color: colors.primary }]}>
@@ -610,9 +632,23 @@ export default function ProgressScreen() {
           ) : (
             <View style={styles.noDataContainer}>
               {!hasEnoughData ? (
-                <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
-                  あと{daysNeeded}日分の体重データが必要です
-                </Text>
+                <>
+                  {/* N は usePrediction の実 threshold (daysNeeded)。決め打ちしない。 */}
+                  <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
+                    あと{daysNeeded}日分の体重記録が必要です
+                  </Text>
+                  <Text style={[styles.predictionProgress, { color: colors.textTertiary }]}>
+                    進捗 {recentWeightsForPrediction.length} / {recentWeightsForPrediction.length + daysNeeded} 日
+                  </Text>
+                  <View style={styles.weightCardCta}>
+                    <Button
+                      title="今日の体重を記録する"
+                      onPress={() => setWeightModalVisible(true)}
+                      variant="primary"
+                      size="md"
+                    />
+                  </View>
+                </>
               ) : profile?.targetWeightKg == null ? (
                 <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
                   目標体重を設定してください
@@ -637,13 +673,16 @@ export default function ProgressScreen() {
                 <Text style={[styles.burnValue, { color: colors.textPrimary }]}>
                   {calorieBreakdown.bmr}
                 </Text>
-                <Text style={[styles.burnLabel, { color: colors.textSecondary }]}>BMR</Text>
+                <Text style={[styles.burnLabel, { color: colors.textSecondary }]}>基礎代謝</Text>
               </View>
               <View style={styles.burnItem}>
+                {/* v1.5.2 Sprint 3 — 活動消費 = TDEE − 基礎代謝 (日常の生活活動分)。
+                    各項は個別の指標で、合計消費 (HealthKit 連携時は実測値を含むため
+                    基礎代謝+活動消費+ワークアウト と必ずしも一致しない) が総量の正値。 */}
                 <Text style={[styles.burnValue, { color: colors.textPrimary }]}>
-                  {calorieBreakdown.tdee}
+                  {Math.max(0, calorieBreakdown.tdee - calorieBreakdown.bmr)}
                 </Text>
-                <Text style={[styles.burnLabel, { color: colors.textSecondary }]}>TDEE</Text>
+                <Text style={[styles.burnLabel, { color: colors.textSecondary }]}>活動消費</Text>
               </View>
               <View style={styles.burnItem}>
                 <Text style={[styles.burnValue, { color: colors.calorie }]}>
@@ -853,6 +892,72 @@ export default function ProgressScreen() {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* v1.5.2 Sprint 3 — 体重入力 modal (in-screen)。既存 state + handleRecord
+          を流用 (recordWeight ロジック不変、成功時に handleRecord が閉じる)。 */}
+      <Modal
+        visible={weightModalVisible}
+        onClose={() => setWeightModalVisible(false)}
+        title={
+          isViewingToday
+            ? '今日の体重を記録'
+            : `${format(parseISO(selectedDate), 'M/d')}の体重を記録`
+        }
+      >
+        <View style={styles.modalBody}>
+          {previousWeight !== null && (
+            <Text style={[styles.modalPrev, { color: colors.textSecondary }]}>
+              前回: {previousWeight.toFixed(1)} kg
+            </Text>
+          )}
+          <NumberInput
+            value={weight}
+            onValueChange={setWeight}
+            step={0.1}
+            decimals={1}
+            suffix="kg"
+            label="体重"
+            min={20}
+            max={300}
+          />
+          <NumberInput
+            value={bodyFat}
+            onValueChange={setBodyFat}
+            step={0.1}
+            decimals={1}
+            suffix="%"
+            label="体脂肪率（任意）"
+            min={1}
+            max={60}
+          />
+          <View style={styles.memoContainer}>
+            <Text style={[styles.memoLabel, { color: colors.textSecondary }]}>メモ（任意）</Text>
+            <TextInput
+              style={[
+                styles.memoInput,
+                {
+                  color: colors.textPrimary,
+                  backgroundColor: colors.surfaceSecondary,
+                  borderRadius: radius.md,
+                },
+              ]}
+              value={memo}
+              onChangeText={setMemo}
+              placeholder="体調やコンディションなど"
+              placeholderTextColor={colors.textTertiary}
+              maxLength={100}
+            />
+          </View>
+          <Button
+            title="記録する"
+            onPress={handleRecord}
+            variant="primary"
+            fullWidth
+            loading={isSaving}
+            disabled={weight === null}
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1024,4 +1129,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bottomSpacer: { height: spacing.xxxl },
+  // v1.5.2 Sprint 3 redesign styles
+  weightDeltaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: spacing.xs,
+  },
+  weightDeltaText: { ...typography.labelMedium, fontWeight: '600' },
+  weightCardCta: { marginTop: spacing.md },
+  goalDistance: { ...typography.bodyMedium, marginBottom: spacing.sm },
+  predictionProgress: { ...typography.bodySmall, marginTop: spacing.xs },
+  modalBody: { gap: spacing.md },
+  modalPrev: { ...typography.bodySmall },
 });
