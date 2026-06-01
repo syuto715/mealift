@@ -70,9 +70,15 @@ export default function ScanDishScreen() {
   // store until *some other* add.tsx focus event picks it up against
   // a different meal/date. `router.replace` to add.tsx forces the
   // consume to fire on the correct context.
-  const params = useLocalSearchParams<{ mealType?: string; date?: string }>();
+  const params = useLocalSearchParams<{ mealType?: string; date?: string; from?: string }>();
   const mealTypeParam = params.mealType ?? 'breakfast';
   const dateParam = params.date;
+  // v1.5.2 — launched from the add-food modal (which stays mounted below this
+  // root modal) → return via router.back() so the Vision result is drained by
+  // add-food's useFocusEffect WITHOUT re-mounting it (transient state preserved).
+  // From a tab caller (nutrition/index) there is no add-food below, so replace
+  // to /add-food to present it with the result.
+  const fromAddFood = params.from === 'add-food';
 
   const [permission, requestPermission] = useCameraPermissions();
   const setPendingVisionResult = useMealLoggingOcrStore(
@@ -137,14 +143,19 @@ export default function ScanDishScreen() {
         setPendingVisionResult(vision);
         // Codex pass 2 Critical fix — go to add.tsx with the original
         // meal context, not back to home, so the consume happens in
-        // the right place.
-        router.replace({
-          pathname: '/add-food',
-          params: {
-            mealType: mealTypeParam,
-            ...(dateParam ? { date: dateParam } : {}),
-          },
-        });
+        // the right place. v1.5.2: when add-food launched this (modal stacked
+        // above it), back() returns to that live instance; otherwise replace.
+        if (fromAddFood) {
+          router.back();
+        } else {
+          router.replace({
+            pathname: '/add-food',
+            params: {
+              mealType: mealTypeParam,
+              ...(dateParam ? { date: dateParam } : {}),
+            },
+          });
+        }
       } catch (e) {
         if (__DEV__) {
           console.error('[scan-dish.handleCapture] Vision pipeline failed:', e);

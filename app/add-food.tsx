@@ -46,6 +46,8 @@ import {
   getFavoriteFoods,
   toggleFoodFavorite,
   findByExactName,
+  getRecentlyLoggedFoods,
+  getUserAddedFoods,
 } from '../src/infra/repositories/foodRepository';
 import {
   searchDishes,
@@ -91,29 +93,33 @@ import { mapParsedLabelToFood } from '../src/domain/parsedLabelToFood';
 //           Edge Function integrate)
 //   - ocr: 栄養成分ラベル撮影 → /scan-label route (root fullscreen modal)
 //          → ML Kit OCR + parser → mealLoggingOcrStore handoff
+// v1.5.2 食品追加 render redesign — top tabs を 3 つ (検索/カメラ/手入力) に
+// 集約。旧 (検索/スキャン/OCR) + 検索内 6 sub-tab を整理し、6 sub-tab は検索タブ
+// 内の chips に移した (機能維持)。
 const TOP_TAB_SEGMENTS = [
   { label: '検索', value: 'search' },
-  { label: 'スキャン', value: 'scan' },
-  { label: 'OCR', value: 'ocr' },
-] as const;
-
-// Nested 6 sub-tab (Top-level=「検索」 でのみ表示). 既存 add.tsx の
-// activeTab state を継承、 内部 logic は untouched (Plan §10.1 既存
-// ロジック破壊なし).
-const SEARCH_SUB_SEGMENTS = [
-  { label: '検索', value: 'search' },
-  { label: 'マイ料理', value: 'myDish' },
-  { label: 'よく使う', value: 'frequent' },
-  { label: 'お気に入り', value: 'favorite' },
+  { label: 'カメラ', value: 'camera' },
   { label: '手入力', value: 'manual' },
-  { label: 'テンプレ', value: 'template' },
-];
+] as const;
 
 type TopTab = (typeof TOP_TAB_SEGMENTS)[number]['value'];
 
 function isValidTopTab(value: unknown): value is TopTab {
-  return value === 'search' || value === 'scan' || value === 'ocr';
+  return value === 'search' || value === 'camera' || value === 'manual';
 }
+
+// 検索タブの chips。旧 sub-tab を踏襲: 最近(新 query)/よく使う/お気に入り/
+// マイ食品/マイ料理/テンプレ。各 chip は確認済の既存 data source に wire。
+const SEARCH_CHIPS = [
+  { label: '最近', value: 'recent' },
+  { label: 'よく使う', value: 'frequent' },
+  { label: 'お気に入り', value: 'favorite' },
+  { label: 'マイ食品', value: 'myfood' },
+  { label: 'マイ料理', value: 'mydish' },
+  { label: 'テンプレ', value: 'template' },
+] as const;
+
+type SearchChip = (typeof SEARCH_CHIPS)[number]['value'];
 
 // Phase 4F — UNIT_SEGMENTS を `src/constants/units.ts` の
 // UNIT_SEGMENTS_FULL (Phase 4A で確立) に置換、 4 → 7 option
@@ -136,7 +142,7 @@ export default function AddFoodScreen() {
   }>();
   const mealType = (params.mealType as MealType) ?? 'breakfast';
   const targetDate = params.date; // undefined = today (useNutrition default)
-  const { addFood } = useNutrition(targetDate);
+  const { addFood, getMealItems } = useNutrition(targetDate);
   const profile = useProfileStore((s) => s.profile);
 
   // Phase 4B — top-level navigation state. URL param で initial value
@@ -150,10 +156,13 @@ export default function AddFoodScreen() {
   // gates below (barcode button visibility, AI-estimate box). Was canUse
   // (non-reactive module currentTier). Same tiers gated; only reactivity added.
   const sub = useSubscription();
-  const [activeTab, setActiveTab] = useState('search');
+  // v1.5.2 redesign — 検索タブの chip 選択 (旧 sub-tab activeTab を置換)。
+  const [chip, setChip] = useState<SearchChip>('recent');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Food[]>([]);
   const [frequentFoods, setFrequentFoods] = useState<Food[]>([]);
+  const [recentFoods, setRecentFoods] = useState<Food[]>([]);
+  const [userFoods, setUserFoods] = useState<Food[]>([]);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [servingModalVisible, setServingModalVisible] = useState(false);
   const [servingModalItem, setServingModalItem] = useState<
@@ -243,9 +252,27 @@ export default function AddFoodScreen() {
     }
   }, []);
 
+  // v1.5.2 redesign — 「最近」chip / 初期表示 source (read-only query) と
+  // 「マイ食品」chip source (getUserAddedFoods)。
+  const loadRecent = useCallback(async () => {
+    try {
+      setRecentFoods(await getRecentlyLoggedFoods(20));
+    } catch {
+    }
+  }, []);
+
+  const loadUserFoods = useCallback(async () => {
+    try {
+      setUserFoods(await getUserAddedFoods(200));
+    } catch {
+    }
+  }, []);
+
+  // 初期表示で「最近使った」+「よく使う」を出す (検索バーだけにしない)。
   useEffect(() => {
     loadFrequentFoods();
-  }, [loadFrequentFoods]);
+    loadRecent();
+  }, [loadFrequentFoods, loadRecent]);
 
   // v1.4 ステージ 4 Phase 4E-3 — OCR + Vision handoff consumption.
   //
@@ -302,10 +329,10 @@ export default function AddFoodScreen() {
             sum + (Number.isFinite(ing.amountG) ? ing.amountG : 0),
           0,
         );
-        // Force manual tab into view so the pre-filled name + amount
-        // are visible immediately on focus return.
-        setTopTab('search');
-        setActiveTab('manual');
+        // Force the 手入力 tab into view so the pre-filled name + amount
+        // are visible immediately on focus return (v1.5.2: 手入力 is now a
+        // top-level tab, not a sub-tab).
+        setTopTab('manual');
         setManualName(pendingVision.dishName);
         setManualAmount(totalGrams > 0 ? Math.round(totalGrams) : 100);
         setManualUnit('g');
@@ -323,16 +350,19 @@ export default function AddFoodScreen() {
   );
 
   useEffect(() => {
-    if (activeTab === 'template') {
+    if (chip === 'template') {
       loadTemplates();
     }
-    if (activeTab === 'favorite') {
+    if (chip === 'favorite') {
       loadFavorites();
     }
-    if (activeTab === 'myDish') {
+    if (chip === 'mydish') {
       loadMyDishes();
     }
-  }, [activeTab, loadTemplates, loadFavorites, loadMyDishes]);
+    if (chip === 'myfood') {
+      loadUserFoods();
+    }
+  }, [chip, loadTemplates, loadFavorites, loadMyDishes, loadUserFoods]);
 
   useEffect(() => {
     if (searchQuery.length < 1) {
@@ -553,20 +583,50 @@ export default function AddFoodScreen() {
 
   const handleToggleFoodFavorite = async (food: Food) => {
     await toggleFoodFavorite(food.id);
-    if (activeTab === 'favorite') {
+    if (chip === 'favorite') {
       await loadFavorites();
     }
   };
 
   const handleToggleDishFavorite = async (dish: Dish) => {
     await toggleDishFavorite(dish.id);
-    if (activeTab === 'favorite') {
+    if (chip === 'favorite') {
       await loadFavorites();
     }
-    if (activeTab === 'myDish') {
+    if (chip === 'mydish') {
       await loadMyDishes();
     }
   };
+
+  // v1.5.2 redesign — 即追加 [＋] (additive). 既存 addFood 本流を使い、food の
+  // 1 serving 既定値でそのまま追加する。router.back() しない = modal は開いた
+  // まま (複数追加可)。addFood は内部で refreshSummary() するので下部固定バーは
+  // reactive に更新される。詳細編集はカードタップ (openQuantityModal) のまま。
+  const handleQuickAdd = useCallback(
+    async (food: Food) => {
+      // 1 serving 既定値。modal 経路 (ServingQuantityModal → handleServingConfirm)
+      // は extended nutrients (fiber/sodium/salt 等) も保存するため、[＋] でも同じ
+      // food が同一栄養で記録されるよう extended を per-serving (ratio 1) で同梱する
+      // (Codex Critical: 取りこぼし防止)。
+      const extended: Partial<Record<keyof ExtendedNutrients, number>> = {};
+      for (const key of EXTENDED_NUTRIENT_KEYS) {
+        const v = food[key];
+        if (v != null) extended[key] = v;
+      }
+      await addFood(mealType, {
+        ...(food.id ? { foodId: food.id } : {}),
+        foodName: food.nameJa,
+        servingAmount: food.servingSizeG,
+        servingUnit: food.servingUnit,
+        calories: food.caloriesPerServing,
+        proteinG: food.proteinG,
+        fatG: food.fatG,
+        carbG: food.carbG,
+        ...extended,
+      });
+    },
+    [addFood, mealType],
+  );
 
   const handleMyDishLongPress = (dish: Dish) => {
     Alert.alert(
@@ -782,6 +842,32 @@ export default function AddFoodScreen() {
 
   const noSearchResults = searchQuery.length > 0 && combinedSearchResults.length === 0;
 
+  // v1.5.2 redesign — 検索バーが空のとき、検索タブは chip 選択リストを出す。
+  const isSearching = searchQuery.trim().length > 0;
+
+  // 「最近」chip = 最近使った + よく使う を 1 リストで初期表示 (最近が空なら
+  // よく使う主体に自然 fallback)。renderSearchItem で header + food 行 ([＋] 付)。
+  const recentChipData = useMemo((): SearchItem[] => {
+    const items: SearchItem[] = [];
+    if (recentFoods.length > 0) {
+      items.push({ type: 'header', label: '最近使った' });
+      for (const f of recentFoods) items.push({ type: 'food', data: f });
+    }
+    if (frequentFoods.length > 0) {
+      items.push({ type: 'header', label: 'よく使う' });
+      for (const f of frequentFoods) items.push({ type: 'food', data: f });
+    }
+    return items;
+  }, [recentFoods, frequentFoods]);
+
+  // 下部固定バー — 現 meal (mealType/date) の追加済 item から算出 (既存データ)。
+  const currentMeal = getMealItems(mealType);
+  const addedItems = currentMeal?.items ?? [];
+  const addedCount = addedItems.length;
+  const addedCalories = Math.round(
+    addedItems.reduce((sum, it) => sum + (it.calories ?? 0), 0),
+  );
+
   const renderSearchItem = ({ item }: { item: SearchItem }) => {
     if (item.type === 'header') {
       return (
@@ -891,7 +977,14 @@ export default function AddFoodScreen() {
           >
             <Ionicons name="information-circle-outline" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
-          <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation(); handleQuickAdd(food); }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`${food.nameJa} を追加`}
+          >
+            <Ionicons name="add-circle" size={26} color={colors.primary} />
+          </TouchableOpacity>
         </TouchableOpacity>
       );
     }
@@ -952,7 +1045,14 @@ export default function AddFoodScreen() {
         >
           <Ionicons name="information-circle-outline" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
-        <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation(); handleQuickAdd(food); }}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`${food.nameJa} を追加`}
+        >
+          <Ionicons name="add-circle" size={26} color={colors.primary} />
+        </TouchableOpacity>
       </TouchableOpacity>
     );
   };
@@ -987,7 +1087,15 @@ export default function AddFoodScreen() {
       >
         <Ionicons name="information-circle-outline" size={22} color={colors.textSecondary} />
       </TouchableOpacity>
-      <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+      <TouchableOpacity
+        onPress={(e) => { e.stopPropagation(); handleQuickAdd(item); }}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.nameJa} を追加`}
+        testID={`add-food-quick-add-${item.id}`}
+      >
+        <Ionicons name="add-circle" size={26} color={colors.primary} />
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
@@ -1067,19 +1175,29 @@ export default function AddFoodScreen() {
       style={[styles.safe, { backgroundColor: colors.background }]}
       edges={['top']}
     >
+      {/* v1.5.2 redesign — ヘッダ [×] {食事名}に追加 + 日付 */}
       <View style={styles.headerBar}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="閉じる"
+          testID="add-food-close"
+        >
+          <Ionicons name="close" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          {mealLabel}に追加
-        </Text>
-        <View style={{ width: 24 }} />
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+            {mealLabel}に追加
+          </Text>
+          <Text style={[styles.headerDate, { color: colors.textTertiary }]}>
+            {targetDate ?? '今日'}
+          </Text>
+        </View>
+        <View style={{ width: 26 }} />
       </View>
 
-      {/* Phase 4B — top-level 3-tab navigation (検索 / スキャン / OCR).
-          Plan §5.6 Option C nested reconciliation. 「検索」 内で
-          既存 6 sub-tab を維持. */}
+      {/* 上部タブ 3 つ (検索 / カメラ / 手入力) */}
       <View style={styles.segmentWrapper}>
         <SegmentedControl
           segments={TOP_TAB_SEGMENTS}
@@ -1088,88 +1206,9 @@ export default function AddFoodScreen() {
         />
       </View>
 
-      {/* Top tab = 「検索」: 既存 6 sub-tab を nested 表示. */}
+      {/* 検索タブ: 検索バー (常時) + chips (検索バーが空のときのみ) */}
       {topTab === 'search' && (
-        <View style={styles.segmentWrapper}>
-          <SegmentedControl
-            segments={SEARCH_SUB_SEGMENTS}
-            selectedValue={activeTab}
-            onValueChange={setActiveTab}
-            scrollable
-          />
-        </View>
-      )}
-
-      {/* Top tab = 「スキャン」: Vision food scan placeholder.
-          Turn 2 で Gemini Vision Edge Function (estimate-nutrition-vision)
-          deploy + integrate 予定。 Turn 1 では coming-soon UI のみ. */}
-      {topTab === 'scan' && (
-        <View style={styles.placeholderContainer}>
-          <Ionicons
-            name="camera-outline"
-            size={64}
-            color={colors.textTertiary}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          />
-          <Text
-            style={[styles.placeholderTitle, { color: colors.textPrimary }]}
-            accessibilityRole="header"
-          >
-            料理を撮影して記録
-          </Text>
-          <Text
-            style={[
-              styles.placeholderSubtitle,
-              { color: colors.textSecondary },
-            ]}
-          >
-            AI が料理を認識して栄養成分を推定します
-          </Text>
-          <Text
-            style={[styles.placeholderHint, { color: colors.textTertiary }]}
-          >
-            (近日公開予定)
-          </Text>
-        </View>
-      )}
-
-      {/* Top tab = 「OCR」: 栄養成分ラベル撮影 → scan-label route. */}
-      {topTab === 'ocr' && (
-        <View style={styles.placeholderContainer}>
-          <Ionicons
-            name="scan-outline"
-            size={64}
-            color={colors.primary}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          />
-          <Text
-            style={[styles.placeholderTitle, { color: colors.textPrimary }]}
-            accessibilityRole="header"
-          >
-            食品ラベルから記録
-          </Text>
-          <Text
-            style={[
-              styles.placeholderSubtitle,
-              { color: colors.textSecondary },
-            ]}
-          >
-            栄養成分表示を撮影して自動入力
-          </Text>
-          <Button
-            title="ラベルを撮影"
-            onPress={() => router.push('/scan-label')}
-            variant="primary"
-            size="lg"
-            testID="add-nutrition-ocr-cta"
-          />
-        </View>
-      )}
-
-      {topTab === 'search' && activeTab === 'search' && (
-        <View style={styles.tabContent}>
+        <>
           <View style={styles.searchBarRow}>
             <View
               style={[
@@ -1177,11 +1216,7 @@ export default function AddFoodScreen() {
                 { backgroundColor: colors.surfaceSecondary },
               ]}
             >
-              <Ionicons
-                name="search"
-                size={18}
-                color={colors.textTertiary}
-              />
+              <Ionicons name="search" size={18} color={colors.textTertiary} />
               <View style={styles.searchInputFlex}>
                 <Input
                   placeholder="食品名・料理名を検索..."
@@ -1192,7 +1227,12 @@ export default function AddFoodScreen() {
               {sub.hasFeature('barcodeScanner') && (
                 <TouchableOpacity
                   style={styles.barcodeButton}
-                  onPress={() => router.push({ pathname: '/barcode', params: { mealType, ...(targetDate ? { date: targetDate } : {}) } })}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/barcode',
+                      params: { mealType, ...(targetDate ? { date: targetDate } : {}) },
+                    })
+                  }
                   hitSlop={8}
                 >
                   <Ionicons name="barcode-outline" size={22} color={colors.primary} />
@@ -1200,6 +1240,108 @@ export default function AddFoodScreen() {
               )}
             </View>
           </View>
+          {!isSearching && (
+            <View style={styles.chipRow}>
+              {SEARCH_CHIPS.map((c) => {
+                const active = chip === c.value;
+                return (
+                  <TouchableOpacity
+                    key={c.value}
+                    onPress={() => setChip(c.value)}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: active ? colors.primary : colors.surfaceSecondary,
+                        borderColor: active ? colors.primary : colors.border,
+                      },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: active ? '#FFFFFF' : colors.textSecondary },
+                      ]}
+                    >
+                      {c.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </>
+      )}
+
+      {/* カメラタブ: 料理写真で推定 / バーコード / 栄養ラベル
+          (「OCR」「スキャン」語は使わない)。relocate 済 root modal へ push。 */}
+      {topTab === 'camera' && (
+        <View style={styles.cameraList}>
+          {sub.hasFeature('aiNutritionEstimate') && (
+            <TouchableOpacity
+              style={[styles.cameraCard, { borderColor: colors.border, backgroundColor: colors.surface }]}
+              onPress={() =>
+                router.push({
+                  pathname: '/scan-dish',
+                  params: { mealType, from: 'add-food', ...(targetDate ? { date: targetDate } : {}) },
+                })
+              }
+              activeOpacity={0.7}
+              testID="add-food-camera-photo"
+            >
+              <Ionicons name="camera-outline" size={26} color={colors.primary} />
+              <View style={styles.cameraCardText}>
+                <Text style={[styles.cameraCardTitle, { color: colors.textPrimary }]}>料理写真で推定</Text>
+                <Text style={[styles.cameraCardSub, { color: colors.textSecondary }]}>料理を撮ると AI が栄養を推定します</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
+          )}
+          {sub.hasFeature('barcodeScanner') && (
+            <TouchableOpacity
+              style={[styles.cameraCard, { borderColor: colors.border, backgroundColor: colors.surface }]}
+              onPress={() =>
+                router.push({
+                  pathname: '/barcode',
+                  params: { mealType, ...(targetDate ? { date: targetDate } : {}) },
+                })
+              }
+              activeOpacity={0.7}
+              testID="add-food-camera-barcode"
+            >
+              <Ionicons name="barcode-outline" size={26} color={colors.primary} />
+              <View style={styles.cameraCardText}>
+                <Text style={[styles.cameraCardTitle, { color: colors.textPrimary }]}>バーコードを読み取る</Text>
+                <Text style={[styles.cameraCardSub, { color: colors.textSecondary }]}>商品のバーコードから記録します</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.cameraCard, { borderColor: colors.border, backgroundColor: colors.surface }]}
+            onPress={() =>
+              router.push({
+                pathname: '/scan-label',
+                params: { mealType, ...(targetDate ? { date: targetDate } : {}) },
+              })
+            }
+            activeOpacity={0.7}
+            testID="add-food-camera-label"
+          >
+            <Ionicons name="scan-outline" size={26} color={colors.primary} />
+            <View style={styles.cameraCardText}>
+              <Text style={[styles.cameraCardTitle, { color: colors.textPrimary }]}>栄養ラベルを読み取る</Text>
+              <Text style={[styles.cameraCardSub, { color: colors.textSecondary }]}>栄養成分表示を撮ると自動入力します</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* 検索中: 検索結果 + 末尾「手入力で作成」+ 結果なし空状態 CTA */}
+      {topTab === 'search' && isSearching && (
+        <View style={styles.tabContent}>
           <FlatList
             data={combinedSearchResults}
             keyExtractor={(item, index) =>
@@ -1212,64 +1354,100 @@ export default function AddFoodScreen() {
             renderItem={renderSearchItem}
             contentContainerStyle={styles.listContent}
             keyboardShouldPersistTaps="handled"
+            ListFooterComponent={
+              combinedSearchResults.length > 0 ? (
+                <TouchableOpacity
+                  style={styles.createManualLink}
+                  onPress={() => {
+                    setManualName(searchQuery.trim());
+                    setTopTab('manual');
+                  }}
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="create-outline" size={16} color={colors.primary} />
+                  <Text style={[styles.createManualText, { color: colors.primary }]}>
+                    手入力で「{searchQuery.trim()}」を作成
+                  </Text>
+                </TouchableOpacity>
+              ) : null
+            }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={[styles.emptyHint, { color: colors.textTertiary }]}>
-                  {searchQuery.length > 0
-                    ? '該当する食品・料理が見つかりません'
-                    : '食品名・料理名を入力して検索'}
+                  「{searchQuery.trim()}」は見つかりませんでした
                 </Text>
-                {noSearchResults && (
-                  <View style={styles.aiEstimateBox}>
-                    {sub.hasFeature('aiNutritionEstimate') ? (
-                      aiLoading ? (
-                        <View style={styles.aiLoadingRow}>
-                          <ActivityIndicator size="small" color={colors.primary} />
-                          <Text style={[styles.aiLoadingText, { color: colors.textSecondary }]}>
-                            AIが材料を分析中...
-                          </Text>
-                        </View>
-                      ) : (
-                        <>
-                          <Text style={[styles.aiHint, { color: colors.textSecondary }]}>
-                            AIで「{searchQuery}」の材料を分析できます
-                          </Text>
-                          <Button
-                            title="AIで材料を分析"
-                            onPress={handleAiEstimate}
-                            variant="primary"
-                            size="sm"
-                          />
-                        </>
-                      )
-                    ) : (
-                      <Text style={[styles.aiHint, { color: colors.textTertiary }]}>
-                        AI栄養推定（Proプラン）
+                {sub.hasFeature('aiNutritionEstimate') ? (
+                  aiLoading ? (
+                    <View style={styles.aiLoadingRow}>
+                      <ActivityIndicator size="small" color={colors.primary} />
+                      <Text style={[styles.aiLoadingText, { color: colors.textSecondary }]}>
+                        AIが分析中...
                       </Text>
-                    )}
+                    </View>
+                  ) : (
                     <Button
-                      title="+ この食品を追加"
-                      onPress={() =>
-                        router.push({
-                          pathname: '/(tabs)/nutrition/food-submit',
-                          params: { initialName: searchQuery },
-                        })
-                      }
-                      variant="outline"
+                      title={`「${searchQuery.trim()}」を推定`}
+                      onPress={handleAiEstimate}
+                      variant="primary"
                       size="sm"
                     />
-                  </View>
+                  )
+                ) : (
+                  <Text style={[styles.aiHint, { color: colors.textTertiary }]}>
+                    料理名から AI 推定（Pro プラン）
+                  </Text>
                 )}
-                <Text style={[styles.emptySubHint, { color: colors.textTertiary }]}>
-                  長押しでお気に入りに追加できます
-                </Text>
+                <Button
+                  title="手入力で作成"
+                  onPress={() => {
+                    setManualName(searchQuery.trim());
+                    setTopTab('manual');
+                  }}
+                  variant="outline"
+                  size="sm"
+                />
               </View>
             }
           />
         </View>
       )}
 
-      {topTab === 'search' && activeTab === 'frequent' && (
+      {/* 検索バーが空: chip 選択リスト。recent = 最近+よく使う 初期表示。 */}
+      {topTab === 'search' && !isSearching && chip === 'recent' && (
+        <View style={styles.tabContent}>
+          <FlatList
+            data={recentChipData}
+            keyExtractor={(item, index) =>
+              item.type === 'header' ? `r-header-${index}` : `r-food-${item.data.id}`
+            }
+            renderItem={renderSearchItem}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <Text style={[styles.emptyHint, { color: colors.textTertiary }]}>
+                まだ記録がありません。検索して追加しましょう。
+              </Text>
+            }
+          />
+        </View>
+      )}
+
+      {topTab === 'search' && !isSearching && chip === 'myfood' && (
+        <View style={styles.tabContent}>
+          <FlatList
+            data={userFoods}
+            keyExtractor={(item) => item.id}
+            renderItem={renderFoodItem}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              <Text style={[styles.emptyHint, { color: colors.textTertiary }]}>
+                マイ食品がありません
+              </Text>
+            }
+          />
+        </View>
+      )}
+
+      {topTab === 'search' && !isSearching && chip === 'frequent' && (
         <View style={styles.tabContent}>
           <FlatList
             data={frequentFoods}
@@ -1287,7 +1465,7 @@ export default function AddFoodScreen() {
         </View>
       )}
 
-      {topTab === 'search' && activeTab === 'myDish' && (
+      {topTab === 'search' && !isSearching && chip === 'mydish' && (
         <View style={styles.tabContent}>
           <View style={styles.myDishActionRow}>
             <Button
@@ -1320,7 +1498,7 @@ export default function AddFoodScreen() {
         </View>
       )}
 
-      {topTab === 'search' && activeTab === 'favorite' && (
+      {topTab === 'search' && !isSearching && chip === 'favorite' && (
         <View style={styles.tabContent}>
           <FlatList
             data={combinedFavorites}
@@ -1348,7 +1526,7 @@ export default function AddFoodScreen() {
         </View>
       )}
 
-      {topTab === 'search' && activeTab === 'manual' && (
+      {topTab === 'manual' && (
         <KeyboardAvoidingView
           style={styles.tabContent}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1546,7 +1724,7 @@ export default function AddFoodScreen() {
         </KeyboardAvoidingView>
       )}
 
-      {topTab === 'search' && activeTab === 'template' && (
+      {topTab === 'search' && !isSearching && chip === 'template' && (
         <View style={styles.tabContent}>
           <FlatList
             data={templates}
@@ -1571,6 +1749,49 @@ export default function AddFoodScreen() {
           />
         </View>
       )}
+
+      {/* 下部固定バー (3 状態、合計は現 meal の追加 item から算出) */}
+      <View style={[styles.bottomBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+        <Text style={[styles.bottomBarText, { color: colors.textPrimary }]}>
+          {addedCount === 0
+            ? `${mealLabel} 0 kcal`
+            : addedCount === 1
+              ? `${mealLabel} ${addedCalories} kcal`
+              : `${mealLabel} ${addedCount}品・${addedCalories} kcal`}
+        </Text>
+        <View style={styles.bottomBarActions}>
+          {addedCount === 0 ? (
+            // 0kcal のときだけ「食べなかった」を強調 (永続化なし = modal close)。
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={[styles.bottomBarGhost, { borderColor: colors.primary }]}
+              accessibilityRole="button"
+              accessibilityLabel="食べなかった"
+              testID="add-food-skip"
+            >
+              <Text style={[styles.bottomBarGhostText, { color: colors.primary }]}>食べなかった</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.bottomBarLink}
+              accessibilityRole="button"
+              accessibilityLabel="内容を見る"
+            >
+              <Text style={[styles.bottomBarLinkText, { color: colors.textSecondary }]}>内容を見る</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={[styles.bottomBarDone, { backgroundColor: colors.primary }]}
+            accessibilityRole="button"
+            accessibilityLabel="完了"
+            testID="add-food-done"
+          >
+            <Text style={styles.bottomBarDoneText}>完了</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <ServingQuantityModal
         visible={servingModalVisible}
@@ -1772,4 +1993,68 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: 'hidden',
   },
+  // v1.5.2 render redesign styles
+  headerCenter: { alignItems: 'center' },
+  headerDate: { ...typography.labelSmall, marginTop: 1 },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  chip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    borderWidth: 1,
+  },
+  chipText: { ...typography.labelSmall, fontWeight: '600' },
+  cameraList: { flex: 1, padding: spacing.lg, gap: spacing.md },
+  cameraCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  cameraCardText: { flex: 1 },
+  cameraCardTitle: { ...typography.bodyMedium, fontWeight: '600' },
+  cameraCardSub: { ...typography.bodySmall, marginTop: 2 },
+  createManualLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.lg,
+  },
+  createManualText: { ...typography.labelMedium, fontWeight: '600' },
+  bottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    borderTopWidth: 0.5,
+  },
+  bottomBarText: { ...typography.bodyMedium, fontWeight: '600', flexShrink: 1 },
+  bottomBarActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  bottomBarGhost: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 9999,
+    borderWidth: 1,
+  },
+  bottomBarGhostText: { ...typography.labelMedium, fontWeight: '700' },
+  bottomBarLink: { paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
+  bottomBarLinkText: { ...typography.labelMedium },
+  bottomBarDone: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 9999,
+  },
+  bottomBarDoneText: { ...typography.labelMedium, fontWeight: '700', color: '#FFFFFF' },
 });
