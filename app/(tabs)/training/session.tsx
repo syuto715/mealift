@@ -62,6 +62,9 @@ import { DecimalInput } from '../../../src/components/training/DecimalInput';
 import { PRInfo } from '../../../src/types/personalRecord';
 import { RestTimerSettings, DEFAULT_REST_TIMER_SETTINGS } from '../../../src/types/restTimer';
 import { canUse } from '../../../src/infra/services/subscriptionService';
+// v1.5.2 Sprint 2 — starter-template → ephemeral session support.
+import { getWorkoutTemplateById } from '../../../src/constants/workoutTemplates';
+import { EXERCISES } from '../../../src/constants/exercises';
 
 const EXERCISE_TYPE_TABS: { label: string; value: ExerciseType }[] = [
   { label: '筋トレ', value: 'strength' },
@@ -306,7 +309,7 @@ const RecommendationStrip = React.memo(function RecommendationStrip(props: {
 export default function SessionScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
-  const params = useLocalSearchParams<{ sessionId: string; routineId?: string }>();
+  const params = useLocalSearchParams<{ sessionId: string; routineId?: string; templateId?: string }>();
   const profile = useProfileStore((s) => s.profile);
 
   const {
@@ -529,6 +532,51 @@ export default function SessionScreen() {
                 targetReps: item.targetReps,
               };
 
+              useWorkoutStore.getState().addExercise(exerciseInSession);
+            }
+          }
+        } catch {
+          // silently fail
+        }
+      }
+
+      // v1.5.2 Sprint 2 — starter template (ephemeral, NO saved routine).
+      // Mirrors the routine path above but resolves items from the
+      // WORKOUT_TEMPLATES constant + EXERCISES. setPattern is null (standard
+      // sets). Cardio items (ex_c***) carry exerciseType 'cardio' so the
+      // session logs them time/duration-based (distance stays nullable).
+      if (params.templateId && profile) {
+        try {
+          const template = getWorkoutTemplateById(params.templateId);
+          if (template) {
+            for (const item of template.exercises) {
+              const def = EXERCISES.find((e) => e.id === item.exerciseId);
+              if (!def) continue;
+              const previousSets = await workoutRepo.getPreviousSets(
+                profile.id,
+                item.exerciseId,
+              );
+              const initialSets = buildInitialSets({
+                pattern: null,
+                patternConfig: null,
+                targetSets: item.targetSets,
+                previousSets,
+              });
+              initialSets.forEach((s, idx) => {
+                s.setNumber = idx + 1;
+              });
+              const exerciseInSession: ExerciseInSession = {
+                exerciseId: item.exerciseId,
+                exerciseName: def.nameJa,
+                muscleGroup: def.muscleGroup,
+                exerciseType: def.exerciseType ?? 'strength',
+                metValue: def.metValue ?? null,
+                sets: initialSets,
+                previousSets,
+                setPattern: null,
+                patternConfig: null,
+                targetReps: item.targetReps,
+              };
               useWorkoutStore.getState().addExercise(exerciseInSession);
             }
           }

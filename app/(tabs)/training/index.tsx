@@ -34,6 +34,10 @@ import { Exercise, ExerciseType, SetPattern, WorkoutRoutineWithItems, WorkoutSes
 import { PATTERN_PRESETS, getPatternPreset } from '../../../src/constants/setPatterns';
 import { calculateSessionVolume, calculateWorkingSets } from '../../../src/domain/volume';
 import * as workoutRepo from '../../../src/infra/repositories/workoutRepository';
+// v1.5.2 Sprint 2 — starter templates + 決定論的部位提案 (新 AI call なし)。
+import { WORKOUT_TEMPLATES, getWorkoutTemplateById, WorkoutTemplate } from '../../../src/constants/workoutTemplates';
+import { getWorkoutSuggestion } from '../../../src/domain/workoutSuggestion';
+import { WorkoutSuggestion } from '../../../src/types/workoutSuggestion';
 import { filterExercisesByEquipment } from '../../../src/utils/filterExercisesByEquipment';
 import { startOfWeek, endOfWeek, subWeeks, format } from 'date-fns';
 
@@ -84,6 +88,9 @@ export default function TrainingScreen() {
   const periodizationUnlocked = sub.hasFeature('periodizationPresets');
 
   const [routines, setRoutines] = useState<WorkoutRoutineWithItems[]>([]);
+  // v1.5.2 Sprint 2 — 決定論的な「次に鍛える部位」提案 (getWorkoutSuggestion、
+  // ホームと同じ、新 AI call なし)。記録あり時のみ「今日のおすすめ」に反映。
+  const [suggestion, setSuggestion] = useState<WorkoutSuggestion | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Create routine modal state. The "form" and "picker" stages share a
@@ -208,11 +215,21 @@ export default function TrainingScreen() {
     }
   }, [profile]);
 
+  const loadSuggestion = useCallback(async () => {
+    if (!profile) return;
+    try {
+      setSuggestion(await getWorkoutSuggestion(profile.id));
+    } catch {
+      setSuggestion(null);
+    }
+  }, [profile]);
+
   useFocusEffect(
     useCallback(() => {
       loadRoutines();
       loadVolumeAnalysis();
-    }, [loadRoutines, loadVolumeAnalysis]),
+      loadSuggestion();
+    }, [loadRoutines, loadVolumeAnalysis, loadSuggestion]),
   );
 
   // Trigger the flash sequence when a highlightRoutineId arrives and the
@@ -314,6 +331,44 @@ export default function TrainingScreen() {
       Alert.alert('エラー', 'セッションの開始に失敗しました');
     }
   };
+
+  // v1.5.2 Sprint 2 — スターターテンプレから ephemeral にセッション開始
+  // (保存せず: createSession(profile.id, null) → session が templateId を読む)。
+  const handleStartTemplate = async (template: WorkoutTemplate) => {
+    if (!profile) return;
+    try {
+      const session = await workoutRepo.createSession(profile.id, null);
+      router.push({
+        pathname: '/(tabs)/training/session',
+        params: { sessionId: session.id, templateId: template.id },
+      });
+    } catch {
+      Alert.alert('エラー', 'セッションの開始に失敗しました');
+    }
+  };
+
+  // 「今日のおすすめ」テンプレ。提案部位 (getWorkoutSuggestion・決定論) があれば
+  // それに寄せ、なければ初心者向けの自宅全身を既定に (新 AI call なし)。
+  const recommendedTemplate: WorkoutTemplate = useMemo(() => {
+    const groups = suggestion?.suggestedMuscleGroups ?? [];
+    if (groups.includes('legs')) {
+      return getWorkoutTemplateById('tpl_leg_day') ?? WORKOUT_TEMPLATES[0];
+    }
+    if (groups.some((g) => g === 'chest' || g === 'back' || g === 'shoulders' || g === 'arms')) {
+      return getWorkoutTemplateById('tpl_upper_body') ?? WORKOUT_TEMPLATES[0];
+    }
+    return getWorkoutTemplateById('tpl_home_fullbody_15') ?? WORKOUT_TEMPLATES[0];
+  }, [suggestion]);
+
+  const hasTrainingHistory = (suggestion?.recoveryStatuses ?? []).some(
+    (s) => s.lastTrainedDate !== null,
+  );
+
+  // 休息日: 記録があり、回復エンジンが「全身疲労 = 休息」と判定した状態
+  // (suggestedMuscleGroups が空)。この日は full-body を主 CTA で押し付けず、
+  // 休息メッセージ + 軽めの任意導線にする (Codex Important: 推奨と CTA の矛盾防止)。
+  const isRestDay =
+    hasTrainingHistory && (suggestion?.suggestedMuscleGroups.length ?? 0) === 0;
 
   const handleAddExerciseToDraft = (exercise: Exercise) => {
     if (draftItems.some((d) => d.exercise.id === exercise.id)) return;
@@ -465,23 +520,113 @@ export default function TrainingScreen() {
           </View>
         </View>
 
-        {/* Free session button — disabled until profile hydrates so a
-            cold-start tap before the store loads doesn't silently no-op
-            (handleFreeSession early-returns on null profile). */}
-        <TouchableOpacity
-          style={[
-            styles.freeSessionButton,
-            { backgroundColor: colors.primary, opacity: profile ? 1 : 0.5 },
-          ]}
-          onPress={handleFreeSession}
-          disabled={!profile}
-          activeOpacity={0.7}
+        {/* v1.5.2 Sprint 2 — 今日のおすすめ (最上部・主 CTA)。記録があれば
+            getWorkoutSuggestion の決定論的な部位提案を文脈表示。 */}
+        <Card variant="elevated" style={{ backgroundColor: colors.primary + '0D' }}>
+          <Text style={[styles.recLabel, { color: colors.primary }]}>今日のおすすめ</Text>
+          {hasTrainingHistory && suggestion?.reason ? (
+            <Text style={[styles.recReason, { color: colors.textSecondary }]}>
+              {suggestion.reason}
+            </Text>
+          ) : null}
+          {isRestDay ? (
+            <>
+              <Text style={[styles.recMeta, { color: colors.textSecondary }]}>
+                無理のない範囲で。軽く動かしたいときは下のメニューからどうぞ。
+              </Text>
+              <Button
+                title="軽めに動かす（有酸素）"
+                onPress={() =>
+                  handleStartTemplate(
+                    getWorkoutTemplateById('tpl_cardio_fatloss') ?? recommendedTemplate,
+                  )
+                }
+                variant="outline"
+                fullWidth
+                disabled={!profile}
+              />
+            </>
+          ) : (
+            <>
+              <Text style={[styles.recName, { color: colors.textPrimary }]}>
+                {recommendedTemplate.name}
+              </Text>
+              <Text style={[styles.recMeta, { color: colors.textSecondary }]}>
+                {recommendedTemplate.description} ・ 約{recommendedTemplate.durationMin}分 ・ {recommendedTemplate.equipmentLabel}
+              </Text>
+              <Button
+                title="このメニューで始める"
+                onPress={() => handleStartTemplate(recommendedTemplate)}
+                variant="primary"
+                fullWidth
+                disabled={!profile}
+              />
+            </>
+          )}
+        </Card>
+
+        {/* まずはここから — スターターテンプレ横スクロール */}
+        <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>まずはここから</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.templateScroll}
         >
-          <Ionicons name="flash-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.freeSessionText}>
-            {profile ? 'フリーセッション' : '読込中...'}
-          </Text>
-        </TouchableOpacity>
+          {WORKOUT_TEMPLATES.map((t) => (
+            <View
+              key={t.id}
+              style={[styles.tplCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
+              <Ionicons
+                name={t.icon as keyof typeof Ionicons.glyphMap}
+                size={22}
+                color={colors.primary}
+              />
+              <Text style={[styles.tplName, { color: colors.textPrimary }]} numberOfLines={2}>
+                {t.name}
+              </Text>
+              <Text style={[styles.tplMeta, { color: colors.textTertiary }]} numberOfLines={1}>
+                約{t.durationMin}分 ・ {t.equipmentLabel}
+              </Text>
+              <Button
+                title="始める"
+                onPress={() => handleStartTemplate(t)}
+                variant="outline"
+                size="sm"
+                disabled={!profile}
+              />
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* クイック開始 — フリーセッション (副) + AIに作ってもらう (選択式既存) */}
+        <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>クイック開始</Text>
+        <View style={styles.quickRow}>
+          <TouchableOpacity
+            style={[styles.quickBtn, { borderColor: colors.border, backgroundColor: colors.surface, opacity: profile ? 1 : 0.5 }]}
+            onPress={handleFreeSession}
+            disabled={!profile}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="フリーセッション"
+          >
+            <Ionicons name="flash-outline" size={20} color={colors.primary} />
+            <Text style={[styles.quickBtnText, { color: colors.primary }]}>フリーセッション</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
+            onPress={() => router.push('/(tabs)/training/ai-menu')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="AIに作ってもらう"
+          >
+            <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
+            <Text style={[styles.quickBtnText, { color: colors.primary }]}>AIに作ってもらう</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* マイルーティン */}
+        <Text style={[styles.sectionHeading, { color: colors.textPrimary }]}>マイルーティン</Text>
 
         {/* Routines */}
         {loading ? (
@@ -491,13 +636,32 @@ export default function TrainingScreen() {
         ) : routines.length === 0 ? (
           <Card>
             <View style={styles.emptyState}>
-              <Ionicons name="barbell-outline" size={48} color={colors.textTertiary} />
-              <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
-                ルーティンがありません
-              </Text>
+              {/* v1.5.2 Sprint 2 — 「ルーティンがありません」を最上部に出さず、
+                  calm な 1 行 + 作成導線に降格 (テンプレ/AI/自作)。 */}
               <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-                「+ ルーティン作成」からトレーニングメニューを作成しましょう
+                まだ保存したルーティンがありません。テンプレや AI 作成から保存できます。
               </Text>
+              <View style={styles.emptyCtaRow}>
+                <Button
+                  title="テンプレートから"
+                  onPress={() => handleStartTemplate(recommendedTemplate)}
+                  variant="outline"
+                  size="sm"
+                  disabled={!profile}
+                />
+                <Button
+                  title="AIに作ってもらう"
+                  onPress={() => router.push('/(tabs)/training/ai-menu')}
+                  variant="outline"
+                  size="sm"
+                />
+                <Button
+                  title="自分で作る"
+                  onPress={() => setShowCreateModal(true)}
+                  variant="outline"
+                  size="sm"
+                />
+              </View>
             </View>
           </Card>
         ) : (
@@ -592,15 +756,23 @@ export default function TrainingScreen() {
             </View>
           )}
 
-          <Text style={[styles.subSectionTitle, { color: colors.textSecondary }]}>
-            部位別ボリューム（今週 vs 先週）
-          </Text>
-
-          <VolumeChart
-            currentWeekVolume={currentWeekVolume}
-            previousWeekVolume={previousWeekVolume}
-            currentWeekSets={currentWeekSets}
-          />
+          {/* v1.5.2 Sprint 2 — データなし時は控えめに (突き放さない)。 */}
+          {hasVolumeData ? (
+            <>
+              <Text style={[styles.subSectionTitle, { color: colors.textSecondary }]}>
+                部位別ボリューム（今週 vs 先週）
+              </Text>
+              <VolumeChart
+                currentWeekVolume={currentWeekVolume}
+                previousWeekVolume={previousWeekVolume}
+                currentWeekSets={currentWeekSets}
+              />
+            </>
+          ) : (
+            <Text style={[styles.analysisHint, { color: colors.textTertiary }]}>
+              1回記録すると部位別ボリュームが表示されます
+            </Text>
+          )}
         </Card>
 
         {/* v1.5 Stage 1 Phase 1.4 — weekly coach advice card
@@ -1077,4 +1249,45 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   exerciseListItemName: { ...typography.bodyMedium },
+  // v1.5.2 Sprint 2 redesign styles
+  recLabel: { ...typography.labelMedium, fontWeight: '700' },
+  recReason: { ...typography.bodySmall, marginTop: 2 },
+  recName: { ...typography.titleMedium, fontWeight: '700', marginTop: spacing.xs },
+  recMeta: { ...typography.bodySmall, marginTop: 2, marginBottom: spacing.md },
+  sectionHeading: {
+    ...typography.titleSmall,
+    fontWeight: '700',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  templateScroll: { gap: spacing.sm, paddingRight: spacing.lg, paddingBottom: spacing.xs },
+  tplCard: {
+    width: 160,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  tplName: { ...typography.bodyMedium, fontWeight: '600', minHeight: 38 },
+  tplMeta: { ...typography.labelSmall, marginBottom: spacing.xs },
+  quickRow: { flexDirection: 'row', gap: spacing.sm },
+  quickBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+  },
+  quickBtnText: { ...typography.labelMedium, fontWeight: '600' },
+  emptyCtaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  analysisHint: { ...typography.bodySmall, marginTop: spacing.sm },
 });
