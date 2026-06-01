@@ -341,6 +341,13 @@ export default function RootLayout() {
               <Stack.Screen name="(auth)" />
               <Stack.Screen name="(onboarding)" />
               <Stack.Screen name="(tabs)" />
+              {/* v1.5.2 食品追加 redesign — 食品追加を root の fullscreen modal
+                  として提示。(tabs) より上に積まれるためボトムタブが構造的に
+                  hide される。route は /add-food、mealType/date は params 経由。 */}
+              <Stack.Screen
+                name="add-food"
+                options={{ presentation: 'fullScreenModal' }}
+              />
             </Stack>
             {toastMessage && toastType && (
               <Toast

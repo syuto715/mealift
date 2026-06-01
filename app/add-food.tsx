@@ -16,29 +16,29 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getColors } from '../../../src/theme/tokens';
-import { typography } from '../../../src/theme/typography';
-import { spacing } from '../../../src/theme/spacing';
+import { getColors } from '../src/theme/tokens';
+import { typography } from '../src/theme/typography';
+import { spacing } from '../src/theme/spacing';
 import {
   Button,
   Input,
   NumberInput,
   SegmentedControl,
-} from '../../../src/components/ui';
-import { useNutrition } from '../../../src/hooks/useNutrition';
-import { useProfileStore } from '../../../src/stores/profileStore';
+} from '../src/components/ui';
+import { useNutrition } from '../src/hooks/useNutrition';
+import { useProfileStore } from '../src/stores/profileStore';
 import {
   Food,
   ExtendedNutrients,
   EXTENDED_NUTRIENT_KEYS,
-} from '../../../src/types/food';
-import { MealType } from '../../../src/types/common';
-import { MealTemplate } from '../../../src/types/nutrition';
-import { Dish, DishWithIngredients } from '../../../src/types/dish';
+} from '../src/types/food';
+import { MealType } from '../src/types/common';
+import { MealTemplate } from '../src/types/nutrition';
+import { Dish, DishWithIngredients } from '../src/types/dish';
 import {
   ServingQuantityModal,
   ServingQuantityResult,
-} from '../../../src/components/nutrition/ServingQuantityModal';
+} from '../src/components/nutrition/ServingQuantityModal';
 import {
   searchFoods,
   getFrequentFoods,
@@ -46,7 +46,7 @@ import {
   getFavoriteFoods,
   toggleFoodFavorite,
   findByExactName,
-} from '../../../src/infra/repositories/foodRepository';
+} from '../src/infra/repositories/foodRepository';
 import {
   searchDishes,
   getDishById,
@@ -57,26 +57,26 @@ import {
   getMyDishes,
   softDeleteMyDish,
   duplicateMyDish,
-} from '../../../src/infra/repositories/dishRepository';
-import { searchSearchIndex } from '../../../src/infra/repositories/searchIndexRepository';
+} from '../src/infra/repositories/dishRepository';
+import { searchSearchIndex } from '../src/infra/repositories/searchIndexRepository';
 import {
   getTemplates,
   incrementTemplateUseCount,
   deleteTemplate,
-} from '../../../src/infra/repositories/mealTemplateRepository';
+} from '../src/infra/repositories/mealTemplateRepository';
 import {
   estimateDishNutrition,
   EstimatedNutrition,
   AIError,
-} from '../../../src/infra/services/aiNutritionService';
-import { useSubscription } from '../../../src/hooks/useSubscription';
-import { DishDetailModal } from '../../../src/components/nutrition/DishDetailModal';
-import { FoodDetailModal } from '../../../src/components/nutrition/FoodDetailModal';
-import { UpgradePromptModal } from '../../../src/components/subscription/UpgradePromptModal';
-import { formatServingHint, getCounterJa } from '../../../src/constants/servingUnits';
-import { UNIT_SEGMENTS_FULL } from '../../../src/constants/units';
-import { useMealLoggingOcrStore } from '../../../src/stores/mealLoggingOcrStore';
-import { mapParsedLabelToFood } from '../../../src/domain/parsedLabelToFood';
+} from '../src/infra/services/aiNutritionService';
+import { useSubscription } from '../src/hooks/useSubscription';
+import { DishDetailModal } from '../src/components/nutrition/DishDetailModal';
+import { FoodDetailModal } from '../src/components/nutrition/FoodDetailModal';
+import { UpgradePromptModal } from '../src/components/subscription/UpgradePromptModal';
+import { formatServingHint, getCounterJa } from '../src/constants/servingUnits';
+import { UNIT_SEGMENTS_FULL } from '../src/constants/units';
+import { useMealLoggingOcrStore } from '../src/stores/mealLoggingOcrStore';
+import { mapParsedLabelToFood } from '../src/domain/parsedLabelToFood';
 
 // v1.4 ステージ 4 Phase 4B — 3-tab top-level + 6-tab nested structure.
 // Plan §5.6 Option C nested reconciliation: top-level navigation を

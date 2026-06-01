@@ -733,7 +733,7 @@ export default function HomeScreen() {
           <Text style={[styles.meeBody, { color: colors.textPrimary }]}>{meeHitokoto}</Text>
           <TouchableOpacity
             style={[styles.meeButton, { backgroundColor: colors.primary + '14' }]}
-            onPress={() => router.push({ pathname: '/(tabs)/nutrition/add', params: { mealType: 'dinner' } })}
+            onPress={() => router.push({ pathname: '/add-food', params: { mealType: 'dinner' } })}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="夕食を記録する"

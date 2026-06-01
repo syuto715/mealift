@@ -139,7 +139,7 @@ export default function ScanDishScreen() {
         // meal context, not back to home, so the consume happens in
         // the right place.
         router.replace({
-          pathname: '/(tabs)/nutrition/add',
+          pathname: '/add-food',
           params: {
             mealType: mealTypeParam,
             ...(dateParam ? { date: dateParam } : {}),

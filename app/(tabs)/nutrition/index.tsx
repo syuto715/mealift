@@ -662,7 +662,7 @@ export default function NutritionScreen() {
                   ]}
                   onPress={() =>
                     router.push({
-                      pathname: '/(tabs)/nutrition/add',
+                      pathname: '/add-food',
                       params: { mealType, date: selectedDate },
                     })
                   }
