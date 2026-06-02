@@ -105,13 +105,14 @@ export default function DiagnosticEntry() {
 
         {!hasAccess ? (
           <View style={styles.lockedBlock} testID="diagnostic-locked">
+            {/* v1.5.2 レビュー #7 — paywall 文言軟化 (表示のみ・gating 不変)。
+                「Plus/Pro で利用できます」の冷たい言い方をやめ、無料/Pro で
+                何ができるかを伝える。hasAccess の判定ロジックは不変。 */}
             <Text style={[styles.lockedBody, { color: colors.textSecondary }]}>
-              診断機能は Plus / Pro でご利用いただけます。
+              無料プランでも、 コーチ画面の「今日の提案」で記録に基づくアドバイスを毎日お届けしています。
+              {'\n'}Pro では、 記録をまとめて詳しく分析し、 あなた専用のルーティンまで生成します。
             </Text>
-            <ProInlineCTA
-              label="ミー先生に診断してもらうには Plus へ →"
-              variant="card"
-            />
+            <ProInlineCTA label="Pro の内容を見る →" variant="card" />
           </View>
         ) : (
           <TouchableOpacity

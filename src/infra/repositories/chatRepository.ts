@@ -107,7 +107,13 @@ export async function upsertConversation(
        (id, user_id, title, model, archived_at, created_at, updated_at, cached_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(id) DO UPDATE SET
-       title = excluded.title,
+       -- v1.5.2 レビュー #7 — 自動タイトルを保護。server は title=null を
+       -- 返すため、素朴な excluded.title 代入だと coach タブを focus する
+       -- たびに走る syncConversationsFromSupabase がローカル導出タイトルを
+       -- 消してしまう (title がちらついて消える regression)。COALESCE で
+       -- 「server が非 null のときだけ上書き」にし、server null は既存の
+       -- ローカルタイトルを温存する。将来 server が title を持てば server 勝ち。
+       title = COALESCE(excluded.title, chat_conversations_local.title),
        model = excluded.model,
        archived_at = excluded.archived_at,
        updated_at = excluded.updated_at,

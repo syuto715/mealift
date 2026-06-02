@@ -49,6 +49,7 @@ import {
   upsertMessage,
 } from '../infra/repositories/chatRepository';
 import { generateId } from '../utils/id';
+import { deriveConversationTitle } from '../domain/conversationTitle';
 import type { LLMClient, UserContext } from '../infra/llm/types';
 import { GeminiFlashClient } from '../infra/llm/geminiFlashClient';
 import { buildUserContext } from '../infra/llm/contextBuilder';
@@ -92,6 +93,9 @@ export interface ChatStoreState {
     userId: string;
     conversationId: string | null;
     text: string;
+    /** v1.5.2 レビュー #7 — テーマ起点会話の自動タイトル (例「PFCバランスの相談」)。
+     *  省略時は最初のユーザー発話から決定論的に導出する。新規会話の初回送信時のみ使用。 */
+    titleHint?: string;
   }) => Promise<{ conversationId: string }>;
   regenerateMessage: (args: {
     userId: string;
@@ -158,7 +162,7 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
     set({ userMessagesThisMonth: n });
   },
 
-  sendMessage: async ({ userId, conversationId, text }) => {
+  sendMessage: async ({ userId, conversationId, text, titleHint }) => {
     const trimmed = text.trim();
     if (!trimmed) {
       throw new AIError('invalid_request', 'メッセージを入力してください', 400);
@@ -294,10 +298,17 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       // Persist the conversation row before the message rows so
       // the FK relationship is satisfied locally.
       if (!conversationId) {
+        // v1.5.2 レビュー #7 — 自動タイトル。テーマ起点なら titleHint
+        // (例「PFCバランスの相談」)、自由入力なら最初のユーザー発話から
+        // 決定論的に導出する (新 AI call なし)。既存の title カラムへ書く
+        // だけで migration なし。server は title=null を返すが、
+        // upsertConversation の COALESCE で同期時に上書きされない。
+        const derivedTitle =
+          titleHint?.trim() || deriveConversationTitle(trimmed);
         const convRow: LocalChatConversation = {
           id: resolvedConvId,
           userId,
-          title: null,
+          title: derivedTitle ?? null,
           model: meta.model,
           archivedAt: null,
           createdAt: nowIso,

@@ -35,6 +35,7 @@ import {
 import { getColors } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
+import { getCoachTheme } from '../../../src/domain/coachThemes';
 import type { LocalChatMessage } from '../../../src/types/chat';
 
 // v1.5 Stage 1 Phase 1.2 — chat conversation surface.
@@ -47,8 +48,14 @@ export default function CoachConversationScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
 
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, theme: themeParam } = useLocalSearchParams<{
+    id: string;
+    theme?: string;
+  }>();
   const isNew = id === 'new';
+  // v1.5.2 レビュー #7 — テーマ起点会話。compose 欄へ pre-fill する発話文と
+  // 自動タイトルを供給する (自由入力会話では theme=undefined)。
+  const theme = getCoachTheme(themeParam);
 
   const profile = useProfileStore((s) => s.profile);
   const userId = profile?.id ?? '';
@@ -95,6 +102,13 @@ export default function CoachConversationScreen() {
           abortController: null,
         },
       });
+      // v1.5.2 レビュー #7 — テーマ起点なら相談プロンプトを compose 欄へ
+      // pre-fill (いきなり白紙にしない)。auto-send はせず、ユーザーが確認/
+      // 編集して送信できるようにする (quota の誤消費防止)。
+      // テーマ無し (自由に相談) のときは draft を明示的にクリアする —
+      // 同じ /coach/new ルートを themed→blank で再利用したとき前回の
+      // テーマ文が残らないように (Codex Important fix)。
+      setDraft(theme ? theme.prompt : '');
       return;
     }
     if (id && userId) {
@@ -108,6 +122,7 @@ export default function CoachConversationScreen() {
     loadMessages,
     refreshQuotaCount,
     setActiveConversationId,
+    theme,
   ]);
 
   // Pattern 19 (lifecycle defense): abort any in-flight stream on
@@ -152,6 +167,9 @@ export default function CoachConversationScreen() {
         userId,
         conversationId: isNew ? null : id ?? null,
         text,
+        // テーマ起点会話はテーマ名を自動タイトルに。自由入力会話は
+        // 未指定 → store が最初の発話から導出する。
+        titleHint: theme?.autoTitle,
       });
       if (wasNew && result.conversationId) {
         router.replace(`/(tabs)/coach/${result.conversationId}`);
@@ -160,7 +178,7 @@ export default function CoachConversationScreen() {
       // chatStore already populated `error` / `isOffline` state;
       // the banner UI surfaces it. Don't escalate.
     }
-  }, [draft, userId, isNew, id, sendMessage, showDisclaimer]);
+  }, [draft, userId, isNew, id, sendMessage, showDisclaimer, theme]);
 
   const handleRegenerate = useCallback(
     (messageId: string) => {
