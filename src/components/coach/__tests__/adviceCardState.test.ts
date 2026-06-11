@@ -9,7 +9,7 @@
 // the import chain pure-JS.
 jest.mock('../../../infra/supabase/client', () => ({ supabase: null }));
 
-import { pickAdviceCardState } from '../adviceCardState';
+import { pickAdviceCardState, isTierDenialError } from '../adviceCardState';
 import { AIError } from '../../../infra/services/aiNutritionService';
 import type { LocalCoachAdvice } from '../../../types/coachAdvice';
 
@@ -84,6 +84,65 @@ describe('pickAdviceCardState', () => {
         advice: null,
       }),
     ).toBe('loading');
+  });
+
+  // v1.5.1 Fix 4 — サーバ側 tier 拒否は通信エラーではなく未課金として
+  // locked カードへ (赤+再試行のエラー表示に混線していたバグの回帰防止)。
+  it('server tier denial (plan_required 403) → locked, not error', () => {
+    expect(
+      pickAdviceCardState({
+        hasAccess: true,
+        isLoading: false,
+        error: new AIError(
+          'plan_required',
+          'ミー先生の週次アドバイスは Plus / Pro でご利用いただけます',
+          403,
+        ),
+        advice: null,
+      }),
+    ).toBe('locked');
+  });
+
+  it('server tier denial beats cached advice (I1 no-free-reads)', () => {
+    expect(
+      pickAdviceCardState({
+        hasAccess: true,
+        isLoading: false,
+        error: new AIError('plan_required', 'plan', 403),
+        advice: FAKE_ADVICE,
+      }),
+    ).toBe('locked');
+  });
+
+  it('plus_required / pro_required も tier 拒否として locked', () => {
+    for (const code of ['plus_required', 'pro_required'] as const) {
+      expect(
+        pickAdviceCardState({
+          hasAccess: true,
+          isLoading: false,
+          error: new AIError(code, 'x', 403),
+          advice: null,
+        }),
+      ).toBe('locked');
+    }
+  });
+
+  it('quota_exceeded は tier 拒否ではなく error のまま (再試行 CTA 維持)', () => {
+    expect(
+      pickAdviceCardState({
+        hasAccess: true,
+        isLoading: false,
+        error: new AIError('quota_exceeded', '今月の上限', 429),
+        advice: null,
+      }),
+    ).toBe('error');
+  });
+
+  it('isTierDenialError: null → false / network_error → false', () => {
+    expect(isTierDenialError(null)).toBe(false);
+    expect(isTierDenialError(new AIError('network_error', 'offline', 0))).toBe(
+      false,
+    );
   });
 
   it('no cached advice + idle (no loading / no error) → loading (initial mount)', () => {

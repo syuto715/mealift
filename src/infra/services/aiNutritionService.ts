@@ -26,7 +26,11 @@ export type AIErrorCode =
   // out the Free tier with this code (rather than a generic 429
   // quota_exceeded with limit=0) so the client can route directly
   // to the subscription screen with the right copy.
-  | 'plus_required';
+  | 'plus_required'
+  // v1.5.1 Fix 4 — coach-advice / coach-routine EF はプラン不足を
+  // この code (403) で返す。union に無いと UI 側で tier 拒否を
+  // 通信エラーと区別できず、赤+再試行のエラー表示に混線する。
+  | 'plan_required';
 
 export class AIError extends Error {
   code: AIErrorCode;
