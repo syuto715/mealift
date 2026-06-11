@@ -419,7 +419,7 @@ export default function ProgressScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.title, { color: colors.textPrimary }]}>記録</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>進捗</Text>
 
         {/* Date Navigator */}
         <DateNavigator
