@@ -1241,7 +1241,13 @@ export default function AddFoodScreen() {
             </View>
           </View>
           {!isSearching && (
-            <View style={styles.chipRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipScroll}
+              contentContainerStyle={styles.chipRow}
+              keyboardShouldPersistTaps="handled"
+            >
               {SEARCH_CHIPS.map((c) => {
                 const active = chip === c.value;
                 return (
@@ -1269,7 +1275,7 @@ export default function AddFoodScreen() {
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
           )}
         </>
       )}
@@ -1996,12 +2002,16 @@ const styles = StyleSheet.create({
   // v1.5.2 render redesign styles
   headerCenter: { alignItems: 'center' },
   headerDate: { ...typography.labelSmall, marginTop: 1 },
+  // v1.5.1 fix — 6 chips が折り返して2行になっていたため横スクロール
+  // 1行に。flexGrow: 0 で列レイアウト内の伸縮を抑え、1行ぶんの高さを保つ。
+  chipScroll: {
+    flexGrow: 0,
+    marginBottom: spacing.sm,
+  },
   chipRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.xs,
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
   },
   chip: {
     paddingHorizontal: spacing.md,
