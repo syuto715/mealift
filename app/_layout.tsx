@@ -9,7 +9,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { getColors } from '../src/theme/tokens';
+import { loadFontWithRetry } from '../src/utils/loadFontWithRetry';
 import { getDatabase } from '../src/infra/database/connection';
 import { useAuthStore } from '../src/stores/authStore';
 import {
@@ -75,7 +77,31 @@ export default function RootLayout() {
   const hideToast = useUIStore((s) => s.hideToast);
 
   const [appReady, setAppReady] = useState(false);
+  // v1.5.1 Fix 1 — タブバー glyph 欠落対策の root font gate。Ionicons の
+  // ロード決着 ('loaded' / 'failed' / 'timeout' — loadFontWithRetry は
+  // reject しない契約) まで子ツリーを mount しない。失敗・timeout でも
+  // true になりアプリは進む (現状より悪化しない fallback)。
+  const [fontGateDone, setFontGateDone] = useState(false);
   const splashHidden = useRef(false);
+
+  // 子ツリー mount / splash 解除 / ルーティング effect の単一の readiness。
+  const ready = appReady && fontGateDone;
+
+  useEffect(() => {
+    let cancelled = false;
+    const settle = () => {
+      if (!cancelled) setFontGateDone(true);
+    };
+    // Ionicons.loadFont() = Font.loadAsync(Ionicons.font)。retry 1 回 +
+    // 2.5s timeout で必ず resolve → settle。catch は契約破りへの保険。
+    loadFontWithRetry(() => Ionicons.loadFont(), {
+      retries: 1,
+      timeoutMs: 2500,
+    }).then(settle, settle);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Safety timeout: force-hide splash screen after 5 seconds no matter what
   useEffect(() => {
@@ -84,6 +110,7 @@ export default function RootLayout() {
         splashHidden.current = true;
         hideSplash();
         setAppReady(true);
+        setFontGateDone(true);
         setUnauthenticated();
       }
     }, SPLASH_TIMEOUT_MS);
@@ -226,13 +253,13 @@ export default function RootLayout() {
     };
   }, []);
 
-  // Hide splash as soon as appReady becomes true (backup for onLayout not firing on Android)
+  // Hide splash as soon as ready becomes true (backup for onLayout not firing on Android)
   useEffect(() => {
-    if (appReady && !splashHidden.current) {
+    if (ready && !splashHidden.current) {
       splashHidden.current = true;
       hideSplash();
     }
-  }, [appReady]);
+  }, [ready]);
 
   // Deep-link handler for the email-confirmation callback
   // (`mealift://auth/callback?code=…`). Routes to /auth/callback which
@@ -244,7 +271,7 @@ export default function RootLayout() {
   // expo-router's auto-routing now that the path matches the file
   // tree, but kept as a defense for cold-start edge cases.
   useEffect(() => {
-    if (!appReady) return;
+    if (!ready) return;
 
     const route = (url: string | null) => {
       if (!url) return;
@@ -259,7 +286,7 @@ export default function RootLayout() {
     Linking.getInitialURL().then(route).catch(() => {});
     const sub = Linking.addEventListener('url', ({ url }) => route(url));
     return () => sub.remove();
-  }, [appReady]);
+  }, [ready]);
 
   // Build 16 / Phase 1 (Feature H) — notification-tap deep-link
   // routing. Weekly-report notifications carry
@@ -274,7 +301,7 @@ export default function RootLayout() {
   // review pass 1 / Important #3 — terminated-app taps were
   // previously dropped because only the listener was wired).
   useEffect(() => {
-    if (!appReady) return;
+    if (!ready) return;
 
     const dispatch = (data: unknown) => {
       try {
@@ -310,16 +337,16 @@ export default function RootLayout() {
       });
 
     return () => sub.remove();
-  }, [appReady]);
+  }, [ready]);
 
   const onLayoutReady = useCallback(() => {
-    if (appReady && !splashHidden.current) {
+    if (ready && !splashHidden.current) {
       splashHidden.current = true;
       hideSplash();
     }
-  }, [appReady]);
+  }, [ready]);
 
-  if (!appReady) {
+  if (!ready) {
     return null;
   }
 
