@@ -99,7 +99,7 @@ serve(async (req) => {
     const { data: profile, error: profileError } = await adminClient
       .from('profiles')
       .select('plan')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .maybeSingle();
     if (profileError) {
       responseStatus = 500;
