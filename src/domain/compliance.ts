@@ -18,6 +18,9 @@ export function calculateTrainingCompliance(
   sessionsCompleted: number,
   sessionsTarget: number
 ): number {
-  if (sessionsTarget <= 0) return 1;
+  // target が 0 / 負 / 未設定のときは達成率を測れない。以前は 1(=100%)を
+  // 返しており「記録ゼロなのにトレ100%」の誤表示を生んでいた。測定不能は
+  // 0 として扱う(calculateNutritionCompliance の targetCalories<=0→0 と整合)。
+  if (sessionsTarget <= 0) return 0;
   return Math.min(1, sessionsCompleted / sessionsTarget);
 }
