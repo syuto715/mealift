@@ -31,6 +31,7 @@ import { useBodyLogs } from '../../../src/hooks/useBodyLogs';
 import { usePrediction } from '../../../src/hooks/usePrediction';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { useHealthKitStore } from '../../../src/stores/healthKitStore';
+import { useUIStore } from '../../../src/stores/uiStore';
 import { formatWeight, formatDateRelative, formatDate } from '../../../src/utils/format';
 import { subDays, parseISO, format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -113,6 +114,7 @@ export default function ProgressScreen() {
 
   const { logs, todayLog, avg7d, weightChange14d, isLoading, recordWeight } = useBodyLogs();
   const { prediction, hasEnoughData, daysNeeded } = usePrediction();
+  const showToast = useUIStore((s) => s.showToast);
 
   // Date navigation
   const [selectedDate, setSelectedDate] = useState(getISODate());
@@ -312,7 +314,14 @@ export default function ProgressScreen() {
     }
     setIsSaving(true);
     try {
-      await recordWeight(weight, bodyFat, memo || null, selectedDate);
+      const ok = await recordWeight(weight, bodyFat, memo || null, selectedDate);
+
+      // 保存失敗時は modal を閉じず、エラーを可視化して再試行を促す
+      // (健康データの無言欠損を残さない / 失敗でも閉じてしまう既知問題の解消)。
+      if (!ok) {
+        showToast('体重を保存できませんでした。通信状況を確認して再試行してください。', 'error');
+        return;
+      }
 
       // Refresh selected date log
       if (profile?.id) {
@@ -340,7 +349,7 @@ export default function ProgressScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [weight, bodyFat, memo, recordWeight, profile, noteCategory, loadNotes, selectedDate]);
+  }, [weight, bodyFat, memo, recordWeight, profile, noteCategory, loadNotes, selectedDate, showToast]);
 
   const handleAddNote = useCallback(async () => {
     if (!newNoteText.trim() || !profile) return;

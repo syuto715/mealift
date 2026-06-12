@@ -27,6 +27,10 @@ export function useBodyLogs() {
       const result = await getBodyLogs(profileId, 90);
       setLogs(result);
     } catch (error) {
+      // 読み取り失敗は致命的ではない(UI は空/stale 表示)が、無言にせず
+      // 記録を残す。書き込み失敗(recordWeight)はこれと別に呼び出し側へ
+      // 伝播し、ユーザーに可視化する。
+      console.error('[useBodyLogs] loadLogs failed', error);
     } finally {
       setIsLoading(false);
     }
@@ -80,9 +84,17 @@ export function useBodyLogs() {
     return Number(((newest.weightKg ?? 0) - (closest.weightKg ?? 0)).toFixed(1));
   })();
 
+  // 成否を呼び出し側へ返す(健康データの無言欠損を防ぐ)。true=保存成功、
+  // false=失敗。呼び出し側(progress modal)は false のとき modal を閉じず
+  // エラートーストを出して再試行を促す。
   const recordWeight = useCallback(
-    async (weight: number, bodyFatPct?: number | null, note?: string | null, date?: string) => {
-      if (!profileId) return;
+    async (
+      weight: number,
+      bodyFatPct?: number | null,
+      note?: string | null,
+      date?: string
+    ): Promise<boolean> => {
+      if (!profileId) return false;
       try {
         await upsertBodyLog(profileId, {
           date: date ?? getISODate(),
@@ -91,7 +103,10 @@ export function useBodyLogs() {
           note: note ?? null,
         });
         await loadLogs();
+        return true;
       } catch (error) {
+        console.error('[useBodyLogs] recordWeight failed', error);
+        return false;
       }
     },
     [profileId, loadLogs]
