@@ -362,7 +362,10 @@ export async function applyCustomerInfoToProfile(
             subscription_status: subscriptionStatus,
             subscription_updated_at: new Date().toISOString(),
           })
-          .eq('user_id', userId);
+          // profiles は id が auth.uid()(user_id 列なし)。.eq('user_id') では
+          // 0 行マッチで silent fail し、課金者の plan が server 側で free の
+          // ままになっていた(EF の Pro gate が free 扱い)。
+          .eq('id', userId);
       }
     } catch {
       // Non-fatal — client retains the local plan state.
