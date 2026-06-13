@@ -37,6 +37,10 @@ import {
 } from '../src/infra/services/revenueCatService';
 import { runLoginSync } from '../src/infra/sync/loginSyncBootstrap';
 import { decideNotificationRoute } from '../src/utils/notificationRouting';
+import {
+  reconcileSubscription,
+  markAppVersionSeen,
+} from '../src/infra/services/subscriptionSync';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -338,6 +342,25 @@ export default function RootLayout() {
 
     return () => sub.remove();
   }, [ready]);
+
+  // v1.6.0 C-1 — subscription self-heal. The server (revenuecat-webhook) is
+  // the source of truth; this reconcile covers dropped webhook deliveries by
+  // asking sync-subscription to re-derive from RevenueCat's REST snapshot.
+  // Runs once on cold-start (ready + authenticated) and on every
+  // background→foreground transition. reconcileSubscription() self-throttles
+  // (60s) so foreground churn won't hammer the EF. Also stamps the payload-
+  // schema marker for the step-B floor measurement.
+  useEffect(() => {
+    if (!ready || !isAuthenticated) return;
+    void reconcileSubscription();
+    void markAppVersionSeen();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void reconcileSubscription();
+      }
+    });
+    return () => sub.remove();
+  }, [ready, isAuthenticated]);
 
   const onLayoutReady = useCallback(() => {
     if (ready && !splashHidden.current) {

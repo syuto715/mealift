@@ -14,6 +14,7 @@ import {
   syncNotifications,
 } from './notificationService';
 import { useProfileStore } from '../../stores/profileStore';
+import { reconcileSubscription } from './subscriptionSync';
 import type { PlanBillingCycle } from '../../types/profile';
 
 const ERROR_CODE = Purchases.PURCHASES_ERROR_CODE;
@@ -347,28 +348,18 @@ export async function applyCustomerInfoToProfile(
     // Local write failure — UI will re-derive on next customer-info update.
   }
 
-  // 3. Supabase remote profile — used by edge functions for Pro gating.
+  // 3. Server subscription state — v1.6.0 C-1: the client NO LONGER writes
+  // plan / subscription_status / plan_expires_at to Supabase directly (those
+  // columns are server-only, owned by the revenuecat-webhook + sync-subscription
+  // EFs). Trigger a reconcile so the server re-derives from RevenueCat's REST
+  // snapshot right after a purchase/restore/customer-info change. Forced to
+  // bypass the throttle since entitlement freshness matters here. This replaces
+  // the previous client direct-write (b74a7e2) which is now reverted.
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData.user?.id;
-      if (userId) {
-        const subscriptionStatus =
-          plan === 'free' ? 'free' : activeEntitlement?.willRenew ? 'active' : 'expired';
-        await supabase
-          .from('profiles')
-          .update({
-            plan,
-            subscription_status: subscriptionStatus,
-            subscription_updated_at: new Date().toISOString(),
-          })
-          // profiles は id が auth.uid()(user_id 列なし)。.eq('user_id') では
-          // 0 行マッチで silent fail し、課金者の plan が server 側で free の
-          // ままになっていた(EF の Pro gate が free 扱い)。
-          .eq('id', userId);
-      }
+      await reconcileSubscription({ force: true });
     } catch {
-      // Non-fatal — client retains the local plan state.
+      // Non-fatal — webhook + startup reconcile recover.
     }
   }
 

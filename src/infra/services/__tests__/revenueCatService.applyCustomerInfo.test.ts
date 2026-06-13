@@ -1,29 +1,24 @@
-// v1.5.1 — applyCustomerInfoToProfile が Supabase profiles を「正しい行」
-// (.eq('id', userId)) で更新することの回帰テスト。
+// v1.6.0 C-1 — applyCustomerInfoToProfile no longer writes the subscription
+// columns to Supabase directly (that was b74a7e2, now reverted). The server
+// (revenuecat-webhook / sync-subscription EFs) owns plan / subscription_status
+// / plan_expires_at. The client only:
+//   - sets the in-memory tier (setTier),
+//   - writes LOCAL display columns (planBillingCycle / planExpiresAt) via
+//     updateProfile,
+//   - triggers a forced reconcile so the server re-derives from RC.
 //
-// 背景: 旧コードは .eq('user_id', userId) で profiles を引いていたが
-// profiles は id が auth.uid()(user_id 列なし)のため 0 行マッチで
-// silent fail し、課金者の plan が server 側で free のままだった。
-// 本テストは update payload と .eq の列・値を mock で検証する。
-//
-// 重い native/RN 依存は全て module 境界で mock し、pure JS で実行する。
+// This test pins that the direct remote write is GONE and the reconcile fires.
+// Heavy native/RN deps are mocked at the module boundary.
 
-const mockEq = jest.fn((_col: string, _val: unknown) =>
-  Promise.resolve({ data: null, error: null }),
-);
 const mockUpdate = jest.fn((_payload: Record<string, unknown>) => ({
-  eq: mockEq,
+  eq: jest.fn().mockResolvedValue({ data: null, error: null }),
 }));
 const mockFrom = jest.fn((_table: string) => ({ update: mockUpdate }));
-const mockGetUser = jest.fn();
 
-// NOTE: lazy ラッパで包む。`from: mockFrom` のように mock を直接渡すと、
-// jest.mock factory が import hoist 時(const 初期化前 = undefined)に評価され
-// supabase.from が undefined になり remote 更新が try/catch に飲まれる。
 jest.mock('../../supabase/client', () => ({
   isSupabaseConfigured: true,
   supabase: {
-    auth: { getUser: () => mockGetUser() },
+    auth: { getUser: () => Promise.resolve({ data: { user: { id: 'auth-uid-123' } } }) },
     from: (table: string) => mockFrom(table),
   },
 }));
@@ -33,7 +28,6 @@ jest.mock('react-native-purchases', () => ({
   default: { PURCHASES_ERROR_CODE: {} },
   LOG_LEVEL: { DEBUG: 'debug', WARN: 'warn' },
 }));
-
 jest.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 jest.mock('expo-constants', () => ({ __esModule: true, default: { expoConfig: { extra: {} } } }));
 
@@ -41,21 +35,27 @@ const mockUpdateProfile = jest.fn().mockResolvedValue(undefined);
 jest.mock('../../repositories/profileRepository', () => ({
   updateProfile: (...args: unknown[]) => mockUpdateProfile(...args),
 }));
-
 jest.mock('../subscriptionService', () => ({ setTier: jest.fn() }));
-
 jest.mock('../notificationService', () => ({
   loadNotificationSettings: jest.fn().mockResolvedValue({}),
   syncNotifications: jest.fn().mockResolvedValue(undefined),
 }));
 
+const mockReconcile = jest.fn().mockResolvedValue(undefined);
+const mockMarkVersion = jest.fn().mockResolvedValue(undefined);
+const mockStartTrialRemote = jest.fn().mockResolvedValue(null);
+jest.mock('../subscriptionSync', () => ({
+  reconcileSubscription: (...args: unknown[]) => mockReconcile(...args),
+  markAppVersionSeen: (...args: unknown[]) => mockMarkVersion(...args),
+  startTrialRemote: (...args: unknown[]) => mockStartTrialRemote(...args),
+  SUBSCRIPTION_PAYLOAD_SCHEMA: 2,
+}));
+
 const mockProfile = { id: 'profile-local-1' };
+const mockSetProfile = jest.fn();
 jest.mock('../../../stores/profileStore', () => ({
   useProfileStore: {
-    getState: () => ({
-      profile: mockProfile,
-      setProfile: jest.fn(),
-    }),
+    getState: () => ({ profile: mockProfile, setProfile: mockSetProfile }),
   },
 }));
 
@@ -73,43 +73,50 @@ function customerInfoWith(entitlement: 'pro' | 'plus' | null) {
   return { entitlements: { active } } as never;
 }
 
-describe('applyCustomerInfoToProfile — Supabase remote update', () => {
+describe('applyCustomerInfoToProfile — v1.6 server-source-of-truth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'auth-uid-123' } } });
   });
 
-  it("profiles を .eq('id', userId) で更新する(user_id ではない)", async () => {
+  it('triggers a forced reconcile instead of writing subscription columns directly', async () => {
     await applyCustomerInfoToProfile(customerInfoWith('pro'));
-
-    expect(mockFrom).toHaveBeenCalledWith('profiles');
-    expect(mockEq).toHaveBeenCalledTimes(1);
-    expect(mockEq).toHaveBeenCalledWith('id', 'auth-uid-123');
-    // 取り違えの明示ガード
-    expect(mockEq).not.toHaveBeenCalledWith('user_id', expect.anything());
+    expect(mockReconcile).toHaveBeenCalledTimes(1);
+    expect(mockReconcile).toHaveBeenCalledWith({ force: true });
   });
 
-  it('pro entitlement のとき plan=pro / subscription_status=active を書く', async () => {
+  it('does NOT write plan / subscription_status to profiles directly anymore', async () => {
     await applyCustomerInfoToProfile(customerInfoWith('pro'));
-
-    expect(mockUpdate).toHaveBeenCalledTimes(1);
-    const payload = mockUpdate.mock.calls[0][0];
-    expect(payload.plan).toBe('pro');
-    expect(payload.subscription_status).toBe('active');
-    expect(typeof payload.subscription_updated_at).toBe('string');
+    // The only remote path is reconcile; no direct profiles.update of plan.
+    const wrotePlan = mockUpdate.mock.calls.some(
+      (c) => c[0] && Object.prototype.hasOwnProperty.call(c[0], 'plan'),
+    );
+    expect(wrotePlan).toBe(false);
   });
 
-  it('free(entitlement なし)のとき plan=free / subscription_status=free', async () => {
-    await applyCustomerInfoToProfile(customerInfoWith(null));
-
-    const payload = mockUpdate.mock.calls[0][0];
-    expect(payload.plan).toBe('free');
-    expect(payload.subscription_status).toBe('free');
-  });
-
-  it('未ログイン時は remote update を行わない', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null } });
+  it('still writes LOCAL display columns (planBillingCycle / planExpiresAt)', async () => {
     await applyCustomerInfoToProfile(customerInfoWith('pro'));
-    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+    const [id, patch] = mockUpdateProfile.mock.calls[0] as [
+      string,
+      Record<string, unknown>,
+    ];
+    expect(id).toBe('profile-local-1');
+    expect(patch).toHaveProperty('planExpiresAt');
+    expect(patch).toHaveProperty('planBillingCycle');
+  });
+
+  it('no profile in store → returns before reconcile', async () => {
+    // Re-mock store to return null profile for this case.
+    const store = jest.requireMock('../../../stores/profileStore') as {
+      useProfileStore: { getState: () => unknown };
+    };
+    const orig = store.useProfileStore.getState;
+    store.useProfileStore.getState = () => ({ profile: null, setProfile: mockSetProfile });
+    try {
+      await applyCustomerInfoToProfile(customerInfoWith('pro'));
+      expect(mockReconcile).not.toHaveBeenCalled();
+    } finally {
+      store.useProfileStore.getState = orig;
+    }
   });
 });

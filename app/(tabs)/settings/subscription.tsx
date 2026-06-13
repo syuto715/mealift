@@ -21,6 +21,7 @@ import { Badge, Button, SegmentedControl } from '../../../src/components/ui';
 import { useSubscription } from '../../../src/hooks/useSubscription';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { startTrial } from '../../../src/infra/repositories/profileRepository';
+import { startTrialRemote } from '../../../src/infra/services/subscriptionSync';
 import {
   syncNotifications,
   loadNotificationSettings,
@@ -330,7 +331,22 @@ export default function SubscriptionScreen() {
           onPress: async () => {
             setStartingTrial(true);
             try {
-              const trialStartedAt = new Date().toISOString();
+              // v1.6.0 C-1: the trial is server-authoritative now. start-trial
+              // EF enforces single-use (trial_started_at IS NULL) server-side
+              // and returns the canonical timestamp. The local write is kept
+              // for instant/offline display only; trial_started_at is no longer
+              // pushed by profileSync.
+              const remote = await startTrialRemote();
+              if (!remote) {
+                Alert.alert(
+                  'トライアル開始に失敗しました',
+                  '通信状況を確認して、もう一度お試しください。',
+                  [{ text: 'OK' }],
+                );
+                return;
+              }
+              const trialStartedAt =
+                remote.trialStartedAt ?? new Date().toISOString();
               await startTrial(profile.id, trialStartedAt);
               const hydrated = { ...profile, trialStartedAt };
               setProfile(hydrated);

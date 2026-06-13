@@ -138,9 +138,13 @@ function toServerPayload(
     adaptive_goal_last_shown_at: local.adaptive_goal_last_shown_at ?? null,
     daily_water_target_ml: local.daily_water_target_ml ?? 2500,
     onboarding_version: local.onboarding_version ?? 1,
-    trial_started_at: local.trial_started_at ?? null,
-    plan_billing_cycle: local.plan_billing_cycle ?? null,
-    plan_expires_at: local.plan_expires_at ?? null,
+    // v1.6.0 C-1: trial_started_at / plan_billing_cycle / plan_expires_at are
+    // NO LONGER pushed from the client. They are server-only columns owned by
+    // the revenuecat-webhook / sync-subscription / start-trial EFs. Keeping
+    // them out of the push payload is the prerequisite for the step-B column
+    // lock (REVOKE UPDATE) — a payload that still SET them would fail with
+    // 42501 once locked and dead-letter the whole profile sync. The PULL path
+    // (applyServerProfile) still reflects server → local for display.
     notifications_submission_enabled:
       local.notifications_submission_enabled === undefined
         ? true
