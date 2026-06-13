@@ -27,3 +27,20 @@ verify_jwt = false
 # same `verify_jwt = false` reason.
 [functions.cleanup-idempotency-keys]
 verify_jwt = false
+
+# revenuecat-webhook — RevenueCat posts subscription events here. RC has no
+# Supabase JWT; the function authenticates by constant-time-comparing the
+# Authorization header against REVENUECAT_WEBHOOK_AUTH. Gateway JWT
+# verification would 401 the RC request before the function runs.
+[functions.revenuecat-webhook]
+verify_jwt = false
+
+# sync-subscription — client-invoked reconcile (purchase/restore/startup).
+# Called with the user's Supabase JWT, so gateway JWT verification stays ON.
+[functions.sync-subscription]
+verify_jwt = true
+
+# start-trial — client-invoked, single-use server-enforced 7-day Plus trial.
+# Called with the user's Supabase JWT; gateway JWT verification stays ON.
+[functions.start-trial]
+verify_jwt = true
