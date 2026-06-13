@@ -3,7 +3,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   deriveWebhookUpdate,
   isValidAppUserId,
-  shouldApplyEvent,
 } from '../_shared/subscription.ts';
 
 // v1.6.0 Sprint 1b — RevenueCat webhook EF (C-1 server-source-of-truth).
@@ -121,66 +120,51 @@ serve(async (req) => {
   }
   const userId = appUserId;
 
-  // --- 3. Idempotency: already processed? ---
-  if (eventId) {
-    const { data: existing } = await admin
-      .from('revenuecat_events')
-      .select('event_id')
-      .eq('event_id', eventId)
-      .maybeSingle();
-    if (existing) {
-      return jsonResponse({ received: true, outcome: 'duplicate' }, 200);
-    }
-  }
-
   try {
     const update = deriveWebhookUpdate(event);
+    const eventIso = new Date(update.eventTsMs).toISOString();
 
-    // --- 4. Ordering guard against the row's current watermark ---
-    const { data: profile, error: profileErr } = await admin
-      .from('profiles')
-      .select('subscription_updated_at')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (profileErr) {
-      await recordEvent(userId, 'error', update.eventTsMs);
-      return jsonResponse({ received: true, outcome: 'error' }, 200);
-    }
-    if (!profile) {
-      await recordEvent(userId, 'no_profile', update.eventTsMs);
-      return jsonResponse({ received: true, outcome: 'no_profile' }, 200);
-    }
-
-    const watermark =
-      (profile as { subscription_updated_at: string | null })
-        .subscription_updated_at ?? null;
-
-    if (!shouldApplyEvent(update.eventTsMs, watermark)) {
-      await recordEvent(userId, 'ignored_old', update.eventTsMs);
-      return jsonResponse({ received: true, outcome: 'ignored_old' }, 200);
-    }
-
-    // --- 5. Authoritative write (service_role) ---
-    const { error: updateErr } = await admin
+    // --- 3+4+5. Atomic apply (ordering + dedup enforced in ONE statement) ---
+    //
+    // Codex round 1 Critical — the previous read-watermark-then-write was a
+    // TOCTOU race: two concurrent/out-of-order deliveries could both pass a
+    // JS-side check and the older one write last (rollback). We push the
+    // ordering predicate INTO the UPDATE so the database arbitrates:
+    //
+    //   UPDATE ... SET ..., subscription_updated_at = eventIso
+    //   WHERE id = uid
+    //     AND (subscription_updated_at IS NULL OR subscription_updated_at < eventIso)
+    //
+    // - Strictly-older or equal-timestamp events match 0 rows → no-op. This
+    //   also makes a re-delivered SAME event idempotent (its timestamp equals
+    //   the stored watermark → not '<' → 0 rows), so the profile STATE needs
+    //   no separate dedup. The revenuecat_events ledger remains for audit
+    //   (PK + ignoreDuplicates), not as the state gate.
+    const { data: appliedRows, error: updateErr } = await admin
       .from('profiles')
       .update({
         plan: update.plan,
         subscription_status: update.subscription_status,
         plan_expires_at: update.plan_expires_at,
-        // Watermark = event time (ms→ISO) so out-of-order events are rejected
-        // by shouldApplyEvent on the next delivery.
-        subscription_updated_at: new Date(update.eventTsMs).toISOString(),
+        subscription_updated_at: eventIso,
       })
-      .eq('id', userId);
+      .eq('id', userId)
+      .or(
+        `subscription_updated_at.is.null,subscription_updated_at.lt.${eventIso}`,
+      )
+      .select('id');
 
     if (updateErr) {
       await recordEvent(userId, 'error', update.eventTsMs);
       return jsonResponse({ received: true, outcome: 'error' }, 200);
     }
 
-    await recordEvent(userId, 'applied', update.eventTsMs);
-    return jsonResponse({ received: true, outcome: 'applied' }, 200);
+    const applied = Array.isArray(appliedRows) && appliedRows.length > 0;
+    // 0 rows = either an older/duplicate event (watermark not advanced) or no
+    // matching profile row. Either way the state is correct; label for audit.
+    const outcome = applied ? 'applied' : 'ignored_old_or_absent';
+    await recordEvent(userId, outcome, update.eventTsMs);
+    return jsonResponse({ received: true, outcome }, 200);
   } catch (_e) {
     // Never surface a 5xx — RC would retry then disable the webhook. The
     // startup sync-subscription reconcile self-heals a dropped event.

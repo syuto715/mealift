@@ -2,7 +2,6 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   planFromSubscriber,
-  shouldApplyEvent,
   type SubscriberEntitlement,
 } from '../_shared/subscription.ts';
 
@@ -99,34 +98,29 @@ serve(async (req) => {
   const nowMs = Date.now();
   const { plan, plan_expires_at } = planFromSubscriber(entitlements, nowMs);
 
-  // Ordering guard: reconcile reflects current truth (now), so it wins over
-  // any older webhook watermark.
-  const { data: profile, error: profileErr } = await admin
-    .from('profiles')
-    .select('subscription_updated_at')
-    .eq('id', userId)
-    .maybeSingle();
-  if (profileErr || !profile) {
-    return jsonResponse({ ok: false, reason: 'no_profile' }, 200);
-  }
-  const watermark =
-    (profile as { subscription_updated_at: string | null })
-      .subscription_updated_at ?? null;
-  if (!shouldApplyEvent(nowMs, watermark)) {
-    return jsonResponse({ ok: true, applied: false, plan }, 200);
-  }
-
-  const { error: updateErr } = await admin
+  // Atomic ordering guard in ONE statement (same race-safety as the webhook):
+  // apply only if the reconcile time is newer than the stored watermark. A
+  // concurrent webhook event that already advanced the watermark past `now`
+  // (shouldn't happen — event timestamps are in the past — but defensively)
+  // makes this a no-op rather than a rollback.
+  const nowIso = new Date(nowMs).toISOString();
+  const { data: appliedRows, error: updateErr } = await admin
     .from('profiles')
     .update({
       plan,
       subscription_status: plan === 'free' ? 'free' : 'active',
       plan_expires_at,
-      subscription_updated_at: new Date(nowMs).toISOString(),
+      subscription_updated_at: nowIso,
     })
-    .eq('id', userId);
+    .eq('id', userId)
+    .or(`subscription_updated_at.is.null,subscription_updated_at.lt.${nowIso}`)
+    .select('id');
   if (updateErr) {
     return jsonResponse({ ok: false, reason: 'write_failed' }, 200);
+  }
+  const applied = Array.isArray(appliedRows) && appliedRows.length > 0;
+  if (!applied) {
+    return jsonResponse({ ok: true, applied: false, plan }, 200);
   }
 
   // Audit (distinct id per reconcile; not a dedup key).
