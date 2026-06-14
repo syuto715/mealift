@@ -186,9 +186,17 @@ export function runStandardSyncTests(
 
         expect(result.pulled).toBe(1);
         expect(runs).toHaveLength(1);
+        // v1.6.0 Sprint 3 — tombstone edit-wins: the DELETE now carries the
+        // updated_at guard (keep local row if edited strictly after the
+        // tombstone). Tolerant of the formatted multi-line SQL.
         expect(runs[0].sql).toMatch(
-          new RegExp(`^DELETE FROM ${expectedLocalTable} WHERE id = \\?`, 'i'),
+          new RegExp(`DELETE FROM ${expectedLocalTable}\\s+WHERE id = \\?`, 'i'),
         );
+        expect(runs[0].sql).toMatch(
+          /datetime\(updated_at\) <= datetime\(\?\)/i,
+        );
+        // id + tombstone updated_at are both bound as params.
+        expect(runs[0].params).toHaveLength(2);
       });
 
       it('throws on select error', async () => {

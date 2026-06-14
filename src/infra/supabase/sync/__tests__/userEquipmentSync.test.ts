@@ -229,7 +229,14 @@ describe('user_equipment sync (bespoke — composite-key matching)', () => {
       expect(runs[0].sql).toMatch(
         /DELETE FROM user_equipment\s+WHERE profile_id = \? AND equipment_key = \?/,
       );
-      expect(runs[0].params).toEqual([VALID_SERVER.user_id, VALID_SERVER.equipment_key]);
+      // v1.6.0 Sprint 3 — tombstone edit-wins: guarded by updated_at; the
+      // tombstone updated_at is bound as the 3rd param.
+      expect(runs[0].sql).toMatch(/datetime\(updated_at\) <= datetime\(\?\)/i);
+      expect(runs[0].params).toEqual([
+        VALID_SERVER.user_id,
+        VALID_SERVER.equipment_key,
+        VALID_SERVER.updated_at,
+      ]);
     });
 
     it('throws on select error', async () => {

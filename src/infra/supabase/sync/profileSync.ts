@@ -294,7 +294,7 @@ export const profileSync: ResourceSyncModule = {
 
     const row = data[0] as ServerProfileRow;
     if (row.deleted_at !== null) {
-      await applyServerDeletion(db, LOCAL_TABLE, row.id);
+      await applyServerDeletion(db, LOCAL_TABLE, row.id, row.updated_at);
     } else {
       await applyServerProfile(db, row);
     }

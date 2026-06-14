@@ -96,14 +96,25 @@ export async function upsertWithBackoff(
 // server side propagates each one through its own table's stream, so
 // the orchestrator picks them up in dependency order without needing
 // a recursive delete here.
+// v1.6.0 Sprint 3 — tombstone edit-wins. The DELETE is guarded by the same
+// updated_at comparison as the value-clobber guard: only apply the server
+// tombstone when the local row is NOT strictly newer than the tombstone.
+// If the local row was edited AFTER the server deletion (local.updated_at >
+// tombstone.updated_at), the edit wins and the row is preserved — multi-device
+// health data is not silently removed by a stale tombstone. datetime() handles
+// the mixed local('YYYY-MM-DD HH:MM:SS') / server(ISO) formats. Tie → delete.
 export async function applyServerDeletion(
   db: SQLiteDatabase,
   localTableName: string,
   recordId: string,
+  tombstoneUpdatedAt: string,
 ): Promise<void> {
-  await db.runAsync(`DELETE FROM ${localTableName} WHERE id = ?`, [
-    recordId,
-  ]);
+  await db.runAsync(
+    `DELETE FROM ${localTableName}
+       WHERE id = ?
+         AND datetime(updated_at) <= datetime(?)`,
+    [recordId, tombstoneUpdatedAt],
+  );
 }
 
 // ---------------------------------------------------------------------------

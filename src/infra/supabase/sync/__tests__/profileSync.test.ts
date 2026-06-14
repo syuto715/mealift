@@ -333,8 +333,11 @@ describe('profileSync.pullBatch', () => {
 
     expect(result.pulled).toBe(1);
     expect(runs).toHaveLength(1);
-    expect(runs[0].sql).toMatch(/^DELETE FROM profiles WHERE id = \?/i);
+    // v1.6.0 Sprint 3 — tombstone edit-wins guard (updated_at) on the DELETE.
+    expect(runs[0].sql).toMatch(/DELETE FROM profiles\s+WHERE id = \?/i);
+    expect(runs[0].sql).toMatch(/datetime\(updated_at\) <= datetime\(\?\)/i);
     expect(runs[0].params[0]).toBe('auth-uid-1');
+    expect(runs[0].params[1]).toBe('2026-05-06T13:00:00Z');
   });
 
   it('throws when select returns an error', async () => {

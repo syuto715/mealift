@@ -105,10 +105,14 @@ async function applyServerTombstone(
   db: SQLiteDatabase,
   row: ServerRow,
 ): Promise<void> {
+  // v1.6.0 Sprint 3 — tombstone edit-wins (composite key variant). Same guard
+  // as applyServerDeletion: keep the local row if it was edited strictly after
+  // the server tombstone. datetime() handles mixed local/server formats.
   await db.runAsync(
     `DELETE FROM user_equipment
-       WHERE profile_id = ? AND equipment_key = ?`,
-    [row.user_id, row.equipment_key],
+       WHERE profile_id = ? AND equipment_key = ?
+         AND datetime(updated_at) <= datetime(?)`,
+    [row.user_id, row.equipment_key, row.updated_at],
   );
 }
 

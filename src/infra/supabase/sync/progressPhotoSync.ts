@@ -110,7 +110,7 @@ export const progressPhotoSync: ResourceSyncModule = {
     if (rows.length === 0) return { pulled: 0, newWatermark: null };
     for (const row of rows) {
       if (row.deleted_at !== null) {
-        await applyServerDeletion(db, LOCAL_TABLE, row.id);
+        await applyServerDeletion(db, LOCAL_TABLE, row.id, row.updated_at);
       } else {
         await applyServerRow(db, row);
       }
