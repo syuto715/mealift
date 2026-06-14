@@ -95,16 +95,82 @@ describe('I-3 clobber guard coverage (every sync module)', () => {
     expect(files.length).toBeGreaterThan(15);
   });
 
+  // v1.6.0 Sprint 3 — strengthened: bind each module's declared LOCAL_TABLE and
+  // assert the guard references THAT exact table (a wrong-table typo that still
+  // matches the generic shape would now fail).
+  function localTableOf(src: string): string | null {
+    const m = src.match(/LOCAL_TABLE\s*=\s*'([a-z0-9_]+)'/);
+    return m ? m[1] : null;
+  }
+
   for (const f of files) {
     const src = fs.readFileSync(path.join(syncDir, f), 'utf8');
-    // profileSync is 1:1 with the user (its own bespoke pull, no multi-device
-    // row clobber surface) — it uses a watermark pull, exempt from the row guard.
+    // profileSync is 1:1 with the user (its own bespoke watermark pull, no
+    // multi-device row clobber surface) — exempt from the value guard.
     if (!src.includes('ON CONFLICT')) continue;
     if (f === 'profileSync.ts') continue;
-    it(`${f} carries the updated_at clobber guard`, () => {
-      expect(src).toMatch(
-        /WHERE datetime\(excluded\.updated_at\) > datetime\([a-z0-9_]+\.updated_at\)/,
+    const table = localTableOf(src);
+    it(`${f} declares a LOCAL_TABLE`, () => {
+      expect(table).toBeTruthy();
+    });
+    it(`${f} value-clobber guard references its own table (${table})`, () => {
+      // Exact table binding — catches wrong-table typos, not just "some guard".
+      expect(src).toContain(
+        `WHERE datetime(excluded.updated_at) > datetime(${table}.updated_at)`,
       );
     });
   }
+});
+
+describe('I-3 tombstone edit-wins guard (behavioral, real SQLite)', () => {
+  // Mirror of applyServerDeletion's guarded DELETE.
+  const DELETE_GUARDED = `DELETE FROM body_logs
+       WHERE id = ?
+         AND datetime(updated_at) <= datetime(?)`;
+
+  function dbWithRow(localUpdatedAt: string): DatabaseSync {
+    const db = new DatabaseSync(':memory:');
+    db.exec(
+      `CREATE TABLE body_logs (id TEXT PRIMARY KEY, weight_kg REAL, updated_at TEXT)`,
+    );
+    db.prepare(
+      `INSERT INTO body_logs (id, weight_kg, updated_at) VALUES ('w1', 70, ?)`,
+    ).run(localUpdatedAt);
+    return db;
+  }
+  const exists = (db: DatabaseSync) =>
+    !!db.prepare(`SELECT 1 FROM body_logs WHERE id='w1'`).get();
+
+  it('stale tombstone (older than local edit) does NOT delete — edit wins', () => {
+    const db = dbWithRow('2026-06-10 08:00:00'); // local edited newer (mixed fmt)
+    db.prepare(DELETE_GUARDED).run('w1', '2026-06-05T00:00:00Z'); // older tombstone
+    expect(exists(db)).toBe(true);
+    db.close();
+  });
+
+  it('newer tombstone DOES delete the local row', () => {
+    const db = dbWithRow('2026-06-10 08:00:00');
+    db.prepare(DELETE_GUARDED).run('w1', '2026-06-20T00:00:00Z'); // newer tombstone
+    expect(exists(db)).toBe(false);
+    db.close();
+  });
+
+  it('equal-timestamp tombstone deletes (tie → tombstone wins)', () => {
+    const db = dbWithRow('2026-06-10T00:00:00Z');
+    db.prepare(DELETE_GUARDED).run('w1', '2026-06-10T00:00:00Z');
+    expect(exists(db)).toBe(false);
+    db.close();
+  });
+});
+
+describe('I-3 tombstone guard coverage (every sync module)', () => {
+  const syncDir = path.resolve(__dirname, '..');
+  it('applyServerDeletion is updated_at-guarded', () => {
+    const helpers = fs.readFileSync(path.join(syncDir, 'syncHelpers.ts'), 'utf8');
+    expect(helpers).toMatch(/DELETE FROM \$\{localTableName\}[\s\S]*datetime\(updated_at\) <= datetime\(\?\)/);
+  });
+  it('userEquipmentSync composite tombstone is guarded', () => {
+    const ue = fs.readFileSync(path.join(syncDir, 'userEquipmentSync.ts'), 'utf8');
+    expect(ue).toMatch(/datetime\(updated_at\) <= datetime\(\?\)/);
+  });
 });
