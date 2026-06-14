@@ -151,12 +151,12 @@ export default function SettingsScreen() {
 
   const handleResetData = useCallback(() => {
     Alert.alert(
-      'すべてのデータを削除',
-      '本当にすべてのデータを削除しますか？この操作は取り消せません。',
+      'ローカルデータをリセット',
+      'この端末のローカルデータを削除します。サーバー上のデータは削除されません(再ログインで復元されます)。アカウントごと削除する場合は「アカウントを削除」をご利用ください。',
       [
         { text: 'キャンセル', style: 'cancel' },
         {
-          text: '削除する',
+          text: 'リセットする',
           style: 'destructive',
           onPress: async () => {
             try {
