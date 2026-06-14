@@ -1,5 +1,11 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 import { wipeUserData } from '../database/connection';
+
+// Set once the SERVER deletion is confirmed; cleared after local wipe finishes.
+// If the process dies between server-delete and local-wipe, the startup guard
+// (completeOrphanWipeIfPending) finishes the wipe so no PII lingers.
+const PENDING_WIPE_KEY = 'account_deletion_pending_wipe';
 
 // v1.6.0 Sprint 6 — client side of account deletion.
 //
@@ -26,6 +32,13 @@ export async function requestServerAccountDeletion(): Promise<DeleteAccountResul
     if (error || !(data as { ok?: boolean } | null)?.ok) {
       return { ok: false, reason: 'failed' };
     }
+    // Server data is gone → mark a pending local wipe so an interrupted
+    // cleanup is finished on next launch.
+    try {
+      await AsyncStorage.setItem(PENDING_WIPE_KEY, '1');
+    } catch {
+      // ignore
+    }
     return { ok: true };
   } catch {
     return { ok: false, reason: 'failed' };
@@ -37,7 +50,29 @@ export async function requestServerAccountDeletion(): Promise<DeleteAccountResul
 export async function wipeLocalAfterDeletion(): Promise<void> {
   try {
     await wipeUserData();
+    // Local cleanup done → clear the pending-wipe marker. (The settings flow
+    // also calls AsyncStorage.clear() right after, which removes it too.)
+    try {
+      await AsyncStorage.removeItem(PENDING_WIPE_KEY);
+    } catch {
+      // ignore
+    }
   } catch {
-    // Non-fatal — startup orphan guard re-wipes on next launch.
+    // Non-fatal — startup orphan guard re-wipes on next launch (flag stays set).
+  }
+}
+
+// Startup guard: if a prior account deletion confirmed server-side but its
+// local wipe didn't finish (process killed mid-flow), complete it now so no
+// PII lingers. Safe for local-only users: the flag is ONLY set after a
+// successful server deletion, never for local-only sessions.
+export async function completeOrphanWipeIfPending(): Promise<void> {
+  try {
+    const pending = await AsyncStorage.getItem(PENDING_WIPE_KEY);
+    if (pending !== '1') return;
+    await wipeUserData();
+    await AsyncStorage.removeItem(PENDING_WIPE_KEY);
+  } catch {
+    // Non-fatal — will retry next launch.
   }
 }

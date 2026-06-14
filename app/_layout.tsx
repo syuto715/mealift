@@ -41,6 +41,7 @@ import {
   reconcileSubscription,
   markAppVersionSeen,
 } from '../src/infra/services/subscriptionSync';
+import { completeOrphanWipeIfPending } from '../src/infra/services/accountDeletionService';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -132,6 +133,15 @@ export default function RootLayout() {
           await getDatabase();
         } catch (dbError) {
           // Continue without DB — app can still show login screen
+        }
+
+        // v1.6.0 Sprint 6 — finish an interrupted account-deletion local wipe
+        // (server delete confirmed but local cleanup didn't complete). No-op
+        // unless the pending-wipe flag is set; safe for local-only users.
+        try {
+          await completeOrphanWipeIfPending();
+        } catch {
+          // Non-fatal.
         }
 
         // Initialize RevenueCat (iOS-only, no-op on Android/missing API key).
