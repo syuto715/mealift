@@ -337,7 +337,12 @@ export default function SubscriptionScreen() {
               // for instant/offline display only; trial_started_at is no longer
               // pushed by profileSync.
               const remote = await startTrialRemote();
-              if (!remote) {
+              // C-1 Codex defer: only confirm a trial when the SERVER says so.
+              // `!remote` = network failure; `!started && !trialStartedAt` =
+              // the EF returned but no server trial exists (e.g. profile row
+              // missing). In neither case grant a local-only trial via a
+              // new Date() fallback — that would desync from the server.
+              if (!remote || (!remote.started && !remote.trialStartedAt)) {
                 Alert.alert(
                   'トライアル開始に失敗しました',
                   '通信状況を確認して、もう一度お試しください。',
@@ -345,6 +350,9 @@ export default function SubscriptionScreen() {
                 );
                 return;
               }
+              // trialStartedAt is guaranteed non-null here (started=true returns
+              // the fresh value; started=false reaches here only with a non-null
+              // existing value).
               const trialStartedAt =
                 remote.trialStartedAt ?? new Date().toISOString();
               await startTrial(profile.id, trialStartedAt);
