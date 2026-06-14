@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { APP_CONFIG } from '../../constants/config';
+import { USER_DATA_TABLES } from './userDataTables';
 import { migrateV1 } from './migrations/v1';
 import { migrateV2 } from './migrations/v2';
 import { migrateV3 } from './migrations/v3';
@@ -309,21 +310,22 @@ export async function closeDatabase(): Promise<void> {
   }
 }
 
-export async function resetAllData(): Promise<void> {
+// Wipe ALL local user data (PII), preserving seeded reference tables. Shared by
+// resetAllData and account-deletion local cleanup. The table list lives in the
+// dependency-free userDataTables module (drift-tested in connection.wipe.test).
+export async function wipeUserData(): Promise<void> {
   const db = await getDatabase();
-  const USER_TABLES = [
-    'meal_log_items',
-    'meal_templates',
-    'workout_sets',
-    'workout_sessions',
-    'workout_routine_items',
-    'workout_routines',
-    'body_logs',
-    'notes',
-    'progress_photos',
-    'profiles',
-  ];
-  for (const table of USER_TABLES) {
-    await db.runAsync(`DELETE FROM ${table}`);
-  }
+  await db.withTransactionAsync(async () => {
+    await db.execAsync('PRAGMA defer_foreign_keys = ON');
+    for (const table of USER_DATA_TABLES) {
+      await db.runAsync(`DELETE FROM ${table}`);
+    }
+  });
+}
+
+// "ローカルデータをリセット" — local-only reset (server data untouched).
+// Now wipes the COMPLETE user-table set (previously missed meal_logs /
+// water_logs / personal_records / weekly_reports / chat / coach_advice etc.).
+export async function resetAllData(): Promise<void> {
+  await wipeUserData();
 }
