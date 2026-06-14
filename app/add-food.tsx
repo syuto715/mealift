@@ -753,7 +753,27 @@ export default function AddFoodScreen() {
         ...extNutrients,
       });
     }
-    router.back();
+    // v1.6.0 Sprint 2 — 手入力 CTA 競合解消: フォーム内「追加」を廃止し下部固定バーを
+    // 唯一の最終 CTA に。追加後は router.back() せずフォームをリセットして modal を維持
+    // (複数追加可)。下部バーは addedCount 増で「追加後」状態に遷移する。
+    resetManualForm();
+  };
+
+  const resetManualForm = () => {
+    setManualName('');
+    setManualCalories(null);
+    setManualProtein(null);
+    setManualFat(null);
+    setManualCarb(null);
+    setManualAmount(100);
+    setManualUnit('g');
+    setManualFiber(null);
+    setManualSalt(null);
+    setManualCalcium(null);
+    setManualIron(null);
+    setManualVitC(null);
+    setSaveAsDish(false);
+    setSaveAsCustom(false);
   };
 
   const handleApplyTemplate = async (template: MealTemplate) => {
@@ -1719,13 +1739,8 @@ export default function AddFoodScreen() {
               />
             </View>
 
-            <Button
-              title="追加"
-              onPress={handleManualAdd}
-              variant="primary"
-              fullWidth
-              disabled={!manualName.trim()}
-            />
+            {/* v1.6.0 Sprint 2 — フォーム内「追加」は廃止。最終 CTA は下部固定バーの
+                「〇〇に追加」(入力中状態)に一本化。 */}
           </ScrollView>
         </KeyboardAvoidingView>
       )}
@@ -1756,7 +1771,11 @@ export default function AddFoodScreen() {
         </View>
       )}
 
-      {/* 下部固定バー (3 状態、合計は現 meal の追加 item から算出) */}
+      {/* 下部固定バー — 文脈依存 3 状態 (v1.6.0 Sprint 2):
+          入力中 (手入力タブでフォーム入力あり) = [キャンセル][〇〇に追加]
+          未入力 (追加ゼロ・入力なし)         = [食べなかった][閉じる]
+          追加後 (1品以上追加済み)            = [内容を見る][完了]
+          手入力フォーム内の「追加」を廃止し、最終 CTA をこのバーに一本化。 */}
       <View style={[styles.bottomBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         <Text style={[styles.bottomBarText, { color: colors.textPrimary }]}>
           {addedCount === 0
@@ -1766,36 +1785,72 @@ export default function AddFoodScreen() {
               : `${mealLabel} ${addedCount}品・${addedCalories} kcal`}
         </Text>
         <View style={styles.bottomBarActions}>
-          {addedCount === 0 ? (
-            // 0kcal のときだけ「食べなかった」を強調 (永続化なし = modal close)。
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={[styles.bottomBarGhost, { borderColor: colors.primary }]}
-              accessibilityRole="button"
-              accessibilityLabel="食べなかった"
-              testID="add-food-skip"
-            >
-              <Text style={[styles.bottomBarGhostText, { color: colors.primary }]}>食べなかった</Text>
-            </TouchableOpacity>
+          {topTab === 'manual' && manualName.trim().length > 0 ? (
+            // 入力中: フォームに入力がある → キャンセル(クリア) / 〇〇に追加(確定)。
+            <>
+              <TouchableOpacity
+                onPress={resetManualForm}
+                style={styles.bottomBarLink}
+                accessibilityRole="button"
+                accessibilityLabel="入力をキャンセル"
+                testID="add-food-manual-cancel"
+              >
+                <Text style={[styles.bottomBarLinkText, { color: colors.textSecondary }]}>キャンセル</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleManualAdd}
+                style={[styles.bottomBarDone, { backgroundColor: colors.primary }]}
+                accessibilityRole="button"
+                accessibilityLabel={`${mealLabel}に追加`}
+                testID="add-food-manual-add"
+              >
+                <Text style={styles.bottomBarDoneText}>{mealLabel}に追加</Text>
+              </TouchableOpacity>
+            </>
+          ) : addedCount === 0 ? (
+            // 未入力: 食べなかった(永続化なしで close) / 閉じる。
+            <>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={[styles.bottomBarGhost, { borderColor: colors.primary }]}
+                accessibilityRole="button"
+                accessibilityLabel="食べなかった"
+                testID="add-food-skip"
+              >
+                <Text style={[styles.bottomBarGhostText, { color: colors.primary }]}>食べなかった</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.bottomBarLink}
+                accessibilityRole="button"
+                accessibilityLabel="閉じる"
+                testID="add-food-close"
+              >
+                <Text style={[styles.bottomBarLinkText, { color: colors.textSecondary }]}>閉じる</Text>
+              </TouchableOpacity>
+            </>
           ) : (
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.bottomBarLink}
-              accessibilityRole="button"
-              accessibilityLabel="内容を見る"
-            >
-              <Text style={[styles.bottomBarLinkText, { color: colors.textSecondary }]}>内容を見る</Text>
-            </TouchableOpacity>
+            // 追加後: 内容を見る / 完了。
+            <>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.bottomBarLink}
+                accessibilityRole="button"
+                accessibilityLabel="内容を見る"
+              >
+                <Text style={[styles.bottomBarLinkText, { color: colors.textSecondary }]}>内容を見る</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={[styles.bottomBarDone, { backgroundColor: colors.primary }]}
+                accessibilityRole="button"
+                accessibilityLabel="完了"
+                testID="add-food-done"
+              >
+                <Text style={styles.bottomBarDoneText}>完了</Text>
+              </TouchableOpacity>
+            </>
           )}
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={[styles.bottomBarDone, { backgroundColor: colors.primary }]}
-            accessibilityRole="button"
-            accessibilityLabel="完了"
-            testID="add-food-done"
-          >
-            <Text style={styles.bottomBarDoneText}>完了</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
