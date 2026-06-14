@@ -8,6 +8,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { USER_DATA_TABLES, REFERENCE_TABLES } from '../userDataTables';
 
 function migrationTables(): string[] {
@@ -75,5 +76,44 @@ describe('local wipe table classification (drift guard)', () => {
       expect(refSet.has(t)).toBe(true);
       expect(userSet.has(t)).toBe(false);
     }
+  });
+});
+
+// Mirrors wipeUserData's foods/exercises partial-wipe (real SQLite). The full
+// wipeUserData needs expo-sqlite; here we pin the mixed-table semantics that
+// the Codex Sprint 6 Critical was about: custom rows go, seed rows stay (with
+// per-user state reset).
+describe('foods/exercises partial wipe (behavioral)', () => {
+  function db(): DatabaseSync {
+    const d = new DatabaseSync(':memory:');
+    d.exec(
+      `CREATE TABLE foods (id TEXT PRIMARY KEY, is_custom INTEGER DEFAULT 0,
+         is_favorite INTEGER DEFAULT 0, use_count INTEGER DEFAULT 0,
+         is_user_added INTEGER DEFAULT 0);
+       CREATE TABLE exercises (id TEXT PRIMARY KEY, is_custom INTEGER DEFAULT 0);`,
+    );
+    return d;
+  }
+  const wipeFoodsExercises = (d: DatabaseSync) => {
+    d.exec(`DELETE FROM foods WHERE is_custom = 1`);
+    d.exec(`UPDATE foods SET is_favorite = 0, use_count = 0, is_user_added = 0`);
+    d.exec(`DELETE FROM exercises WHERE is_custom = 1`);
+  };
+
+  it('deletes custom foods/exercises, keeps seed rows, resets per-user state', () => {
+    const d = db();
+    d.exec(`INSERT INTO foods VALUES ('seed', 0, 1, 9, 1)`); // seed + favorited/used
+    d.exec(`INSERT INTO foods VALUES ('mine', 1, 0, 0, 0)`); // user custom
+    d.exec(`INSERT INTO exercises VALUES ('seed-ex', 0)`);
+    d.exec(`INSERT INTO exercises VALUES ('mine-ex', 1)`);
+
+    wipeFoodsExercises(d);
+
+    const foods = d.prepare(`SELECT id, is_favorite, use_count, is_user_added FROM foods`).all() as Array<{ id: string; is_favorite: number; use_count: number; is_user_added: number }>;
+    expect(foods.map((f) => f.id)).toEqual(['seed']); // custom gone, seed kept
+    expect(foods[0]).toMatchObject({ is_favorite: 0, use_count: 0, is_user_added: 0 }); // state reset
+    const ex = (d.prepare(`SELECT id FROM exercises`).all() as Array<{ id: string }>).map((e) => e.id);
+    expect(ex).toEqual(['seed-ex']);
+    d.close();
   });
 });

@@ -320,6 +320,17 @@ export async function wipeUserData(): Promise<void> {
     for (const table of USER_DATA_TABLES) {
       await db.runAsync(`DELETE FROM ${table}`);
     }
+    // v1.6.0 Sprint 6 — `foods` / `exercises` are MIXED tables (seed reference
+    // rows + user-authored custom rows + per-user state columns), so they are
+    // kept as REFERENCE but cannot be preserved wholesale: delete the user's
+    // custom rows and reset per-user state on the surviving seed rows, or the
+    // prior account's custom foods/exercises + favorites would linger on the
+    // device (Codex Sprint 6 Critical).
+    await db.runAsync(`DELETE FROM foods WHERE is_custom = 1`);
+    await db.runAsync(
+      `UPDATE foods SET is_favorite = 0, use_count = 0, is_user_added = 0`,
+    );
+    await db.runAsync(`DELETE FROM exercises WHERE is_custom = 1`);
   });
 }
 
