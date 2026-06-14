@@ -40,8 +40,13 @@ export function calculatePrediction(input: PredictionInput): PredictionResult | 
   const standardWeeks = remaining / absWeeklyRate;
   const standardDays = Math.round(standardWeeks * 7);
 
-  // Compliance adjustment
-  const complianceFactor = nutritionCompliance * 0.6 + trainingCompliance * 0.4;
+  // Compliance adjustment. When training has no target (trainingCompliance =
+  // null, e.g. a 0-day-per-week user), it is N/A: blend on nutrition alone
+  // (weight 1.0) rather than dragging the factor down with a spurious 0.
+  const complianceFactor =
+    trainingCompliance === null
+      ? nutritionCompliance
+      : nutritionCompliance * 0.6 + trainingCompliance * 0.4;
   const adjustedDays = complianceFactor > 0
     ? Math.round(standardDays / complianceFactor)
     : standardDays * 2;

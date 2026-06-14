@@ -381,6 +381,9 @@ export default function HomeScreen() {
     return calculateNutritionCompliance(weekCals, targetCalories);
   }, [weeklyCaloriesData, targetCalories]);
 
+  // トレ目標が 0(未設定)のとき達成率は測れない → バッジは「—」neutral 表示
+  // (0% 警告色で出さない)。trainingTargetSet が false のとき N/A。
+  const trainingTargetSet = (profile?.trainingDaysPerWeek ?? 3) > 0;
   const trainingCompliance = useMemo(() => {
     return calculateTrainingCompliance(
       recentSessionCount,
@@ -997,9 +1000,21 @@ export default function HomeScreen() {
                 size="sm"
               />
               <Badge
-                label={`トレ ${Math.round(trainingCompliance * 100)}%`}
-                color={trainingCompliance >= 0.7 ? colors.success + '20' : colors.warning + '20'}
-                textColor={trainingCompliance >= 0.7 ? colors.success : colors.warning}
+                label={trainingTargetSet ? `トレ ${Math.round(trainingCompliance * 100)}%` : 'トレ —'}
+                color={
+                  !trainingTargetSet
+                    ? colors.surfaceSecondary
+                    : trainingCompliance >= 0.7
+                      ? colors.success + '20'
+                      : colors.warning + '20'
+                }
+                textColor={
+                  !trainingTargetSet
+                    ? colors.textSecondary
+                    : trainingCompliance >= 0.7
+                      ? colors.success
+                      : colors.warning
+                }
                 size="sm"
               />
             </View>

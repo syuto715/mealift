@@ -84,10 +84,13 @@ export function usePrediction() {
       weeklyCalories,
       targetCalories
     );
-    const trainingCompliance = calculateTrainingCompliance(
-      recentSessionCount,
-      profile.trainingDaysPerWeek ?? 3
-    );
+    // トレ目標が 0(または未設定)のときは N/A(null)を渡し、予測の
+    // complianceFactor に算入しない(0% ペナルティを与えない)。
+    const trainingTarget = profile.trainingDaysPerWeek ?? 3;
+    const trainingCompliance =
+      trainingTarget > 0
+        ? calculateTrainingCompliance(recentSessionCount, trainingTarget)
+        : null;
 
     return calculatePrediction({
       currentWeightAvg7d: avg7d,

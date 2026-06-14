@@ -6,7 +6,9 @@ export interface PredictionInput {
   targetWeight: number;
   goalType: GoalType;
   nutritionCompliance: number;
-  trainingCompliance: number;
+  // null = トレーニング目標が未設定(0日)→ 達成率を測れないので予測の
+  // complianceFactor に算入しない(N/A)。0 と区別する(0 は「目標ありで未達」)。
+  trainingCompliance: number | null;
 }
 
 export interface PredictionResult {
