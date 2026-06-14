@@ -77,7 +77,8 @@ async function applyServerRow(
        source_set_id = excluded.source_set_id,
        observed_at = excluded.observed_at,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(estimated_1rm.updated_at)`,
     [
       row.id,
       row.user_id,

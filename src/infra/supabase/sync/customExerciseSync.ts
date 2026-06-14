@@ -92,7 +92,8 @@ async function applyServerRow(
        met_value = excluded.met_value,
        default_rest_seconds = excluded.default_rest_seconds,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(exercises.updated_at)`,
     [
       row.id,
       row.name_ja,

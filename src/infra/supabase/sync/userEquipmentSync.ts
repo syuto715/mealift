@@ -88,7 +88,8 @@ async function applyServerRow(
        available = excluded.available,
        notes = excluded.notes,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(user_equipment.updated_at)`,
     [
       row.id,
       row.user_id,

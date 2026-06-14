@@ -67,7 +67,8 @@ async function applyServerRow(
        suggestion_json = excluded.suggestion_json,
        status = excluded.status,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(adaptive_goal_suggestions.updated_at)`,
     [
       row.id,
       row.user_id,

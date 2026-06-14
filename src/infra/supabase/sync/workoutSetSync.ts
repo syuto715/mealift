@@ -121,7 +121,8 @@ async function applyServerRow(
        perceived_intensity = excluded.perceived_intensity,
        set_type = excluded.set_type,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(workout_sets.updated_at)`,
     [
       row.id,
       row.session_id,

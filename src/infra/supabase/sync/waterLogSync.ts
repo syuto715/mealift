@@ -56,7 +56,8 @@ async function applyServerRow(
        amount_ml = excluded.amount_ml,
        logged_at = excluded.logged_at,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(water_logs.updated_at)`,
     [
       row.id,
       row.user_id,

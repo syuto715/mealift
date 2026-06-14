@@ -70,7 +70,8 @@ async function applyServerRow(
        pose_type = excluded.pose_type,
        note = excluded.note,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(progress_photos.updated_at)`,
     [
       row.id,
       row.user_id,

@@ -77,7 +77,8 @@ async function applyServerRow(
        achieved_at = excluded.achieved_at,
        session_id = excluded.session_id,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(personal_records.updated_at)`,
     [
       row.id,
       row.user_id,

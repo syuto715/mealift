@@ -69,7 +69,8 @@ async function applyServerRow(
        muscle_mass_kg = excluded.muscle_mass_kg,
        note = excluded.note,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(body_logs.updated_at)`,
     [
       row.id,
       row.user_id,

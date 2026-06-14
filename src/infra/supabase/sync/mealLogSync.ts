@@ -56,7 +56,8 @@ async function applyServerRow(
        date = excluded.date,
        meal_type = excluded.meal_type,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(meal_logs.updated_at)`,
     [
       row.id,
       row.user_id,

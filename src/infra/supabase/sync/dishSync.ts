@@ -114,7 +114,8 @@ async function applyServerRow(
        last_used_at = excluded.last_used_at,
        user_note = excluded.user_note,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(dishes.updated_at)`,
     [
       row.id,
       row.name_ja,

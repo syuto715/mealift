@@ -185,7 +185,8 @@ async function applyServerRow(
        salt_g = excluded.salt_g,
        note = excluded.note,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(meal_log_items.updated_at)`,
     [
       row.id,
       row.meal_log_id,

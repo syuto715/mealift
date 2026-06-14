@@ -127,7 +127,8 @@ async function applyServerRow(
        completed_at = excluded.completed_at,
        dismissed_at = excluded.dismissed_at,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(deload_recommendations.updated_at)`,
     [
       row.id,
       row.user_id,

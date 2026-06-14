@@ -84,7 +84,8 @@ async function applyServerRow(
        set_pattern = excluded.set_pattern,
        pattern_config = excluded.pattern_config,
        updated_at = excluded.updated_at,
-       synced_at = excluded.synced_at`,
+       synced_at = excluded.synced_at
+       WHERE datetime(excluded.updated_at) > datetime(workout_routine_items.updated_at)`,
     [
       row.id,
       row.routine_id,
