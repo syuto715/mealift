@@ -660,12 +660,14 @@ export default function HomeScreen() {
               </View>
               {healthKitActive && healthKitCalories > 0 && (
                 <View style={styles.calorieAttributionRow}>
-                  <Ionicons name="heart" size={11} color={colors.textTertiary} />
-                  <Text
-                    style={[styles.calorieAttributionText, { color: colors.textTertiary }]}
+                  <View
+                    style={[styles.healthBadge, { backgroundColor: colors.primary + '14' }]}
                   >
-                    Appleヘルスケアから取得
-                  </Text>
+                    <Ionicons name="heart" size={10} color={colors.primary} />
+                    <Text style={[styles.healthBadgeText, { color: colors.primary }]}>
+                      ヘルスケア連携済み
+                    </Text>
+                  </View>
                 </View>
               )}
               <View style={[styles.calorieRow, styles.balanceRow, { borderTopColor: colors.border }]}>
@@ -1140,7 +1142,9 @@ const styles = StyleSheet.create({
   calorieRow: { flexDirection: 'row', justifyContent: 'space-between' },
   balanceRow: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.xs, marginTop: spacing.xs },
   calorieLabel: { ...typography.bodyMedium },
-  calorieValue: { ...typography.numberMedium },
+  // v1.6.0 Sprint 2 — 数値強弱: 目標/摂取/運動分 は通常サイズ(numberSmall)に下げ、
+  // 残り(remainingRowValue で numberMedium に上書き)を際立たせる。
+  calorieValue: { ...typography.numberSmall },
   calorieAttributionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1148,10 +1152,16 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: -4,
   },
-  calorieAttributionText: {
-    ...typography.labelSmall,
-    fontSize: 10,
+  // v1.6.0 Sprint 2 — ヘルスケア連携を小さいバッジに控えめ化。
+  healthBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 9999,
   },
+  healthBadgeText: { ...typography.labelSmall, fontSize: 9, fontWeight: '600' },
   pfcContainer: { gap: spacing.lg },
   balanceLink: {
     flexDirection: 'row',
@@ -1253,8 +1263,9 @@ const styles = StyleSheet.create({
   ringColumn: { alignItems: 'center', gap: spacing.xs },
   remainingUnit: { ...typography.labelSmall },
   ringCaption: { ...typography.labelSmall, marginTop: spacing.xs },
-  remainingRowLabel: { fontWeight: '700' },
-  remainingRowValue: { fontWeight: '700' },
+  remainingRowLabel: { ...typography.bodyLarge, fontWeight: '700' },
+  // 残り だけ大きめ・太字(目標/摂取/運動分 の numberSmall を numberMedium で上書き)。
+  remainingRowValue: { ...typography.numberMedium },
   meeCard: { borderWidth: 1, gap: spacing.sm },
   meeHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   meeAvatar: {
