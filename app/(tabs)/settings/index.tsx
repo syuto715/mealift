@@ -28,6 +28,14 @@ import { canUse } from '../../../src/infra/services/subscriptionService';
 import { exportCsv, ExportType, TYPE_LABELS } from '../../../src/infra/services/csvExportService';
 import { LEGAL } from '../../../src/constants/legal';
 import { resetAllData } from '../../../src/infra/database/connection';
+import {
+  requestServerAccountDeletion,
+  wipeLocalAfterDeletion,
+} from '../../../src/infra/services/accountDeletionService';
+
+// iOS App Store subscription management. Account deletion does NOT cancel an
+// active App Store subscription — only the user can, here.
+const APP_STORE_SUBSCRIPTIONS_URL = 'itms-apps://apps.apple.com/account/subscriptions';
 
 const STORAGE_KEY_REST_TIMER = 'setting_rest_timer';
 const STORAGE_KEY_THEME = 'setting_theme';
@@ -177,6 +185,75 @@ export default function SettingsScreen() {
       },
     ]);
   }, [logout]);
+
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const executeAccountDeletion = useCallback(async () => {
+    if (deletingAccount) return;
+    setDeletingAccount(true);
+    try {
+      const result = await requestServerAccountDeletion();
+      if (!result.ok) {
+        Alert.alert(
+          '削除に失敗しました',
+          '通信状況を確認して、もう一度お試しください。データは削除されていません。',
+          [{ text: 'OK' }],
+        );
+        return;
+      }
+      // Server account is gone → wipe local + clear storage + sign out.
+      await wipeLocalAfterDeletion();
+      try {
+        await AsyncStorage.clear();
+      } catch {
+        // ignore
+      }
+      await logout();
+      router.replace('/(auth)/login');
+    } finally {
+      setDeletingAccount(false);
+    }
+  }, [deletingAccount, logout]);
+
+  const handleDeleteAccount = useCallback(() => {
+    // Step 1 — explain irreversibility + that the App Store subscription is
+    // NOT cancelled by deletion (Apple rule: only the user can cancel).
+    Alert.alert(
+      'アカウントを削除',
+      'アカウントとすべてのデータ(体重・食事・トレーニング・コーチ履歴など)がサーバーからも完全に削除されます。この操作は取り消せません。\n\n【ご注意】サブスクリプションは自動的に解約されません。継続課金を止めるには、App Store の設定からご自身で解約してください。',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        ...(Platform.OS === 'ios'
+          ? [
+              {
+                text: 'サブスクの解約方法',
+                onPress: () =>
+                  Linking.openURL(APP_STORE_SUBSCRIPTIONS_URL).catch(() => {}),
+              },
+            ]
+          : []),
+        {
+          text: '削除に進む',
+          style: 'destructive' as const,
+          onPress: () => {
+            // Step 2 — final confirmation.
+            Alert.alert(
+              '本当に削除しますか？',
+              'この操作は取り消せません。アカウントと全データが完全に削除されます。',
+              [
+                { text: 'キャンセル', style: 'cancel' },
+                {
+                  text: 'アカウントを削除',
+                  style: 'destructive',
+                  onPress: executeAccountDeletion,
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
+  }, [executeAccountDeletion]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
@@ -435,8 +512,8 @@ export default function SettingsScreen() {
           onPress={handleResetData}
           activeOpacity={0.7}
         >
-          <Ionicons name="trash-outline" size={20} color={colors.error} />
-          <Text style={[styles.logoutText, { color: colors.error }]}>すべてのデータを削除</Text>
+          <Ionicons name="refresh-outline" size={20} color={colors.error} />
+          <Text style={[styles.logoutText, { color: colors.error }]}>ローカルデータをリセット</Text>
         </TouchableOpacity>
 
         {!isLocalOnly && (
@@ -447,6 +524,23 @@ export default function SettingsScreen() {
           >
             <Ionicons name="log-out-outline" size={20} color={colors.error} />
             <Text style={[styles.logoutText, { color: colors.error }]}>ログアウト</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* v1.6.0 Sprint 6 — App Store 5.1.1(v): アプリ内アカウント削除。
+            サーバー(auth.users)を削除し全データを cascade 削除。local-only
+            ユーザーはサーバーアカウントが無いので非表示。 */}
+        {!isLocalOnly && (
+          <TouchableOpacity
+            style={[styles.logoutButton, { backgroundColor: colors.error + '15' }]}
+            onPress={handleDeleteAccount}
+            activeOpacity={0.7}
+            disabled={deletingAccount}
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.error} />
+            <Text style={[styles.logoutText, { color: colors.error }]}>
+              {deletingAccount ? '削除しています…' : 'アカウントを削除'}
+            </Text>
           </TouchableOpacity>
         )}
 
