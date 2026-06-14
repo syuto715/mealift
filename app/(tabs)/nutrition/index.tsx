@@ -658,7 +658,11 @@ export default function NutritionScreen() {
                   style={[
                     styles.addButton,
                     styles.mealActionLeft,
-                    { borderColor: colors.primary },
+                    // 食品を追加 = 薄青塗り(主動線)。枠は背景と同色で目立たせない。
+                    {
+                      backgroundColor: colors.primary + '1A',
+                      borderColor: colors.primary + '1A',
+                    },
                   ]}
                   onPress={() =>
                     router.push({
@@ -680,7 +684,9 @@ export default function NutritionScreen() {
                   style={[
                     styles.addButton,
                     styles.mealActionRight,
+                    // AIで記録 = 白背景 + 青枠(副動線)。
                     {
+                      backgroundColor: colors.surface,
                       borderColor: hasFeature('aiNutritionEstimate')
                         ? colors.primary
                         : colors.textTertiary,
@@ -973,7 +979,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.sm,
     borderWidth: 1.5,
-    borderStyle: 'dashed',
+    // v1.6.0 Sprint 2 — 点線(dashed)を廃止し通常ボタンに。背景は各ボタンで差別化
+    // (食品を追加=薄青塗り / AIで記録=白+青枠)。
   },
   addButtonText: { ...typography.labelMedium },
   // Phase 4C-3 — meal-type action row: 「食品を追加」 + 「📷 AI で記録」.
