@@ -48,12 +48,14 @@ export const COACH_THEMES: CoachTheme[] = [
   },
   {
     id: 'pace',
-    cardTitle: '痩せるペース',
-    cardDescription: '減量ペースは適切か',
+    // v1.6.0 Sprint 3 — goal-agnostic 文言に(増量ユーザーにも合う)。prompt は
+    // 既に「体重の変化ペース」で agnostic なので表示文言のみ汎用化。
+    cardTitle: '体重変化のペース',
+    cardDescription: '体重変化のペースは適切か',
     icon: 'trending-down-outline',
     prompt:
       '今の体重の変化ペースは適切ですか？ 無理のないペースか教えてください。',
-    autoTitle: '減量ペースの相談',
+    autoTitle: '体重変化ペースの相談',
   },
   {
     id: 'workout',

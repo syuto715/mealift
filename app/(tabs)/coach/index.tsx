@@ -311,7 +311,7 @@ export default function CoachConversationList() {
                 {theme.cardTitle}
               </Text>
               <Text
-                style={[styles.themeDesc, { color: colors.textTertiary }]}
+                style={[styles.themeDesc, { color: colors.textSecondary }]}
                 numberOfLines={2}
               >
                 {theme.cardDescription}
