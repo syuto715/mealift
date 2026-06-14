@@ -44,3 +44,9 @@ verify_jwt = true
 # Called with the user's Supabase JWT; gateway JWT verification stays ON.
 [functions.start-trial]
 verify_jwt = true
+
+# delete-account — client-invoked account deletion (App Store 5.1.1(v)).
+# userId comes from the verified JWT only; deletes the caller's own account
+# via service_role auth.admin.deleteUser (cascades all user tables).
+[functions.delete-account]
+verify_jwt = true
