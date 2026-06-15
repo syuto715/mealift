@@ -5,6 +5,9 @@ import { signIn, signUp, signOut, signInWithApple } from '../infra/supabase/auth
 import { generateId } from '../utils/id';
 import { getDatabase } from '../infra/database/connection';
 import { claimLocalDataForUser } from '../infra/database/dataReconciliation';
+import { setTier } from '../infra/services/subscriptionService';
+import { useProfileStore } from './profileStore';
+import { queryClient } from '../infra/query/queryClient';
 
 interface AuthUser {
   id: string;
@@ -258,6 +261,19 @@ export const useAuthStore = create<AuthState>()(
           useDiagnosticStore.getState().reset();
         } catch {
           // No-op.
+        }
+        // v1.6.1 — in-memory cross-user leak on same-process account switch
+        // (full-code audit C-1, distinct from the C-1 plan-escalation issue).
+        // Reset the module-level subscription tier, the profile store, and the
+        // TanStack Query cache so User B never sees User A's tier / profile /
+        // HealthKit-derived data in the window before re-login repopulates.
+        // Static imports (light, no cycle) so the reset is deterministic.
+        try {
+          setTier('free');
+          useProfileStore.getState().clearProfile();
+          queryClient.clear();
+        } catch {
+          // No-op — best-effort in-memory reset.
         }
       },
 

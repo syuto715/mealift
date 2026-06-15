@@ -8,7 +8,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '../src/infra/query/queryClient';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors } from '../src/theme/tokens';
 import { loadFontWithRetry } from '../src/utils/loadFontWithRetry';
@@ -45,18 +46,8 @@ import { completeOrphanWipeIfPending } from '../src/infra/services/accountDeleti
 
 SplashScreen.preventAutoHideAsync();
 
-// Single shared QueryClient for the app. HealthKit reads are the first
-// consumer — modest staleTime keeps today's calories fresh without over-
-// fetching when the user navigates between tabs.
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60_000,
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+// v1.6.1 — the shared QueryClient now lives in src/infra/query/queryClient.ts
+// so authStore.logout can clear it (cross-user cache leak fix).
 
 const SPLASH_TIMEOUT_MS = 5000;
 
