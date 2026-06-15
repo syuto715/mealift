@@ -220,6 +220,7 @@ serve(async (req) => {
       (replay.content as string) ?? '',
       (replay.status as string) ?? 'final',
       (replay.model as string) ?? 'gemini-2.5-flash',
+      userId,
     );
   }
 
@@ -885,6 +886,7 @@ function replayStream(
   content: string,
   status: string,
   model: string,
+  userId: string,
 ): Response {
   if (status === 'pending') {
     return jsonResponse(
