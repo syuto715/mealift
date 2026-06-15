@@ -8,9 +8,9 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 // What gets remapped, in a single transaction with deferred FK checks:
 //   - profiles.id          → authUid
 //   - profiles.supabase_uid → authUid (also marks the profile as claimed)
-//   - 8 child tables' profile_id column (body_logs, workout_routines,
+//   - 11 child tables' profile_id column (body_logs, workout_routines,
 //     workout_sessions, meal_logs, notes, meal_templates, weekly_reports,
-//     progress_photos)
+//     progress_photos, estimated_1rm, user_equipment, deload_recommendations)
 //   - 3 child tables' user_id column (personal_records, water_logs,
 //     adaptive_goal_suggestions)
 //
@@ -48,6 +48,15 @@ const TABLES_WITH_PROFILE_ID: readonly string[] = [
   'meal_templates',
   'weekly_reports',
   'progress_photos',
+  // v1.6.1 — these three local tables also carry `profile_id` (estimated_1rm
+  // v26, user_equipment v28, deload_recommendations v29) but were missing from
+  // the remap. Without them, a user who created 1RM / equipment / deload data
+  // in local-only mode then signed in with Apple had those rows stranded under
+  // the old random local UUID — invisible to all queries keyed on the new
+  // profile id (silent data loss). Adding them remaps profile_id → authUid.
+  'estimated_1rm',
+  'user_equipment',
+  'deload_recommendations',
 ];
 
 const TABLES_WITH_USER_ID: readonly string[] = [
