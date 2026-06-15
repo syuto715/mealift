@@ -15,7 +15,7 @@ export type ExportType = 'weight' | 'nutrition' | 'training' | 'all';
 async function generateWeightCsv(profileId: string): Promise<string> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT date, weight_kg, body_fat_pct FROM body_logs WHERE profile_id = ? ORDER BY date',
+    'SELECT date, weight_kg, body_fat_pct FROM body_logs WHERE profile_id = ? AND deleted_at IS NULL ORDER BY date',
     [profileId],
   );
 
@@ -33,7 +33,7 @@ async function generateNutritionCsv(profileId: string): Promise<string> {
             mli.calories, mli.protein_g, mli.fat_g, mli.carb_g
      FROM meal_log_items mli
      JOIN meal_logs ml ON mli.meal_log_id = ml.id
-     WHERE ml.profile_id = ?
+     WHERE ml.profile_id = ? AND ml.deleted_at IS NULL AND mli.deleted_at IS NULL
      ORDER BY ml.date, ml.meal_type`,
     [profileId],
   );
@@ -53,7 +53,7 @@ async function generateTrainingCsv(profileId: string): Promise<string> {
      FROM workout_sets wss
      JOIN workout_sessions ws ON wss.session_id = ws.id
      JOIN exercises e ON wss.exercise_id = e.id
-     WHERE ws.profile_id = ?
+     WHERE ws.profile_id = ? AND ws.deleted_at IS NULL AND wss.deleted_at IS NULL
      ORDER BY ws.date`,
     [profileId],
   );

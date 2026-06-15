@@ -44,4 +44,12 @@ describe('calculatePrediction — compliance N/A (v1.6.0 Sprint 3)', () => {
     const r = calculatePrediction(baseInput({ currentWeightAvg7d: 70 }));
     expect(r!.standard.days).toBe(0);
   });
+
+  it('currentWeightAvg7d=0 does not divide-by-zero in pace label (v1.6.1)', () => {
+    const r = calculatePrediction(baseInput({ currentWeightAvg7d: 0 }));
+    expect(r).not.toBeNull();
+    expect(r!.paceLabel).toBe('on_track');
+    // sanity: no Infinity/NaN leaked into day counts
+    expect(Number.isFinite(r!.standard.days)).toBe(true);
+  });
 });

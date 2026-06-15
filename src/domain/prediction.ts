@@ -83,6 +83,10 @@ function getPaceLabel(
   goalType: GoalType
 ): PaceLabel {
   const thresholds = PACE_THRESHOLDS[goalType];
+  // v1.6.1 — guard against currentWeight <= 0 (corrupt/default data): division
+  // would yield Infinity and mis-classify the pace label. Match bmi.ts's
+  // defensive pattern and treat unmeasurable as on-track.
+  if (currentWeight <= 0) return 'on_track';
   const weeklyPct = Math.abs(weeklyRate) / currentWeight;
 
   if (goalType === 'cut') {

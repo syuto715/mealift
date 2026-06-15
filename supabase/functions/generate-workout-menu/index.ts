@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { buildLLMDefenseParagraph } from '../_shared/llmSecurity.ts';
 
 // ===========================================================================
 // Build 15 / Session 8 / Feature 5-元 — generate-workout-menu Edge Function
@@ -438,6 +439,18 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
+        // v1.6.1 — L3 defensive systemInstruction (parity with coach-chat /
+        // coach-routine / estimate-* / nutrition-advice). Refuses jailbreak /
+        // role-override / system-prompt-extraction and returns to the task.
+        systemInstruction: {
+          parts: [
+            {
+              text: buildLLMDefenseParagraph(
+                '本来のトレーニングメニュー生成に戻ります。',
+              ),
+            },
+          ],
+        },
         generationConfig: {
           responseMimeType: 'application/json',
           temperature: 0.4,
