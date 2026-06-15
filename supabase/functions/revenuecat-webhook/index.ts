@@ -4,6 +4,7 @@ import {
   deriveWebhookUpdate,
   isValidAppUserId,
 } from '../_shared/subscription.ts';
+import { constantTimeEqual } from '../_shared/timingSafe.ts';
 
 // v1.6.0 Sprint 1b — RevenueCat webhook EF (C-1 server-source-of-truth).
 //
@@ -40,21 +41,8 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-// Length-independent constant-time compare of the content bytes. (The length
-// of a shared secret is not itself sensitive.)
-function constantTimeEqual(a: string, b: string): boolean {
-  const enc = new TextEncoder();
-  const ab = enc.encode(a);
-  const bb = enc.encode(b);
-  if (ab.length !== bb.length) {
-    let r = 1;
-    for (let i = 0; i < ab.length; i++) r |= ab[i] ^ (bb[i % (bb.length || 1)] ?? 0);
-    return false;
-  }
-  let diff = 0;
-  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
-  return diff === 0;
-}
+// constantTimeEqual now lives in ../_shared/timingSafe.ts (shared with the
+// cron EFs). Imported at the top of this file.
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

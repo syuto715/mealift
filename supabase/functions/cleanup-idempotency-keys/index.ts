@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { constantTimeEqual } from '../_shared/timingSafe.ts';
 
 // v1.5 Stage 1 Phase 1.1 — cleanup-idempotency-keys Edge Function.
 //
@@ -61,7 +62,7 @@ serve(async (req) => {
   // [functions.cleanup-idempotency-keys].
   const authHeader = req.headers.get('Authorization') ?? '';
   const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!provided || provided !== CRON_SECRET) {
+  if (!provided || !constantTimeEqual(provided, CRON_SECRET)) {
     return jsonResponse(
       { error: 'unauthorized', message: 'cron secret mismatch' },
       401,

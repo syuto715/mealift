@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { constantTimeEqual } from '../_shared/timingSafe.ts';
 
 // send-push-notifications — outbox drainer Edge Function.
 //
@@ -189,7 +190,8 @@ serve(async (req) => {
   // 1. Cron-secret auth. Bearer header — pg_cron sets this from
   //    vault.decrypted_secrets at job-fire time.
   const auth = req.headers.get('authorization') ?? '';
-  if (auth !== `Bearer ${CRON_SECRET}`) {
+  const provided = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!constantTimeEqual(provided, CRON_SECRET)) {
     return jsonResponse({ error: 'unauthorized' }, 401);
   }
 
