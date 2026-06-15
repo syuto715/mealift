@@ -333,10 +333,30 @@ export async function saveFood(
 
   // Upsert by barcode when provided so repeat OFF lookups replace the cached row.
   if (input.barcode) {
-    const existing = await db.getFirstAsync<{ id: string }>(
-      'SELECT id FROM foods WHERE barcode = ? AND deleted_at IS NULL LIMIT 1',
+    const existing = await db.getFirstAsync<{
+      id: string;
+      is_custom: number;
+      is_user_added: number;
+    }>(
+      'SELECT id, is_custom, is_user_added FROM foods WHERE barcode = ? AND deleted_at IS NULL LIMIT 1',
       [input.barcode],
     );
+    // v1.6.1 — do NOT let a non-user-authored import (e.g. Open Food Facts,
+    // opts.isUserAdded !== true) overwrite the user's own custom/user-added
+    // food that happens to share a barcode. Preserve the user's row and return
+    // it unchanged (silent data-loss fix). A genuine user save (isUserAdded:
+    // true) still upserts.
+    if (
+      existing &&
+      opts.isUserAdded !== true &&
+      (existing.is_custom === 1 || existing.is_user_added === 1)
+    ) {
+      const row = await db.getFirstAsync<Record<string, unknown>>(
+        'SELECT * FROM foods WHERE id = ?',
+        [existing.id],
+      );
+      return rowToFood(row!);
+    }
     if (existing) {
       const setClauses = [
         'name_ja = ?',
