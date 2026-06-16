@@ -6,7 +6,7 @@ import type { ExpoConfig } from '@expo/config-types';
 const config: ExpoConfig = {
   name: 'ミーリフト',
   slug: 'mealift',
-  version: '1.5.0',
+  version: '1.6.1',
   orientation: 'portrait',
   scheme: 'mealift',
   icon: './assets/icon.png',
