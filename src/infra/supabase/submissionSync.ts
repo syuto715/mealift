@@ -3,7 +3,6 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { supabase as defaultSupabase } from './client';
 import {
   listPendingSync,
-  listSubmissionsByStatus,
   markSubmissionSynced,
 } from '../repositories/userSubmittedFoodRepository';
 import {
@@ -11,10 +10,6 @@ import {
   setWatermark,
   SYNC_WATERMARK_KEYS,
 } from '../repositories/syncWatermarkRepository';
-import {
-  computeApprovalScore,
-  type ApprovalScoreInput,
-} from '../../domain/submission/approvalScore';
 import type { UserSubmittedFood } from '../../types/userSubmittedFood';
 
 // submissionSync — push local user_submitted_foods to public_foods,
@@ -40,21 +35,16 @@ import type { UserSubmittedFood } from '../../types/userSubmittedFood';
 //   - The OFF (Open Food Facts) lookup does NOT happen inside this
 //     module. That probe belongs at submission time so the user can
 //     see "barcode matched / not matched" feedback in the moment.
-//     Sync passes `barcodeMatch: 'skipped'` so the score isn't
-//     dragged down by a network probe we deliberately didn't run.
-//   - status is ALWAYS `'pending_review'` on upload. The server's
-//     RLS policy enforces this; the client never sets `'approved'`.
-//     The auto-approval routing (score → status) is done by an
-//     admin/trigger on the server, not here.
+//     The sync path does not compute approval_score locally. It sends
+//     row data to the `submit_public_food` RPC, where server-side
+//     scoring and status routing happen.
 
 // ---------------------------------------------------------------------------
 // Result shapes — the caller (UI) reads these to render sync indicators.
 // ---------------------------------------------------------------------------
 
 export type UploadSkipReason =
-  | 'supabase_not_configured'
-  | 'not_authenticated'
-  | 'nothing_pending';
+  'supabase_not_configured' | 'not_authenticated' | 'nothing_pending';
 
 export interface UploadResult {
   uploaded: number;
@@ -63,9 +53,7 @@ export interface UploadResult {
   skipped: UploadSkipReason | null;
 }
 
-export type PullSkipReason =
-  | 'supabase_not_configured'
-  | 'remote_error';
+export type PullSkipReason = 'supabase_not_configured' | 'remote_error';
 
 export interface PullResult {
   pulled: number;
@@ -92,14 +80,9 @@ const RETRY_BASE_DELAY_MS = 500;
 // Helpers
 // ---------------------------------------------------------------------------
 
-// Map a UserSubmittedFood (camelCase) to the snake_case row shape that
-// `public_foods` expects. The status is hardcoded — the client never
-// sets `approved`; that's the server's call.
-function toPublicFoodRow(
-  row: UserSubmittedFood,
-  approvalScore: number,
-  submittedBy: string,
-): Record<string, unknown> {
+// Map a UserSubmittedFood (camelCase) to the snake_case payload accepted by
+// `submit_public_food`. Trust-boundary fields are intentionally omitted.
+function toPublicFoodPayload(row: UserSubmittedFood): Record<string, unknown> {
   return {
     id: row.id,
     name_ja: row.nameJa,
@@ -134,9 +117,6 @@ function toPublicFoodRow(
     source_photo_url: row.sourcePhotoUri,
     notes: row.notes,
     food_category: row.foodCategory,
-    status: 'pending_review',
-    submitted_by: submittedBy,
-    approval_score: approvalScore,
   };
 }
 
@@ -156,7 +136,7 @@ async function delay(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// upsertWithBackoff — single-row upsert with exponential backoff on
+// upsertWithBackoff — single-row RPC submit with exponential backoff on
 // 429. Throws on terminal failure (caller treats per-row throw as
 // "leave local state alone, count as failed"). Other (non-429)
 // errors fail fast — backing off won't help a 400.
@@ -165,62 +145,18 @@ async function upsertWithBackoff(
   payload: Record<string, unknown>,
 ): Promise<void> {
   for (let attempt = 0; attempt < RETRY_MAX_ATTEMPTS; attempt++) {
-    const { error } = await client
-      .from('public_foods')
-      .upsert(payload, { onConflict: 'id' });
+    const { error } = await client.rpc('submit_public_food', { payload });
     if (!error) return;
     if (!isRateLimited(error)) {
       throw new Error(
-        `public_foods upsert failed: ${error.message ?? 'unknown error'}`,
+        `submit_public_food failed: ${error.message ?? 'unknown error'}`,
       );
     }
     if (attempt + 1 < RETRY_MAX_ATTEMPTS) {
       await delay(RETRY_BASE_DELAY_MS * Math.pow(2, attempt));
     }
   }
-  throw new Error('public_foods upsert: rate-limited after max retries');
-}
-
-// hasGenericSimilarity — quick "is there already a roughly-similar
-// food in local foods?" check. Used as a small approval-score signal
-// — we don't need true similarity (trigram, embedding) here; a name
-// substring is enough to indicate "the user is submitting something
-// the canonical DB already covers." Matches the case-insensitive
-// LIKE used elsewhere in foodRepository's search path.
-async function hasGenericSimilarity(
-  db: SQLiteDatabase,
-  nameJa: string,
-): Promise<boolean> {
-  const trimmed = nameJa.trim();
-  if (trimmed.length === 0) return false;
-  const row = await db.getFirstAsync<{ matches: number }>(
-    `SELECT COUNT(*) AS matches FROM foods WHERE name_ja LIKE ? LIMIT 1`,
-    [`%${trimmed}%`],
-  );
-  return (row?.matches ?? 0) > 0;
-}
-
-// buildScoreInput — assembles the inputs for computeApprovalScore at
-// upload time. Pulled out for testability and so future score-input
-// additions land here, not in the orchestration loop.
-async function buildScoreInput(
-  db: SQLiteDatabase,
-  row: UserSubmittedFood,
-  submitterHistory: ApprovalScoreInput['submitterHistory'],
-  auth: ApprovalScoreInput['auth'],
-): Promise<ApprovalScoreInput> {
-  const similarity = await hasGenericSimilarity(db, row.nameJa);
-  return {
-    proteinG: row.proteinG,
-    fatG: row.fatG,
-    carbG: row.carbG,
-    caloriesPerServing: row.caloriesPerServing,
-    hasImage: row.sourcePhotoUri !== null,
-    barcodeMatch: 'skipped',
-    submitterHistory,
-    hasGenericSimilarity: similarity,
-    auth,
-  };
+  throw new Error('submit_public_food: rate-limited after max retries');
 }
 
 // ---------------------------------------------------------------------------
@@ -246,32 +182,11 @@ export async function uploadPendingSubmissions(
     return { uploaded: 0, failed: 0, skipped: 'nothing_pending' };
   }
 
-  const approved = await listSubmissionsByStatus(db, 'approved');
-  const rejected = await listSubmissionsByStatus(db, 'rejected');
-  const submitterHistory = {
-    approvedCount: approved.length,
-    rejectedCount: rejected.length,
-    pendingCount: pending.length,
-  };
-
-  const userId = session.user.id;
-  const auth = {
-    registered: true,
-    emailVerified: session.user.email_confirmed_at != null,
-  };
-
   let uploaded = 0;
   let failed = 0;
   for (const row of pending) {
     try {
-      const scoreInput = await buildScoreInput(
-        db,
-        row,
-        submitterHistory,
-        auth,
-      );
-      const score = computeApprovalScore(scoreInput);
-      const payload = toPublicFoodRow(row, score.total, userId);
+      const payload = toPublicFoodPayload(row);
       await upsertWithBackoff(client, payload);
       // Remote id mirrors the local id (idempotent upsert key).
       await markSubmissionSynced(db, row.id, row.id);
@@ -315,7 +230,11 @@ export async function pullApprovedSubmissions(
   client: SupabaseClient | null = defaultSupabase,
 ): Promise<PullResult> {
   if (!client) {
-    return { pulled: 0, skipped: 'supabase_not_configured', newWatermark: null };
+    return {
+      pulled: 0,
+      skipped: 'supabase_not_configured',
+      newWatermark: null,
+    };
   }
 
   const watermark =
@@ -323,7 +242,7 @@ export async function pullApprovedSubmissions(
     EPOCH_WATERMARK;
 
   const { data, error } = await client
-    .from('public_foods')
+    .from('approved_public_foods')
     .select(
       'id, name_ja, name_en, brand, barcode, serving_size_g, serving_unit, calories_per_serving, protein_g, fat_g, carb_g, fiber_g, updated_at',
     )
@@ -386,11 +305,7 @@ export async function pullApprovedSubmissions(
   // Server returned rows ordered by updated_at ASC, so the last row's
   // timestamp is the high-water mark for this batch.
   const newWatermark = rows[rows.length - 1].updated_at;
-  await setWatermark(
-    db,
-    SYNC_WATERMARK_KEYS.publicFoodsApproved,
-    newWatermark,
-  );
+  await setWatermark(db, SYNC_WATERMARK_KEYS.publicFoodsApproved, newWatermark);
 
   return { pulled: rows.length, skipped: null, newWatermark };
 }

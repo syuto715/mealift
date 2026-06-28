@@ -10,7 +10,7 @@ import {
 } from '../../domain/badges/badgeEvaluator';
 import { supabase } from '../supabase/client';
 
-// Glue between submission data + Supabase use_count + the pure
+// Glue between submission data + Supabase approved_public_foods use_count + the pure
 // evaluator + the user_badges ledger. Returns badges that were
 // NEWLY granted on this call so the caller can render a toast.
 //
@@ -24,7 +24,7 @@ async function fetchTotalUseCount(
   if (remoteIds.length === 0 || !supabase) return 0;
   try {
     const { data, error } = await supabase
-      .from('public_foods')
+      .from('approved_public_foods')
       .select('use_count')
       .in('id', remoteIds);
     if (error) return null;

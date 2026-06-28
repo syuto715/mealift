@@ -29,7 +29,7 @@ import type {
 //
 // Loaded states:
 //   - Local list via listAllSubmissions (newest first)
-//   - use_count for approved rows fetched live from public_foods on
+//   - use_count for approved rows fetched live from approved_public_foods on
 //     mount. Server is the source of truth for use_count (it changes
 //     whenever any user logs the food); caching locally would lie.
 //     Fail-soft: if Supabase is unreachable, rows show "—" instead.
@@ -97,7 +97,7 @@ export default function MySubmissionsScreen() {
     }
     try {
       const { data, error: queryError } = await supabase
-        .from('public_foods')
+        .from('approved_public_foods')
         .select('id, use_count')
         .in('id', remoteIds);
       if (queryError) throw queryError;

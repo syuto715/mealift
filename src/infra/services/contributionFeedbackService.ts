@@ -64,7 +64,7 @@ async function writeStoredTotal(total: number): Promise<void> {
   }
 }
 
-// Fetches use_count totals from public_foods for all approved local
+// Fetches use_count totals from approved_public_foods for all approved local
 // submissions. Returns null when Supabase is unreachable or there
 // are no approved submissions yet (so the caller can no-op).
 export async function fetchContributionStats(
@@ -80,7 +80,7 @@ export async function fetchContributionStats(
   }
   try {
     const { data, error } = await supabase
-      .from('public_foods')
+      .from('approved_public_foods')
       .select('use_count')
       .in('id', remoteIds);
     if (error) return null;

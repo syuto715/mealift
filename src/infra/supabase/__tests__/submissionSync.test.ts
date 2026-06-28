@@ -7,7 +7,6 @@ import {
 } from '../submissionSync';
 import {
   listPendingSync,
-  listSubmissionsByStatus,
   markSubmissionSynced,
 } from '../../repositories/userSubmittedFoodRepository';
 import {
@@ -28,7 +27,6 @@ jest.mock('../client', () => ({ supabase: null }));
 // breaks under jest's transform setup).
 jest.mock('../../repositories/userSubmittedFoodRepository', () => ({
   listPendingSync: jest.fn(),
-  listSubmissionsByStatus: jest.fn(),
   markSubmissionSynced: jest.fn(),
 }));
 jest.mock('../../repositories/syncWatermarkRepository', () => ({
@@ -40,35 +38,29 @@ jest.mock('../../repositories/syncWatermarkRepository', () => ({
 const mockListPendingSync = listPendingSync as jest.MockedFunction<
   typeof listPendingSync
 >;
-const mockListSubmissionsByStatus =
-  listSubmissionsByStatus as jest.MockedFunction<
-    typeof listSubmissionsByStatus
-  >;
 const mockMarkSubmissionSynced = markSubmissionSynced as jest.MockedFunction<
   typeof markSubmissionSynced
 >;
-const mockGetWatermark = getWatermark as jest.MockedFunction<typeof getWatermark>;
-const mockSetWatermark = setWatermark as jest.MockedFunction<typeof setWatermark>;
+const mockGetWatermark = getWatermark as jest.MockedFunction<
+  typeof getWatermark
+>;
+const mockSetWatermark = setWatermark as jest.MockedFunction<
+  typeof setWatermark
+>;
 
 // ---------------------------------------------------------------------------
 // Fakes
 // ---------------------------------------------------------------------------
 
-// Minimal db stub. The only direct DB call inside submissionSync is
-// the foods similarity LIKE in hasGenericSimilarity (getFirstAsync)
-// and the foods upsert in pull (runAsync). All other DB access goes
-// through the mocked repos.
-function makeStubDb(
-  similarityMatches = 0,
-): SQLiteDatabase & {
+// Minimal db stub. submissionSync writes local foods during pull via runAsync;
+// all other DB access goes through the mocked repos.
+function makeStubDb(): SQLiteDatabase & {
   runAsync: jest.Mock;
   getFirstAsync: jest.Mock;
 } {
   const db = {
     runAsync: jest.fn().mockResolvedValue({ changes: 1, lastInsertRowId: 0 }),
-    getFirstAsync: jest
-      .fn()
-      .mockResolvedValue({ matches: similarityMatches }),
+    getFirstAsync: jest.fn(),
     getAllAsync: jest.fn(),
   };
   return db as unknown as SQLiteDatabase & {
@@ -77,11 +69,9 @@ function makeStubDb(
   };
 }
 
-// Build a chainable fake supabase client. Each call to from(table)
-// returns a new query builder so tests can vary upsert / select
-// behavior independently.
+// Build a chainable fake supabase client. from(table) powers select chains;
+// rpc() powers upload submission.
 interface QueryBuilder {
-  upsert: jest.Mock;
   select: jest.Mock;
   eq: jest.Mock;
   gt: jest.Mock;
@@ -92,8 +82,9 @@ interface QueryBuilder {
 interface FakeClient {
   auth: { getSession: jest.Mock };
   from: jest.Mock;
+  rpc: jest.Mock;
   // Test harness handles:
-  __upsertResult: { error: { status?: number; message?: string } | null };
+  __rpcResult: { error: { status?: number; message?: string } | null };
   __selectResult: {
     data: Record<string, unknown>[] | null;
     error: { status?: number; message?: string } | null;
@@ -101,14 +92,17 @@ interface FakeClient {
   __builder: QueryBuilder;
 }
 
-function makeFakeClient(opts: {
-  session?:
-    | { user: { id: string; email_confirmed_at: string | null } }
-    | null;
-} = {}): FakeClient {
-  const session = opts.session === undefined
-    ? { user: { id: 'user-1', email_confirmed_at: '2026-04-26T00:00:00Z' } }
-    : opts.session;
+function makeFakeClient(
+  opts: {
+    session?: {
+      user: { id: string; email_confirmed_at: string | null };
+    } | null;
+  } = {},
+): FakeClient {
+  const session =
+    opts.session === undefined
+      ? { user: { id: 'user-1', email_confirmed_at: '2026-04-26T00:00:00Z' } }
+      : opts.session;
 
   const harness: FakeClient = {
     auth: {
@@ -117,13 +111,13 @@ function makeFakeClient(opts: {
         .mockResolvedValue({ data: { session }, error: null }),
     },
     from: jest.fn(),
-    __upsertResult: { error: null },
+    rpc: jest.fn(),
+    __rpcResult: { error: null },
     __selectResult: { data: [], error: null },
     __builder: {} as QueryBuilder,
   };
 
   const builder: QueryBuilder = {
-    upsert: jest.fn(() => Promise.resolve(harness.__upsertResult)),
     select: jest.fn(() => builder),
     eq: jest.fn(() => builder),
     gt: jest.fn(() => builder),
@@ -132,6 +126,7 @@ function makeFakeClient(opts: {
   };
   harness.__builder = builder;
   harness.from.mockReturnValue(builder);
+  harness.rpc.mockImplementation(() => Promise.resolve(harness.__rpcResult));
   return harness;
 }
 
@@ -143,7 +138,9 @@ function asClient(c: FakeClient): SupabaseClient {
 // Fixtures
 // ---------------------------------------------------------------------------
 
-function fakeSubmission(overrides: Partial<UserSubmittedFood> = {}): UserSubmittedFood {
+function fakeSubmission(
+  overrides: Partial<UserSubmittedFood> = {},
+): UserSubmittedFood {
   return {
     id: 'sub-1',
     nameJa: 'テスト食品',
@@ -190,9 +187,8 @@ function fakeSubmission(overrides: Partial<UserSubmittedFood> = {}): UserSubmitt
 
 beforeEach(() => {
   jest.clearAllMocks();
-  // Default: no pending, no history.
+  // Default: no pending.
   mockListPendingSync.mockResolvedValue([]);
-  mockListSubmissionsByStatus.mockResolvedValue([]);
   mockMarkSubmissionSynced.mockResolvedValue(null);
   mockGetWatermark.mockResolvedValue(null);
   mockSetWatermark.mockResolvedValue(undefined);
@@ -224,7 +220,7 @@ describe('uploadPendingSubmissions — guard rails', () => {
     const client = makeFakeClient();
     const result = await uploadPendingSubmissions(db, asClient(client));
     expect(result.skipped).toBe('nothing_pending');
-    expect(client.from).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 });
 
@@ -240,63 +236,50 @@ describe('uploadPendingSubmissions — happy path', () => {
     expect(result.uploaded).toBe(1);
     expect(result.failed).toBe(0);
     expect(result.skipped).toBeNull();
-    expect(client.from).toHaveBeenCalledWith('public_foods');
-    expect(client.__builder.upsert).toHaveBeenCalledTimes(1);
+    expect(client.rpc).toHaveBeenCalledWith(
+      'submit_public_food',
+      expect.objectContaining({
+        payload: expect.objectContaining({ id: sub.id }),
+      }),
+    );
     expect(mockMarkSubmissionSynced).toHaveBeenCalledWith(db, sub.id, sub.id);
   });
 
-  it('always sends status=pending_review (server flips, not client)', async () => {
+  it('does not send trust-boundary fields in the RPC payload', async () => {
     mockListPendingSync.mockResolvedValue([fakeSubmission()]);
     const db = makeStubDb();
     const client = makeFakeClient();
 
     await uploadPendingSubmissions(db, asClient(client));
 
-    const payload = client.__builder.upsert.mock.calls[0][0] as Record<
-      string,
-      unknown
-    >;
-    expect(payload.status).toBe('pending_review');
-    expect(payload.submitted_by).toBe('user-1');
+    const args = client.rpc.mock.calls[0][1] as {
+      payload: Record<string, unknown>;
+    };
+    expect(args.payload.status).toBeUndefined();
+    expect(args.payload.submitted_by).toBeUndefined();
+    expect(args.payload.approval_score).toBeUndefined();
   });
 
-  it('attaches an approval_score in [0, 100] to every upload', async () => {
+  it('uses submit_public_food RPC for the server trust boundary', async () => {
     mockListPendingSync.mockResolvedValue([fakeSubmission()]);
     const db = makeStubDb();
     const client = makeFakeClient();
 
     await uploadPendingSubmissions(db, asClient(client));
 
-    const payload = client.__builder.upsert.mock.calls[0][0] as Record<
-      string,
-      unknown
-    >;
-    const score = payload.approval_score as number;
-    expect(typeof score).toBe('number');
-    expect(score).toBeGreaterThanOrEqual(0);
-    expect(score).toBeLessThanOrEqual(100);
-  });
-
-  it('uses upsert (not insert) for idempotency on retries', async () => {
-    mockListPendingSync.mockResolvedValue([fakeSubmission()]);
-    const db = makeStubDb();
-    const client = makeFakeClient();
-
-    await uploadPendingSubmissions(db, asClient(client));
-
-    expect(client.__builder.upsert).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.objectContaining({ onConflict: 'id' }),
+    expect(client.rpc).toHaveBeenCalledWith(
+      'submit_public_food',
+      expect.objectContaining({ payload: expect.any(Object) }),
     );
   });
 });
 
 describe('uploadPendingSubmissions — failure handling', () => {
-  it('does not call markSubmissionSynced when upsert returns an error', async () => {
+  it('does not call markSubmissionSynced when submit RPC returns an error', async () => {
     mockListPendingSync.mockResolvedValue([fakeSubmission()]);
     const db = makeStubDb();
     const client = makeFakeClient();
-    client.__upsertResult = {
+    client.__rpcResult = {
       error: { status: 400, message: 'bad request' },
     };
 
@@ -316,7 +299,7 @@ describe('uploadPendingSubmissions — failure handling', () => {
     const client = makeFakeClient();
 
     let call = 0;
-    client.__builder.upsert.mockImplementation(() => {
+    client.rpc.mockImplementation(() => {
       call += 1;
       if (call === 2) {
         return Promise.resolve({
@@ -339,13 +322,13 @@ describe('uploadPendingSubmissions — failure handling', () => {
     mockListPendingSync.mockResolvedValue([fakeSubmission()]);
     const db = makeStubDb();
     const client = makeFakeClient();
-    client.__builder.upsert.mockResolvedValue({
+    client.rpc.mockResolvedValue({
       error: { status: 429, message: 'Too Many Requests' },
     });
 
     const result = await uploadPendingSubmissions(db, asClient(client));
 
-    expect(client.__builder.upsert).toHaveBeenCalledTimes(3);
+    expect(client.rpc).toHaveBeenCalledTimes(3);
     expect(result.failed).toBe(1);
     expect(mockMarkSubmissionSynced).not.toHaveBeenCalled();
   }, 10000);
@@ -356,7 +339,7 @@ describe('uploadPendingSubmissions — failure handling', () => {
     const client = makeFakeClient();
 
     await uploadPendingSubmissions(db, asClient(client));
-    expect(client.__builder.upsert).toHaveBeenCalledTimes(1);
+    expect(client.rpc).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -552,8 +535,8 @@ describe('syncSubmissions', () => {
 
     await syncSubmissions(db, asClient(client));
 
-    // Pull goes first → from('public_foods') for select happens before upload-auth.
-    expect(callOrder[0]).toBe('from-public_foods');
+    // Pull goes first: approved_public_foods select happens before upload auth.
+    expect(callOrder[0]).toBe('from-approved_public_foods');
   });
 
   it('returns both upload and pull results', async () => {
