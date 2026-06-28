@@ -16,11 +16,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { getColors } from '../../src/theme/tokens';
 import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
-import { Card, ProgressRing, ProgressBar, Button, Badge, DateNavigator, Toast } from '../../src/components/ui';
+import { Card, ProgressBar, Button, Badge, DateNavigator, Toast } from '../../src/components/ui';
 import { PredictionChart } from '../../src/components/progress/PredictionChart';
 import { LineChart } from '../../src/components/charts/LineChart';
 import { getISODate, formatDate } from '../../src/utils/format';
-import { getHomeGreeting } from '../../src/domain/homeGreeting';
 import { getRecordedNutritionDates } from '../../src/infra/repositories/nutritionRepository';
 import { getRecordedSessionDates } from '../../src/infra/repositories/workoutRepository';
 import { useProfileStore } from '../../src/stores/profileStore';
@@ -32,7 +31,6 @@ import { useGoalPrediction } from '../../src/hooks/useGoalPrediction';
 import { useAdaptiveGoal } from '../../src/hooks/useAdaptiveGoal';
 import { GoalPredictionCard } from '../../src/components/home/GoalPredictionCard';
 import { AdaptiveGoalCard } from '../../src/components/home/AdaptiveGoalCard';
-import { WaterTrackerCard } from '../../src/components/home/WaterTrackerCard';
 import { useWaterTracker } from '../../src/hooks/useWaterTracker';
 import { useHealthKitCalories } from '../../src/hooks/useHealthKitCalories';
 import { getDailyCalories, getWeeklyCalories } from '../../src/infra/repositories/nutritionRepository';
@@ -107,7 +105,7 @@ export default function HomeScreen() {
   const isViewingToday = selectedDate === getISODate();
 
   // Nutrition data from store
-  const { totalCalories, totalProteinG, totalFatG, totalCarbG } = useNutrition(selectedDate);
+  const { totalCalories, totalProteinG, totalFatG, totalCarbG, getMealItems } = useNutrition(selectedDate);
 
   // Body logs
   const { avg7d, weightChange14d, logs: bodyLogs } = useBodyLogs();
@@ -500,6 +498,24 @@ export default function HomeScreen() {
     return `あと ${remaining} kcal 記録できます。バランスよく栄養を摂りましょう。`;
   }, [targetCalories, consumedCalories, remaining, totalProteinG, targetProteinG]);
 
+  // v6 record-flow — per-meal rows (presentation only; reuses useNutrition's
+  // getMealItems, no new query). kcal = sum of the meal's item calories;
+  // recorded = the meal has at least one item.
+  const mealRows = useMemo(() => {
+    const defs: { key: 'breakfast' | 'lunch' | 'dinner' | 'snack'; label: string }[] = [
+      { key: 'breakfast', label: '朝食' },
+      { key: 'lunch', label: '昼食' },
+      { key: 'dinner', label: '夕食' },
+      { key: 'snack', label: '間食' },
+    ];
+    return defs.map((d) => {
+      const items = getMealItems(d.key)?.items ?? [];
+      const kcal = Math.round(items.reduce((s, it) => s + (it.calories ?? 0), 0));
+      return { ...d, kcal, recorded: items.length > 0 };
+    });
+  }, [getMealItems]);
+  const recordedMealCount = mealRows.filter((m) => m.recorded).length;
+
   // Apply recommended calories
   const handleApplyRecommendation = useCallback(async () => {
     if (!profile || !recommendedCalories) return;
@@ -544,54 +560,36 @@ export default function HomeScreen() {
             既存 getGreeting() (3-tier、 icon なし) は format.ts に
             残し、 home は domain/homeGreeting.ts の 4-tier 版を使用
             (TZ-safe、 23 tests pin). */}
-        {(() => {
-          const g = getHomeGreeting();
-          const nickname = profile?.nickname?.trim();
-          // Codex pass 1 Nit — extra space before さん が visible に出る ため
-          // `${nickname}さん` 形式に統一 (Plan §4.1 ブランドコピー集の
-          // 「○○さん」 と整合)。 greeting + 句読点 「、」 の後に nickname
-          // を続け、 nickname と さん の間には空白なし。
-          const fullLabel = nickname
-            ? `${g.label}、${nickname}さん`
-            : g.label;
-          return (
-            <View style={styles.header}>
-              <View style={styles.greetingRow}>
-                <Ionicons
-                  name={g.icon}
-                  size={20}
-                  color={colors.textSecondary}
-                  accessibilityElementsHidden
-                  importantForAccessibility="no-hide-descendants"
-                />
-                <Text
-                  style={[styles.greeting, { color: colors.textSecondary }]}
-                  accessibilityRole="header"
-                  numberOfLines={1}
-                >
-                  {fullLabel}
-                </Text>
-              </View>
-              {/* v1.5.2 nav 再設計 (0-B) — 設定をボトムタブから外すため、ホーム
-                  右上に設定/アカウント入口を配線。設定が孤立しないこと。 */}
-              <View style={styles.headerRight}>
-                <TrialBadge />
-                <TouchableOpacity
-                  onPress={() => router.push('/(tabs)/settings')}
-                  accessibilityRole="button"
-                  accessibilityLabel="設定"
-                  accessibilityHint="設定・アカウント画面を開きます"
-                  hitSlop={8}
-                  style={styles.headerSettingsBtn}
-                  testID="home-settings-button"
-                >
-                  {/* TODO: 実機で最終アイコン確認 (設定/アカウント) */}
-                  <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          );
-        })()}
+        {/* v6 header — 「今日」+ 日付 + (TrialBadge) + 設定. 設定はボトムタブから
+            外しているためここが唯一の入口 (配線維持)。日付は selectedDate を
+            ローカル midnight でパースし tz ずれを避ける。 */}
+        <View style={styles.header}>
+          <View style={styles.headerTitleCol}>
+            <Text
+              style={[styles.headerTitle, { color: colors.textPrimary }]}
+              accessibilityRole="header"
+            >
+              {isViewingToday ? '今日' : '記録'}
+            </Text>
+            <Text style={[styles.headerDate, { color: colors.textSecondary }]} numberOfLines={1}>
+              {format(new Date(`${selectedDate}T00:00:00`), 'M月d日(eee)', { locale: ja })}
+            </Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TrialBadge />
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/settings')}
+              accessibilityRole="button"
+              accessibilityLabel="設定"
+              accessibilityHint="設定・アカウント画面を開きます"
+              hitSlop={8}
+              style={styles.headerSettingsBtn}
+              testID="home-settings-button"
+            >
+              <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* Date Navigator */}
         <View style={{ marginBottom: spacing.sm }}>
@@ -615,101 +613,35 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Calorie Summary Card — v5 redesign.
-            Left: intake-progress ring (fills as you eat; empty at 0).
-            Right: 食事目標 / 摂取 / 運動分(info only, +green) / 残り(navy bold).
-            運動分 is NEVER added to 残り or the ring (Phase 0 calorie model). */}
-        <Card variant="elevated" style={styles.calorieCard}>
-          <View style={styles.calorieContent}>
-            <View style={styles.ringColumn}>
-              <ProgressRing
-                progress={progress}
-                size={Math.round(screenWidth * 0.36)}
-                strokeWidth={12}
-                color={colors.calorie}
-              >
-                <Text style={[styles.remainingLabel, { color: colors.textSecondary }]}>
-                  残り
-                </Text>
-                <Text style={[styles.remainingNumber, { color: colors.textPrimary }]}>
-                  {remaining}
-                </Text>
-                <Text style={[styles.remainingUnit, { color: colors.textSecondary }]}>
-                  kcal
-                </Text>
-              </ProgressRing>
-              <Text style={[styles.ringCaption, { color: colors.textTertiary }]}>
-                摂取進捗 {intakePct}%
-              </Text>
-            </View>
-            <View style={styles.calorieDetails}>
-              <View style={styles.calorieRow}>
-                <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>食事目標</Text>
-                <Text style={[styles.calorieValue, { color: colors.textPrimary }]}>
-                  {targetCalories} kcal
-                </Text>
-              </View>
-              <View style={styles.calorieRow}>
-                <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>摂取</Text>
-                <Text style={[styles.calorieValue, { color: colors.calorie }]}>
-                  {consumedCalories} kcal
-                </Text>
-              </View>
-              <View style={styles.calorieRow}>
-                <Text style={[styles.calorieLabel, { color: colors.textSecondary }]}>運動分</Text>
-                <Text style={[styles.calorieValue, { color: colors.success }]}>
-                  +{exerciseCal} kcal
-                </Text>
-              </View>
-              {healthKitActive && healthKitCalories > 0 && (
-                <View style={styles.calorieAttributionRow}>
-                  <View
-                    style={[styles.healthBadge, { backgroundColor: colors.primary + '14' }]}
-                  >
-                    <Ionicons name="heart" size={10} color={colors.primary} />
-                    <Text style={[styles.healthBadgeText, { color: colors.primary }]}>
-                      ヘルスケア連携済み
-                    </Text>
-                  </View>
-                </View>
-              )}
-              <View style={[styles.calorieRow, styles.balanceRow, { borderTopColor: colors.border }]}>
-                <Text style={[styles.calorieLabel, styles.remainingRowLabel, { color: colors.textPrimary }]}>残り</Text>
-                <Text style={[styles.calorieValue, styles.remainingRowValue, { color: colors.textPrimary }]}>
-                  {remaining} kcal
-                </Text>
-              </View>
-            </View>
+        {/* v6 残りカロリーカード — 残り を主役に大きく、進捗バー、摂取/消費/目標、
+            内訳ボタン。データは既存 derived (remaining/progress/consumedCalories/
+            exerciseCal/targetCalories) を再利用。達成系は緑 (colors.success)。 */}
+        <Card variant="elevated" style={styles.v6CalCard}>
+          <Text style={[styles.v6CalLabel, { color: colors.textSecondary }]}>残り</Text>
+          <View style={styles.v6CalHeroRow}>
+            <Text style={[styles.v6CalHero, { color: colors.textPrimary }]}>
+              {remaining.toLocaleString()}
+            </Text>
+            <Text style={[styles.v6CalUnit, { color: colors.textSecondary }]}>kcal</Text>
           </View>
-        </Card>
-
-        {/* PFC Bars */}
-        <Card>
-          <View style={styles.pfcContainer}>
-            <ProgressBar
-              progress={targetProteinG > 0 ? totalProteinG / targetProteinG : 0}
-              color={colors.protein}
-              label="タンパク質"
-              valueText={`${Math.round(totalProteinG)} / ${targetProteinG} g`}
-              height={8}
-            />
-            <ProgressBar
-              progress={targetFatG > 0 ? totalFatG / targetFatG : 0}
-              color={colors.fat}
-              label="脂質"
-              valueText={`${Math.round(totalFatG)} / ${targetFatG} g`}
-              height={8}
-            />
-            <ProgressBar
-              progress={targetCarbG > 0 ? totalCarbG / targetCarbG : 0}
-              color={colors.carb}
-              label="炭水化物"
-              valueText={`${Math.round(totalCarbG)} / ${targetCarbG} g`}
-              height={8}
-            />
+          <View style={styles.v6CalBar}>
+            <ProgressBar progress={progress} color={colors.success} height={10} />
+          </View>
+          <View style={styles.v6CalStatsRow}>
+            <Text style={[styles.v6CalStat, { color: colors.textSecondary }]}>
+              摂取 <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{consumedCalories.toLocaleString()}</Text>
+            </Text>
+            <Text style={[styles.v6CalDot, { color: colors.textTertiary }]}>・</Text>
+            <Text style={[styles.v6CalStat, { color: colors.textSecondary }]}>
+              消費 <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{exerciseCal.toLocaleString()}</Text>
+            </Text>
+            <Text style={[styles.v6CalDot, { color: colors.textTertiary }]}>・</Text>
+            <Text style={[styles.v6CalStat, { color: colors.textSecondary }]}>
+              目標 <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{targetCalories.toLocaleString()}</Text>
+            </Text>
           </View>
           <TouchableOpacity
-            style={styles.balanceLink}
+            style={[styles.v6BreakdownBtn, { borderTopColor: colors.border }]}
             onPress={() =>
               router.push({
                 pathname: '/(tabs)/nutrition/balance',
@@ -717,77 +649,153 @@ export default function HomeScreen() {
               })
             }
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="内訳を見る"
           >
             <Ionicons name="stats-chart" size={14} color={colors.primary} />
-            <Text style={[styles.balanceLinkText, { color: colors.primary }]}>
-              栄養バランスを見る
-            </Text>
-            <Ionicons name="chevron-forward" size={12} color={colors.primary} />
+            <Text style={[styles.v6BreakdownText, { color: colors.primary }]}>内訳</Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.primary} />
           </TouchableOpacity>
         </Card>
 
-        {/* ミー先生のひとこと — deterministic copy from loaded data (no AI/query). */}
-        <Card style={{ ...styles.meeCard, backgroundColor: colors.primary + '0D', borderColor: colors.primary + '22' }}>
-          <View style={styles.meeHeader}>
-            <View style={[styles.meeAvatar, { backgroundColor: colors.primary + '1A' }]}>
-              {/* TODO: 実機で最終アイコン確認 (ミー先生アバター) */}
-              <Ionicons name="sparkles" size={16} color={colors.primary} />
-            </View>
-            <Text style={[styles.meeLabel, { color: colors.primary }]}>ミー先生のひとこと</Text>
+        {/* v6 今日の食事 — 朝/昼/夕/間 の行リスト。行全体タップで該当 meal の
+            記録へ。記録シートは次 sprint。今は既存 /add-food (mealType scoped)
+            へ繋ぐ (TODO: v6 記録シートに差し替え)。データは getMealItems 再利用。 */}
+        <Card style={styles.v6SectionCard}>
+          <View style={styles.v6SectionHeader}>
+            <Text style={[styles.v6SectionTitle, { color: colors.textPrimary }]}>今日の食事</Text>
+            <Badge
+              label={`${recordedMealCount}/4`}
+              color={recordedMealCount > 0 ? colors.success + '18' : colors.surfaceSecondary}
+              textColor={recordedMealCount > 0 ? colors.success : colors.textSecondary}
+            />
           </View>
-          <Text style={[styles.meeBody, { color: colors.textPrimary }]}>{meeHitokoto}</Text>
-          <TouchableOpacity
-            style={[styles.meeButton, { backgroundColor: colors.primary + '14' }]}
-            onPress={() => router.push({ pathname: '/add-food', params: { mealType: 'dinner' } })}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="夕食を記録する"
-          >
-            <Ionicons name="restaurant-outline" size={15} color={colors.primary} />
-            <Text style={[styles.meeButtonText, { color: colors.primary }]}>夕食を記録する</Text>
-          </TouchableOpacity>
+          {mealRows.map((m, i) => (
+            <TouchableOpacity
+              key={m.key}
+              style={[
+                styles.v6MealRow,
+                i > 0 && { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+              ]}
+              onPress={() =>
+                // TODO(v6 記録シート): 次 sprint で記録シートに差し替え。今は既存の
+                // 食品追加画面を当該 meal にスコープして起点にする。
+                router.push({ pathname: '/add-food', params: { mealType: m.key, date: selectedDate } })
+              }
+              activeOpacity={0.6}
+              accessibilityRole="button"
+              accessibilityLabel={`${m.label} ${m.recorded ? '記録済み' : '未記録'} ${m.kcal} kcal`}
+            >
+              <View
+                style={[
+                  styles.v6MealDot,
+                  { backgroundColor: m.recorded ? colors.success : colors.surfaceSecondary },
+                ]}
+              >
+                <Ionicons
+                  name={m.recorded ? 'checkmark' : 'ellipse-outline'}
+                  size={m.recorded ? 16 : 14}
+                  color={m.recorded ? '#FFFFFF' : colors.textTertiary}
+                />
+              </View>
+              <View style={styles.v6MealMid}>
+                <Text style={[styles.v6MealName, { color: colors.textPrimary }]}>{m.label}</Text>
+                <Text style={[styles.v6MealStatus, { color: m.recorded ? colors.success : colors.textTertiary }]}>
+                  {m.recorded ? '記録済み' : '未記録'}
+                </Text>
+              </View>
+              <Text style={[styles.v6MealKcal, { color: m.recorded ? colors.textPrimary : colors.textTertiary }]}>
+                {m.kcal} kcal
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+            </TouchableOpacity>
+          ))}
+          {/* ミー先生のひとこと (deterministic・no AI/query) を控えめに */}
+          <View style={[styles.v6MeeHint, { borderTopColor: colors.border }]}>
+            <Ionicons name="sparkles" size={13} color={colors.primary} />
+            <Text style={[styles.v6MeeHintText, { color: colors.textSecondary }]} numberOfLines={2}>
+              {meeHitokoto}
+            </Text>
+          </View>
         </Card>
 
-        {/* 今日のアクション — primary 食事記録 + secondary ワークアウト/体重 */}
-        <View style={styles.actionsSection}>
-          <Text style={[styles.actionsHeading, { color: colors.textPrimary }]}>今日のアクション</Text>
+        {/* v6 水分 — その場で +200/+500 記録 (画面遷移なし)。既存 water.addWater 流用。 */}
+        <Card style={styles.v6SectionCard}>
+          <View style={styles.v6SectionHeader}>
+            <Text style={[styles.v6SectionTitle, { color: colors.textPrimary }]}>水分</Text>
+            <Text style={[styles.v6WaterAmount, { color: colors.textSecondary }]}>
+              <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>
+                {(water.totalMl / 1000).toFixed(1)}
+              </Text>
+              {' / '}{(water.targetMl / 1000).toFixed(1)} L
+            </Text>
+          </View>
+          <View style={styles.v6WaterBtnRow}>
+            {[200, 500].map((ml) => (
+              <TouchableOpacity
+                key={ml}
+                style={[styles.v6WaterBtn, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}
+                onPress={() => { water.addWater(ml); }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`水分を${ml}ml追加`}
+              >
+                <Ionicons name="water-outline" size={16} color={colors.primary} />
+                <Text style={[styles.v6WaterBtnText, { color: colors.primary }]}>+{ml}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Card>
+
+        {/* v6 運動 — 状態 + 記録ボタン。既存 selectedDateFinishedSession / training/session を流用。 */}
+        <Card style={styles.v6SectionCard}>
+          <View style={styles.v6SectionHeader}>
+            <Text style={[styles.v6SectionTitle, { color: colors.textPrimary }]}>運動</Text>
+            {selectedDateFinishedSession && (
+              <Badge label="完了" color={colors.success + '18'} textColor={colors.success} />
+            )}
+          </View>
+          {selectedDateFinishedSession ? (
+            <View style={styles.v6WorkoutDone}>
+              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+              <Text style={[styles.v6WorkoutDoneText, { color: colors.textSecondary }]}>
+                {selectedDateFinishedSession.durationSeconds
+                  ? `${Math.round(selectedDateFinishedSession.durationSeconds / 60)}分 完了`
+                  : 'トレーニング完了'}
+              </Text>
+            </View>
+          ) : isViewingToday ? (
+            <TouchableOpacity
+              style={[styles.v6WorkoutBtn, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}
+              onPress={() => router.push('/(tabs)/training/session')}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="ワークアウトを開始"
+            >
+              <Ionicons name="barbell-outline" size={18} color={colors.primary} />
+              <Text style={[styles.v6WorkoutBtnText, { color: colors.primary }]}>ワークアウトを開始</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.v6WorkoutDoneText, { color: colors.textTertiary }]}>記録なし</Text>
+          )}
+        </Card>
+
+        {/* v6 下部 主 CTA — 食事を記録。次 sprint の記録シート起点。今は時間帯に応じた
+            既存 /add-food へ (TODO: v6 記録シートに差し替え)。 */}
+        <View style={styles.v6RecordCtaWrap}>
           <Button
-            title="食事を記録"
-            onPress={() => router.push('/(tabs)/nutrition')}
+            title="＋ 食事を記録"
+            onPress={() => {
+              const h = new Date().getHours();
+              const mealType =
+                h < 10 ? 'breakfast' : h < 15 ? 'lunch' : h < 21 ? 'dinner' : 'snack';
+              // TODO(v6 記録シート): 次 sprint で記録シートに差し替え。
+              router.push({ pathname: '/add-food', params: { mealType, date: selectedDate } });
+            }}
             variant="primary"
             fullWidth
           />
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={[styles.secondaryAction, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}
-              onPress={() => router.push('/(tabs)/training')}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="ワークアウト"
-            >
-              <Ionicons name="barbell-outline" size={18} color={colors.primary} />
-              <Text style={[styles.secondaryActionText, { color: colors.primary }]}>ワークアウト</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.secondaryAction, { backgroundColor: colors.surface, borderColor: colors.primary + '40' }]}
-              onPress={() => router.push('/(tabs)/progress')}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="体重を記録"
-            >
-              <Ionicons name="scale-outline" size={18} color={colors.primary} />
-              <Text style={[styles.secondaryActionText, { color: colors.primary }]}>体重を記録</Text>
-            </TouchableOpacity>
-          </View>
         </View>
-
-        {/* Water tracker (Feature I) — moved up to v5 position #7 */}
-        <WaterTrackerCard
-          totalMl={water.totalMl}
-          targetMl={water.targetMl}
-          onAdd={water.addWater}
-          onPress={() => router.push('/(tabs)/progress')}
-        />
 
         {/* 体重トレンドカード — reuses bodyLogs / recentWeightsForPrediction. */}
         <Card>
@@ -940,46 +948,7 @@ export default function HomeScreen() {
           </Card>
         )}
 
-        {/* Workout Card */}
-        <Card>
-          <View style={styles.workoutCard}>
-            <View style={styles.workoutHeader}>
-              <View style={styles.workoutInfo}>
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                  {isViewingToday ? '今日のワークアウト' : 'ワークアウト'}
-                </Text>
-                {selectedDateFinishedSession && (
-                  <Badge
-                    label="完了"
-                    color={colors.success + '15'}
-                    textColor={colors.success}
-                  />
-                )}
-              </View>
-            </View>
-            {selectedDateFinishedSession ? (
-              <View style={styles.workoutDone}>
-                <Ionicons name="checkmark-circle" size={24} color={colors.success} />
-                <Text style={[styles.workoutDoneText, { color: colors.textSecondary }]}>
-                  {selectedDateFinishedSession.durationSeconds
-                    ? `${Math.round(selectedDateFinishedSession.durationSeconds / 60)}分 完了`
-                    : 'トレーニング完了'}
-                </Text>
-              </View>
-            ) : isViewingToday ? (
-              <Button
-                title="ワークアウト開始"
-                onPress={() => router.push('/(tabs)/training/session')}
-                variant="primary"
-                fullWidth
-              />
-            ) : (
-              <Text style={[styles.workoutDoneText, { color: colors.textSecondary }]}>
-                記録なし
-              </Text>
-            )}
-          </View>
-        </Card>
+        {/* 旧 Workout Card は v6 core の「運動」セクションへ移動 (重複排除)。 */}
 
         {/* Weekly Progress */}
         <Card>
@@ -1117,6 +1086,80 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  // ---- v6 record-flow home (Health Ledger: subtle radius, light shadow,
+  //      cards for hero only, dividers + sections, green for achievement) ----
+  headerTitleCol: { flex: 1 },
+  headerTitle: { ...typography.titleLarge, fontWeight: '700' },
+  headerDate: { ...typography.bodySmall, marginTop: 2 },
+  // 残りカロリーカード
+  v6CalCard: { gap: spacing.sm },
+  v6CalLabel: { ...typography.labelMedium },
+  v6CalHeroRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
+  v6CalHero: { ...typography.numberLarge, fontSize: 44, lineHeight: 50 },
+  v6CalUnit: { ...typography.bodyMedium, fontWeight: '600' },
+  v6CalBar: { marginTop: spacing.xs },
+  v6CalStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginTop: spacing.xs },
+  v6CalStat: { ...typography.bodySmall },
+  v6CalDot: { ...typography.bodySmall },
+  v6BreakdownBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  v6BreakdownText: { ...typography.labelMedium, fontWeight: '600' },
+  // セクションカード共通
+  v6SectionCard: { gap: spacing.sm },
+  v6SectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  v6SectionTitle: { ...typography.titleSmall, fontWeight: '700' },
+  // 食事行
+  v6MealRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  v6MealDot: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  v6MealMid: { flex: 1, gap: 1 },
+  v6MealName: { ...typography.bodyLarge, fontWeight: '600' },
+  v6MealStatus: { ...typography.labelSmall },
+  v6MealKcal: { ...typography.bodyMedium, fontWeight: '600', marginRight: spacing.xs },
+  v6MeeHint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  v6MeeHintText: { ...typography.bodySmall, flex: 1, lineHeight: 18 },
+  // 水分
+  v6WaterAmount: { ...typography.bodyMedium },
+  v6WaterBtnRow: { flexDirection: 'row', gap: spacing.sm },
+  v6WaterBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  v6WaterBtnText: { ...typography.labelLarge, fontWeight: '700' },
+  // 運動
+  v6WorkoutDone: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  v6WorkoutDoneText: { ...typography.bodyMedium },
+  v6WorkoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  v6WorkoutBtnText: { ...typography.labelLarge, fontWeight: '700' },
+  // 下部 主 CTA
+  v6RecordCtaWrap: { marginTop: spacing.xs, marginBottom: spacing.sm },
   scroll: { flex: 1 },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxxxl },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
