@@ -8,6 +8,24 @@ const BOM = '\uFEFF';
 
 export type ExportType = 'weight' | 'nutrition' | 'training' | 'all';
 
+const FORMULA_PREFIX_RE = /^[\s\u0000-\u001F\u007F]*[=+\-@]/;
+
+export function escapeCsvCell(value: unknown): string {
+  if (value == null) return '';
+  let text = String(value);
+  if (FORMULA_PREFIX_RE.test(text)) {
+    text = `'${text}`;
+  }
+  if (/[",\r\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function csvRow(values: unknown[]): string {
+  return `${values.map(escapeCsvCell).join(',')}\n`;
+}
+
 // ---------------------------------------------------------------------------
 // Individual generators
 // ---------------------------------------------------------------------------
@@ -19,9 +37,9 @@ async function generateWeightCsv(profileId: string): Promise<string> {
     [profileId],
   );
 
-  let csv = '日付,体重(kg),体脂肪率(%)\n';
+  let csv = csvRow(['日付', '体重(kg)', '体脂肪率(%)']);
   for (const row of rows) {
-    csv += `${row.date},${row.weight_kg ?? ''},${row.body_fat_pct ?? ''}\n`;
+    csv += csvRow([row.date, row.weight_kg, row.body_fat_pct]);
   }
   return csv;
 }
@@ -38,10 +56,29 @@ async function generateNutritionCsv(profileId: string): Promise<string> {
     [profileId],
   );
 
-  let csv = '日付,食事タイプ,食品名,量,単位,カロリー,タンパク質(g),脂質(g),炭水化物(g)\n';
+  let csv = csvRow([
+    '日付',
+    '食事タイプ',
+    '食品名',
+    '量',
+    '単位',
+    'カロリー',
+    'タンパク質(g)',
+    '脂質(g)',
+    '炭水化物(g)',
+  ]);
   for (const row of rows) {
-    const foodName = String(row.food_name ?? '').replace(/,/g, '、');
-    csv += `${row.date},${row.meal_type},${foodName},${row.serving_amount},${row.serving_unit},${row.calories},${row.protein_g},${row.fat_g},${row.carb_g}\n`;
+    csv += csvRow([
+      row.date,
+      row.meal_type,
+      row.food_name,
+      row.serving_amount,
+      row.serving_unit,
+      row.calories,
+      row.protein_g,
+      row.fat_g,
+      row.carb_g,
+    ]);
   }
   return csv;
 }
@@ -58,10 +95,16 @@ async function generateTrainingCsv(profileId: string): Promise<string> {
     [profileId],
   );
 
-  let csv = '日付,種目,セット,重量(kg),レップ,RPE\n';
+  let csv = csvRow(['日付', '種目', 'セット', '重量(kg)', 'レップ', 'RPE']);
   for (const row of rows) {
-    const name = String(row.exercise_name ?? '').replace(/,/g, '、');
-    csv += `${row.date},${name},${row.set_number},${row.weight_kg ?? ''},${row.reps ?? ''},${row.rpe ?? ''}\n`;
+    csv += csvRow([
+      row.date,
+      row.exercise_name,
+      row.set_number,
+      row.weight_kg,
+      row.reps,
+      row.rpe,
+    ]);
   }
   return csv;
 }
@@ -104,9 +147,15 @@ export async function exportCsv(
   const file = new File(Paths.cache, fileName);
   file.write(BOM + content);
 
-  await shareAsync(file.uri, {
-    mimeType: 'text/csv',
-    dialogTitle: `${TYPE_LABELS[type]}をエクスポート`,
-    UTI: 'public.comma-separated-values-text',
-  });
+  try {
+    await shareAsync(file.uri, {
+      mimeType: 'text/csv',
+      dialogTitle: `${TYPE_LABELS[type]}をエクスポート`,
+      UTI: 'public.comma-separated-values-text',
+    });
+  } finally {
+    if (file.exists) {
+      file.delete();
+    }
+  }
 }

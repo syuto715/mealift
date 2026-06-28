@@ -1,6 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { buildLLMDefenseParagraph } from '../_shared/llmSecurity.ts';
+import {
+  buildLLMDefenseParagraph,
+  scrubSecrets,
+} from '../_shared/llmSecurity.ts';
 
 // ===========================================================================
 // Build 15 / Session 8 / Feature 5-元 — generate-workout-menu Edge Function
@@ -380,7 +383,15 @@ serve(async (req) => {
     if (typeof validation === 'string') {
       responseStatus = 400;
       errorMessage = validation;
-      inputForLog = rawBody;
+      inputForLog = {
+        invalid: true,
+        reason: validation,
+        bodyType: Array.isArray(rawBody) ? 'array' : typeof rawBody,
+        keyCount:
+          rawBody && typeof rawBody === 'object' && !Array.isArray(rawBody)
+            ? Object.keys(rawBody as Record<string, unknown>).length
+            : 0,
+      };
       return jsonResponse(
         { error: 'invalid_request', message: validation },
         400,
@@ -481,9 +492,20 @@ serve(async (req) => {
       );
     }
 
+    const scrubResult = scrubSecrets(text);
+    if (scrubResult.redactedCount > 0) {
+      console.warn('[generate-workout-menu] L5 secret redacted', {
+        userId,
+        redactedCount: scrubResult.redactedCount,
+        patterns: scrubResult.redactedPatterns,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    const sanitizedText = scrubResult.sanitized;
+
     let parsed: unknown;
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(sanitizedText);
     } catch {
       responseStatus = 502;
       errorMessage = 'gemini returned non-JSON';

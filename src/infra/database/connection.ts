@@ -45,8 +45,19 @@ import { seedSearchIndex } from './seed/searchIndex';
 import { seedDishes } from './seed/dishes';
 import { seedFitnessDishes } from './seed/fitnessDishes';
 import { seedBarcodeProducts } from './seed/barcodeProducts';
+import { deleteProgressPhotoDirectory } from '../repositories/progressPhotoStorage';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
+
+export class ProgressPhotoDirectoryWipeError extends Error {
+  readonly cause?: unknown;
+
+  constructor(cause: unknown) {
+    super('PROGRESS_PHOTO_DIRECTORY_WIPE_FAILED');
+    this.name = 'ProgressPhotoDirectoryWipeError';
+    this.cause = cause;
+  }
+}
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (dbInstance) return dbInstance;
@@ -332,6 +343,11 @@ export async function wipeUserData(): Promise<void> {
     );
     await db.runAsync(`DELETE FROM exercises WHERE is_custom = 1`);
   });
+  try {
+    deleteProgressPhotoDirectory();
+  } catch (error) {
+    throw new ProgressPhotoDirectoryWipeError(error);
+  }
 }
 
 // "ローカルデータをリセット" — local-only reset (server data untouched).

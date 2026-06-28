@@ -1,4 +1,3 @@
-import { File, Paths, Directory } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
@@ -6,48 +5,14 @@ import { ProgressPhoto, ProgressPhotoInput, PoseType } from '../../types/progres
 import { canAddProgressPhoto } from '../../domain/subscription/gates';
 import type { PlanStatus } from '../services/subscriptionService';
 import { enqueueRowFromTable } from './syncRepository';
+import { deletePhotoFile } from './progressPhotoStorage';
+
+export { deletePhotoFile, persistPhoto } from './progressPhotoStorage';
 
 export class PhotoLimitExceededError extends Error {
   constructor() {
     super('PHOTO_LIMIT_EXCEEDED');
     this.name = 'PhotoLimitExceededError';
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Photo storage helpers
-// ---------------------------------------------------------------------------
-
-const PHOTO_DIR_NAME = 'progress_photos';
-
-function getPhotoDirectory(): Directory {
-  return new Directory(Paths.document, PHOTO_DIR_NAME);
-}
-
-/** Copy picked image into app's persistent storage and return the new URI */
-export async function persistPhoto(sourceUri: string): Promise<string> {
-  const dir = getPhotoDirectory();
-  if (!dir.exists) {
-    dir.create();
-  }
-
-  const ext = sourceUri.split('.').pop() ?? 'jpg';
-  const fileName = `${generateId()}.${ext}`;
-  const dest = new File(dir, fileName);
-  const source = new File(sourceUri);
-  source.copy(dest);
-  return dest.uri;
-}
-
-/** Delete a persisted photo from storage */
-export function deletePhotoFile(uri: string): void {
-  try {
-    const file = new File(uri);
-    if (file.exists) {
-      file.delete();
-    }
-  } catch {
-    // Non-critical — orphaned file is acceptable
   }
 }
 

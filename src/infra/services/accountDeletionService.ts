@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
-import { wipeUserData } from '../database/connection';
+import {
+  wipeUserData,
+  ProgressPhotoDirectoryWipeError,
+} from '../database/connection';
 
 // Set once the SERVER deletion is confirmed; cleared after local wipe finishes.
 // If the process dies between server-delete and local-wipe, the startup guard
@@ -46,7 +49,9 @@ export async function requestServerAccountDeletion(): Promise<DeleteAccountResul
 }
 
 // Local cleanup after a confirmed server deletion: wipe all local user data and
-// clear persisted storage (auth session, prefs). Best-effort; never throws.
+// clear persisted storage (auth session, prefs). Best-effort except for progress
+// photo directory deletion: if body photos remain, keep the pending marker by
+// preventing the settings flow from clearing AsyncStorage.
 export async function wipeLocalAfterDeletion(): Promise<void> {
   try {
     await wipeUserData();
@@ -57,7 +62,10 @@ export async function wipeLocalAfterDeletion(): Promise<void> {
     } catch {
       // ignore
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof ProgressPhotoDirectoryWipeError) {
+      throw error;
+    }
     // Non-fatal — startup orphan guard re-wipes on next launch (flag stays set).
   }
 }

@@ -11,9 +11,18 @@ jest.mock('../../supabase/client', () => ({
 }));
 
 const mockWipe = jest.fn().mockResolvedValue(undefined);
-jest.mock('../../database/connection', () => ({
-  wipeUserData: () => mockWipe(),
-}));
+jest.mock('../../database/connection', () => {
+  class ProgressPhotoDirectoryWipeError extends Error {
+    constructor() {
+      super('PROGRESS_PHOTO_DIRECTORY_WIPE_FAILED');
+      this.name = 'ProgressPhotoDirectoryWipeError';
+    }
+  }
+  return {
+    wipeUserData: () => mockWipe(),
+    ProgressPhotoDirectoryWipeError,
+  };
+});
 
 const store: Record<string, string> = {};
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -34,6 +43,7 @@ import {
   wipeLocalAfterDeletion,
   completeOrphanWipeIfPending,
 } from '../accountDeletionService';
+import { ProgressPhotoDirectoryWipeError } from '../../database/connection';
 
 const FLAG = 'account_deletion_pending_wipe';
 
@@ -84,6 +94,16 @@ describe('wipeLocalAfterDeletion', () => {
     store[FLAG] = '1';
     mockWipe.mockRejectedValueOnce(new Error('db locked'));
     await wipeLocalAfterDeletion();
+    expect(store[FLAG]).toBe('1');
+  });
+
+  it('propagates progress-photo directory deletion failure so the retry flag survives settings clear', async () => {
+    store[FLAG] = '1';
+    mockWipe.mockRejectedValueOnce(new ProgressPhotoDirectoryWipeError('delete failed'));
+
+    await expect(wipeLocalAfterDeletion()).rejects.toThrow(
+      ProgressPhotoDirectoryWipeError,
+    );
     expect(store[FLAG]).toBe('1');
   });
 });
