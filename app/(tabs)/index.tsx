@@ -554,12 +554,6 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Phase D-1 — 時間帯別グリーティングヘッダー (4-tier + icon).
-            Plan §5.3 A 「5-10時おはよう / 10-17時こんにちは / 17-22時
-            こんばんは / 22-5時お疲れさまです」 + 太陽/月 アイコン 1個.
-            既存 getGreeting() (3-tier、 icon なし) は format.ts に
-            残し、 home は domain/homeGreeting.ts の 4-tier 版を使用
-            (TZ-safe、 23 tests pin). */}
         {/* v6 header — 「今日」+ 日付 + (TrialBadge) + 設定. 設定はボトムタブから
             外しているためここが唯一の入口 (配線維持)。日付は selectedDate を
             ローカル midnight でパースし tz ずれを避ける。 */}
