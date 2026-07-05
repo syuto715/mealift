@@ -1113,7 +1113,28 @@ export default function SessionScreen() {
                   size="sm"
                 />
               </View>
-              <TouchableOpacity onPress={() => removeExercise(exercise.exerciseId)}>
+              <TouchableOpacity
+                // Audit E-09 — confirm before removing (matches every other
+                // destructive action in the app) and widen the 18px target to
+                // ≥44pt via hitSlop.
+                onPress={() =>
+                  Alert.alert(
+                    '種目を削除',
+                    `「${exercise.exerciseName}」をこのセッションから削除しますか?`,
+                    [
+                      { text: 'キャンセル', style: 'cancel' },
+                      {
+                        text: '削除',
+                        style: 'destructive',
+                        onPress: () => removeExercise(exercise.exerciseId),
+                      },
+                    ],
+                  )
+                }
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel={`${exercise.exerciseName}を削除`}
+              >
                 <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
               </TouchableOpacity>
             </View>
