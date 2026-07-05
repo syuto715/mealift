@@ -179,6 +179,14 @@ export default function ScanLabelScreen() {
           Alert.alert('エラー', msg);
         }
       }
+    } catch (e) {
+      // takePictureAsync itself can reject (camera busy / hardware error);
+      // the inner try only covers the OCR pipeline, so without this the
+      // rejection escapes as an unhandled promise on the shutter tap.
+      if (__DEV__) {
+        console.error('[scan-label.handleCapture] capture failed:', e);
+      }
+      Alert.alert('エラー', '撮影に失敗しました');
     } finally {
       setCapturing(false);
       setProcessing(false);
