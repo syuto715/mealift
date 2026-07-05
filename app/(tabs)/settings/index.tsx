@@ -202,11 +202,29 @@ export default function SettingsScreen() {
         return;
       }
       // Server account is gone → wipe local + clear storage + sign out.
-      await wipeLocalAfterDeletion();
       try {
-        await AsyncStorage.clear();
-      } catch {
-        // ignore
+        await wipeLocalAfterDeletion();
+        try {
+          await AsyncStorage.clear();
+        } catch {
+          // ignore
+        }
+      } catch (e) {
+        // Local cleanup (e.g. the progress-photo directory) failed. The
+        // server account is already deleted, and wipeLocalAfterDeletion
+        // intentionally leaves the pending-wipe marker set so the startup
+        // orphan-wipe guard finishes it next launch — so do NOT clear
+        // AsyncStorage here. Still sign out + navigate below so the user
+        // isn't stranded in a session backed by a dead account, and tell
+        // them the remaining cleanup completes on next launch.
+        if (__DEV__) {
+          console.error('[executeAccountDeletion] local wipe failed:', e);
+        }
+        Alert.alert(
+          'アカウントを削除しました',
+          'サーバー上のアカウントは削除されました。端末内の一部データの削除は次回起動時に完了します。',
+          [{ text: 'OK' }],
+        );
       }
       await logout();
       router.replace('/(auth)/login');
