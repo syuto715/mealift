@@ -60,6 +60,12 @@ export function Button({
       disabled={disabled || loading}
       activeOpacity={0.7}
       testID={testID}
+      // Audit C-14 — without these every Button announced as plain text to
+      // VoiceOver/TalkBack. title is the accessible label; busy reflects the
+      // loading spinner state.
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
     >
       {loading ? (
         <ActivityIndicator

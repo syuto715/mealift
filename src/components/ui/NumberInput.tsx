@@ -104,6 +104,8 @@ export function NumberInput({
           style={[styles.button, { borderRightWidth: 1, borderRightColor: colors.border }]}
           activeOpacity={0.6}
           hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          accessibilityRole="button"
+          accessibilityLabel={label ? `${label}を減らす` : '減らす'}
         >
           <Ionicons name="remove" size={20} color={colors.primary} />
         </TouchableOpacity>
@@ -129,6 +131,8 @@ export function NumberInput({
           style={[styles.button, { borderLeftWidth: 1, borderLeftColor: colors.border }]}
           activeOpacity={0.6}
           hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          accessibilityRole="button"
+          accessibilityLabel={label ? `${label}を増やす` : '増やす'}
         >
           <Ionicons name="add" size={20} color={colors.primary} />
         </TouchableOpacity>

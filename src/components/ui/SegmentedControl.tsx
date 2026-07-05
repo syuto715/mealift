@@ -36,6 +36,11 @@ export function SegmentedControl({
         ]}
         onPress={() => onValueChange(segment.value)}
         activeOpacity={0.7}
+        // Audit C-14 — selection was conveyed by color only; expose it to
+        // assistive tech via the tab role + selected state.
+        accessibilityRole="tab"
+        accessibilityLabel={segment.label}
+        accessibilityState={{ selected: isSelected }}
       >
         <Text
           style={[
