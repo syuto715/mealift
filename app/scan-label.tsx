@@ -248,8 +248,10 @@ export default function ScanLabelScreen() {
 
   return (
     <SafeAreaView
+      // Audit E-06 — include the bottom edge so the shutter bar clears the
+      // home-indicator inset on modern iPhones (fullScreenModal, no tab bar).
       style={[styles.safe, { backgroundColor: colors.background }]}
-      edges={['top']}
+      edges={['top', 'bottom']}
     >
       <View style={styles.headerBar}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
