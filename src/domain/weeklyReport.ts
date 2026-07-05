@@ -26,7 +26,7 @@ export async function generateWeeklyReport(
 
   // --- Weight ---
   const weightRows = await db.getAllAsync<{ date: string; weight_kg: number }>(
-    'SELECT date, weight_kg FROM body_logs WHERE profile_id = ? AND date BETWEEN ? AND ? ORDER BY date',
+    'SELECT date, weight_kg FROM body_logs WHERE profile_id = ? AND date BETWEEN ? AND ? AND deleted_at IS NULL ORDER BY date',
     [profileId, startStr, endStr],
   );
 
@@ -53,6 +53,8 @@ export async function generateWeeklyReport(
      FROM meal_logs ml
      JOIN meal_log_items mli ON mli.meal_log_id = ml.id
      WHERE ml.profile_id = ? AND ml.date BETWEEN ? AND ?
+       AND ml.deleted_at IS NULL
+       AND mli.deleted_at IS NULL
      GROUP BY ml.date`,
     [profileId, startStr, endStr],
   );
@@ -99,17 +101,33 @@ export async function generateWeeklyReport(
     total_volume: number;
     total_cal_burned: number;
   }>(
+    // total_cal_burned MUST come from a scalar subquery: estimated_calories
+    // lives on workout_sessions (one value per session), so summing it over
+    // the LEFT JOIN to workout_sets fans it out by set count (a 20-set
+    // session would count its calories 20×). Volume is per-set by nature,
+    // so its filters (soft-delete + warm-up exclusion, matching the
+    // canonical getSessionTotalVolume) live in the JOIN condition.
     `SELECT
        COUNT(DISTINCT ws.id) as session_count,
        COALESCE(SUM(wss.weight_kg * wss.reps), 0) as total_volume,
-       COALESCE(SUM(ws.estimated_calories), 0) as total_cal_burned
+       COALESCE((
+         SELECT SUM(s.estimated_calories)
+         FROM workout_sessions s
+         WHERE s.profile_id = ?
+           AND s.started_at >= ?
+           AND s.started_at < ?
+           AND s.deleted_at IS NULL
+       ), 0) as total_cal_burned
      FROM workout_sessions ws
-     LEFT JOIN workout_sets wss ON wss.session_id = ws.id
+     LEFT JOIN workout_sets wss
+       ON wss.session_id = ws.id
+       AND wss.deleted_at IS NULL
+       AND wss.is_warmup = 0
      WHERE ws.profile_id = ?
        AND ws.started_at >= ?
        AND ws.started_at < ?
        AND ws.deleted_at IS NULL`,
-    [profileId, startIso, endIso],
+    [profileId, startIso, endIso, profileId, startIso, endIso],
   );
 
   const training = trainingRows[0] ?? { session_count: 0, total_volume: 0, total_cal_burned: 0 };
