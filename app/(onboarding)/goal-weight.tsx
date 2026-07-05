@@ -7,7 +7,7 @@ import {
   ScrollView,
   useColorScheme,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { getColors, radius } from '../../src/theme/tokens';
 import { spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
@@ -76,6 +76,11 @@ export default function GoalWeightScreen() {
   const persistToProfile = useOnboardingStore((s) => s.persistToProfile);
 
   const [isAdvancing, setIsAdvancing] = useState(false);
+
+  // Audit C-09 — reset the double-tap guard when the screen regains focus,
+  // so navigating back after a push does not leave the CTA permanently
+  // disabled (isAdvancing was set true before router.push and never reset).
+  useFocusEffect(useCallback(() => { setIsAdvancing(false); }, []));
 
   // Pattern 18 補強 (C-3 / C-4 precedent) — INITIAL_STATE seeds
   // legacy placeholders (goalType='cut', targetWeightKg=null,
