@@ -30,7 +30,13 @@ interface Props {
   onRegenerate?: (messageId: string) => void;
 }
 
-export function MessageBubble({
+// Audit C-16/D-03 — memoized so that during SSE streaming (the store
+// rewrites the messages array once per token) only the streaming bubble
+// re-renders, not every visible bubble. The store's `.map` preserves the
+// object reference for non-matching messages and onRegenerate is a stable
+// useCallback at the call site, so React.memo's default shallow compare
+// bails out correctly for settled bubbles.
+function MessageBubbleImpl({
   message,
   onRegenerate,
 }: Props): React.ReactElement {
@@ -116,6 +122,8 @@ export function MessageBubble({
     </View>
   );
 }
+
+export const MessageBubble = React.memo(MessageBubbleImpl);
 
 const styles = StyleSheet.create({
   row: {
