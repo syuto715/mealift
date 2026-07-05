@@ -342,6 +342,12 @@ export async function wipeUserData(): Promise<void> {
       `UPDATE foods SET is_favorite = 0, use_count = 0, is_user_added = 0`,
     );
     await db.runAsync(`DELETE FROM exercises WHERE is_custom = 1`);
+    // barcode_foods is likewise MIXED: only source='preset' rows are seeded
+    // (seed/barcodeProducts.ts); every product the user scans or manually
+    // enters is saved with source 'manual'/'openfoodfacts' (barcodeFood
+    // Repository.saveBarcodeFood). Delete the user-authored rows so the prior
+    // account's scanned products don't linger after deletion / local reset.
+    await db.runAsync(`DELETE FROM barcode_foods WHERE source != 'preset'`);
   });
   try {
     deleteProgressPhotoDirectory();

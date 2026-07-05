@@ -117,3 +117,32 @@ describe('foods/exercises partial wipe (behavioral)', () => {
     d.close();
   });
 });
+
+// Audit B-16 — barcode_foods is the same MIXED-table shape as foods/exercises:
+// only source='preset' rows are seeded; scanned/manual rows must be wiped so a
+// prior account's products don't linger after account deletion / local reset.
+describe('barcode_foods partial wipe (behavioral, audit B-16)', () => {
+  function db(): DatabaseSync {
+    const d = new DatabaseSync(':memory:');
+    d.exec(
+      `CREATE TABLE barcode_foods (id TEXT PRIMARY KEY, source TEXT);`,
+    );
+    return d;
+  }
+  const wipeBarcodeFoods = (d: DatabaseSync) => {
+    d.exec(`DELETE FROM barcode_foods WHERE source != 'preset'`);
+  };
+
+  it("deletes user-scanned/manual rows, keeps source='preset' seed rows", () => {
+    const d = db();
+    d.exec(`INSERT INTO barcode_foods VALUES ('p1', 'preset')`);
+    d.exec(`INSERT INTO barcode_foods VALUES ('u1', 'manual')`);
+    d.exec(`INSERT INTO barcode_foods VALUES ('u2', 'openfoodfacts')`);
+
+    wipeBarcodeFoods(d);
+
+    const rows = (d.prepare(`SELECT id FROM barcode_foods`).all() as Array<{ id: string }>).map((r) => r.id);
+    expect(rows).toEqual(['p1']);
+    d.close();
+  });
+});
