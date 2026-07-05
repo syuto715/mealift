@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, useColorScheme } from 'react-native';
 import Svg, { Path, Line, Circle, G, Text as SvgText } from 'react-native-svg';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { colors } from '../../theme/tokens';
+import { getColors } from '../../theme/tokens';
 
 interface LineChartProps {
   data: { date: string; value: number }[];
@@ -31,12 +31,22 @@ export function LineChart({
   width,
   height,
   color,
-  averageColor = colors.warning,
-  targetColor = colors.success,
-  backgroundColor = colors.background,
-  labelColor = colors.textSecondary,
-  gridColor = colors.border,
+  averageColor: averageColorProp,
+  targetColor: targetColorProp,
+  backgroundColor: backgroundColorProp,
+  labelColor: labelColorProp,
+  gridColor: gridColorProp,
 }: LineChartProps) {
+  // Audit C-15/E-01 — resolve neutral/semantic defaults from the ACTIVE
+  // theme instead of the static light `colors` object, so the home
+  // mini-chart (which passes only `color`) renders correct gridlines/labels
+  // in dark mode. Explicit props at call sites still win.
+  const themed = getColors(useColorScheme() ?? 'light');
+  const averageColor = averageColorProp ?? themed.warning;
+  const targetColor = targetColorProp ?? themed.success;
+  const backgroundColor = backgroundColorProp ?? themed.background;
+  const labelColor = labelColorProp ?? themed.textSecondary;
+  const gridColor = gridColorProp ?? themed.border;
   if (data.length === 0) {
     return <View style={[styles.container, { width, height, backgroundColor }]} />;
   }

@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
-import { colors, radius } from '../../theme/tokens';
+import { getColors, radius } from '../../theme/tokens';
 
 interface BarChartData {
   label: string;
@@ -23,9 +23,13 @@ export function BarChart({
   data,
   width,
   height,
-  labelColor = colors.textSecondary,
-  gridColor = colors.border,
+  labelColor: labelColorProp,
+  gridColor: gridColorProp,
 }: BarChartProps) {
+  // Audit C-15/E-01 — theme-aware neutral defaults (was static light palette).
+  const themed = getColors(useColorScheme() ?? 'light');
+  const labelColor = labelColorProp ?? themed.textSecondary;
+  const gridColor = gridColorProp ?? themed.border;
   if (data.length === 0) {
     return <View style={[styles.container, { width, height }]} />;
   }

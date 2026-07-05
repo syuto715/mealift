@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, useColorScheme } from 'react-native';
 import Svg, { Path, Line, Circle, G, Text as SvgText } from 'react-native-svg';
 import { format, parseISO, differenceInDays, addDays } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { PredictionResult } from '../../types/prediction';
+import { getColors } from '../../theme/tokens';
 
 interface PredictionChartProps {
   currentWeight: number;
@@ -115,14 +116,19 @@ export function PredictionChart({
     xLabels.push({ date: labelDate, x: getX(labelDate) });
   }
 
-  // Colors
-  const optimisticColor = '#34C759';
-  const standardColor = '#1A73E8';
-  const conservativeColor = '#FF9500';
-  const targetLineColor = '#FF3B30';
-  const dataPointColor = '#1A73E8';
-  const gridColor = '#E9ECEF';
-  const labelColor = '#6C757D';
+  // Colors — Audit E-01. Derive from the active theme instead of hardcoded
+  // hex. The token light values equal the previous literals (semantic colors
+  // pass through unchanged in dark; only the neutrals gridColor/labelColor
+  // change), so light mode is pixel-identical and dark mode stops rendering
+  // near-white gridlines on the dark Card surface.
+  const themed = getColors(useColorScheme() ?? 'light');
+  const optimisticColor = themed.success;
+  const standardColor = themed.primary;
+  const conservativeColor = themed.warning;
+  const targetLineColor = themed.error;
+  const dataPointColor = themed.primary;
+  const gridColor = themed.border;
+  const labelColor = themed.textSecondary;
 
   return (
     <View style={[styles.container, { width, height }]}>
