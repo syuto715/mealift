@@ -28,6 +28,9 @@ export function PredictionChart({
   width,
   height,
 }: PredictionChartProps) {
+  // Audit E-01 — resolve theme neutrals/semantics from the active scheme.
+  // Must run before the early return below (rules-of-hooks).
+  const themed = getColors(useColorScheme() ?? 'light');
   if (recentWeights.length === 0) {
     return <View style={[styles.container, { width, height }]} />;
   }
@@ -116,12 +119,11 @@ export function PredictionChart({
     xLabels.push({ date: labelDate, x: getX(labelDate) });
   }
 
-  // Colors — Audit E-01. Derive from the active theme instead of hardcoded
-  // hex. The token light values equal the previous literals (semantic colors
-  // pass through unchanged in dark; only the neutrals gridColor/labelColor
-  // change), so light mode is pixel-identical and dark mode stops rendering
-  // near-white gridlines on the dark Card surface.
-  const themed = getColors(useColorScheme() ?? 'light');
+  // Colors — Audit E-01. Derive from the active theme (`themed`, resolved
+  // above) instead of hardcoded hex. The token light values equal the
+  // previous literals (semantic colors pass through unchanged in dark; only
+  // the neutrals gridColor/labelColor change), so light mode is
+  // pixel-identical and dark mode stops rendering near-white gridlines.
   const optimisticColor = themed.success;
   const standardColor = themed.primary;
   const conservativeColor = themed.warning;
