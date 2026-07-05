@@ -93,15 +93,21 @@ export const useSyncStatusStore = create<SyncStatusState>()(
 
       setDeadLetterCount: (count) => set({ deadLetterCount: count }),
 
+      // On success, stamp lastSyncAt = now. On error, PRESERVE the prior
+      // lastSyncAt: zustand v5 setState merges via Object.assign, which
+      // copies `undefined` values, so writing `lastSyncAt: undefined` here
+      // would clobber the last-success timestamp (and after a restart the
+      // persisted undefined drops to null → "未同期"). Build the partial
+      // functionally so the key simply carries the previous value on error.
       finishRun: (error) =>
-        set({
+        set((s) => ({
           state: error ? 'error' : 'idle',
           currentResource: null,
           progressTotal: 0,
           progressCompleted: 0,
-          lastSyncAt: error ? undefined : Date.now(),
+          lastSyncAt: error ? s.lastSyncAt : Date.now(),
           lastError: error ?? null,
-        }),
+        })),
 
       clearError: () => set({ lastError: null, state: 'idle' }),
     }),
