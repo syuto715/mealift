@@ -1044,3 +1044,20 @@
 - **E-20** `DateNavigator.tsx` — Shared UI primitives missing basic accessibility plumbing: DateNavigator days/arrows unlab
 
 計 38 Nit。
+
+---
+
+## Codex review summary(Phase 3)
+
+**Codex MCP は利用不可**(`402 Payment Required` / `deactivated_workspace`)。代替として、
+このコードを書いていない**独立 subagent レビュアー**に kickoff の6観点を verbatim で渡し、
+`git diff main..HEAD` 全体を実コード・スキーマ・EFソース・トークン値・test/tsc に照らして検証させた。
+
+- **iteration**: 1 round(Critical=0 を初回で達成 → 反復不要)
+- **最終 verdict**: **SHIP / merge推奨** — Critical 0・Important 0・Nit 2
+- **6観点**: 不可侵領域への接触なし / regression なし(B-10 は純追加で `syncAll` は `pull.skipped` 不参照を確認)/ UI一貫性 OK(v6領域・ハードコード色の混入なし)/ セキュリティ OK / スコープ超過なし(EF・migration・依存・nav 変更ゼロを `git diff --name-only` で確認)/ 型・null・error handling OK
+- **specific-fix 検証**: C-06/D-08・C-07/D-11(param順含む)・C-29(client-only, EF所有権検証あり)・C-03・C-11/C-12(finally解除)・C-15/E-01(light pixel-identical + rules-of-hooks OK)を全て CORRECT と確認
+
+### cleanup queue(レビュー由来)
+- **[処理済]** Nit #1 — `csvExportService.ts` の `ws.date`(C-06 と同クラスの実バグ、training CSV が throw)→ 本sprintで修正(`date(ws.started_at)`)+ 回帰テスト追加。
+- **[defer]** Nit #2 — `userDataTables.test.ts` の B-16 テストが production の `wipeUserData` を import せず DELETE 文字列を自前定義(既存の foods/exercises テスト様式と同一)。value-at-risk 低・cosmetic のため defer。
