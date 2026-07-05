@@ -275,7 +275,7 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
         // own system prompt + history reconciliation).
         .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
       context,
-      { idempotencyKey, signal: abortController.signal },
+      { idempotencyKey, signal: abortController.signal, conversationId },
     );
     // Side-channel done promise: the iterator already throws on
     // failure (and the explicit await stream.done below catches

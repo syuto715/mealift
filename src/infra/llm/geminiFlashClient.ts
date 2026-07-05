@@ -331,7 +331,11 @@ export class GeminiFlashClient implements LLMClient {
               Authorization: `Bearer ${token}`,
               'Idempotency-Key': options.idempotencyKey,
             },
-            body: JSON.stringify({ messages, context }),
+            body: JSON.stringify({
+              messages,
+              context,
+              conversationId: options.conversationId ?? null,
+            }),
             signal: options.signal,
           },
         );

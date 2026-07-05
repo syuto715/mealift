@@ -718,3 +718,42 @@ describe('chatStore.dismiss* helpers', () => {
     expect(useChatStore.getState().isOffline).toBe(false);
   });
 });
+
+// Audit C-29 — the store must forward the conversation id to the LLM
+// client so the coach-chat EF resolves the existing conversation instead
+// of INSERTing a new chat_conversations row on every reply. The fake
+// client records options.conversationId; these tests exercise the
+// contract the previous fake masked by ignoring it entirely.
+describe('chatStore.sendMessage — conversationId threading (audit C-29)', () => {
+  beforeEach(resetStore);
+
+  it('forwards null for a brand-new conversation', async () => {
+    const { client, calls } = makeFakeClient();
+    useChatStore.getState().setLLMClient(client);
+
+    void useChatStore.getState().sendMessage({
+      userId: 'u1',
+      conversationId: null,
+      text: 'はじめまして',
+    });
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].options.conversationId ?? null).toBeNull();
+  });
+
+  it('forwards the existing conversation id when replying in a thread', async () => {
+    const { client, calls } = makeFakeClient();
+    useChatStore.getState().setLLMClient(client);
+
+    void useChatStore.getState().sendMessage({
+      userId: 'u1',
+      conversationId: 'conv-existing',
+      text: '続きの質問',
+    });
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].options.conversationId).toBe('conv-existing');
+  });
+});
