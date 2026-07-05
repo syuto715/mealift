@@ -21,6 +21,7 @@ import {
   PreviousMealSummary,
 } from '../../infra/repositories/nutritionRepository';
 import { formatDateRelative } from '../../utils/format';
+import { useUIStore } from '../../stores/uiStore';
 
 interface Props {
   visible: boolean;
@@ -51,13 +52,19 @@ export function CopyMealModal({
   const [history, setHistory] = useState<PreviousMealSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const showToast = useUIStore((s) => s.showToast);
 
   useEffect(() => {
     if (!visible) return;
     setLoading(true);
+    setLoadError(false);
     getPreviousMealsSummary(profileId, mealType, 7)
       .then(setHistory)
-      .catch(() => setHistory([]))
+      .catch(() => {
+        setHistory([]);
+        setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, [visible, profileId, mealType]);
 
@@ -70,12 +77,14 @@ export function CopyMealModal({
         onCopied(count);
         onClose();
       } catch {
-        // keep modal open on error
+        // Surface the failure instead of silently doing nothing (matches
+        // DeloadRoutinePickerModal's toast pattern); keep the modal open.
+        showToast('コピーに失敗しました。もう一度お試しください', 'error');
       } finally {
         setCopying(false);
       }
     },
-    [copying, profileId, toDate, mealType, onCopied, onClose]
+    [copying, profileId, toDate, mealType, onCopied, onClose, showToast]
   );
 
   if (!visible) return null;
@@ -96,6 +105,10 @@ export function CopyMealModal({
           <ScrollView contentContainerStyle={styles.content}>
             {loading ? (
               <ActivityIndicator style={{ marginTop: spacing.lg }} />
+            ) : loadError ? (
+              <Text style={[styles.empty, { color: colors.textSecondary }]}>
+                読み込みに失敗しました。閉じてもう一度お試しください。
+              </Text>
             ) : history.length === 0 ? (
               <Text style={[styles.empty, { color: colors.textSecondary }]}>
                 コピーできる過去の{MEAL_LABELS[mealType]}がありません。
