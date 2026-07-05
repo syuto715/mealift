@@ -92,4 +92,36 @@ describe('exportCsv', () => {
 
     expect(mockFileInstances[0].delete).toHaveBeenCalledTimes(1);
   });
+
+  // Audit follow-up (independent-review Nit #1) — the training query used
+  // `ws.date`, a column workout_sessions does not have (only started_at), so
+  // export threw "no such column: ws.date". Pin the fixed SQL: reject the bad
+  // column, require the date be derived from started_at.
+  it('training export does not reference the non-existent ws.date column', async () => {
+    let captured = '';
+    mockGetAllAsync.mockImplementation(async (sql: string) => {
+      captured = sql;
+      if (/\bws\.date\b/.test(sql)) {
+        throw new Error('no such column: ws.date');
+      }
+      return [
+        {
+          date: '2026-07-05',
+          exercise_name: 'ベンチプレス',
+          set_number: 1,
+          weight_kg: 60,
+          reps: 10,
+          rpe: 8,
+        },
+      ];
+    });
+
+    await exportCsv('training', 'profile-1');
+
+    expect(captured).not.toMatch(/\bws\.date\b/);
+    expect(captured).toMatch(/date\(ws\.started_at\)/);
+    expect(captured).toMatch(/ORDER BY ws\.started_at/);
+    expect(mockFileInstances[0].content).toContain('2026-07-05');
+    expect(mockFileInstances[0].content).toContain('ベンチプレス');
+  });
 });

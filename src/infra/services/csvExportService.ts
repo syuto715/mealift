@@ -86,12 +86,17 @@ async function generateNutritionCsv(profileId: string): Promise<string> {
 async function generateTrainingCsv(profileId: string): Promise<string> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    `SELECT ws.date, e.name_ja as exercise_name, wss.set_number, wss.weight_kg, wss.reps, wss.rpe
+    // workout_sessions has no `date` column (only started_at, a UTC ISO
+    // string); the prior `ws.date` here failed statement prep with
+    // "no such column: ws.date", so training CSV export always threw. Same
+    // audit class as the workoutSuggestion fix (C-06/D-08). Derive the day
+    // from started_at via date().
+    `SELECT date(ws.started_at) as date, e.name_ja as exercise_name, wss.set_number, wss.weight_kg, wss.reps, wss.rpe
      FROM workout_sets wss
      JOIN workout_sessions ws ON wss.session_id = ws.id
      JOIN exercises e ON wss.exercise_id = e.id
      WHERE ws.profile_id = ? AND ws.deleted_at IS NULL AND wss.deleted_at IS NULL
-     ORDER BY ws.date`,
+     ORDER BY ws.started_at`,
     [profileId],
   );
 
