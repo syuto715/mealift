@@ -98,6 +98,9 @@ export interface PushResult {
 export interface PullResult {
   pulled: number;
   skipped: SyncSkipReason | 'remote_error' | null;
+  // Server table names whose pull failed this run (watermark frozen, will
+  // resume next run). Populated only when skipped === 'remote_error'.
+  failedResources?: string[];
 }
 
 export interface SyncResult {
@@ -241,6 +244,7 @@ export async function pullAll(
   }
 
   let totalPulled = 0;
+  const failedResources: string[] = [];
   for (const mod of RESOURCE_MODULES) {
     let watermark =
       (await getWatermark(db, mod.serverTableName)) ?? EPOCH_WATERMARK;
@@ -257,16 +261,29 @@ export async function pullAll(
           watermark = result.newWatermark;
         }
         if (result.pulled === 0) break;
-      } catch {
+      } catch (e) {
         // Per-resource pull failure: skip this resource for this run.
         // Watermark already advanced for completed batches; next call
-        // resumes from there.
+        // resumes from there. Record it so the failure leaves a diagnostic
+        // trail (previously it was discarded entirely and the whole run
+        // reported success with silently frozen watermarks).
+        failedResources.push(mod.serverTableName);
+        if (__DEV__) {
+          console.warn(
+            `[pullAll] resource pull failed: ${mod.serverTableName}`,
+            e,
+          );
+        }
         break;
       }
     }
   }
 
-  return { pulled: totalPulled, skipped: null };
+  return {
+    pulled: totalPulled,
+    skipped: failedResources.length > 0 ? 'remote_error' : null,
+    ...(failedResources.length > 0 ? { failedResources } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------

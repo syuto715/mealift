@@ -493,3 +493,65 @@ describe('generateWeeklyReport — training-stats schema (Phase 2 hotfix)', () =
     expect(report.totalCaloriesBurned).toBe(100);
   });
 });
+
+// Audit C-07 / D-11 — the SQL contract the JS fake DBs above cannot
+// capture. total_cal_burned was previously SUM(ws.estimated_calories)
+// over the LEFT JOIN to workout_sets, fanning calories out by set count;
+// and the weight / nutrition / volume aggregations ignored soft-delete
+// (and warm-up) tombstones. These structural assertions pin the fixed
+// SQL text so a revert fails loudly even though the aggregation-in-JS
+// fakes would stay green.
+describe('generateWeeklyReport — SQL contract (audit C-07/D-11)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { generateWeeklyReport } = require('../weeklyReport') as typeof import('../weeklyReport');
+
+  function captureSqlDb() {
+    const sqls: string[] = [];
+    const db = {
+      async getFirstAsync() {
+        return null;
+      },
+      async getAllAsync(sql: string) {
+        sqls.push(sql);
+        return [];
+      },
+      async runAsync() {
+        return { changes: 0 };
+      },
+    };
+    return { db, sqls };
+  }
+
+  it('computes training calories via a fan-out-safe scalar subquery', async () => {
+    const { db, sqls } = captureSqlDb();
+    mockGetDatabase.mockResolvedValue(db);
+    await generateWeeklyReport('p1', new Date(2026, 4, 6, 12, 0, 0, 0));
+
+    const training = sqls.find(
+      (s) => s.includes('total_cal_burned') && s.includes('FROM workout_sessions'),
+    );
+    expect(training).toBeDefined();
+    // Must NOT sum estimated_calories over the joined set rows.
+    expect(training).not.toMatch(/SUM\(\s*ws\.estimated_calories\s*\)/);
+    // Must sum via a scalar subquery over workout_sessions.
+    expect(training).toMatch(
+      /SELECT\s+SUM\(\s*s\.estimated_calories\s*\)[\s\S]*FROM\s+workout_sessions\s+s/,
+    );
+    // Volume filters (soft-delete + warm-up) live in the JOIN condition.
+    expect(training).toMatch(/LEFT JOIN workout_sets wss[\s\S]*wss\.deleted_at IS NULL/);
+    expect(training).toMatch(/wss\.is_warmup = 0/);
+  });
+
+  it('excludes soft-deleted rows from weight and nutrition queries', async () => {
+    const { db, sqls } = captureSqlDb();
+    mockGetDatabase.mockResolvedValue(db);
+    await generateWeeklyReport('p1', new Date(2026, 4, 6, 12, 0, 0, 0));
+
+    const weight = sqls.find((s) => s.includes('FROM body_logs'));
+    expect(weight).toMatch(/deleted_at IS NULL/);
+
+    const nutrition = sqls.find((s) => s.includes('FROM meal_logs ml'));
+    expect(nutrition).toMatch(/ml\.deleted_at IS NULL/);
+    expect(nutrition).toMatch(/mli\.deleted_at IS NULL/);
+  });
+});

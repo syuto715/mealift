@@ -39,3 +39,10 @@ scripts/import-mext-foods/downloaded/
 # Tracking these makes the working tree dirty after every CLI invocation.
 supabase/.temp/
 *.swp
+# Audit A-08 — eas.json's Android submit points serviceAccountKeyPath at
+# ./google-services.json (a Google Play service-account key = secret). Ignore
+# it so a locally-placed key can never be committed by accident.
+google-services.json
+# Android signing keystores
+*.keystore
+*.jks

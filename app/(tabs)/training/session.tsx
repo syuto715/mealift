@@ -327,6 +327,11 @@ export default function SessionScreen() {
 
   const restTimer = useRestTimer();
   const prevTimerRunning = useRef(restTimer.isRunning);
+  // Audit C-11 — set.id values whose DB save is in flight. `set.completed`
+  // only flips AFTER addSet resolves, so a double-tap inside that window
+  // would otherwise insert a duplicate workout_sets row. Ref (not state):
+  // synchronous re-entry guard, no re-render needed.
+  const savingSetsRef = useRef<Set<string>>(new Set());
 
   // Phase 9.1 — gate the chip strip to Plus/Pro (and trial). Computed
   // once per render so the per-set RecommendationStrip doesn't
@@ -655,6 +660,8 @@ export default function SessionScreen() {
 
   const handleCompleteSet = async (exerciseId: string, set: SetInSession) => {
     if (set.completed || !params.sessionId) return;
+    // Reject a second tap while this set's save is still in flight.
+    if (savingSetsRef.current.has(set.id)) return;
 
     const ex = exercises.find((e) => e.exerciseId === exerciseId);
     const isStrength = !ex || ex.exerciseType === 'strength';
@@ -672,6 +679,7 @@ export default function SessionScreen() {
         : null;
 
     // Save to DB
+    savingSetsRef.current.add(set.id);
     try {
       await workoutRepo.addSet(params.sessionId, {
         exerciseId,
@@ -696,6 +704,8 @@ export default function SessionScreen() {
     } catch {
       Alert.alert('エラー', 'セットの保存に失敗しました');
       return;
+    } finally {
+      savingSetsRef.current.delete(set.id);
     }
 
     completeSet(exerciseId, set.id);
@@ -756,22 +766,30 @@ export default function SessionScreen() {
       }
     }
 
-    // Rest timer (Feature D)
-    if (restTimerSettings.enabled && restTimerSettings.autoStart) {
-      let secs = restTimerSettings.defaultSeconds;
-      if (restTimerSettings.perExerciseOverride && canUse('restTimerPerExercise')) {
-        const overrideSecs = await workoutRepo.getExerciseDefaultRestSeconds(exerciseId);
-        if (overrideSecs != null && overrideSecs > 0) {
-          secs = overrideSecs;
+    // Rest timer (Feature D). The set is already saved at this point, so a
+    // rest-timer failure must not surface as an unhandled rejection on the
+    // floating onPress promise — swallow it (best-effort convenience timer).
+    try {
+      if (restTimerSettings.enabled && restTimerSettings.autoStart) {
+        let secs = restTimerSettings.defaultSeconds;
+        if (restTimerSettings.perExerciseOverride && canUse('restTimerPerExercise')) {
+          const overrideSecs = await workoutRepo.getExerciseDefaultRestSeconds(exerciseId);
+          if (overrideSecs != null && overrideSecs > 0) {
+            secs = overrideSecs;
+          }
         }
+        const ex = exercises.find((e) => e.exerciseId === exerciseId);
+        await restTimerService.start(secs, ex?.exerciseName);
+        setRestOverlayVisible(true);
       }
-      const ex = exercises.find((e) => e.exerciseId === exerciseId);
-      await restTimerService.start(secs, ex?.exerciseName);
-      setRestOverlayVisible(true);
-    }
 
-    // Legacy timer store
-    restTimer.start();
+      // Legacy timer store
+      restTimer.start();
+    } catch (e) {
+      if (__DEV__) {
+        console.warn('[session.handleCompleteSet] rest timer start failed:', e);
+      }
+    }
   };
 
   const handleAddExerciseToSession = async (exercise: Exercise) => {
@@ -780,7 +798,17 @@ export default function SessionScreen() {
     const alreadyInSession = exercises.some((e) => e.exerciseId === exercise.id);
     if (alreadyInSession) return;
 
-    const previousSets = await workoutRepo.getPreviousSets(profile.id, exercise.id);
+    // getPreviousSets can reject (DB error); without a guard the rejection
+    // escapes as an unhandled promise from the onPress handler. Fall back to
+    // empty history so the exercise can still be added.
+    let previousSets: Awaited<ReturnType<typeof workoutRepo.getPreviousSets>> = [];
+    try {
+      previousSets = await workoutRepo.getPreviousSets(profile.id, exercise.id);
+    } catch (e) {
+      if (__DEV__) {
+        console.warn('[session.handleAddExerciseToSession] getPreviousSets failed:', e);
+      }
+    }
 
     const isCardio = exercise.exerciseType !== 'strength';
     const setCount = isCardio ? 1 : 3;
@@ -1085,7 +1113,28 @@ export default function SessionScreen() {
                   size="sm"
                 />
               </View>
-              <TouchableOpacity onPress={() => removeExercise(exercise.exerciseId)}>
+              <TouchableOpacity
+                // Audit E-09 — confirm before removing (matches every other
+                // destructive action in the app) and widen the 18px target to
+                // ≥44pt via hitSlop.
+                onPress={() =>
+                  Alert.alert(
+                    '種目を削除',
+                    `「${exercise.exerciseName}」をこのセッションから削除しますか?`,
+                    [
+                      { text: 'キャンセル', style: 'cancel' },
+                      {
+                        text: '削除',
+                        style: 'destructive',
+                        onPress: () => removeExercise(exercise.exerciseId),
+                      },
+                    ],
+                  )
+                }
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel={`${exercise.exerciseName}を削除`}
+              >
                 <Ionicons name="trash-outline" size={18} color={colors.textTertiary} />
               </TouchableOpacity>
             </View>

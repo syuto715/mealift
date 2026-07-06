@@ -173,6 +173,14 @@ export default function ScanDishScreen() {
           Alert.alert('エラー', msg);
         }
       }
+    } catch (e) {
+      // takePictureAsync itself can reject (camera busy / hardware error);
+      // the inner try only covers the vision pipeline, so without this the
+      // rejection escapes as an unhandled promise on the shutter tap.
+      if (__DEV__) {
+        console.error('[scan-dish.handleCapture] capture failed:', e);
+      }
+      Alert.alert('エラー', '撮影に失敗しました');
     } finally {
       setCapturing(false);
       setProcessing(false);
@@ -230,8 +238,10 @@ export default function ScanDishScreen() {
 
   return (
     <SafeAreaView
+      // Audit E-06 — include the bottom edge so the shutter bar clears the
+      // home-indicator inset on modern iPhones (fullScreenModal, no tab bar).
       style={[styles.safe, { backgroundColor: colors.background }]}
-      edges={['top']}
+      edges={['top', 'bottom']}
     >
       <View style={styles.headerBar}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>

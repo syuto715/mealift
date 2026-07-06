@@ -102,6 +102,12 @@ export default function TrainingScreen() {
   const [modalStage, setModalStage] = useState<'form' | 'picker'>('form');
   const [routineName, setRoutineName] = useState('');
   const [draftItems, setDraftItems] = useState<RoutineItemDraft[]>([]);
+  // Audit C-12 — in-flight guards so a double-tap before navigation /
+  // modal-close cannot create duplicate workout_sessions or a duplicate
+  // routine. Refs (not state) because we only need synchronous re-entry
+  // protection, not a re-render.
+  const startingSessionRef = useRef(false);
+  const savingRoutineRef = useRef(false);
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [exerciseFilter, setExerciseFilter] = useState<string>('all');
   const [exerciseTypeFilter, setExerciseTypeFilter] = useState<ExerciseType>('strength');
@@ -307,7 +313,8 @@ export default function TrainingScreen() {
   }, [modalStage, loadExercises]);
 
   const handleStartRoutine = async (routineId: string) => {
-    if (!profile) return;
+    if (!profile || startingSessionRef.current) return;
+    startingSessionRef.current = true;
     try {
       const session = await workoutRepo.createSession(profile.id, routineId);
       router.push({
@@ -316,11 +323,14 @@ export default function TrainingScreen() {
       });
     } catch {
       Alert.alert('エラー', 'セッションの開始に失敗しました');
+    } finally {
+      startingSessionRef.current = false;
     }
   };
 
   const handleFreeSession = async () => {
-    if (!profile) return;
+    if (!profile || startingSessionRef.current) return;
+    startingSessionRef.current = true;
     try {
       const session = await workoutRepo.createSession(profile.id, null);
       router.push({
@@ -329,13 +339,16 @@ export default function TrainingScreen() {
       });
     } catch {
       Alert.alert('エラー', 'セッションの開始に失敗しました');
+    } finally {
+      startingSessionRef.current = false;
     }
   };
 
   // v1.5.2 Sprint 2 — スターターテンプレから ephemeral にセッション開始
   // (保存せず: createSession(profile.id, null) → session が templateId を読む)。
   const handleStartTemplate = async (template: WorkoutTemplate) => {
-    if (!profile) return;
+    if (!profile || startingSessionRef.current) return;
+    startingSessionRef.current = true;
     try {
       const session = await workoutRepo.createSession(profile.id, null);
       router.push({
@@ -344,6 +357,8 @@ export default function TrainingScreen() {
       });
     } catch {
       Alert.alert('エラー', 'セッションの開始に失敗しました');
+    } finally {
+      startingSessionRef.current = false;
     }
   };
 
@@ -416,6 +431,8 @@ export default function TrainingScreen() {
 
   const handleSaveRoutine = async () => {
     if (!profile || !routineName.trim() || draftItems.length === 0) return;
+    if (savingRoutineRef.current) return;
+    savingRoutineRef.current = true;
     try {
       await workoutRepo.createRoutine(
         profile.id,
@@ -434,6 +451,8 @@ export default function TrainingScreen() {
       loadRoutines();
     } catch {
       Alert.alert('エラー', 'ルーティンの保存に失敗しました');
+    } finally {
+      savingRoutineRef.current = false;
     }
   };
 

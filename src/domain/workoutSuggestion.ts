@@ -41,11 +41,14 @@ export async function getRecoveryStatuses(
     muscle_group: string;
     last_date: string;
   }>(
-    `SELECT e.muscle_group, MAX(ws.date || ' ' || COALESCE(ws.started_at, '00:00:00')) as last_date
+    `SELECT e.muscle_group, MAX(ws.started_at) as last_date
      FROM workout_sets wss
      JOIN workout_sessions ws ON wss.session_id = ws.id
      JOIN exercises e ON wss.exercise_id = e.id
      WHERE ws.profile_id = ?
+       AND ws.deleted_at IS NULL
+       AND wss.deleted_at IS NULL
+       AND wss.is_warmup = 0
      GROUP BY e.muscle_group`,
     [profileId],
   );
@@ -60,11 +63,14 @@ export async function getRecoveryStatuses(
     secondary_muscles: string | null;
     session_date: string;
   }>(
-    `SELECT e.secondary_muscles, MAX(ws.date || ' ' || COALESCE(ws.started_at, '00:00:00')) as session_date
+    `SELECT e.secondary_muscles, MAX(ws.started_at) as session_date
      FROM workout_sets wss
      JOIN workout_sessions ws ON wss.session_id = ws.id
      JOIN exercises e ON wss.exercise_id = e.id
      WHERE ws.profile_id = ? AND e.secondary_muscles IS NOT NULL
+       AND ws.deleted_at IS NULL
+       AND wss.deleted_at IS NULL
+       AND wss.is_warmup = 0
      GROUP BY e.secondary_muscles`,
     [profileId],
   );
@@ -112,7 +118,7 @@ export async function getRecoveryStatuses(
 
     return {
       muscleGroup: group,
-      lastTrainedDate: lastStr.split(' ')[0],
+      lastTrainedDate: lastStr.split('T')[0],
       hoursSinceTraining: hours,
       recoveryPercent,
       status,

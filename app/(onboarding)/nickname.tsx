@@ -8,7 +8,7 @@ import {
   Platform,
   useColorScheme,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { getColors, radius } from '../../src/theme/tokens';
 import { spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
@@ -77,6 +77,11 @@ export default function NicknameScreen() {
   );
   const [touched, setTouched] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
+
+  // Audit C-09 — reset the double-tap guard when the screen regains focus,
+  // so navigating back after a push does not leave the CTA permanently
+  // disabled (isAdvancing was set true before router.push and never reset).
+  useFocusEffect(useCallback(() => { setIsAdvancing(false); }, []));
 
   // Mount-time pre-fill: if the store has no nickname yet, hydrate
   // from existing profile so a returning user sees their current

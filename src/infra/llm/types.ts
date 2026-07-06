@@ -134,6 +134,13 @@ export interface ChatOptions {
    *  second Gemini call + a second `ai_usage_logs` INSERT (§3
    *  server step 2). Drafting 97 + 98. */
   idempotencyKey: string;
+  /** Existing server conversation id, or null/undefined to have the
+   *  server create a new conversation. The coach-chat EF resolves the
+   *  conversation from this body field; when it is absent the EF always
+   *  INSERTs a brand-new chat_conversations row, so a reply in an
+   *  existing thread MUST pass the id or every turn forks a new
+   *  server-side conversation. */
+  conversationId?: string | null;
 }
 
 export interface AdviceOptions {

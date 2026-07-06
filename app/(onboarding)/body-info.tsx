@@ -10,7 +10,7 @@ import {
   Platform,
   useColorScheme,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors, radius } from '../../src/theme/tokens';
@@ -120,6 +120,11 @@ export default function BodyInfoScreen() {
     weight: false,
   });
   const [isAdvancing, setIsAdvancing] = useState(false);
+
+  // Audit C-09 — reset the double-tap guard when the screen regains focus,
+  // so navigating back after a push does not leave the CTA permanently
+  // disabled (isAdvancing was set true before router.push and never reset).
+  useFocusEffect(useCallback(() => { setIsAdvancing(false); }, []));
 
   const birthYearValidation = useMemo(
     () => validateBirthYear(birthYear),

@@ -119,6 +119,8 @@ export function DateNavigator({
           onPress={handlePrevWeek}
           style={styles.arrowButton}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="前の週"
         >
           <Ionicons name="chevron-back" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -214,6 +216,9 @@ export function DateNavigator({
           style={styles.arrowButton}
           hitSlop={8}
           disabled={!canGoNext}
+          accessibilityRole="button"
+          accessibilityLabel="次の週"
+          accessibilityState={{ disabled: !canGoNext }}
         >
           <Ionicons
             name="chevron-forward"

@@ -6,7 +6,7 @@ import {
   ScrollView,
   useColorScheme,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors, radius } from '../../src/theme/tokens';
 import { spacing } from '../../src/theme/spacing';
@@ -69,6 +69,11 @@ export default function WelcomeScreen() {
   const prefillFromProfile = useOnboardingStore((s) => s.prefillFromProfile);
   const existingProfile = useProfileStore((s) => s.profile);
   const [isAdvancing, setIsAdvancing] = useState(false);
+
+  // Audit C-09 — reset the double-tap guard when the screen regains focus,
+  // so navigating back after a push does not leave the CTA permanently
+  // disabled (isAdvancing was set true before router.push and never reset).
+  useFocusEffect(useCallback(() => { setIsAdvancing(false); }, []));
 
   // Phase E-4 — gate the migration notice on a single helper call.
   // existingProfile rarely changes on this screen (set once by
