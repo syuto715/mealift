@@ -657,7 +657,7 @@ export default function HomeScreen() {
                   </View>
                   <Text style={[styles.v6MacroVal, { color: colors.textPrimary }]}>
                     {m.cur}
-                    <Text style={{ color: colors.textTertiary }}>{m.tgt > 0 ? ` / ${m.tgt}g` : 'g'}</Text>
+                    <Text style={{ color: colors.textSecondary }}>{m.tgt > 0 ? ` / ${m.tgt}g` : 'g'}</Text>
                   </Text>
                 </View>
               );

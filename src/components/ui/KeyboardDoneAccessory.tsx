@@ -41,7 +41,8 @@ export function KeyboardDoneAccessory({ nativeID }: Props): React.ReactElement |
       >
         <TouchableOpacity
           onPress={() => Keyboard.dismiss()}
-          hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+          style={styles.doneBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
           accessibilityRole="button"
           accessibilityLabel="キーボードを閉じる"
         >
@@ -58,8 +59,16 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    // Vertical size comes from the 44pt doneBtn; keep the bar padding
+    // minimal so the toolbar stays a compact ~48pt.
+    paddingVertical: 2,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  doneBtn: {
+    // Reach the 44pt iOS minimum tap target (text ~22 + padding).
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xs,
   },
   done: {
     ...typography.labelLarge,
