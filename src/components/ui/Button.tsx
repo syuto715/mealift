@@ -69,7 +69,7 @@ export function Button({
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === 'primary' ? '#FFFFFF' : colors.primary}
+          color={variant === 'primary' ? colors.onPrimary : colors.primary}
           size="small"
         />
       ) : (
@@ -100,7 +100,7 @@ function getVariantStyle(variant: string, colors: ReturnType<typeof getColors>):
 function getVariantTextStyle(variant: string, colors: ReturnType<typeof getColors>): TextStyle {
   switch (variant) {
     case 'primary':
-      return { color: '#FFFFFF' };
+      return { color: colors.onPrimary };
     case 'secondary':
       return { color: colors.textPrimary };
     case 'outline':
@@ -108,7 +108,7 @@ function getVariantTextStyle(variant: string, colors: ReturnType<typeof getColor
     case 'ghost':
       return { color: colors.primary };
     default:
-      return { color: '#FFFFFF' };
+      return { color: colors.onPrimary };
   }
 }
 
