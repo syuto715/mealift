@@ -31,6 +31,7 @@ import { useGoalPrediction } from '../../src/hooks/useGoalPrediction';
 import { useAdaptiveGoal } from '../../src/hooks/useAdaptiveGoal';
 import { GoalPredictionCard } from '../../src/components/home/GoalPredictionCard';
 import { AdaptiveGoalCard } from '../../src/components/home/AdaptiveGoalCard';
+import { CoachHomeCard } from '../../src/components/home/CoachHomeCard';
 import { useWaterTracker } from '../../src/hooks/useWaterTracker';
 import { useHealthKitCalories } from '../../src/hooks/useHealthKitCalories';
 import { getDailyCalories, getWeeklyCalories } from '../../src/infra/repositories/nutritionRepository';
@@ -679,6 +680,10 @@ export default function HomeScreen() {
             <Ionicons name="chevron-forward" size={14} color={colors.primary} />
           </TouchableOpacity>
         </Card>
+
+        {/* P2-2 AIコーチ一言カード — サマリ直下に常設。既存 coachAdvice の
+            cached advice を read-only 表示、タップで coach へ。EF生成なし。 */}
+        <CoachHomeCard />
 
         {/* v6 今日の食事 — 朝/昼/夕/間 の行リスト。行全体タップで該当 meal の
             記録へ。記録シートは次 sprint。今は既存 /add-food (mealType scoped)
