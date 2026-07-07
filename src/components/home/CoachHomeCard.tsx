@@ -7,10 +7,12 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { Card } from '../ui/Card';
 import { useProfileStore } from '../../stores/profileStore';
+import { useSubscription } from '../../hooks/useSubscription';
 import {
   useCoachAdviceStore,
   selectLatestAdvice,
 } from '../../stores/coachAdviceStore';
+import { pickHomeAdvice } from './coachHomeAdvice';
 
 // P2-2 — home "ミー先生のひとこと" card. Surfaces the latest ALREADY-CACHED
 // coach advice (read-only) and taps through to the coach chat. It never
@@ -18,6 +20,11 @@ import {
 // hydrates the local mirror via loadFromCache (an existing retrieval path —
 // a PostgREST table read, NOT an Edge Function call). Empty/loading states
 // degrade gracefully; a Free user with no advice just sees the empty state.
+//
+// Tier gate (Codex 遡及review round 1 Critical): AdviceCard と同じ
+// `hasFeature` 出し分け — weekly は Plus+、daily は Pro のみ。アクセス権の
+// ない scope は hydrate もせず表示にも使わない（I1 no-free-reads — 降格後に
+// 残存する cached row をホームへ出さない）。
 
 export function CoachHomeCard(): React.ReactElement | null {
   const scheme = useColorScheme() ?? 'light';
@@ -25,19 +32,23 @@ export function CoachHomeCard(): React.ReactElement | null {
   const router = useRouter();
 
   const userId = useProfileStore((s) => s.profile?.id ?? '');
+  const sub = useSubscription();
+  const canWeekly = sub.hasFeature('aiCoachAdviceWeekly');
+  const canDaily = sub.hasFeature('aiCoachAdviceDaily');
   const daily = useCoachAdviceStore((s) => selectLatestAdvice(s, userId, 'daily'));
   const weekly = useCoachAdviceStore((s) => selectLatestAdvice(s, userId, 'weekly'));
   const loadFromCache = useCoachAdviceStore((s) => s.loadFromCache);
 
-  // Hydrate the local mirror once per user. Fire-and-forget: an offline /
-  // failed sync leaves whatever is already cached (or the empty state).
+  // Hydrate the local mirror once per user — accessible scopes only.
+  // Fire-and-forget: an offline / failed sync leaves whatever is
+  // already cached (or the empty state).
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || (!canWeekly && !canDaily)) return;
     let cancelled = false;
     void (async () => {
       try {
-        await loadFromCache(userId, 'weekly');
-        if (!cancelled) await loadFromCache(userId, 'daily');
+        if (canWeekly) await loadFromCache(userId, 'weekly');
+        if (!cancelled && canDaily) await loadFromCache(userId, 'daily');
       } catch {
         // No advice surfaced this run — the empty state covers it.
       }
@@ -45,17 +56,12 @@ export function CoachHomeCard(): React.ReactElement | null {
     return () => {
       cancelled = true;
     };
-  }, [userId, loadFromCache]);
+  }, [userId, canWeekly, canDaily, loadFromCache]);
 
   if (!userId) return null;
 
-  // Prefer the freshest of the two scopes.
-  const advice =
-    daily && weekly
-      ? daily.generatedAt >= weekly.generatedAt
-        ? daily
-        : weekly
-      : (daily ?? weekly);
+  // Prefer the freshest of the scopes the current tier may display.
+  const advice = pickHomeAdvice({ daily, weekly, canDaily, canWeekly });
 
   const goToCoach = () => router.push('/(tabs)/coach');
 
