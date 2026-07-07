@@ -5,12 +5,14 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
+  Platform,
   useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors, radius } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import { KeyboardDoneAccessory } from './KeyboardDoneAccessory';
 
 interface NumberInputProps {
   value: number | null;
@@ -51,6 +53,8 @@ export function NumberInput({
 
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState('');
+  // Audit E-07 — decimal-pad has no return key; give it a "完了" toolbar.
+  const accessoryId = React.useId();
 
   const formatValue = (v: number | null): string =>
     v !== null ? v.toFixed(decimals) : '';
@@ -121,6 +125,7 @@ export function NumberInput({
             selectTextOnFocus
             placeholder="-"
             placeholderTextColor={colors.textTertiary}
+            inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
           />
           {suffix && (
             <Text style={[styles.suffix, { color: colors.textTertiary }]}>{suffix}</Text>
@@ -137,6 +142,7 @@ export function NumberInput({
           <Ionicons name="add" size={20} color={colors.primary} />
         </TouchableOpacity>
       </View>
+      <KeyboardDoneAccessory nativeID={accessoryId} />
     </View>
   );
 }
