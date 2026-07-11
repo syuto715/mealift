@@ -556,8 +556,10 @@ export default function ProgressScreen() {
                   { backgroundColor: colors.surfaceSecondary },
                 ]}
               >
-                <Text style={[styles.chartText, { color: colors.textTertiary }]}>
-                  データがありません
+                {/* S2-D — 次の行動を促す空状態。記録ボタンはすぐ上の体重カードに
+                    常設のため文言のみ (重複ボタンを避ける) */}
+                <Text style={[styles.chartText, { color: colors.textSecondary }]}>
+                  体重を記録するとここに推移が表示されます
                 </Text>
               </View>
             )}
@@ -806,8 +808,8 @@ export default function ProgressScreen() {
               ))}
             </View>
           ) : (
-            <Text style={[styles.noDataText, { color: colors.textTertiary }]}>
-              まだ記録がありません
+            <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
+              体重を記録するとここに履歴が表示されます
             </Text>
           )}
         </Card>
