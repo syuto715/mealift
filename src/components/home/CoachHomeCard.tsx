@@ -70,7 +70,8 @@ export function CoachHomeCard(): React.ReactElement | null {
     : '記録するとミー先生からアドバイスが届きます。';
 
   return (
-    <Card style={styles.card}>
+    // padding md + 下余白なし — ホームの content gap に揃える (1画面目の密度優先)
+    <Card padding="md">
       <TouchableOpacity
         onPress={goToCoach}
         activeOpacity={0.7}
@@ -106,7 +107,6 @@ export function CoachHomeCard(): React.ReactElement | null {
 }
 
 const styles = StyleSheet.create({
-  card: { marginBottom: spacing.md },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
