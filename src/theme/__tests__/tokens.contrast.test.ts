@@ -63,4 +63,14 @@ describe('token contrast (WCAG AA) — audit E-08', () => {
     expect(light.onPrimary).toBe('#FFFFFF');
     expect(dark.onPrimary).toBe('#FFFFFF');
   });
+
+  it('macro bar fills pass 3:1 non-text contrast vs the ProgressBar track (S2-A)', () => {
+    // PFC bars render on the surfaceSecondary track (ProgressBar default).
+    // fat was 1.36:1 on light — invisible; pin all three per scheme.
+    for (const scheme of [light, dark]) {
+      for (const macro of [scheme.protein, scheme.fat, scheme.carb]) {
+        expect(contrast(macro, scheme.surfaceSecondary)).toBeGreaterThanOrEqual(AA_LARGE);
+      }
+    }
+  });
 });
