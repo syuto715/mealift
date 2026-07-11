@@ -735,14 +735,27 @@ export default function TrainingScreen() {
           })
         )}
 
-        {/* History link */}
+        {/* History link — S2-F: 週リスト (履歴) と月間カレンダーの 2 導線 */}
         <Card style={styles.historyLink}>
-          <Button
-            title="トレーニング履歴"
-            onPress={() => router.push('/(tabs)/training/history')}
-            variant="ghost"
-            fullWidth
-          />
+          <View style={styles.historyLinkRow}>
+            <View style={styles.historyLinkBtn}>
+              <Button
+                title="トレーニング履歴"
+                onPress={() => router.push('/(tabs)/training/history')}
+                variant="ghost"
+                fullWidth
+              />
+            </View>
+            <View style={styles.historyLinkBtn}>
+              <Button
+                title="カレンダー"
+                onPress={() => router.push('/(tabs)/training/calendar')}
+                variant="ghost"
+                fullWidth
+                icon={<Ionicons name="calendar-outline" size={16} color={colors.primary} />}
+              />
+            </View>
+          </View>
         </Card>
 
         {/* Volume Analysis Section */}
@@ -1182,6 +1195,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   historyLink: { alignItems: 'center' },
+  historyLinkRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' },
+  historyLinkBtn: { flex: 1 },
   emptyState: {
     alignItems: 'center',
     paddingVertical: spacing.xxl,
