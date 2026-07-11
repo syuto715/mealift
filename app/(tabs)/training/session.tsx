@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, useId } from 'react';
 import {
   ScrollView,
   View,
@@ -21,6 +21,7 @@ import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { Card, Button, Badge, ProgressBar, BottomSheet, Modal, Input } from '../../../src/components/ui';
+import { KeyboardDoneAccessory } from '../../../src/components/ui/KeyboardDoneAccessory';
 import { useWorkoutStore, ExerciseInSession, SetInSession } from '../../../src/stores/workoutStore';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { useRestTimer } from '../../../src/hooks/useRestTimer';
@@ -311,6 +312,10 @@ export default function SessionScreen() {
   const colors = getColors(scheme);
   const params = useLocalSearchParams<{ sessionId: string; routineId?: string; templateId?: string }>();
   const profile = useProfileStore((s) => s.profile);
+  // S2-B — raw TextInput (強度 / reps) 用の共有「完了」ツールバー。number-pad は
+  // iOS で return キーが無くキーボードを閉じられないため、DecimalInput /
+  // NumberInput と同じ InputAccessoryView を画面共有 ID で配線する。
+  const rawInputAccessoryId = useId();
 
   const {
     sessionId,
@@ -1292,6 +1297,9 @@ export default function SessionScreen() {
                               });
                             }}
                             keyboardType="number-pad"
+                            inputAccessoryViewID={
+                              Platform.OS === 'ios' ? rawInputAccessoryId : undefined
+                            }
                             placeholder="-"
                             placeholderTextColor={colors.textTertiary}
                             selectTextOnFocus
@@ -1476,6 +1484,9 @@ export default function SessionScreen() {
                           }}
                           keyboardType="number-pad"
                           returnKeyType="done"
+                          inputAccessoryViewID={
+                            Platform.OS === 'ios' ? rawInputAccessoryId : undefined
+                          }
                           placeholder="0"
                           placeholderTextColor={colors.textTertiary}
                           selectTextOnFocus
@@ -2114,6 +2125,9 @@ export default function SessionScreen() {
           }}
         />
       )}
+
+      {/* S2-B — raw TextInput (強度 / reps) 共有の「完了」ツールバー (iOS のみ描画) */}
+      <KeyboardDoneAccessory nativeID={rawInputAccessoryId} />
     </SafeAreaView>
   );
 }
