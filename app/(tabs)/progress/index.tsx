@@ -226,6 +226,9 @@ export default function ProgressScreen() {
   const [notes, setNotes] = useState<noteRepo.Note[]>([]);
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
+  // S2-C — メモは最下部の折りたたみに (機能は不変、場所の主張だけ弱める)。
+  // 折りたたみ中はロードもしない (展開時に loadNotes)。
+  const [notesExpanded, setNotesExpanded] = useState(false);
 
   // Update defaults when todayLog changes (only when viewing today)
   useEffect(() => {
@@ -252,8 +255,8 @@ export default function ProgressScreen() {
   }, [profile, noteCategory]);
 
   useEffect(() => {
-    loadNotes();
-  }, [loadNotes]);
+    if (notesExpanded) loadNotes();
+  }, [loadNotes, notesExpanded]);
 
   // Filter logs by selected period
   const filteredLogs = useMemo(() => {
@@ -809,10 +812,29 @@ export default function ProgressScreen() {
           )}
         </Card>
 
-        {/* Notes section */}
+        {/* Notes section — S2-C: 折りたたみ (collapsed 既定)。機能・保存先は不変 */}
         <Card>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>メモ</Text>
+          <TouchableOpacity
+            style={[styles.notesHeader, notesExpanded && { marginBottom: spacing.md }]}
+            onPress={() => setNotesExpanded((v) => !v)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="メモ"
+            accessibilityState={{ expanded: notesExpanded }}
+            accessibilityHint={notesExpanded ? 'メモを折りたたみます' : 'メモを展開します'}
+          >
+            <Text style={[styles.sectionTitle, styles.notesHeaderTitle, { color: colors.textPrimary }]}>
+              メモ
+            </Text>
+            <Ionicons
+              name={notesExpanded ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
 
+          {notesExpanded && (
+            <>
           {/* Category filter */}
           <SegmentedControl
             segments={NOTE_CATEGORY_SEGMENTS}
@@ -900,6 +922,8 @@ export default function ProgressScreen() {
               メモがありません
             </Text>
           )}
+            </>
+          )}
         </Card>
 
         <View style={styles.bottomSpacer} />
@@ -981,6 +1005,9 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   title: { ...typography.titleLarge },
   sectionTitle: { ...typography.titleSmall, marginBottom: spacing.md },
+  // S2-C — 折りたたみヘッダー行 (タイトル + chevron)。余白は展開時のみ行側に付与。
+  notesHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  notesHeaderTitle: { marginBottom: 0 },
   currentWeight: { ...typography.numberLarge, marginBottom: spacing.md },
   inputSection: { gap: spacing.md },
   weightRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md },
