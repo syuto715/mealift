@@ -146,13 +146,15 @@ export function getColors(scheme: ColorScheme) {
       primaryDark: colors.primaryDark,
       accent: colors.accent,
       accentLight: colors.accentLight,
-      // Phase A-1 — Plus tier tokens. Pass through same hex for
-      // light / dark; legibility on dark surfaces holds because
-      // gold reads well against #161B22 / #21262D.
+      // Phase A-1 — Plus tier tokens. fills/icons はゴールドが dark 面でも
+      // 3:1 を満たすためパススルー。S2-E: `proText` (#7B5A1F) だけは dark 面で
+      // 2.4-2.7:1 と AA fail のため、text 用途は明るいゴールド (proLight
+      // #D4A961 ≈ 7.0:1 on #21262D / 8.0:1 on #161B22) へマップバックする
+      // (successText/warningText と同じパターン)。
       pro: colors.pro,
       proLight: colors.proLight,
       proDark: colors.proDark,
-      proText: colors.proText,
+      proText: colors.proLight,
       proGradientStart: colors.proGradientStart,
       proGradientEnd: colors.proGradientEnd,
       onPrimary: colors.onPrimary,

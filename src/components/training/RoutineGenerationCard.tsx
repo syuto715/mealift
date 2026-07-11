@@ -177,33 +177,17 @@ export function RoutineGenerationCard({
   }, [dismissError, handleGenerate]);
 
   if (state === 'locked') {
+    // S2-E — locked 時は 1 行リンクに簡素化。直上の AdviceCard (weekly) も
+    // Free だと locked card + ゴールド CTA を出すため、同型カードが縦に
+    // 2 連続してノイズになっていた (実機スクショ指摘)。価値説明は
+    // AdviceCard 側に任せ、こちらは導線だけ残す。表示条件 (state ===
+    // 'locked' = hasFeature 由来) は不変。
     return (
-      <View
-        style={[
-          styles.card,
-          {
-            backgroundColor: colors.surfaceSecondary,
-            borderColor: colors.border,
-          },
-        ]}
-        testID={testID ?? 'routine-gen-card-locked'}
-      >
-        <View style={styles.headerRow}>
-          <Ionicons name="sparkles-outline" size={18} color={colors.textSecondary} />
-          <Text style={[styles.headerText, { color: colors.textPrimary }]}>
-            ミー先生にルーティンを作ってもらう
-          </Text>
-        </View>
-        <Text style={[styles.lockedBody, { color: colors.textSecondary }]}>
-          ミー先生があなたの目標と好みに合わせて、 オリジナルのルーティンを生成します。
-        </Text>
+      <View testID={testID ?? 'routine-gen-card-locked'}>
         <ProInlineCTA
           label="ミー先生にルーティンを作ってもらうには Plus へ →"
-          variant="card"
+          variant="link"
         />
-        <Text style={[styles.footer, { color: colors.textTertiary }]}>
-          ミー先生 (AI コーチ)
-        </Text>
       </View>
     );
   }
@@ -403,9 +387,6 @@ const styles = StyleSheet.create({
   },
   body: {
     gap: spacing.sm,
-  },
-  lockedBody: {
-    ...typography.bodyMedium,
   },
   input: {
     ...typography.bodyMedium,

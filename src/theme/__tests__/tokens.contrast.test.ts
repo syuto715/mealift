@@ -64,6 +64,12 @@ describe('token contrast (WCAG AA) — audit E-08', () => {
     expect(dark.onPrimary).toBe('#FFFFFF');
   });
 
+  it('proText passes AA-normal on both schemes (S2-E — dark was 2.4:1)', () => {
+    // Plus 誘導 CTA のテキスト。locked card (surfaceSecondary) 上に載る。
+    expect(contrast(light.proText, light.surfaceSecondary)).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrast(dark.proText, dark.surfaceSecondary)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
   it('macro bar fills pass 3:1 non-text contrast vs the ProgressBar track (S2-A)', () => {
     // PFC bars render on the surfaceSecondary track (ProgressBar default).
     // fat was 1.36:1 on light — invisible; pin all three per scheme.
