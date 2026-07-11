@@ -427,6 +427,9 @@ export default function ProgressScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        // Audit E-07 — the メモ input sits at the bottom of the scroll;
+        // keep it above the keyboard while typing (iOS).
+        automaticallyAdjustKeyboardInsets
       >
         <Text style={[styles.title, { color: colors.textPrimary }]}>進捗</Text>
 

@@ -1,10 +1,14 @@
-import { Appearance } from 'react-native';
-
 export const colors = {
   // Brand
   primary: '#1A73E8',
   primaryLight: '#4A9AF5',
   primaryDark: '#1557B0',
+
+  // Foreground on saturated brand/semantic fills (buttons, chips,
+  // badges). Same on both schemes — it always sits on a colored fill.
+  // Audit E-13: replaces ~110 raw '#FFFFFF' literals; adopted first by
+  // the shared Button primitive.
+  onPrimary: '#FFFFFF',
 
   // Accent
   accent: '#FF6B35',
@@ -45,10 +49,19 @@ export const colors = {
   proGradientStart: '#D4A961',
   proGradientEnd: '#8E6925',
 
-  // Semantic
+  // Semantic (fills / icons / large elements — 3:1 non-text rule OK)
   success: '#34C759',
   warning: '#FF9500',
   error: '#FF3B30',
+
+  // Audit E-08 — text-on-light variants of success/warning. The bright
+  // fills above fail WCAG AA as small text on white (success 2.22:1,
+  // warning 2.20:1). These darker shades pass (≈5.4:1) for information-
+  // bearing labels < 18pt. On dark surfaces the bright fills already
+  // pass (≈7.8:1), so getColors maps successText/warningText back to the
+  // bright values in dark mode.
+  successText: '#1F7A3D',
+  warningText: '#9A5B00',
 
   // Macro colors
   protein: '#5B8DEF',
@@ -63,7 +76,11 @@ export const colors = {
   border: '#E9ECEF',
   textPrimary: '#1A1A2E',
   textSecondary: '#6C757D',
-  textTertiary: '#ADB5BD',
+  // Audit E-08 — was #ADB5BD (2.07:1 on white), which failed WCAG for the
+  // information-bearing text that uses it (macro P/F/C lines, meal status).
+  // #767E86 ≈ 4.12:1 on #FFFFFF / 3.91:1 on #F8F9FA — passes AA-large and
+  // is near AA-normal, while staying a step lighter than textSecondary.
+  textTertiary: '#767E86',
 
   // Dark mode neutrals
   dark: {
@@ -73,7 +90,9 @@ export const colors = {
     border: '#30363D',
     textPrimary: '#F0F6FC',
     textSecondary: '#8B949E',
-    textTertiary: '#484F58',
+    // Audit E-08 — was #484F58 (2.09:1 on #161B22, near-invisible).
+    // #7D8590 ≈ 4.64:1 on surface / 5.07:1 on background — passes AA.
+    textTertiary: '#7D8590',
   },
 } as const;
 
@@ -128,9 +147,14 @@ export function getColors(scheme: ColorScheme) {
       proText: colors.proText,
       proGradientStart: colors.proGradientStart,
       proGradientEnd: colors.proGradientEnd,
+      onPrimary: colors.onPrimary,
       success: colors.success,
       warning: colors.warning,
       error: colors.error,
+      // Dark surfaces give the bright semantic fills ≈7.8:1 as text, so
+      // the text variants map back to the bright values here (E-08).
+      successText: colors.success,
+      warningText: colors.warning,
       protein: colors.protein,
       fat: colors.fat,
       carb: colors.carb,
@@ -156,9 +180,12 @@ export function getColors(scheme: ColorScheme) {
     proText: colors.proText,
     proGradientStart: colors.proGradientStart,
     proGradientEnd: colors.proGradientEnd,
+    onPrimary: colors.onPrimary,
     success: colors.success,
     warning: colors.warning,
     error: colors.error,
+    successText: colors.successText,
+    warningText: colors.warningText,
     protein: colors.protein,
     fat: colors.fat,
     carb: colors.carb,

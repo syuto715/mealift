@@ -1078,6 +1078,9 @@ export default function SessionScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        // Audit E-07 — keep the focused set-entry row above the keyboard
+        // (iOS). Set logging is the most-repeated data entry in the app.
+        automaticallyAdjustKeyboardInsets
       >
         {exercises.length === 0 && (
           <Card>

@@ -31,6 +31,7 @@ import { useGoalPrediction } from '../../src/hooks/useGoalPrediction';
 import { useAdaptiveGoal } from '../../src/hooks/useAdaptiveGoal';
 import { GoalPredictionCard } from '../../src/components/home/GoalPredictionCard';
 import { AdaptiveGoalCard } from '../../src/components/home/AdaptiveGoalCard';
+import { CoachHomeCard } from '../../src/components/home/CoachHomeCard';
 import { useWaterTracker } from '../../src/hooks/useWaterTracker';
 import { useHealthKitCalories } from '../../src/hooks/useHealthKitCalories';
 import { getDailyCalories, getWeeklyCalories } from '../../src/infra/repositories/nutritionRepository';
@@ -634,6 +635,34 @@ export default function HomeScreen() {
               目標 <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{targetCalories.toLocaleString()}</Text>
             </Text>
           </View>
+          {/* P2-1 サマリ — P/F/C 3指標。既存 useNutrition(totalXG)+profile(targetXG)
+              を再利用、新規クエリなし。バーは macro トークン色、値/ラベルは AA 準拠。 */}
+          <View style={[styles.v6MacroRow, { borderTopColor: colors.border }]}>
+            {[
+              { key: 'P', label: 'たんぱく質', cur: Math.round(totalProteinG), tgt: Math.round(targetProteinG), color: colors.protein },
+              { key: 'F', label: '脂質', cur: Math.round(totalFatG), tgt: Math.round(targetFatG), color: colors.fat },
+              { key: 'C', label: '炭水化物', cur: Math.round(totalCarbG), tgt: Math.round(targetCarbG), color: colors.carb },
+            ].map((m) => {
+              const pct = m.tgt > 0 ? Math.min(1, m.cur / m.tgt) : 0;
+              return (
+                <View
+                  key={m.key}
+                  style={styles.v6Macro}
+                  accessibilityRole="text"
+                  accessibilityLabel={`${m.label} ${m.cur}${m.tgt > 0 ? ` / ${m.tgt}` : ''}グラム`}
+                >
+                  <Text style={[styles.v6MacroLabel, { color: colors.textSecondary }]}>{m.label}</Text>
+                  <View style={styles.v6MacroBar}>
+                    <ProgressBar progress={pct} color={m.color} height={6} />
+                  </View>
+                  <Text style={[styles.v6MacroVal, { color: colors.textPrimary }]}>
+                    {m.cur}
+                    <Text style={{ color: colors.textSecondary }}>{m.tgt > 0 ? ` / ${m.tgt}g` : 'g'}</Text>
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
           <TouchableOpacity
             style={[styles.v6BreakdownBtn, { borderTopColor: colors.border }]}
             onPress={() =>
@@ -651,6 +680,10 @@ export default function HomeScreen() {
             <Ionicons name="chevron-forward" size={14} color={colors.primary} />
           </TouchableOpacity>
         </Card>
+
+        {/* P2-2 AIコーチ一言カード — サマリ直下に常設。既存 coachAdvice の
+            cached advice を read-only 表示、タップで coach へ。EF生成なし。 */}
+        <CoachHomeCard />
 
         {/* v6 今日の食事 — 朝/昼/夕/間 の行リスト。行全体タップで該当 meal の
             記録へ。記録シートは次 sprint。今は既存 /add-food (mealType scoped)
@@ -1095,6 +1128,18 @@ const styles = StyleSheet.create({
   v6CalStatsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, marginTop: spacing.xs },
   v6CalStat: { ...typography.bodySmall },
   v6CalDot: { ...typography.bodySmall },
+  // P2-1 サマリ PFC 3指標
+  v6MacroRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  v6Macro: { flex: 1 },
+  v6MacroLabel: { ...typography.labelSmall },
+  v6MacroBar: { marginTop: 4, marginBottom: 4 },
+  v6MacroVal: { ...typography.labelMedium, fontWeight: '700' },
   v6BreakdownBtn: {
     flexDirection: 'row',
     alignItems: 'center',

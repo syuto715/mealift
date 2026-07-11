@@ -1,10 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import {
+  Platform,
   TextInput,
   type StyleProp,
   type TextStyle,
   type ReturnKeyTypeOptions,
 } from 'react-native';
+import { KeyboardDoneAccessory } from '../ui/KeyboardDoneAccessory';
 import {
   parseDecimalInput,
   shouldResyncDraft,
@@ -55,6 +57,8 @@ export function DecimalInput({
 }: DecimalInputProps): React.ReactElement {
   const [draft, setDraft] = useState<string>(value != null ? String(value) : '');
   const lastCommittedRef = useRef<number | null>(value);
+  // Audit E-07 — decimal-pad has no return key; give it a "完了" toolbar.
+  const accessoryId = useId();
 
   useEffect(() => {
     if (shouldResyncDraft(value, lastCommittedRef.current)) {
@@ -79,16 +83,20 @@ export function DecimalInput({
   };
 
   return (
-    <TextInput
-      style={style}
-      value={draft}
-      onChangeText={handleChangeText}
-      keyboardType="decimal-pad"
-      placeholder={placeholder}
-      placeholderTextColor={placeholderTextColor}
-      editable={editable}
-      selectTextOnFocus={selectTextOnFocus}
-      returnKeyType={returnKeyType}
-    />
+    <>
+      <TextInput
+        style={style}
+        value={draft}
+        onChangeText={handleChangeText}
+        keyboardType="decimal-pad"
+        placeholder={placeholder}
+        placeholderTextColor={placeholderTextColor}
+        editable={editable}
+        selectTextOnFocus={selectTextOnFocus}
+        returnKeyType={returnKeyType}
+        inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
+      />
+      <KeyboardDoneAccessory nativeID={accessoryId} />
+    </>
   );
 }
