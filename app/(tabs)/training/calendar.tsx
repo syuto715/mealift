@@ -66,7 +66,9 @@ export default function TrainingCalendarScreen() {
 
   const loadMonth = useCallback(async () => {
     if (!profile) {
-      // profile 初期化前に focus した場合も loading に固定しない
+      // profile 初期化前に focus した場合も loading に固定せず、残留データも消す
+      setAllDates([]);
+      setMuscleDays([]);
       setLoading(false);
       return;
     }
@@ -150,7 +152,6 @@ export default function TrainingCalendarScreen() {
               <TouchableOpacity
                 key={g.id}
                 onPress={() => setFilter(g.id)}
-                hitSlop={{ top: 6, bottom: 6 }}
                 style={[
                   styles.chip,
                   selected
@@ -339,9 +340,13 @@ const styles = StyleSheet.create({
   chipRow: { gap: spacing.sm, paddingVertical: 2 },
   chip: {
     paddingHorizontal: spacing.md,
-    // hitSlop 上下 6 と合わせて実効タップ高 ≈44 を確保 (横一列なので上下の
-    // hitSlop は隣接要素と重ならない)
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
+    // hitSlop は親 ScrollView の境界でクリップされ得るため、chip 自体で
+    // 44pt タップターゲットを確保する (Codex round 2)
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: radius.full,
     borderWidth: 1,
   },
