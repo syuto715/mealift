@@ -945,17 +945,38 @@ export default function SessionScreen() {
     }
   };
 
+  // S3-1 — セット保存 (addSet) の in-flight 完了を待つ。待たずに保存/破棄すると
+  // 「後から INSERT されたセットが summary/破棄対象から漏れる」レースが起きる
+  // (Codex R1 Important #5)。C-11 の savingSetsRef をポーリングするだけの
+  // UI 層対応 (repository 契約は不変)。
+  const waitForPendingSetSaves = useCallback(async () => {
+    const deadline = Date.now() + 5000;
+    while (savingSetsRef.current.size > 0 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }, []);
+
   const handleFinishSession = useCallback(async () => {
     if (isFinishing || exitController.isBusy()) return;
     if (!params.sessionId) return;
     setIsFinishing(true);
     Keyboard.dismiss();
     try {
+      await waitForPendingSetSaves();
       // Calculate estimated calories burned. For strength we use the
       // session-level estimate; for cardio/sports/other we sum the per-set
       // kcal (either user-entered or MET-derived).
+      // S3-1 — 経過時間はこの場で再計算する。interval tick 依存の
+      // elapsedSeconds state はバックグラウンド復帰直後だと最大 1 tick 分
+      // stale で、永続化される推定 kcal と summary が過小になる
+      // (Codex R1 Important #6)。
+      const exitElapsedSeconds = computeElapsedSeconds(
+        startedAt,
+        Date.now(),
+        mountedAtRef.current,
+      );
       const bodyWeight = profile?.currentWeightKg ?? 70;
-      const durationMin = Math.round(elapsedSeconds / 60);
+      const durationMin = Math.round(exitElapsedSeconds / 60);
       const strengthMinutes = exercises
         .filter((ex) => ex.exerciseType === 'strength')
         .length > 0
@@ -1004,7 +1025,7 @@ export default function SessionScreen() {
       if (result !== 'done') return;
 
       setSummaryData({
-        duration: elapsedSeconds,
+        duration: exitElapsedSeconds,
         totalVolume,
         exerciseCount: exercises.length,
         setCount: completedSetCount,
@@ -1034,7 +1055,7 @@ export default function SessionScreen() {
     } finally {
       setIsFinishing(false);
     }
-  }, [isFinishing, exitController, params.sessionId, profile, sessionNote, elapsedSeconds, exercises]);
+  }, [isFinishing, exitController, params.sessionId, profile, sessionNote, startedAt, exercises, waitForPendingSetSaves]);
 
   // Summary の「閉じる」とModal背景タップが同関数のため、連打で createNote が
   // 二重実行され training note が重複していた — ref guard で単発化 (S3-1)。
@@ -1083,9 +1104,15 @@ export default function SessionScreen() {
   const handleDiscardSession = useCallback(() => {
     if (!params.sessionId || exitController.isBusy()) return;
     const stats = collectSessionStats(exercises);
+    // 確認文の経過時間も表示時点で再計算 (stale tick 対策は保存側と同じ)
+    const confirmElapsedSeconds = computeElapsedSeconds(
+      startedAt,
+      Date.now(),
+      mountedAtRef.current,
+    );
     Alert.alert(
       '記録を破棄しますか？',
-      `${formatDiscardSummary(elapsedSeconds, stats)}の記録を破棄して終了します。破棄した記録は履歴に残らず、元に戻せません。`,
+      `${formatDiscardSummary(confirmElapsedSeconds, stats)}の記録を破棄して終了します。破棄した記録は履歴に残らず、元に戻せません。`,
       [
         { text: 'キャンセル', style: 'cancel' },
         {
@@ -1095,6 +1122,9 @@ export default function SessionScreen() {
             if (!params.sessionId || exitController.isBusy()) return;
             setIsDiscarding(true);
             try {
+              // in-flight のセット保存を待ってから破棄 (レースで INSERT が
+              // 破棄対象から漏れるのを防ぐ)
+              await waitForPendingSetSaves();
               const result = await exitController.discardExit(params.sessionId);
               if (result !== 'done') return;
               setShowExitSheet(false);
@@ -1113,7 +1143,7 @@ export default function SessionScreen() {
         },
       ],
     );
-  }, [params.sessionId, exitController, exercises, elapsedSeconds, endSession, restTimer]);
+  }, [params.sessionId, exitController, exercises, startedAt, endSession, restTimer, waitForPendingSetSaves]);
 
   const formatPreviousSet = (prevSet: WorkoutSet): string => {
     return `${prevSet.weightKg ?? 0}kg × ${prevSet.reps ?? 0}回`;
@@ -2099,6 +2129,7 @@ export default function SessionScreen() {
               accessibilityRole="button"
               accessibilityLabel="このセッションの記録を破棄して終了"
               accessibilityHint="確認ダイアログを表示します"
+              accessibilityState={{ disabled: isFinishing || isDiscarding, busy: isDiscarding }}
             >
               {isDiscarding ? (
                 <ActivityIndicator size="small" color={colors.error} />

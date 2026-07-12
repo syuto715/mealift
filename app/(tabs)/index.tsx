@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   ScrollView,
   View,
@@ -36,6 +36,7 @@ import { useWaterTracker } from '../../src/hooks/useWaterTracker';
 import { useHealthKitCalories } from '../../src/hooks/useHealthKitCalories';
 import { getDailyCalories, getWeeklyCalories } from '../../src/infra/repositories/nutritionRepository';
 import {
+  createSession,
   getRecentSessionCount,
   getSessions,
   getTodayWorkoutCalories,
@@ -498,6 +499,28 @@ export default function HomeScreen() {
   }, [getMealItems]);
   const recordedMealCount = mealRows.filter((m) => m.recorded).length;
 
+  // S3-1 — ホームからのワークアウト開始も training タブと同じ
+  // createSession → sessionId 付き push に統一。従来は params なしで
+  // session 画面を開いており、セッション未初期化 (DB 行も store も無い) の
+  // 画面でユーザー入力が確認なしに失われ得た (Codex R1 Critical #3)。
+  // guard は C-11 の startingSessionRef パターン。
+  const startingWorkoutRef = useRef(false);
+  const handleStartWorkout = useCallback(async () => {
+    if (!profile || startingWorkoutRef.current) return;
+    startingWorkoutRef.current = true;
+    try {
+      const session = await createSession(profile.id, null);
+      router.push({
+        pathname: '/(tabs)/training/session',
+        params: { sessionId: session.id },
+      });
+    } catch {
+      Alert.alert('エラー', 'セッションの開始に失敗しました');
+    } finally {
+      startingWorkoutRef.current = false;
+    }
+  }, [profile]);
+
   // Apply recommended calories
   const handleApplyRecommendation = useCallback(async () => {
     if (!profile || !recommendedCalories) return;
@@ -780,7 +803,7 @@ export default function HomeScreen() {
           ) : isViewingToday ? (
             <TouchableOpacity
               style={[styles.v6WorkoutBtn, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}
-              onPress={() => router.push('/(tabs)/training/session')}
+              onPress={handleStartWorkout}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="ワークアウトを開始"
