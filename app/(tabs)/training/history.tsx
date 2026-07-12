@@ -50,11 +50,16 @@ export default function HistoryScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Date navigation — S2-F: カレンダーの日付タップから `date` param で
-  // その日を含む週へ合わせられるようにする (形式不正は無視して今日のまま)。
+  // その日を含む週へ合わせられるようにする。形式または値が不正 (2026-99-99 等、
+  // Invalid Date → 週計算の format が RangeError) なら無視して今日のまま。
   const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
-  const [selectedDate, setSelectedDate] = useState(() =>
-    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : getISODate(),
-  );
+  const [selectedDate, setSelectedDate] = useState(() => {
+    if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      const parsed = new Date(dateParam + 'T00:00:00');
+      if (!isNaN(parsed.getTime())) return dateParam;
+    }
+    return getISODate();
+  });
   const [recordedDates, setRecordedDates] = useState<string[]>([]);
 
   // Self-best 1RM map: exerciseId -> { oneRepMax, date }

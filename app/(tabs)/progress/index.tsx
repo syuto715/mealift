@@ -1008,7 +1008,13 @@ const styles = StyleSheet.create({
   title: { ...typography.titleLarge },
   sectionTitle: { ...typography.titleSmall, marginBottom: spacing.md },
   // S2-C — 折りたたみヘッダー行 (タイトル + chevron)。余白は展開時のみ行側に付与。
-  notesHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // minHeight 44 でタップターゲットを確保。
+  notesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+  },
   notesHeaderTitle: { marginBottom: 0 },
   currentWeight: { ...typography.numberLarge, marginBottom: spacing.md },
   inputSection: { gap: spacing.md },

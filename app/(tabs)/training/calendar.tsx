@@ -65,7 +65,11 @@ export default function TrainingCalendarScreen() {
   const isHistoryClamped = historyWindowDays !== null;
 
   const loadMonth = useCallback(async () => {
-    if (!profile) return;
+    if (!profile) {
+      // profile 初期化前に focus した場合も loading に固定しない
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [dates, days] = await Promise.all([
@@ -146,6 +150,7 @@ export default function TrainingCalendarScreen() {
               <TouchableOpacity
                 key={g.id}
                 onPress={() => setFilter(g.id)}
+                hitSlop={{ top: 6, bottom: 6 }}
                 style={[
                   styles.chip,
                   selected
@@ -285,7 +290,13 @@ export default function TrainingCalendarScreen() {
 
         {/* free tier の履歴表示窓 (history と同じ clamp を適用済み) の説明 */}
         {isHistoryClamped && !loading && (
-          <TouchableOpacity activeOpacity={0.8} onPress={() => setUpgradeVisible(true)}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setUpgradeVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Free プランでは直近 ${FREE_HISTORY_WINDOW_DAYS} 日の記録が表示されます`}
+            accessibilityHint="プランのアップグレード案内を開きます"
+          >
             <Card padding="md">
               <View style={styles.upgradeRow}>
                 <Ionicons name="lock-closed-outline" size={16} color={colors.textSecondary} />
@@ -328,7 +339,9 @@ const styles = StyleSheet.create({
   chipRow: { gap: spacing.sm, paddingVertical: 2 },
   chip: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    // hitSlop 上下 6 と合わせて実効タップ高 ≈44 を確保 (横一列なので上下の
+    // hitSlop は隣接要素と重ならない)
+    paddingVertical: spacing.sm,
     borderRadius: radius.full,
     borderWidth: 1,
   },
@@ -351,7 +364,10 @@ const styles = StyleSheet.create({
   dayCell: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 3,
+    // バッジ32 + ドット8 + 12 = 高さ ≈52 でタップ高 44 を確保。横幅はグリッド
+    // 7 分割の flex 幅全体がタップ対象 (375pt 端末で ≈44、320pt で ≈37 —
+    // WCAG 2.5.8 AA の 24px は満たす)
+    paddingVertical: 6,
   },
   dayBadge: {
     width: 32,

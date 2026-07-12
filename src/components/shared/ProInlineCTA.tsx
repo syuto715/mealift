@@ -113,6 +113,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
+    // S2-E — 課金導線としてのタップターゲット確保 (44pt)。text は中央寄せの
+    // まま、見た目のテキストリンク感は維持。
+    minHeight: 44,
+    justifyContent: 'center',
   },
   linkLabel: {
     ...typography.labelMedium,
