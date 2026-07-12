@@ -35,6 +35,14 @@ export default function TabLayout() {
   // training へ pop すると segments が変わり自動復帰する。
   const segments = useSegments();
   const inWorkoutSession = segments[segments.length - 1] === 'session';
+  // S3-2b-B チャット集中モード — コーチ会話画面 ((tabs)/coach/[id]) でも
+  // タブバーを消す。useSegments は動的 segment をファイル名 '[id]' のまま
+  // 返すため、直前 segment 'coach' との組で会話画面のみを特定できる
+  // (coach/index・相談テーマ・diagnostic/* はバー表示のまま)。
+  const inCoachThread =
+    segments[segments.length - 1] === '[id]' &&
+    segments[segments.length - 2] === 'coach';
+  const hideTabBar = inWorkoutSession || inCoachThread;
 
   // Pill-backed icon: filled glyph + 薄青ピル when focused, outline + gray else.
   // The active/inactive *tint* (icon + label color) is driven by
@@ -74,9 +82,9 @@ export default function TabLayout() {
           height: 56 + insets.bottom,
           paddingBottom: insets.bottom + 4,
           paddingTop: 6,
-          // 集中モード: session 表示中はバーごと消す (display は
+          // 集中モード: session / コーチ会話の表示中はバーごと消す (display は
           // react-navigation が公式にサポートする動的切替手段)
-          ...(inWorkoutSession ? { display: 'none' as const } : null),
+          ...(hideTabBar ? { display: 'none' as const } : null),
         },
         tabBarLabelStyle: {
           ...typography.labelSmall,

@@ -202,9 +202,12 @@ export default function CoachConversationScreen() {
   }, [isStreaming, draft, sub, quota.isExhausted, isOffline]);
 
   return (
+    // S3-2b チャット集中モード — この画面 ((tabs)/coach/[id]) ではタブバーを
+    // 非表示にする ((tabs)/_layout の useSegments 判定)。バーが無くなるため
+    // 下端は自前で safe-area を確保し、composer をホームインジケータ直上に固定。
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
+      edges={['top', 'bottom']}
     >
       <View style={[styles.headerRow, { borderColor: colors.border }]}>
         <TouchableOpacity
@@ -284,10 +287,12 @@ export default function CoachConversationScreen() {
         </TouchableOpacity>
       )}
 
+      {/* S3-2b — 旧 offset 88 はタブバー高の補償だった。集中モードでバーが
+          消えたため 0 に (キーボード表示時は composer がキーボード直上に追従)。 */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+        keyboardVerticalOffset={0}
       >
         <FlatList
           ref={listRef}
