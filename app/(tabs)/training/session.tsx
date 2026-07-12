@@ -941,12 +941,13 @@ export default function SessionScreen() {
   // S3-1 — セット保存 (addSet) の in-flight 完了を待つ。待たずに保存終了すると
   // 「後から INSERT されたセットが summary 集計から漏れる」レースが起きる
   // (Codex R1 Important #5)。C-11 の savingSetsRef をポーリングするだけの
-  // UI 層対応 (repository 契約は不変)。
-  const waitForPendingSetSaves = useCallback(async () => {
+  // UI 層対応 (repository 契約は不変)。全て完了したら true。
+  const waitForPendingSetSaves = useCallback(async (): Promise<boolean> => {
     const deadline = Date.now() + 5000;
     while (savingSetsRef.current.size > 0 && Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
+    return savingSetsRef.current.size === 0;
   }, []);
 
   const handleFinishSession = useCallback(async () => {
@@ -955,7 +956,20 @@ export default function SessionScreen() {
     setIsFinishing(true);
     Keyboard.dismiss();
     try {
-      await waitForPendingSetSaves();
+      // timeout (5秒待っても in-flight が残る) 時は保存に進まない —
+      // 集計漏れの summary/kcal を永続化しないため (Codex R2)。
+      const setsSettled = await waitForPendingSetSaves();
+      if (!setsSettled) {
+        Alert.alert(
+          'エラー',
+          'セットの保存が完了していません。数秒待ってから、もう一度お試しください。',
+        );
+        return;
+      }
+      // 待機中に completeSet が反映したセットを取りこぼさないよう、集計は
+      // この時点の store から読み直す (render closure の exercises は stale
+      // になり得る — Codex R2)。
+      const latestExercises = useWorkoutStore.getState().exercises;
       // Calculate estimated calories burned. For strength we use the
       // session-level estimate; for cardio/sports/other we sum the per-set
       // kcal (either user-entered or MET-derived).
@@ -970,7 +984,7 @@ export default function SessionScreen() {
       );
       const bodyWeight = profile?.currentWeightKg ?? 70;
       const durationMin = Math.round(exitElapsedSeconds / 60);
-      const strengthMinutes = exercises
+      const strengthMinutes = latestExercises
         .filter((ex) => ex.exerciseType === 'strength')
         .length > 0
           ? durationMin
@@ -978,7 +992,7 @@ export default function SessionScreen() {
       const strengthCal = strengthMinutes > 0
         ? calculateWorkoutCalories(bodyWeight, strengthMinutes, 'moderate')
         : 0;
-      const cardioCal = exercises
+      const cardioCal = latestExercises
         .filter((ex) => ex.exerciseType !== 'strength')
         .reduce((sum, ex) => {
           return (
@@ -994,7 +1008,7 @@ export default function SessionScreen() {
       const estimatedCal = Math.round(strengthCal + cardioCal);
 
       // Compute summary synchronously from in-memory state (no DB hit).
-      const totalVolume = exercises.reduce((total, ex) => {
+      const totalVolume = latestExercises.reduce((total, ex) => {
         return (
           total +
           ex.sets
@@ -1002,7 +1016,7 @@ export default function SessionScreen() {
             .reduce((sum, s) => sum + (s.weightKg ?? 0) * (s.reps ?? 0), 0)
         );
       }, 0);
-      const completedSetCount = exercises.reduce(
+      const completedSetCount = latestExercises.reduce(
         (total, ex) => total + ex.sets.filter((s) => s.completed).length,
         0,
       );
@@ -1020,7 +1034,7 @@ export default function SessionScreen() {
       setSummaryData({
         duration: exitElapsedSeconds,
         totalVolume,
-        exerciseCount: exercises.length,
+        exerciseCount: latestExercises.length,
         setCount: completedSetCount,
         estimatedCalories: estimatedCal,
       });
@@ -1048,7 +1062,7 @@ export default function SessionScreen() {
     } finally {
       setIsFinishing(false);
     }
-  }, [isFinishing, exitController, params.sessionId, profile, sessionNote, startedAt, exercises, waitForPendingSetSaves]);
+  }, [isFinishing, exitController, params.sessionId, profile, sessionNote, startedAt, waitForPendingSetSaves]);
 
   // Summary の「閉じる」とModal背景タップが同関数のため、連打で createNote が
   // 二重実行され training note が重複していた — ref guard で単発化 (S3-1)。
