@@ -12,9 +12,11 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
+import { usePreventRemove } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { getColors, radius } from '../../../src/theme/tokens';
@@ -53,6 +55,11 @@ import * as workoutRepo from '../../../src/infra/repositories/workoutRepository'
 import { createNote } from '../../../src/infra/repositories/noteRepository';
 import { calculateWorkoutCalories } from '../../../src/domain/calories';
 import { calculateCaloriesBurned } from '../../../src/domain/cardioCalories';
+import {
+  createSessionExitController,
+  collectSessionStats,
+  formatDiscardSummary,
+} from '../../../src/domain/sessionExit';
 import { estimateOneRepMax } from '../../../src/domain/oneRepMax';
 import { checkAndRecordCardioPRs, checkAndRecordPRs, checkSessionVolumePR } from '../../../src/domain/personalRecord';
 import { restTimerService, loadRestTimerSettings } from '../../../src/infra/services/restTimerService';
@@ -479,10 +486,34 @@ export default function SessionScreen() {
   const [customExerciseMuscle, setCustomExerciseMuscle] = useState<MuscleGroup>('chest');
   const [customExerciseEquipment, setCustomExerciseEquipment] = useState('');
 
-  // Finish confirmation
-  const [showFinishModal, setShowFinishModal] = useState(false);
+  // S3-1 終了シート (旧 finish confirmation modal を置換)。isFinishing /
+  // isDiscarding は UI 表示用、再入 guard の本体は exitController (ref ベース、
+  // C-11 と同趣旨)。
+  const [showExitSheet, setShowExitSheet] = useState(false);
   const [sessionNote, setSessionNote] = useState('');
   const [isFinishing, setIsFinishing] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
+  const exitController = useRef(
+    createSessionExitController({
+      finishSession: workoutRepo.finishSession,
+      getSetsForSession: workoutRepo.getSetsForSession,
+      removeSet: workoutRepo.removeSet,
+    }),
+  ).current;
+
+  // S3-1 離脱ガード — Android hardware back / プログラム的 pop を含む画面除去を
+  // 終了シートへ合流させる (iOS スワイプは下の Stack.Screen gestureEnabled:false
+  // で遮断)。保存/破棄の完了パスは allowLeaveRef を立ててから router.back() し、
+  // ここで元の action をそのまま dispatch して抜ける (race のない公式パターン)。
+  const navigation = useNavigation();
+  const allowLeaveRef = useRef(false);
+  usePreventRemove(!!params.sessionId, ({ data }) => {
+    if (allowLeaveRef.current) {
+      navigation.dispatch(data.action);
+      return;
+    }
+    setShowExitSheet(true);
+  });
 
   // Summary
   const [showSummary, setShowSummary] = useState(false);
@@ -897,7 +928,7 @@ export default function SessionScreen() {
   };
 
   const handleFinishSession = useCallback(async () => {
-    if (isFinishing) return;
+    if (isFinishing || exitController.isBusy()) return;
     if (!params.sessionId) return;
     setIsFinishing(true);
     Keyboard.dismiss();
@@ -946,11 +977,13 @@ export default function SessionScreen() {
 
       // Critical write: mark session finished so the DB is consistent before
       // we transition screens. The volume PR scan runs in the background.
-      await workoutRepo.finishSession(
+      // S3-1: exitController 経由 (repository 契約は不変、再入 guard のみ追加)。
+      const result = await exitController.saveExit(
         params.sessionId,
         sessionNote || undefined,
         estimatedCal,
       );
+      if (result !== 'done') return;
 
       setSummaryData({
         duration: elapsedSeconds,
@@ -960,7 +993,7 @@ export default function SessionScreen() {
         estimatedCalories: estimatedCal,
       });
       setSummaryMemo(sessionNote);
-      setShowFinishModal(false);
+      setShowExitSheet(false);
       setShowSummary(true);
 
       // Fire-and-forget: volume PR scan is O(exercises × 2 DB calls) which
@@ -978,13 +1011,19 @@ export default function SessionScreen() {
         })();
       }
     } catch {
-      Alert.alert('エラー', 'セッションの終了に失敗しました');
+      // シートは閉じない — guard は解除済みなので再試行できる
+      Alert.alert('エラー', 'セッションの終了に失敗しました。通信と空き容量を確認して、もう一度お試しください。');
     } finally {
       setIsFinishing(false);
     }
-  }, [isFinishing, params.sessionId, profile, sessionNote, elapsedSeconds, exercises]);
+  }, [isFinishing, exitController, params.sessionId, profile, sessionNote, elapsedSeconds, exercises]);
 
+  // Summary の「閉じる」とModal背景タップが同関数のため、連打で createNote が
+  // 二重実行され training note が重複していた — ref guard で単発化 (S3-1)。
+  const dismissingSummaryRef = useRef(false);
   const handleDismissSummary = async () => {
+    if (dismissingSummaryRef.current) return;
+    dismissingSummaryRef.current = true;
     // Save summary memo as a training note if provided
     if (summaryMemo.trim() && profile) {
       try {
@@ -1002,30 +1041,61 @@ export default function SessionScreen() {
     setShowSummary(false);
     endSession();
     restTimer.stop();
+    allowLeaveRef.current = true;
     router.back();
   };
 
-  const handleCancelSession = () => {
-    Alert.alert('セッション中止', '現在のセッションを中止しますか？記録済みのセットは保持されます。', [
-      { text: 'いいえ', style: 'cancel' },
-      {
-        text: 'はい',
-        style: 'destructive',
-        onPress: async () => {
-          if (params.sessionId) {
+  // S3-1 終了シートの入口。未初期化セッション (ホーム経路: params なしで
+  // 開かれた場合、DB 行も store も無い) は確認不要でそのまま閉じる。
+  const openExitSheet = useCallback(() => {
+    if (!params.sessionId) {
+      router.back();
+      return;
+    }
+    setShowExitSheet(true);
+  }, [params.sessionId]);
+
+  // S3-1 「このセッションの記録を破棄して終了」。
+  // マッピング (repository/store 変更なし):
+  //   保存済みセット → 既存 removeSet (soft-delete + sync tombstone)
+  //   セッション行   → finished_at NULL のまま残す (finishSession すると空
+  //                    セッションが履歴・カレンダードットに露出するため。
+  //                    未終了行は全ユーザー可視面で除外される)
+  // 復元機能は存在しないため「元に戻せません」は事実 (recon 3)。
+  const handleDiscardSession = useCallback(() => {
+    if (!params.sessionId || exitController.isBusy()) return;
+    const stats = collectSessionStats(exercises);
+    Alert.alert(
+      '記録を破棄しますか？',
+      `${formatDiscardSummary(elapsedSeconds, stats)}の記録を破棄して終了します。破棄した記録は履歴に残らず、元に戻せません。`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '破棄する',
+          style: 'destructive',
+          onPress: async () => {
+            if (!params.sessionId || exitController.isBusy()) return;
+            setIsDiscarding(true);
             try {
-              await workoutRepo.finishSession(params.sessionId);
+              const result = await exitController.discardExit(params.sessionId);
+              if (result !== 'done') return;
+              setShowExitSheet(false);
+              endSession();
+              restTimer.stop();
+              allowLeaveRef.current = true;
+              router.back();
             } catch {
-              // silently fail
+              // シートは開いたまま — 再試行できる (旧「中止」の silent fail +
+              // 強制 back で orphan を残す挙動を是正)
+              Alert.alert('エラー', '記録の破棄に失敗しました。もう一度お試しください。');
+            } finally {
+              setIsDiscarding(false);
             }
-          }
-          endSession();
-          restTimer.stop();
-          router.back();
+          },
         },
-      },
-    ]);
-  };
+      ],
+    );
+  }, [params.sessionId, exitController, exercises, elapsedSeconds, endSession, restTimer]);
 
   const formatPreviousSet = (prevSet: WorkoutSet): string => {
     return `${prevSet.weightKg ?? 0}kg × ${prevSet.reps ?? 0}回`;
@@ -1061,9 +1131,11 @@ export default function SessionScreen() {
         </View>
       )}
 
-      {/* Top Bar */}
+      {/* S3-1 — iOS スワイプバックを遮断 (戻る操作は全て終了シートに合流) */}
+      <Stack.Screen options={{ gestureEnabled: false }} />
+
+      {/* Top Bar — S3-1 集中モード: 戻る系なし。経過時間常設 + 右「終了」のみ */}
       <View style={[styles.topBar, { borderBottomColor: colors.border }]}>
-        <Button title="キャンセル" onPress={handleCancelSession} variant="ghost" size="sm" />
         <View style={styles.timerContainer}>
           <Ionicons name="time-outline" size={16} color={colors.primary} />
           <Text style={[styles.timer, { color: colors.primary }]}>
@@ -1071,8 +1143,8 @@ export default function SessionScreen() {
           </Text>
         </View>
         <Button
-          title="完了"
-          onPress={() => setShowFinishModal(true)}
+          title="終了"
+          onPress={openExitSheet}
           variant="primary"
           size="sm"
         />
@@ -1635,11 +1707,11 @@ export default function SessionScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Bottom fixed button */}
+      {/* Bottom fixed button — S3-1: 終了シートへ合流 */}
       <View style={[styles.bottomBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         <Button
           title="セッション終了"
-          onPress={() => setShowFinishModal(true)}
+          onPress={openExitSheet}
           variant="primary"
           size="lg"
           fullWidth
@@ -1960,45 +2032,70 @@ export default function SessionScreen() {
         </View>
       </Modal>
 
-      {/* Finish Confirmation Modal */}
-      <Modal
-        visible={showFinishModal}
-        onClose={() => setShowFinishModal(false)}
-        title="セッション終了"
+      {/* S3-1 終了シート — 保存 / 破棄 / キャンセルの3択 (旧 finish confirmation
+          modal を置換)。メモ入力は従来どおり finishSession の note へ渡る。
+          保存/破棄の実行中は backdrop タップでも閉じない。 */}
+      <BottomSheet
+        visible={showExitSheet}
+        onClose={() => {
+          if (!isFinishing && !isDiscarding) setShowExitSheet(false);
+        }}
+        title="トレーニングを終了しますか?"
       >
-        <View style={styles.finishModalContent}>
-          <Text style={[styles.finishConfirmText, { color: colors.textSecondary }]}>
-            トレーニングセッションを終了しますか？
-          </Text>
-          <Input
-            label="メモ（任意）"
-            placeholder="セッションのメモを入力..."
-            value={sessionNote}
-            onChangeText={setSessionNote}
-            multiline
-            numberOfLines={3}
-            blurOnSubmit
-            returnKeyType="done"
-          />
-          <View style={styles.finishModalActions}>
-            <Button
-              title="キャンセル"
-              onPress={() => setShowFinishModal(false)}
-              variant="ghost"
-              size="lg"
-              disabled={isFinishing}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.exitSheetContent}>
+            <Input
+              label="メモ（任意）"
+              placeholder="セッションのメモを入力..."
+              value={sessionNote}
+              onChangeText={setSessionNote}
+              multiline
+              numberOfLines={3}
+              blurOnSubmit
+              returnKeyType="done"
+              editable={!isFinishing && !isDiscarding}
             />
             <Button
-              title="終了する"
+              title="記録を保存して終了"
               onPress={handleFinishSession}
               variant="primary"
               size="lg"
+              fullWidth
               loading={isFinishing}
-              disabled={isFinishing}
+              disabled={isFinishing || isDiscarding}
+            />
+            <TouchableOpacity
+              style={[
+                styles.exitDiscardBtn,
+                { backgroundColor: colors.error + '12', borderColor: colors.error + '40' },
+                (isFinishing || isDiscarding) && styles.exitBtnDisabled,
+              ]}
+              onPress={handleDiscardSession}
+              disabled={isFinishing || isDiscarding}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="このセッションの記録を破棄して終了"
+              accessibilityHint="確認ダイアログを表示します"
+            >
+              {isDiscarding ? (
+                <ActivityIndicator size="small" color={colors.error} />
+              ) : (
+                <Text style={[styles.exitDiscardText, { color: colors.error }]}>
+                  このセッションの記録を破棄して終了
+                </Text>
+              )}
+            </TouchableOpacity>
+            <Button
+              title="キャンセル"
+              onPress={() => setShowExitSheet(false)}
+              variant="ghost"
+              size="lg"
+              fullWidth
+              disabled={isFinishing || isDiscarding}
             />
           </View>
-        </View>
-      </Modal>
+        </KeyboardAvoidingView>
+      </BottomSheet>
 
       {/* Summary Modal */}
       <Modal
@@ -2463,14 +2560,20 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   // Finish modal
-  finishModalContent: { gap: spacing.lg },
-  finishConfirmText: { ...typography.bodyMedium },
-  finishModalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+  // S3-1 終了シート (paddingHorizontal は BottomSheet 側が持つ)
+  exitSheetContent: {
     gap: spacing.md,
-    marginTop: spacing.sm,
   },
+  exitDiscardBtn: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    paddingHorizontal: spacing.lg,
+  },
+  exitDiscardText: { ...typography.labelLarge, fontWeight: '600' },
+  exitBtnDisabled: { opacity: 0.5 },
   // Summary modal
   summaryContent: {
     alignItems: 'center',
