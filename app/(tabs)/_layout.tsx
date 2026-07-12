@@ -1,4 +1,4 @@
-import { Tabs, router } from 'expo-router';
+import { Tabs, router, useSegments } from 'expo-router';
 import { View, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +27,13 @@ export default function TabLayout() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
   const insets = useSafeAreaInsets();
+
+  // S3-1-A 集中モード — ワークアウトセッション表示中はタブバー (FAB 含む) を
+  // 非表示にし、タブ遷移によるセッション離脱経路を構造的に塞ぐ。route 判定は
+  // useSegments (onboarding/_layout.tsx と同型の前例)。セッション終了/破棄で
+  // training へ pop すると segments が変わり自動復帰する。
+  const segments = useSegments();
+  const inWorkoutSession = segments[segments.length - 1] === 'session';
 
   // Pill-backed icon: filled glyph + 薄青ピル when focused, outline + gray else.
   // The active/inactive *tint* (icon + label color) is driven by
@@ -68,6 +75,9 @@ export default function TabLayout() {
           height: 56 + insets.bottom,
           paddingBottom: insets.bottom + 4,
           paddingTop: 6,
+          // 集中モード: session 表示中はバーごと消す (display は
+          // react-navigation が公式にサポートする動的切替手段)
+          ...(inWorkoutSession ? { display: 'none' as const } : null),
         },
         tabBarLabelStyle: {
           ...typography.labelSmall,
