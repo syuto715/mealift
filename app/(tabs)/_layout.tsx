@@ -1,10 +1,11 @@
-import { Tabs, router, useSegments } from 'expo-router';
-import { View, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
+import { useState } from 'react';
+import { Tabs, useSegments } from 'expo-router';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors, shadow } from '../../src/theme/tokens';
 import { typography } from '../../src/theme/typography';
-import { getISODate } from '../../src/utils/format';
+import { RecordHub } from '../../src/components/record/RecordHub';
 
 // S2-B ボトムナビ再定義 — 5 タブ → 4 タブ + 中央「＋」記録 FAB。
 //   ホーム / 筋トレ / [＋] / 進捗 / コーチ
@@ -13,9 +14,9 @@ import { getISODate } from '../../src/utils/format';
 //   cross-group 参照 (settings/user-foods・barcode・add-food 等 8 箇所) は
 //   route が残るため全パス無変更で生存する (settings タブと同じ href: null 方式。
 //   経緯コメントは下記 settings の項を参照)。
-// - 中央 FAB は custom tabBarButton: タブ遷移せず既存の記録フロー /add-food
-//   (root fullScreenModal・撮影優先) を現在時刻の mealType で開く。ホーム下部
-//   CTA と同一挙動 (v6 記録シートは未実装のため、その実装済み代替が /add-food)。
+// - 中央 FAB は custom tabBarButton: タブ遷移せず記録ハブ (S3-2b RecordHub =
+//   食事/体重/水分/ワークアウトの4導線シート) を開く。食事導線は従来どおり
+//   /add-food (root fullScreenModal・撮影優先) へ現在時刻の mealType で直行。
 // - 設定タブは従来どおり href: null で隠す (入口はホーム右上アイコン)。
 //   expo-router は (tabs) 配下を自動でタブ化するため、screen 宣言を消すと
 //   既定タブとして復活する。`href: null` でタブバーから隠しつつ deep link /
@@ -34,6 +35,14 @@ export default function TabLayout() {
   // training へ pop すると segments が変わり自動復帰する。
   const segments = useSegments();
   const inWorkoutSession = segments[segments.length - 1] === 'session';
+  // S3-2b-B チャット集中モード — コーチ会話画面 ((tabs)/coach/[id]) でも
+  // タブバーを消す。useSegments は動的 segment をファイル名 '[id]' のまま
+  // 返すため、直前 segment 'coach' との組で会話画面のみを特定できる
+  // (coach/index・相談テーマ・diagnostic/* はバー表示のまま)。
+  const inCoachThread =
+    segments[segments.length - 1] === '[id]' &&
+    segments[segments.length - 2] === 'coach';
+  const hideTabBar = inWorkoutSession || inCoachThread;
 
   // Pill-backed icon: filled glyph + 薄青ピル when focused, outline + gray else.
   // The active/inactive *tint* (icon + label color) is driven by
@@ -52,16 +61,14 @@ export default function TabLayout() {
       </View>
     );
 
-  // 中央 FAB — タブ遷移を行わず記録フローを開く。mealType は現在時刻から決定
-  // (ホーム下部 CTA と同じ規則)。date は常に今日 (グローバル導線のため、ホームの
-  // selectedDate には連動しない)。
-  const openRecordFlow = () => {
-    const h = new Date().getHours();
-    const mealType = h < 10 ? 'breakfast' : h < 15 ? 'lunch' : h < 21 ? 'dinner' : 'snack';
-    router.push({ pathname: '/add-food', params: { mealType, date: getISODate() } });
-  };
+  // S3-2b — 中央 FAB は記録ハブ (何を記録しますか? シート) を開く。
+  // 4導線 (食事/体重/水分/ワークアウト) の実体は RecordHub 側。
+  // 集中モード (inWorkoutSession) 中はタブバーごと FAB が消えるため、
+  // シートが開かれることはない。
+  const [hubVisible, setHubVisible] = useState(false);
 
   return (
+    <>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -75,9 +82,9 @@ export default function TabLayout() {
           height: 56 + insets.bottom,
           paddingBottom: insets.bottom + 4,
           paddingTop: 6,
-          // 集中モード: session 表示中はバーごと消す (display は
+          // 集中モード: session / コーチ会話の表示中はバーごと消す (display は
           // react-navigation が公式にサポートする動的切替手段)
-          ...(inWorkoutSession ? { display: 'none' as const } : null),
+          ...(hideTabBar ? { display: 'none' as const } : null),
         },
         tabBarLabelStyle: {
           ...typography.labelSmall,
@@ -113,20 +120,28 @@ export default function TabLayout() {
           title: '',
           tabBarButton: () => (
             <View style={styles.fabSlot} pointerEvents="box-none">
+              {/* S3-2b — 円とラベルを1つの Touchable にまとめ、タップ領域と
+                  スクリーンリーダー上の1ノード化を両立 (ラベルは custom
+                  tabBarButton では既定描画が走らないため自前 Text) */}
               <TouchableOpacity
-                onPress={openRecordFlow}
+                onPress={() => setHubVisible(true)}
                 activeOpacity={0.8}
-                style={[
-                  styles.fab,
-                  shadow.md,
-                  { backgroundColor: colors.primary, borderColor: colors.surface },
-                ]}
+                style={styles.fabTouchable}
                 accessibilityRole="button"
-                accessibilityLabel="食事を記録"
-                accessibilityHint="食品追加画面を開きます"
+                accessibilityLabel="記録"
+                accessibilityHint="記録メニューを開きます"
                 testID="tab-record-fab"
               >
-                <Ionicons name="add" size={30} color={colors.onPrimary} />
+                <View
+                  style={[
+                    styles.fab,
+                    shadow.md,
+                    { backgroundColor: colors.primary, borderColor: colors.surface },
+                  ]}
+                >
+                  <Ionicons name="add" size={26} color={colors.onPrimary} />
+                </View>
+                <Text style={[styles.fabLabel, { color: colors.textSecondary }]}>記録</Text>
               </TouchableOpacity>
             </View>
           ),
@@ -164,6 +179,11 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+
+    {/* S3-2b 記録ハブ — FAB から開く4導線シート + 水分 Undo トースト +
+        体重クイック入力。Tabs の兄弟としてタブバー外にオーバーレイ描画。 */}
+    <RecordHub visible={hubVisible} onClose={() => setHubVisible(false)} />
+    </>
   );
 }
 
@@ -175,19 +195,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // FAB は他タブと同じ枠幅 (flex:1) の中で少し浮かせる。バー高 56 に対し
-  // -14 の持ち上げ + surface 色の縁取りで「浮いた +」に見せる。
+  // FAB は他タブと同じ枠幅 (flex:1) の中で少し浮かせる。S3-2b: ラベル
+  // 「記録」をバー内に収めるため 52→46pt に縮小 (44pt タップ確保) し、
+  // 浮きを -16 に。バー内占有 = 46-16=30 + ラベル ≈13 で実効高 ≈46 に収まる。
   fabSlot: {
     flex: 1,
     alignItems: 'center',
   },
+  fabTouchable: {
+    alignItems: 'center',
+    marginTop: -16,
+  },
   fab: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -14,
+  },
+  fabLabel: {
+    ...typography.labelSmall,
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 1,
   },
 });

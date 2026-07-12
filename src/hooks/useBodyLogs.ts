@@ -7,6 +7,7 @@ import {
   upsertBodyLog,
 } from '../infra/repositories/bodyLogRepository';
 import { getISODate } from '../utils/format';
+import { RECORD_EVENTS, addRecordEventListener } from '../utils/recordEvents';
 import { subDays, parseISO, differenceInDays } from 'date-fns';
 
 export function useBodyLogs() {
@@ -38,6 +39,15 @@ export function useBodyLogs() {
 
   useEffect(() => {
     loadLogs();
+  }, [loadLogs]);
+
+  // S3-2b — 記録ハブ (画面外の RN Modal シート) からの体重保存を、mounted 済み
+  // 消費画面 (進捗タブ・ホーム体重トレンド) に即時反映する。
+  useEffect(() => {
+    const sub = addRecordEventListener(RECORD_EVENTS.bodyLogChanged, () => {
+      void loadLogs();
+    });
+    return () => sub.remove();
   }, [loadLogs]);
 
   const todayStr = getISODate();

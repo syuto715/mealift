@@ -7,6 +7,7 @@ import {
   deleteLog as deleteLogRepo,
 } from '../infra/repositories/waterRepository';
 import { WaterLog } from '../types/water';
+import { RECORD_EVENTS, addRecordEventListener } from '../utils/recordEvents';
 
 export function useWaterTracker(date?: string) {
   const profile = useProfileStore((s) => s.profile);
@@ -31,6 +32,15 @@ export function useWaterTracker(date?: string) {
 
   useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  // S3-2b — 記録ハブ (画面外の RN Modal シート) からの追加/取り消しを、
+  // mounted 済み消費画面 (ホーム水分カード等) に即時反映する。
+  useEffect(() => {
+    const sub = addRecordEventListener(RECORD_EVENTS.waterLogChanged, () => {
+      void refresh();
+    });
+    return () => sub.remove();
   }, [refresh]);
 
   const addWater = useCallback(

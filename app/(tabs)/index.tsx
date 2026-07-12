@@ -125,7 +125,8 @@ export default function HomeScreen() {
   const adaptive = useAdaptiveGoal();
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
-  // Water tracker (Feature I)
+  // Water tracker (Feature I)。記録ハブからの追加/取り消しは useWaterTracker
+  // 内のイベント購読 (RECORD_EVENTS.waterLogChanged) で即時反映される (S3-2b)。
   const water = useWaterTracker(selectedDate);
 
   // Local state for async loaded data

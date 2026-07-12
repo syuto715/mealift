@@ -32,7 +32,7 @@ import {
   isDisclaimerSeen,
   markDisclaimerSeen,
 } from '../../../src/utils/disclaimerStorage';
-import { getColors } from '../../../src/theme/tokens';
+import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
 import { getCoachTheme } from '../../../src/domain/coachThemes';
@@ -43,6 +43,15 @@ import type { LocalChatMessage } from '../../../src/types/chat';
 // a server conversation id OR the literal `'new'` (no DB row yet);
 // on first send the meta event supplies the server id and we
 // router.replace to that route.
+
+// S3-2b-C — 新規会話の空状態に出す質問候補チップ。文言は Syuto 指定、
+// prompt 本文は既存 COACH_THEMES から流用 (themeId で引く)。
+const SUGGESTION_CHIPS: { themeId: string; label: string }[] = [
+  { themeId: 'meal_improve', label: '今日の食事を評価して' },
+  { themeId: 'workout', label: '次の筋トレを作って' },
+  { themeId: 'plateau', label: '停滞期の原因を教えて' },
+  { themeId: 'eating_out', label: '外食の選び方を教えて' },
+];
 
 export default function CoachConversationScreen() {
   const scheme = useColorScheme() ?? 'light';
@@ -202,9 +211,12 @@ export default function CoachConversationScreen() {
   }, [isStreaming, draft, sub, quota.isExhausted, isOffline]);
 
   return (
+    // S3-2b チャット集中モード — この画面 ((tabs)/coach/[id]) ではタブバーを
+    // 非表示にする ((tabs)/_layout の useSegments 判定)。バーが無くなるため
+    // 下端は自前で safe-area を確保し、composer をホームインジケータ直上に固定。
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
+      edges={['top', 'bottom']}
     >
       <View style={[styles.headerRow, { borderColor: colors.border }]}>
         <TouchableOpacity
@@ -284,10 +296,12 @@ export default function CoachConversationScreen() {
         </TouchableOpacity>
       )}
 
+      {/* S3-2b — 旧 offset 88 はタブバー高の補償だった。集中モードでバーが
+          消えたため 0 に (キーボード表示時は composer がキーボード直上に追従)。 */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+        keyboardVerticalOffset={0}
       >
         <FlatList
           ref={listRef}
@@ -308,6 +322,38 @@ export default function CoachConversationScreen() {
               >
                 ミー先生に話しかけてみましょう
               </Text>
+              {/* S3-2b-C — 質問候補チップ。既存テーマ (COACH_THEMES) の prompt を
+                  入力欄へプリセットするだけで auto-send はしない (テーマ選択
+                  起動と同じ規則 — quota の誤消費防止。送信判定・quota は不変)。 */}
+              {isNew && (
+                <View style={styles.suggestionWrap}>
+                  {SUGGESTION_CHIPS.map((chip) => (
+                    <TouchableOpacity
+                      key={chip.themeId}
+                      style={[
+                        styles.suggestionChip,
+                        {
+                          backgroundColor: colors.surfaceSecondary,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                      onPress={() => {
+                        const t = getCoachTheme(chip.themeId);
+                        if (t) setDraft(t.prompt);
+                      }}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={chip.label}
+                      accessibilityHint="質問文を入力欄にセットします"
+                      testID={`coach-suggestion-${chip.themeId}`}
+                    >
+                      <Text style={[styles.suggestionText, { color: colors.textPrimary }]}>
+                        {chip.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           }
         />
@@ -428,6 +474,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: spacing.xxxl,
   },
+  // S3-2b-C 質問候補チップ
+  suggestionWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+  },
+  suggestionChip: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    borderWidth: 1,
+  },
+  suggestionText: { ...typography.labelLarge, fontWeight: '600' },
   emptyText: {
     ...typography.bodyMedium,
   },
