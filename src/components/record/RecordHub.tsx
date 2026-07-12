@@ -13,6 +13,7 @@ import { useProfileStore } from '../../stores/profileStore';
 import { addWaterLog, deleteLog } from '../../infra/repositories/waterRepository';
 import { createSession } from '../../infra/repositories/workoutRepository';
 import { getISODate } from '../../utils/format';
+import { RECORD_EVENTS, emitRecordEvent } from '../../utils/recordEvents';
 
 // S3-2b — 記録ハブ。FAB タップで「何を記録しますか?」シートを開き、
 // [食事] [体重] [水分] [ワークアウト] の4導線へ振り分ける (初回は4つ同等の
@@ -53,6 +54,15 @@ export function RecordHub({ visible, onClose }: RecordHubProps) {
   const [waterBusy, setWaterBusy] = useState(false);
   // C-11 パターン: ワークアウト開始 (createSession) の二重起動 guard
   const startingWorkoutRef = useRef(false);
+  // 水分追加も同パターン — state (waterBusy) は UI 表示用、再入 guard は ref
+  // (setState 反映前の連打で複数 INSERT が通るのを防ぐ)
+  const addingWaterRef = useRef(false);
+
+  // profile 未ロード (起動直後の稀な窓) では書き込み系導線を無音で落とさず
+  // 案内する (Codex 3-2b R1 Important #5)
+  const alertProfileNotReady = () => {
+    Alert.alert('エラー', 'プロフィールを読み込み中です。しばらくしてからお試しください。');
+  };
 
   const close = () => {
     setMode('menu');
@@ -74,10 +84,18 @@ export function RecordHub({ visible, onClose }: RecordHubProps) {
   };
 
   const handleWeight = () => {
+    if (!profile) {
+      alertProfileNotReady();
+      return;
+    }
     afterClose(() => setWeightVisible(true));
   };
 
   const handleWorkout = () => {
+    if (!profile) {
+      alertProfileNotReady();
+      return;
+    }
     afterClose(async () => {
       if (!profile || startingWorkoutRef.current) return;
       startingWorkoutRef.current = true;
@@ -96,10 +114,16 @@ export function RecordHub({ visible, onClose }: RecordHubProps) {
   };
 
   const handleAddWater = async (ml: number) => {
-    if (!profile || waterBusy) return;
+    if (!profile) {
+      alertProfileNotReady();
+      return;
+    }
+    if (addingWaterRef.current) return;
+    addingWaterRef.current = true;
     setWaterBusy(true);
     try {
       const log = await addWaterLog(profile.id, ml);
+      emitRecordEvent(RECORD_EVENTS.waterLogChanged);
       close();
       setToast({
         message: `${ml}mlを記録しました`,
@@ -109,6 +133,7 @@ export function RecordHub({ visible, onClose }: RecordHubProps) {
     } catch {
       Alert.alert('エラー', '水分の記録に失敗しました。もう一度お試しください。');
     } finally {
+      addingWaterRef.current = false;
       setWaterBusy(false);
     }
   };
@@ -116,6 +141,7 @@ export function RecordHub({ visible, onClose }: RecordHubProps) {
   const handleUndoWater = async (logId: string) => {
     try {
       await deleteLog(logId);
+      emitRecordEvent(RECORD_EVENTS.waterLogChanged);
       setToast({ message: '取り消しました', type: 'info' });
     } catch {
       Alert.alert('エラー', '取り消しに失敗しました');

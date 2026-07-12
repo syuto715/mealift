@@ -120,24 +120,29 @@ export default function TabLayout() {
           title: '',
           tabBarButton: () => (
             <View style={styles.fabSlot} pointerEvents="box-none">
+              {/* S3-2b — 円とラベルを1つの Touchable にまとめ、タップ領域と
+                  スクリーンリーダー上の1ノード化を両立 (ラベルは custom
+                  tabBarButton では既定描画が走らないため自前 Text) */}
               <TouchableOpacity
                 onPress={() => setHubVisible(true)}
                 activeOpacity={0.8}
-                style={[
-                  styles.fab,
-                  shadow.md,
-                  { backgroundColor: colors.primary, borderColor: colors.surface },
-                ]}
+                style={styles.fabTouchable}
                 accessibilityRole="button"
                 accessibilityLabel="記録"
                 accessibilityHint="記録メニューを開きます"
                 testID="tab-record-fab"
               >
-                <Ionicons name="add" size={26} color={colors.onPrimary} />
+                <View
+                  style={[
+                    styles.fab,
+                    shadow.md,
+                    { backgroundColor: colors.primary, borderColor: colors.surface },
+                  ]}
+                >
+                  <Ionicons name="add" size={26} color={colors.onPrimary} />
+                </View>
+                <Text style={[styles.fabLabel, { color: colors.textSecondary }]}>記録</Text>
               </TouchableOpacity>
-              {/* S3-2b — 他タブとラベル行を揃える (custom tabBarButton は既定
-                  ラベル描画が走らないため自前 Text) */}
-              <Text style={[styles.fabLabel, { color: colors.textSecondary }]}>記録</Text>
             </View>
           ),
         }}
@@ -197,6 +202,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  fabTouchable: {
+    alignItems: 'center',
+    marginTop: -16,
+  },
   fab: {
     width: 46,
     height: 46,
@@ -204,7 +213,6 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -16,
   },
   fabLabel: {
     ...typography.labelSmall,

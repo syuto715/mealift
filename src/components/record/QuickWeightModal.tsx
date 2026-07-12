@@ -4,8 +4,12 @@ import { Modal } from '../ui/Modal';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../ui/Button';
 import { useProfileStore } from '../../stores/profileStore';
-import { upsertBodyLog } from '../../infra/repositories/bodyLogRepository';
+import {
+  getBodyLogByDate,
+  upsertBodyLog,
+} from '../../infra/repositories/bodyLogRepository';
 import { getISODate } from '../../utils/format';
+import { RECORD_EVENTS, emitRecordEvent } from '../../utils/recordEvents';
 import { spacing } from '../../theme/spacing';
 
 // S3-2b — 記録ハブ (FAB シート) からの体重クイック入力。
@@ -35,11 +39,19 @@ export function QuickWeightModal({ visible, onClose, onSaved }: QuickWeightModal
     if (!profile || weight == null || isSaving) return;
     setIsSaving(true);
     try {
+      // upsertBodyLog は未指定フィールドを null で上書きするため (repo 契約)、
+      // 既存の今日の行を読んで note / muscleMassKg / bodyFatPct をマージする —
+      // ハブからの体重だけ更新で既存の記録を消さない (Codex 3-2b R1 Critical)。
+      const today = getISODate();
+      const existing = await getBodyLogByDate(profile.id, today);
       await upsertBodyLog(profile.id, {
-        date: getISODate(),
+        date: today,
         weightKg: weight,
-        bodyFatPct: bodyFat,
+        bodyFatPct: bodyFat ?? existing?.bodyFatPct ?? null,
+        muscleMassKg: existing?.muscleMassKg ?? null,
+        note: existing?.note ?? null,
       });
+      emitRecordEvent(RECORD_EVENTS.bodyLogChanged);
       onSaved();
     } catch {
       // modal は閉じない — 再試行できる (進捗タブの体重 modal と同じ方針)
@@ -79,7 +91,7 @@ export function QuickWeightModal({ visible, onClose, onSaved }: QuickWeightModal
           size="lg"
           fullWidth
           loading={isSaving}
-          disabled={isSaving || weight == null}
+          disabled={isSaving || weight == null || !profile}
         />
       </View>
     </Modal>
