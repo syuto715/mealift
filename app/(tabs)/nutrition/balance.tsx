@@ -27,6 +27,7 @@ import {
   MEAL_RATIO,
 } from '../../../src/domain/nutrientBalance';
 import { NutrientBar } from '../../../src/components/charts/NutrientBar';
+import { getBalanceStatusPresentation } from '../../../src/components/nutrition/balanceStatusBadge';
 import { getFeatureFlags } from '../../../src/infra/services/subscriptionService';
 import {
   fetchNutritionAdvice,
@@ -264,16 +265,13 @@ ${nutrientList}
   // Render helpers
   // -----------------------------------------------------------------------
 
-  const renderStatusBadge = (status: BalanceStatus) => {
-    const bg =
-      status === 'adequate'
-        ? colors.success
-        : status === 'excess'
-          ? colors.warning
-          : colors.primary;
+  // S3-3-B — 記号+ラベル併記の tint バッジ (不足=青の操作色誤用を是正、
+  // NutrientBar と共通プレゼンテーション)
+  const renderStatusBadge = (status: BalanceStatus, intake: number) => {
+    const badge = getBalanceStatusPresentation(status, intake, colors);
     return (
-      <View style={[styles.tableBadge, { backgroundColor: bg }]}>
-        <Text style={styles.tableBadgeText}>{STATUS_LABELS[status]}</Text>
+      <View style={[styles.tableBadge, { backgroundColor: badge.bg }]}>
+        <Text style={[styles.tableBadgeText, { color: badge.color }]}>{badge.text}</Text>
       </View>
     );
   };
@@ -569,7 +567,7 @@ ${nutrientList}
                   {item.intake} {item.unit}
                 </Text>
                 <View style={styles.tableColStatus}>
-                  {item.target > 0 && renderStatusBadge(item.status)}
+                  {item.target > 0 && renderStatusBadge(item.status, item.intake)}
                 </View>
               </View>
             ))}
@@ -597,7 +595,7 @@ ${nutrientList}
                     {item.intake} {item.unit}
                   </Text>
                   <View style={styles.tableColStatus}>
-                    {item.target > 0 && renderStatusBadge(item.status)}
+                    {item.target > 0 && renderStatusBadge(item.status, item.intake)}
                   </View>
                 </View>
               ))
@@ -932,7 +930,6 @@ const styles = StyleSheet.create({
   tableBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#FFFFFF',
     lineHeight: 14,
   },
   tableLockRow: {

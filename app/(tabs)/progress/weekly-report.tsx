@@ -368,12 +368,12 @@ export default function WeeklyReportScreen() {
     );
   }
 
+  // S3-3-B — 低スコアも赤 (error) ではなく amber (責めないトーン)。40 未満は
+  // 文言分岐 (「来週は頑張りましょう！」) とスコア数値自体が状態を伝える。
   const overallColor =
     report.overallScore >= 70
-      ? colors.success
-      : report.overallScore >= 40
-        ? colors.warning
-        : colors.error;
+      ? colors.statusSuccess
+      : colors.statusWarning;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>

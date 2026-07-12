@@ -16,12 +16,11 @@ export function WeeklyReportCard({ report, onPress }: WeeklyReportCardProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
 
+  // S3-3-B — 週次レポート本体と同じ: 低スコアも赤ではなく amber (責めないトーン)
   const scoreColor =
     report.overallScore >= 70
-      ? colors.success
-      : report.overallScore >= 40
-        ? colors.warning
-        : colors.error;
+      ? colors.statusSuccess
+      : colors.statusWarning;
 
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={onPress}>

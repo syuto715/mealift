@@ -5,6 +5,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import type { ThemeColors } from '../../theme/tokens';
 import type { BalanceStatus } from '../../domain/nutrientBalance';
+import { getBalanceStatusPresentation } from '../nutrition/balanceStatusBadge';
 
 interface NutrientBarProps {
   label: string;
@@ -15,23 +16,6 @@ interface NutrientBarProps {
   isUpperLimit: boolean;
   colors: ThemeColors;
   maxRatio?: number;
-}
-
-const STATUS_LABELS: Record<BalanceStatus, string> = {
-  adequate: '適正',
-  excess: '過剰',
-  deficient: '不足',
-};
-
-function getStatusColors(status: BalanceStatus, colors: ThemeColors) {
-  switch (status) {
-    case 'adequate':
-      return { bg: colors.success, text: '#FFFFFF' };
-    case 'excess':
-      return { bg: colors.warning, text: '#FFFFFF' };
-    case 'deficient':
-      return { bg: colors.primary, text: '#FFFFFF' };
-  }
 }
 
 const BAR_HEIGHT = 14;
@@ -62,7 +46,8 @@ export function NutrientBar({
   const greenWidth = Math.min(barPercent, greenLimit);
   const orangeWidth = Math.max(0, barPercent - greenLimit);
 
-  const statusColors = getStatusColors(status, colors);
+  // S3-3-B — 記号+ラベル併記の tint バッジ (不足=青の操作色誤用を是正)
+  const badge = getBalanceStatusPresentation(status, intake, colors);
   const showBadge = target > 0;
 
   const formatValue = (v: number) => {
@@ -78,9 +63,9 @@ export function NutrientBar({
           {label}
         </Text>
         {showBadge && (
-          <View style={[styles.badge, { backgroundColor: statusColors.bg }]}>
-            <Text style={[styles.badgeText, { color: statusColors.text }]}>
-              {STATUS_LABELS[status]}
+          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+            <Text style={[styles.badgeText, { color: badge.color }]}>
+              {badge.text}
             </Text>
           </View>
         )}
