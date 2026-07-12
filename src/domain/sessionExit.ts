@@ -1,61 +1,14 @@
-// S3-1 — ワークアウトセッション終了/破棄の UI マッピング層。
+// S3-1 — ワークアウトセッション終了 (保存) の UI マッピング層。
 //
-// 絶対原則: repository / store の保存・破棄ロジック自体は変更しない。
-// このモジュールは既存関数を deps 注入で受け取り、
-//   - 「記録を保存して終了」 = finishSession (既存の完了保存)
-//   - 「記録を破棄して終了」 = getSetsForSession → removeSet (既存の
-//     soft-delete + sync tombstone) を全セットに適用
-// を再入 guard 付きで直列化するだけの薄い orchestration に徹する。
+// 絶対原則: repository / store の保存ロジック自体は変更しない。
+// このモジュールは既存 finishSession を deps 注入で受け取り、
+// 「記録を保存して終了」を再入 guard 付きで直列化するだけの薄い
+// orchestration に徹する (二重保存 guard は C-11 と同趣旨)。
 //
-// 破棄のマッピング注記: deleteSession は存在しないため、セッション行は
-// finished_at NULL のまま残す (finishSession してしまうと空セッションが
-// 履歴リスト・カレンダードットに露出する。未終了行は履歴/ホーム/カレンダー/
-// 消費カロリーの全ユーザー可視面で除外される)。セット行は removeSet の
-// soft-delete で全照会から消える。復元 UI は存在しない (=「元に戻せません」)。
-
-export interface ExitSetLike {
-  completed: boolean;
-  weightKg: number | null;
-  reps: number | null;
-}
-
-export interface ExitExerciseLike {
-  sets: ExitSetLike[];
-}
-
-export interface SessionExitStats {
-  /** 完了セットが 1 つ以上ある種目数 */
-  exerciseCount: number;
-  completedSetCount: number;
-  totalVolumeKg: number;
-}
-
-export function collectSessionStats(
-  exercises: readonly ExitExerciseLike[],
-): SessionExitStats {
-  let exerciseCount = 0;
-  let completedSetCount = 0;
-  let totalVolumeKg = 0;
-  for (const ex of exercises) {
-    const completed = ex.sets.filter((s) => s.completed);
-    if (completed.length > 0) exerciseCount += 1;
-    completedSetCount += completed.length;
-    for (const s of completed) {
-      totalVolumeKg += (s.weightKg ?? 0) * (s.reps ?? 0);
-    }
-  }
-  return { exerciseCount, completedSetCount, totalVolumeKg };
-}
-
-/** 破棄確認用サマリ:「経過32分・4種目12セット」(1分未満は「経過1分未満」)。 */
-export function formatDiscardSummary(
-  elapsedSeconds: number,
-  stats: SessionExitStats,
-): string {
-  const minutes = Math.floor(Math.max(0, elapsedSeconds) / 60);
-  const elapsed = minutes >= 1 ? `経過${minutes}分` : '経過1分未満';
-  return `${elapsed}・${stats.exerciseCount}種目${stats.completedSetCount}セット`;
-}
+// 注: 「記録を破棄して終了」導線は S3-1 R3 で除去した (Syuto 判断)。
+// 真の破棄には discardSession repo 関数 (セッション/セット/e1RM 観測/PR の
+// tombstone 一括 soft-delete + トランザクション) が必要で、Sprint 3-2 の
+// 主題候補として設計を提案リストに記録済み。
 
 /**
  * 経過秒 = startedAt (ISO) からの壁時計差分。バックグラウンドで JS タイマーが
@@ -84,8 +37,6 @@ export interface SessionExitDeps {
     note?: string,
     estimatedCalories?: number,
   ) => Promise<unknown>;
-  getSetsForSession: (sessionId: string) => Promise<{ id: string }[]>;
-  removeSet: (setId: string) => Promise<unknown>;
 }
 
 export type SessionExitResult = 'done' | 'busy';
@@ -98,8 +49,6 @@ export interface SessionExitController {
     note?: string,
     estimatedCalories?: number,
   ) => Promise<SessionExitResult>;
-  /** 破棄して終了。保存済み全セットを既存 removeSet で soft-delete。 */
-  discardExit: (sessionId: string) => Promise<SessionExitResult>;
 }
 
 export function createSessionExitController(
@@ -116,19 +65,6 @@ export function createSessionExitController(
         return 'done';
       } finally {
         // 失敗時も解除 → シートを閉じずに再試行できる
-        busy = false;
-      }
-    },
-    async discardExit(sessionId) {
-      if (busy) return 'busy';
-      busy = true;
-      try {
-        const sets = await deps.getSetsForSession(sessionId);
-        for (const s of sets) {
-          await deps.removeSet(s.id);
-        }
-        return 'done';
-      } finally {
         busy = false;
       }
     },

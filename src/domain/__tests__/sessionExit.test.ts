@@ -1,65 +1,14 @@
-// S3-1 — セッション終了/破棄 UI マッピング層の回帰テスト。
+// S3-1 — セッション終了 (2択シート: 保存して終了 / キャンセル) の回帰テスト。
 // 受け入れ条件:
 //   - 「保存して終了」連打で重複保存されない (再入 guard)
-//   - 保存失敗時に guard が解除され再試行できる
-//   - 破棄 = 既存 removeSet を保存済み全セットへ適用 (repository 契約は不変)
+//   - 保存失敗時に guard が解除され再試行できる (シートは閉じない前提)
 //   - 経過時間はタイムスタンプ差分でバックグラウンド凍結の影響を受けない
+// 破棄導線は S3-1 R3 で除去済み (discardSession は Sprint 3-2 の設計課題)。
 
 import {
-  collectSessionStats,
   computeElapsedSeconds,
   createSessionExitController,
-  formatDiscardSummary,
 } from '../sessionExit';
-
-const makeSet = (completed: boolean, weightKg: number | null = 60, reps: number | null = 10) => ({
-  completed,
-  weightKg,
-  reps,
-});
-
-describe('collectSessionStats', () => {
-  it('完了セットのある種目数・完了セット数・総ボリュームを集計する', () => {
-    const stats = collectSessionStats([
-      { sets: [makeSet(true, 60, 10), makeSet(true, 60, 8), makeSet(false)] },
-      { sets: [makeSet(false), makeSet(false)] }, // 未完了のみ → 種目数に含めない
-      { sets: [makeSet(true, 40, 12)] },
-    ]);
-    expect(stats.exerciseCount).toBe(2);
-    expect(stats.completedSetCount).toBe(3);
-    expect(stats.totalVolumeKg).toBe(60 * 10 + 60 * 8 + 40 * 12);
-  });
-
-  it('空セッション・null 重量/回数を安全に扱う', () => {
-    expect(collectSessionStats([])).toEqual({
-      exerciseCount: 0,
-      completedSetCount: 0,
-      totalVolumeKg: 0,
-    });
-    const stats = collectSessionStats([{ sets: [makeSet(true, null, null)] }]);
-    expect(stats.exerciseCount).toBe(1);
-    expect(stats.completedSetCount).toBe(1);
-    expect(stats.totalVolumeKg).toBe(0);
-  });
-});
-
-describe('formatDiscardSummary', () => {
-  it('「経過32分・4種目12セット」形式', () => {
-    expect(
-      formatDiscardSummary(32 * 60 + 45, {
-        exerciseCount: 4,
-        completedSetCount: 12,
-        totalVolumeKg: 0,
-      }),
-    ).toBe('経過32分・4種目12セット');
-  });
-
-  it('1分未満は「経過1分未満」', () => {
-    expect(
-      formatDiscardSummary(59, { exerciseCount: 0, completedSetCount: 0, totalVolumeKg: 0 }),
-    ).toBe('経過1分未満・0種目0セット');
-  });
-});
 
 describe('computeElapsedSeconds', () => {
   const T0 = Date.parse('2026-07-12T10:00:00.000Z');
@@ -86,7 +35,7 @@ describe('computeElapsedSeconds', () => {
   });
 });
 
-describe('createSessionExitController', () => {
+describe('createSessionExitController (2択シートの保存経路)', () => {
   const deferred = <T,>() => {
     let resolve!: (v: T) => void;
     let reject!: (e: unknown) => void;
@@ -99,11 +48,7 @@ describe('createSessionExitController', () => {
 
   it('saveExit は finishSession を1回だけ引数どおりに呼ぶ', async () => {
     const finishSession = jest.fn().mockResolvedValue({ durationSeconds: 100 });
-    const controller = createSessionExitController({
-      finishSession,
-      getSetsForSession: jest.fn(),
-      removeSet: jest.fn(),
-    });
+    const controller = createSessionExitController({ finishSession });
     await expect(controller.saveExit('s1', 'メモ', 250)).resolves.toBe('done');
     expect(finishSession).toHaveBeenCalledTimes(1);
     expect(finishSession).toHaveBeenCalledWith('s1', 'メモ', 250);
@@ -112,11 +57,7 @@ describe('createSessionExitController', () => {
   it('保存連打: 実行中の再入は busy を返し finishSession は1回しか呼ばれない', async () => {
     const gate = deferred<void>();
     const finishSession = jest.fn().mockReturnValue(gate.promise);
-    const controller = createSessionExitController({
-      finishSession,
-      getSetsForSession: jest.fn(),
-      removeSet: jest.fn(),
-    });
+    const controller = createSessionExitController({ finishSession });
     const first = controller.saveExit('s1');
     await expect(controller.saveExit('s1')).resolves.toBe('busy'); // 連打1
     await expect(controller.saveExit('s1')).resolves.toBe('busy'); // 連打2
@@ -132,61 +73,18 @@ describe('createSessionExitController', () => {
       .fn()
       .mockRejectedValueOnce(new Error('disk full'))
       .mockResolvedValueOnce(undefined);
-    const controller = createSessionExitController({
-      finishSession,
-      getSetsForSession: jest.fn(),
-      removeSet: jest.fn(),
-    });
+    const controller = createSessionExitController({ finishSession });
     await expect(controller.saveExit('s1')).rejects.toThrow('disk full');
     expect(controller.isBusy()).toBe(false); // guard 解除済み
     await expect(controller.saveExit('s1')).resolves.toBe('done'); // 再試行成功
     expect(finishSession).toHaveBeenCalledTimes(2);
   });
 
-  it('discardExit は保存済み全セットへ removeSet を適用する', async () => {
-    const getSetsForSession = jest
-      .fn()
-      .mockResolvedValue([{ id: 'set-a' }, { id: 'set-b' }, { id: 'set-c' }]);
-    const removeSet = jest.fn().mockResolvedValue(undefined);
-    const controller = createSessionExitController({
-      finishSession: jest.fn(),
-      getSetsForSession,
-      removeSet,
-    });
-    await expect(controller.discardExit('s1')).resolves.toBe('done');
-    expect(getSetsForSession).toHaveBeenCalledWith('s1');
-    expect(removeSet.mock.calls.map((c) => c[0])).toEqual(['set-a', 'set-b', 'set-c']);
-  });
-
-  it('破棄失敗でも guard が解除され再試行できる', async () => {
-    const getSetsForSession = jest.fn().mockResolvedValue([{ id: 'set-a' }]);
-    const removeSet = jest
-      .fn()
-      .mockRejectedValueOnce(new Error('db locked'))
-      .mockResolvedValueOnce(undefined);
-    const controller = createSessionExitController({
-      finishSession: jest.fn(),
-      getSetsForSession,
-      removeSet,
-    });
-    await expect(controller.discardExit('s1')).rejects.toThrow('db locked');
+  it('キャンセル相当 (何も実行しない) の後も保存できる — guard が誤って残らない', async () => {
+    const finishSession = jest.fn().mockResolvedValue(undefined);
+    const controller = createSessionExitController({ finishSession });
+    // シートを開いて閉じるだけの操作は controller に触れない
     expect(controller.isBusy()).toBe(false);
-    await expect(controller.discardExit('s1')).resolves.toBe('done');
-  });
-
-  it('保存と破棄は相互排他 (保存中の破棄は busy)', async () => {
-    const gate = deferred<void>();
-    const finishSession = jest.fn().mockReturnValue(gate.promise);
-    const removeSet = jest.fn();
-    const controller = createSessionExitController({
-      finishSession,
-      getSetsForSession: jest.fn().mockResolvedValue([{ id: 'set-a' }]),
-      removeSet,
-    });
-    const save = controller.saveExit('s1');
-    await expect(controller.discardExit('s1')).resolves.toBe('busy');
-    expect(removeSet).not.toHaveBeenCalled();
-    gate.resolve();
-    await expect(save).resolves.toBe('done');
+    await expect(controller.saveExit('s1')).resolves.toBe('done');
   });
 });

@@ -12,7 +12,6 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, Stack, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
@@ -57,9 +56,7 @@ import { calculateWorkoutCalories } from '../../../src/domain/calories';
 import { calculateCaloriesBurned } from '../../../src/domain/cardioCalories';
 import {
   createSessionExitController,
-  collectSessionStats,
   computeElapsedSeconds,
-  formatDiscardSummary,
 } from '../../../src/domain/sessionExit';
 import { estimateOneRepMax } from '../../../src/domain/oneRepMax';
 import { checkAndRecordCardioPRs, checkAndRecordPRs, checkSessionVolumePR } from '../../../src/domain/personalRecord';
@@ -494,24 +491,20 @@ export default function SessionScreen() {
   const [customExerciseMuscle, setCustomExerciseMuscle] = useState<MuscleGroup>('chest');
   const [customExerciseEquipment, setCustomExerciseEquipment] = useState('');
 
-  // S3-1 終了シート (旧 finish confirmation modal を置換)。isFinishing /
-  // isDiscarding は UI 表示用、再入 guard の本体は exitController (ref ベース、
-  // C-11 と同趣旨)。
+  // S3-1 終了シート (旧 finish confirmation modal を置換)。isFinishing は
+  // UI 表示用、再入 guard の本体は exitController (ref ベース、C-11 と同趣旨)。
   const [showExitSheet, setShowExitSheet] = useState(false);
   const [sessionNote, setSessionNote] = useState('');
   const [isFinishing, setIsFinishing] = useState(false);
-  const [isDiscarding, setIsDiscarding] = useState(false);
   const exitController = useRef(
     createSessionExitController({
       finishSession: workoutRepo.finishSession,
-      getSetsForSession: workoutRepo.getSetsForSession,
-      removeSet: workoutRepo.removeSet,
     }),
   ).current;
 
   // S3-1 離脱ガード — Android hardware back / プログラム的 pop を含む画面除去を
   // 終了シートへ合流させる (iOS スワイプは下の Stack.Screen gestureEnabled:false
-  // で遮断)。保存/破棄の完了パスは allowLeaveRef を立ててから router.back() し、
+  // で遮断)。保存完了パスは allowLeaveRef を立ててから router.back() し、
   // ここで元の action をそのまま dispatch して抜ける (race のない公式パターン)。
   const navigation = useNavigation();
   const allowLeaveRef = useRef(false);
@@ -945,8 +938,8 @@ export default function SessionScreen() {
     }
   };
 
-  // S3-1 — セット保存 (addSet) の in-flight 完了を待つ。待たずに保存/破棄すると
-  // 「後から INSERT されたセットが summary/破棄対象から漏れる」レースが起きる
+  // S3-1 — セット保存 (addSet) の in-flight 完了を待つ。待たずに保存終了すると
+  // 「後から INSERT されたセットが summary 集計から漏れる」レースが起きる
   // (Codex R1 Important #5)。C-11 の savingSetsRef をポーリングするだけの
   // UI 層対応 (repository 契約は不変)。
   const waitForPendingSetSaves = useCallback(async () => {
@@ -1094,56 +1087,10 @@ export default function SessionScreen() {
     setShowExitSheet(true);
   }, [params.sessionId]);
 
-  // S3-1 「このセッションの記録を破棄して終了」。
-  // マッピング (repository/store 変更なし):
-  //   保存済みセット → 既存 removeSet (soft-delete + sync tombstone)
-  //   セッション行   → finished_at NULL のまま残す (finishSession すると空
-  //                    セッションが履歴・カレンダードットに露出するため。
-  //                    未終了行は全ユーザー可視面で除外される)
-  // 復元機能は存在しないため「元に戻せません」は事実 (recon 3)。
-  const handleDiscardSession = useCallback(() => {
-    if (!params.sessionId || exitController.isBusy()) return;
-    const stats = collectSessionStats(exercises);
-    // 確認文の経過時間も表示時点で再計算 (stale tick 対策は保存側と同じ)
-    const confirmElapsedSeconds = computeElapsedSeconds(
-      startedAt,
-      Date.now(),
-      mountedAtRef.current,
-    );
-    Alert.alert(
-      '記録を破棄しますか？',
-      `${formatDiscardSummary(confirmElapsedSeconds, stats)}の記録を破棄して終了します。破棄した記録は履歴に残らず、元に戻せません。`,
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '破棄する',
-          style: 'destructive',
-          onPress: async () => {
-            if (!params.sessionId || exitController.isBusy()) return;
-            setIsDiscarding(true);
-            try {
-              // in-flight のセット保存を待ってから破棄 (レースで INSERT が
-              // 破棄対象から漏れるのを防ぐ)
-              await waitForPendingSetSaves();
-              const result = await exitController.discardExit(params.sessionId);
-              if (result !== 'done') return;
-              setShowExitSheet(false);
-              endSession();
-              restTimer.stop();
-              allowLeaveRef.current = true;
-              router.back();
-            } catch {
-              // シートは開いたまま — 再試行できる (旧「中止」の silent fail +
-              // 強制 back で orphan を残す挙動を是正)
-              Alert.alert('エラー', '記録の破棄に失敗しました。もう一度お試しください。');
-            } finally {
-              setIsDiscarding(false);
-            }
-          },
-        },
-      ],
-    );
-  }, [params.sessionId, exitController, exercises, startedAt, endSession, restTimer, waitForPendingSetSaves]);
+  // S3-1 R3 — 破棄導線は本 sprint から除去 (Syuto 判断)。真の破棄には
+  // discardSession repo 関数 (e1RM/PR/orphan/トランザクション/tombstone 込み) が
+  // 必要で、それは Sprint 3-2 の主題候補として提案リストに設計を記録済み。
+  // 終了シートは [記録を保存して終了] / [キャンセル] の2択。
 
   const formatPreviousSet = (prevSet: WorkoutSet): string => {
     return `${prevSet.weightKg ?? 0}kg × ${prevSet.reps ?? 0}回`;
@@ -2085,13 +2032,14 @@ export default function SessionScreen() {
         </View>
       </Modal>
 
-      {/* S3-1 終了シート — 保存 / 破棄 / キャンセルの3択 (旧 finish confirmation
-          modal を置換)。メモ入力は従来どおり finishSession の note へ渡る。
-          保存/破棄の実行中は backdrop タップでも閉じない。 */}
+      {/* S3-1 終了シート — [記録を保存して終了] / [キャンセル] の2択 (旧 finish
+          confirmation modal を置換。破棄導線は Sprint 3-2 の discardSession 設計
+          待ちで本 sprint から除去)。メモ入力は従来どおり finishSession の note へ
+          渡る。保存の実行中は backdrop タップでも閉じない。 */}
       <BottomSheet
         visible={showExitSheet}
         onClose={() => {
-          if (!isFinishing && !isDiscarding) setShowExitSheet(false);
+          if (!isFinishing) setShowExitSheet(false);
         }}
         title="トレーニングを終了しますか?"
       >
@@ -2106,7 +2054,7 @@ export default function SessionScreen() {
               numberOfLines={3}
               blurOnSubmit
               returnKeyType="done"
-              editable={!isFinishing && !isDiscarding}
+              editable={!isFinishing}
             />
             <Button
               title="記録を保存して終了"
@@ -2115,37 +2063,15 @@ export default function SessionScreen() {
               size="lg"
               fullWidth
               loading={isFinishing}
-              disabled={isFinishing || isDiscarding}
+              disabled={isFinishing}
             />
-            <TouchableOpacity
-              style={[
-                styles.exitDiscardBtn,
-                { backgroundColor: colors.error + '12', borderColor: colors.error + '40' },
-                (isFinishing || isDiscarding) && styles.exitBtnDisabled,
-              ]}
-              onPress={handleDiscardSession}
-              disabled={isFinishing || isDiscarding}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="このセッションの記録を破棄して終了"
-              accessibilityHint="確認ダイアログを表示します"
-              accessibilityState={{ disabled: isFinishing || isDiscarding, busy: isDiscarding }}
-            >
-              {isDiscarding ? (
-                <ActivityIndicator size="small" color={colors.error} />
-              ) : (
-                <Text style={[styles.exitDiscardText, { color: colors.error }]}>
-                  このセッションの記録を破棄して終了
-                </Text>
-              )}
-            </TouchableOpacity>
             <Button
               title="キャンセル"
               onPress={() => setShowExitSheet(false)}
               variant="ghost"
               size="lg"
               fullWidth
-              disabled={isFinishing || isDiscarding}
+              disabled={isFinishing}
             />
           </View>
         </KeyboardAvoidingView>
@@ -2618,16 +2544,6 @@ const styles = StyleSheet.create({
   exitSheetContent: {
     gap: spacing.md,
   },
-  exitDiscardBtn: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    paddingHorizontal: spacing.lg,
-  },
-  exitDiscardText: { ...typography.labelLarge, fontWeight: '600' },
-  exitBtnDisabled: { opacity: 0.5 },
   // Summary modal
   summaryContent: {
     alignItems: 'center',
