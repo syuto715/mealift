@@ -82,8 +82,11 @@ export async function checkAndRecordPRs(
   // 3. Max reps at weight (same weight, more reps)
   const db = await getDatabase();
   const sameWeightRow = await db.getFirstAsync<{ max_reps: number | null }>(
+    // S3-2 — deleted_at ガード: tombstone 済み PR (discardSession/removeSet 由来)
+    // が比較対象に混入すると、正当な新 PR の insert が抑止される
     `SELECT MAX(reps) AS max_reps FROM personal_records
-     WHERE exercise_id = ? AND record_type = 'max_reps_at_weight' AND weight_kg = ?`,
+     WHERE exercise_id = ? AND record_type = 'max_reps_at_weight' AND weight_kg = ?
+       AND deleted_at IS NULL`,
     [exerciseId, weightKg]
   );
   const prevRepsAtWeight = sameWeightRow?.max_reps ?? 0;
@@ -177,9 +180,11 @@ export async function checkSessionVolumePR(
     exercise_id: string;
     total_volume: number;
   }>(
+    // S3-2 — deleted_at ガード: removeSet で soft-delete 済みのセットが
+    // ボリュームに加算され、水増しされた偽ボリューム PR が insert されていた
     `SELECT exercise_id, COALESCE(SUM(weight_kg * reps), 0) AS total_volume
      FROM workout_sets
-     WHERE session_id = ? AND is_warmup = 0
+     WHERE session_id = ? AND is_warmup = 0 AND deleted_at IS NULL
      GROUP BY exercise_id`,
     [sessionId]
   );

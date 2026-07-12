@@ -775,6 +775,96 @@ export async function finishSession(
   return { durationSeconds };
 }
 
+// S3-2 — セッションの完全破棄。セッション本体・セット・そこから派生した
+// e1RM 観測 (estimated_1rm.source_set_id 経由)・PR (personal_records.session_id
+// 経由) を単一トランザクションで tombstone (soft-delete + sync enqueue) する。
+// Sprint 3-1 の Codex R1 Critical「破棄しても e1RM/PR が残り UI 契約違反」の
+// 構造的解消。
+//
+// - トランザクション: withTransactionAsync (非 exclusive)。enqueueRowFromTable
+//   は内部で同じ getDatabase() singleton を使うため sync_queue への INSERT も
+//   このトランザクションに参加し、失敗時は soft-delete ごと全ロールバックされる
+//   (部分破棄状態を作らない)。withExclusiveTransactionAsync は別コネクションで
+//   実行されるため enqueueRowFromTable とロック衝突する — 使用しないこと。
+//   非 exclusive のため並行 async クエリが混入し得るが (d.ts 注記)、呼び出し側
+//   (session 画面) が in-flight のセット保存を待ってから呼ぶ契約 + 短い
+//   トランザクションで既存の withTransactionAsync 利用箇所と同水準に抑える。
+// - 冪等性: 全 UPDATE に deleted_at IS NULL ガード。二重呼び出しでは対象行が
+//   収集されず追加の tombstone も積まれない (session 行の enqueue のみ再送
+//   され得るが、server 側は id-keyed upsert なので無害)。
+// - タイムスタンプ: deleteRoutine のカスケード慣例に合わせ全行で同一 now を
+//   共有。updated_at bump により pull 側の edit-wins tombstone が成立する。
+// - IN 句: SQLite のパラメータ上限 (999) に依存しないよう chunk して UPDATE する。
+export async function discardSession(sessionId: string): Promise<void> {
+  const db = await getDatabase();
+  const now = new Date().toISOString();
+
+  // SQLite の変数上限 (SQLITE_MAX_VARIABLE_NUMBER, 既定 999) を踏まないよう
+  // id リストを分割して UPDATE する (通常セッションは 1 chunk)。
+  const CHUNK = 500;
+  const softDeleteByIds = async (table: string, ids: string[]): Promise<void> => {
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK);
+      const placeholders = chunk.map(() => '?').join(', ');
+      await db.runAsync(
+        `UPDATE ${table} SET deleted_at = ?, updated_at = ? WHERE id IN (${placeholders})`,
+        [now, now, ...chunk],
+      );
+    }
+  };
+
+  await db.withTransactionAsync(async () => {
+    // 1. セッションのセット (未削除のみ — 削除済みは removeSet 等で tombstone 済)
+    const setRows = await db.getAllAsync<{ id: string }>(
+      'SELECT id FROM workout_sets WHERE session_id = ? AND deleted_at IS NULL',
+      [sessionId],
+    );
+    const setIds = setRows.map((r) => r.id);
+    await softDeleteByIds('workout_sets', setIds);
+
+    // 2. セッション由来の e1RM 観測。setIds 経由ではなく session_id への JOIN で
+    //    引く — removeSet 等で先に soft-delete されたセット由来の観測も漏らさない
+    //    (Codex 3-2 R1 Important #2)。source_set_id に index は無いが、テーブルは
+    //    working セット 1 本 ≈ 1 行の append-only で単一スキャンが現実的
+    //    (fetchRecentSetsForBias が同種の非 index 参照を既に運用)。
+    const e1rmRows = await db.getAllAsync<{ id: string }>(
+      `SELECT e.id FROM estimated_1rm e
+         JOIN workout_sets ws ON ws.id = e.source_set_id
+        WHERE ws.session_id = ? AND e.deleted_at IS NULL`,
+      [sessionId],
+    );
+    const e1rmIds = e1rmRows.map((r) => r.id);
+    await softDeleteByIds('estimated_1rm', e1rmIds);
+
+    // 3. このセッションで達成した PR
+    const prRows = await db.getAllAsync<{ id: string }>(
+      'SELECT id FROM personal_records WHERE session_id = ? AND deleted_at IS NULL',
+      [sessionId],
+    );
+    const prIds = prRows.map((r) => r.id);
+    await softDeleteByIds('personal_records', prIds);
+
+    // 4. セッション本体
+    await db.runAsync(
+      'UPDATE workout_sessions SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL',
+      [now, now, sessionId],
+    );
+
+    // 5. tombstone enqueue (UPDATE 慣例)。同一コネクションなので、この
+    //    トランザクションが rollback したら enqueue も一緒に消える。
+    for (const id of setIds) {
+      await enqueueRowFromTable('workout_sets', id, 'UPDATE');
+    }
+    for (const id of e1rmIds) {
+      await enqueueRowFromTable('estimated_1rm', id, 'UPDATE');
+    }
+    for (const id of prIds) {
+      await enqueueRowFromTable('personal_records', id, 'UPDATE');
+    }
+    await enqueueRowFromTable('workout_sessions', sessionId, 'UPDATE');
+  });
+}
+
 export async function getTodayWorkoutCalories(profileId: string, date?: string): Promise<number> {
   const db = await getDatabase();
   const targetDate = date ?? new Date().toISOString().substring(0, 10);
@@ -882,7 +972,10 @@ export async function getSessions(
       ? ` AND started_at >= datetime('now', '-${historyWindowDays} days')`
       : '';
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    `SELECT * FROM workout_sessions WHERE profile_id = ? AND deleted_at IS NULL${clamp} ORDER BY started_at DESC LIMIT ?`,
+    // S3-2 — finished_at ガード: orphan (未終了) 行が新しい順の LIMIT を消費し、
+    // 正常な完了セッションを一覧から押し出すのを防ぐ。全呼び出し元 (home /
+    // training/index) は JS 側でも finished のみ使用しており意味は不変。
+    `SELECT * FROM workout_sessions WHERE profile_id = ? AND finished_at IS NOT NULL AND deleted_at IS NULL${clamp} ORDER BY started_at DESC LIMIT ?`,
     [profileId, limit],
   );
   return rows.map(rowToSession);
@@ -894,7 +987,9 @@ export async function getRecentSessionCount(
 ): Promise<number> {
   const db = await getDatabase();
   const result = await db.getFirstAsync<{ count: number }>(
-    `SELECT COUNT(*) as count FROM workout_sessions WHERE profile_id = ? AND started_at >= datetime('now', ?) AND deleted_at IS NULL`,
+    // S3-2 — finished_at ガード: 未終了 orphan 行 (kill/旧スワイプバック由来) が
+    // 週間カウント・予測・AIコーチ文脈に「実施回数」として混入していた
+    `SELECT COUNT(*) as count FROM workout_sessions WHERE profile_id = ? AND started_at >= datetime('now', ?) AND finished_at IS NOT NULL AND deleted_at IS NULL`,
     [profileId, `-${days} days`],
   );
   return result?.count ?? 0;
@@ -1202,10 +1297,13 @@ export async function getSessionWithRoutineName(
       ? ` AND s.started_at >= datetime('now', '-${historyWindowDays} days')`
       : '';
   const rows = await db.getAllAsync<Record<string, unknown>>(
+    // S3-2 — finished_at ガード (getSessions と同旨): orphan が LIMIT を消費して
+    // 履歴から完了セッションを押し出すのを防ぐ。呼び出し元 (history) は JS 側
+    // でも finished のみ使用。
     `SELECT s.*, r.name AS routine_name
      FROM workout_sessions s
      LEFT JOIN workout_routines r ON s.routine_id = r.id AND r.deleted_at IS NULL
-     WHERE s.profile_id = ? AND s.deleted_at IS NULL${clamp}
+     WHERE s.profile_id = ? AND s.finished_at IS NOT NULL AND s.deleted_at IS NULL${clamp}
      ORDER BY s.started_at DESC
      LIMIT ?`,
     [profileId, limit],

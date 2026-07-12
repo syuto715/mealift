@@ -12,6 +12,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, Stack, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
@@ -56,7 +57,9 @@ import { calculateWorkoutCalories } from '../../../src/domain/calories';
 import { calculateCaloriesBurned } from '../../../src/domain/cardioCalories';
 import {
   createSessionExitController,
+  collectSessionStats,
   computeElapsedSeconds,
+  formatDiscardSummary,
 } from '../../../src/domain/sessionExit';
 import { estimateOneRepMax } from '../../../src/domain/oneRepMax';
 import { checkAndRecordCardioPRs, checkAndRecordPRs, checkSessionVolumePR } from '../../../src/domain/personalRecord';
@@ -491,14 +494,18 @@ export default function SessionScreen() {
   const [customExerciseMuscle, setCustomExerciseMuscle] = useState<MuscleGroup>('chest');
   const [customExerciseEquipment, setCustomExerciseEquipment] = useState('');
 
-  // S3-1 終了シート (旧 finish confirmation modal を置換)。isFinishing は
-  // UI 表示用、再入 guard の本体は exitController (ref ベース、C-11 と同趣旨)。
+  // S3-1/S3-2 終了シート (旧 finish confirmation modal を置換)。isFinishing /
+  // isDiscarding は UI 表示用、再入 guard の本体は exitController (ref ベース、
+  // C-11 と同趣旨)。破棄は S3-2 の discardSession (4テーブル一括 tombstone)。
   const [showExitSheet, setShowExitSheet] = useState(false);
   const [sessionNote, setSessionNote] = useState('');
   const [isFinishing, setIsFinishing] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
+  const exitBusy = isFinishing || isDiscarding;
   const exitController = useRef(
     createSessionExitController({
       finishSession: workoutRepo.finishSession,
+      discardSession: workoutRepo.discardSession,
     }),
   ).current;
 
@@ -725,92 +732,99 @@ export default function SessionScreen() {
           )
         : null;
 
-    // Save to DB
+    // Save to DB。S3-2 (Codex R1 Critical): savingSetsRef の生存期間は
+    // addSet だけでなく派生書き込み (checkAndRecordPRs / CardioPRs の
+    // personal_records INSERT) の完了までに延長する。終了/破棄前の
+    // waitForPendingSetSaves がこの ref を見るため、解放が早いと
+    // 「破棄が既存 PR だけ tombstone → 遅れて新 PR が insert され残留」の
+    // レースが成立してしまう (e1RM 観測は addSet 内で await 済み)。
     savingSetsRef.current.add(set.id);
     try {
-      await workoutRepo.addSet(params.sessionId, {
-        exerciseId,
-        setNumber: set.setNumber,
-        weightKg: set.weightKg,
-        reps: set.reps,
-        rpe: set.rpe,
-        durationMinutes: set.durationMinutes,
-        distanceKm: set.distanceKm,
-        caloriesBurned: kcalToSave,
-        perceivedIntensity: set.perceivedIntensity,
-        // Build 15 / Feature 5-O — pass the per-set role through to
-        // workout_sets.set_type. Defaults to 'working' for sets created
-        // before pattern UI is wired in Phase 5.
-        setType: set.setType,
-        // Keep isWarmup in sync for the legacy boolean column. addSet
-        // derives set_type from isWarmup if setType is omitted; passing
-        // both keeps the columns aligned for any reader that still
-        // checks is_warmup directly (e.g. cardio totals filter).
-        isWarmup: set.setType === 'warmup',
-      });
-    } catch {
-      Alert.alert('エラー', 'セットの保存に失敗しました');
-      return;
+      try {
+        await workoutRepo.addSet(params.sessionId, {
+          exerciseId,
+          setNumber: set.setNumber,
+          weightKg: set.weightKg,
+          reps: set.reps,
+          rpe: set.rpe,
+          durationMinutes: set.durationMinutes,
+          distanceKm: set.distanceKm,
+          caloriesBurned: kcalToSave,
+          perceivedIntensity: set.perceivedIntensity,
+          // Build 15 / Feature 5-O — pass the per-set role through to
+          // workout_sets.set_type. Defaults to 'working' for sets created
+          // before pattern UI is wired in Phase 5.
+          setType: set.setType,
+          // Keep isWarmup in sync for the legacy boolean column. addSet
+          // derives set_type from isWarmup if setType is omitted; passing
+          // both keeps the columns aligned for any reader that still
+          // checks is_warmup directly (e.g. cardio totals filter).
+          isWarmup: set.setType === 'warmup',
+        });
+      } catch {
+        Alert.alert('エラー', 'セットの保存に失敗しました');
+        return;
+      }
+
+      completeSet(exerciseId, set.id);
+
+      // Haptic feedback on set completion
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      // Build 15 / Feature 5-C — addSet's hook may have appended a fresh
+      // estimated_1rm observation (Phase 3 raw + adjusted rows). Refetch
+      // the e1rm map so the chip strip on subsequent uncompleted sets
+      // reflects the latest current e1rm without waiting for a screen
+      // focus event.
+      void refetchE1rmMap();
+
+      // Check for PRs (Feature E). Strength tracks 1RM/weight/reps-at-weight;
+      // cardio/sports/other tracks duration/distance/kcal.
+      if (
+        isStrength &&
+        profile &&
+        set.weightKg != null &&
+        set.reps != null &&
+        set.weightKg > 0 &&
+        set.reps > 0
+      ) {
+        try {
+          const prs = await checkAndRecordPRs(
+            profile.id,
+            exerciseId,
+            set.weightKg,
+            set.reps,
+            params.sessionId
+          );
+          const filtered = canUse('prAllTypes')
+            ? prs
+            : prs.filter((p) => p.recordType === 'estimated_1rm');
+          if (filtered.length > 0) {
+            setPrToasts(filtered);
+          }
+        } catch {
+          // PR tracking failure should not block the set save
+        }
+      } else if (!isStrength && profile) {
+        try {
+          const prs = await checkAndRecordCardioPRs(
+            profile.id,
+            exerciseId,
+            set.durationMinutes,
+            set.distanceKm,
+            kcalToSave,
+            params.sessionId,
+          );
+          const filtered = canUse('prAllTypes')
+            ? prs
+            : prs.filter((p) => p.recordType === 'max_calories');
+          if (filtered.length > 0) setPrToasts(filtered);
+        } catch {
+          // non-fatal
+        }
+      }
     } finally {
       savingSetsRef.current.delete(set.id);
-    }
-
-    completeSet(exerciseId, set.id);
-
-    // Haptic feedback on set completion
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    // Build 15 / Feature 5-C — addSet's hook may have appended a fresh
-    // estimated_1rm observation (Phase 3 raw + adjusted rows). Refetch
-    // the e1rm map so the chip strip on subsequent uncompleted sets
-    // reflects the latest current e1rm without waiting for a screen
-    // focus event.
-    void refetchE1rmMap();
-
-    // Check for PRs (Feature E). Strength tracks 1RM/weight/reps-at-weight;
-    // cardio/sports/other tracks duration/distance/kcal.
-    if (
-      isStrength &&
-      profile &&
-      set.weightKg != null &&
-      set.reps != null &&
-      set.weightKg > 0 &&
-      set.reps > 0
-    ) {
-      try {
-        const prs = await checkAndRecordPRs(
-          profile.id,
-          exerciseId,
-          set.weightKg,
-          set.reps,
-          params.sessionId
-        );
-        const filtered = canUse('prAllTypes')
-          ? prs
-          : prs.filter((p) => p.recordType === 'estimated_1rm');
-        if (filtered.length > 0) {
-          setPrToasts(filtered);
-        }
-      } catch {
-        // PR tracking failure should not block the set save
-      }
-    } else if (!isStrength && profile) {
-      try {
-        const prs = await checkAndRecordCardioPRs(
-          profile.id,
-          exerciseId,
-          set.durationMinutes,
-          set.distanceKm,
-          kcalToSave,
-          params.sessionId,
-        );
-        const filtered = canUse('prAllTypes')
-          ? prs
-          : prs.filter((p) => p.recordType === 'max_calories');
-        if (filtered.length > 0) setPrToasts(filtered);
-      } catch {
-        // non-fatal
-      }
     }
 
     // Rest timer (Feature D). The set is already saved at this point, so a
@@ -1101,10 +1115,60 @@ export default function SessionScreen() {
     setShowExitSheet(true);
   }, [params.sessionId]);
 
-  // S3-1 R3 — 破棄導線は本 sprint から除去 (Syuto 判断)。真の破棄には
-  // discardSession repo 関数 (e1RM/PR/orphan/トランザクション/tombstone 込み) が
-  // 必要で、それは Sprint 3-2 の主題候補として提案リストに設計を記録済み。
-  // 終了シートは [記録を保存して終了] / [キャンセル] の2択。
+  // S3-2 「このセッションの記録を破棄して終了」— repo の discardSession
+  // (セッション/セット/e1RM 観測/PR を単一トランザクションで tombstone) を
+  // exitController 経由で呼ぶ。S3-1 R3 で除去した導線の復活。
+  // 「推奨重量の学習・自己ベストからも取り除かれます」は S3-2 で構造的に事実。
+  const handleDiscardSession = useCallback(() => {
+    if (!params.sessionId || exitController.isBusy()) return;
+    const stats = collectSessionStats(exercises);
+    // 確認文の経過時間も表示時点で再計算 (stale tick 対策は保存側と同じ)
+    const confirmElapsedSeconds = computeElapsedSeconds(
+      startedAt,
+      Date.now(),
+      mountedAtRef.current,
+    );
+    const message =
+      stats.completedSetCount === 0
+        ? 'このセッションには記録がありません。破棄して終了しますか？'
+        : `${formatDiscardSummary(confirmElapsedSeconds, stats)}の記録を破棄して終了します。推奨重量の学習・自己ベストからも取り除かれます。元に戻せません。`;
+    Alert.alert('記録を破棄しますか？', message, [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: '破棄する',
+        style: 'destructive',
+        onPress: async () => {
+          if (!params.sessionId || exitController.isBusy()) return;
+          setIsDiscarding(true);
+          try {
+            // in-flight のセット保存を待ってから破棄 (レースで INSERT が
+            // tombstone 対象から漏れるのを防ぐ)。timeout 時は進まない。
+            const setsSettled = await waitForPendingSetSaves();
+            if (!setsSettled) {
+              Alert.alert(
+                'エラー',
+                'セットの保存が完了していません。数秒待ってから、もう一度お試しください。',
+              );
+              return;
+            }
+            const result = await exitController.discardExit(params.sessionId);
+            if (result !== 'done') return;
+            setShowExitSheet(false);
+            endSession();
+            restTimer.stop();
+            allowLeaveRef.current = true;
+            router.back();
+          } catch {
+            // シートは開いたまま — 再試行できる (トランザクションは全ロール
+            // バック済みなので部分破棄状態はない)
+            Alert.alert('エラー', '記録の破棄に失敗しました。もう一度お試しください。');
+          } finally {
+            setIsDiscarding(false);
+          }
+        },
+      },
+    ]);
+  }, [params.sessionId, exitController, exercises, startedAt, endSession, restTimer, waitForPendingSetSaves]);
 
   const formatPreviousSet = (prevSet: WorkoutSet): string => {
     return `${prevSet.weightKg ?? 0}kg × ${prevSet.reps ?? 0}回`;
@@ -1114,6 +1178,12 @@ export default function SessionScreen() {
     { label: '全て', value: 'all' },
     ...MUSCLE_GROUPS.map((mg) => ({ label: mg.nameJa, value: mg.id })),
   ];
+
+  // S3-2 — 終了シートの分岐材料。完了セットゼロなら「保存して終了」を出さず
+  // [破棄して終了][キャンセル] の2択 (空 finished 行が履歴・カレンダー・
+  // 消費 kcal を汚す問題の解消)。store の completed は同期更新なので
+  // シート表示判定には store だけで足りる。
+  const hasRecordedSets = exercises.some((ex) => ex.sets.some((s) => s.completed));
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
@@ -2046,46 +2116,77 @@ export default function SessionScreen() {
         </View>
       </Modal>
 
-      {/* S3-1 終了シート — [記録を保存して終了] / [キャンセル] の2択 (旧 finish
-          confirmation modal を置換。破棄導線は Sprint 3-2 の discardSession 設計
-          待ちで本 sprint から除去)。メモ入力は従来どおり finishSession の note へ
-          渡る。保存の実行中は backdrop タップでも閉じない。 */}
+      {/* S3-2 終了シート — 記録ありは [保存して終了] / [破棄して終了] /
+          [キャンセル] の3択、完了セットゼロは [破棄して終了] / [キャンセル] の
+          2択 (空 finished 行を作らない)。メモ入力は保存時のみ意味を持つため
+          記録ありのときだけ表示 (finishSession の note へ渡る配線は不変)。
+          保存/破棄の実行中は backdrop タップでも閉じない。 */}
       <BottomSheet
         visible={showExitSheet}
         onClose={() => {
-          if (!isFinishing) setShowExitSheet(false);
+          if (!exitBusy) setShowExitSheet(false);
         }}
         title="トレーニングを終了しますか?"
       >
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.exitSheetContent}>
-            <Input
-              label="メモ（任意）"
-              placeholder="セッションのメモを入力..."
-              value={sessionNote}
-              onChangeText={setSessionNote}
-              multiline
-              numberOfLines={3}
-              blurOnSubmit
-              returnKeyType="done"
-              editable={!isFinishing}
-            />
-            <Button
-              title="記録を保存して終了"
-              onPress={handleFinishSession}
-              variant="primary"
-              size="lg"
-              fullWidth
-              loading={isFinishing}
-              disabled={isFinishing}
-            />
+            {hasRecordedSets ? (
+              <>
+                <Input
+                  label="メモ（任意）"
+                  placeholder="セッションのメモを入力..."
+                  value={sessionNote}
+                  onChangeText={setSessionNote}
+                  multiline
+                  numberOfLines={3}
+                  blurOnSubmit
+                  returnKeyType="done"
+                  editable={!exitBusy}
+                />
+                <Button
+                  title="記録を保存して終了"
+                  onPress={handleFinishSession}
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  loading={isFinishing}
+                  disabled={exitBusy}
+                />
+              </>
+            ) : (
+              <Text style={[styles.exitEmptyText, { color: colors.textSecondary }]}>
+                このセッションにはまだ記録がありません。
+              </Text>
+            )}
+            <TouchableOpacity
+              style={[
+                styles.exitDiscardBtn,
+                { backgroundColor: colors.error + '12', borderColor: colors.error + '40' },
+                exitBusy && styles.exitBtnDisabled,
+              ]}
+              onPress={handleDiscardSession}
+              disabled={exitBusy}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="このセッションの記録を破棄して終了"
+              accessibilityHint="確認ダイアログを表示します"
+              accessibilityState={{ disabled: exitBusy, busy: isDiscarding }}
+            >
+              {isDiscarding ? (
+                <ActivityIndicator size="small" color={colors.error} />
+              ) : (
+                <Text style={[styles.exitDiscardText, { color: colors.error }]}>
+                  このセッションの記録を破棄して終了
+                </Text>
+              )}
+            </TouchableOpacity>
             <Button
               title="キャンセル"
               onPress={() => setShowExitSheet(false)}
               variant="ghost"
               size="lg"
               fullWidth
-              disabled={isFinishing}
+              disabled={exitBusy}
             />
           </View>
         </KeyboardAvoidingView>
@@ -2554,10 +2655,21 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   // Finish modal
-  // S3-1 終了シート (paddingHorizontal は BottomSheet 側が持つ)
+  // S3-1/S3-2 終了シート (paddingHorizontal は BottomSheet 側が持つ)
   exitSheetContent: {
     gap: spacing.md,
   },
+  exitEmptyText: { ...typography.bodyMedium, textAlign: 'center' },
+  exitDiscardBtn: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    paddingHorizontal: spacing.lg,
+  },
+  exitDiscardText: { ...typography.labelLarge, fontWeight: '600' },
+  exitBtnDisabled: { opacity: 0.5 },
   // Summary modal
   summaryContent: {
     alignItems: 'center',
