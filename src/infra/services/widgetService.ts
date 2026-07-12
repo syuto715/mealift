@@ -51,7 +51,8 @@ export async function generateWidgetData(
        COALESCE(SUM(mli.carb_g), 0) as total_c
      FROM meal_logs ml
      JOIN meal_log_items mli ON mli.meal_log_id = ml.id
-     WHERE ml.profile_id = ? AND ml.date = ?`,
+     WHERE ml.profile_id = ? AND ml.date = ?
+       AND ml.deleted_at IS NULL AND mli.deleted_at IS NULL`,
     [profileId, today],
   );
 
@@ -63,13 +64,18 @@ export async function generateWidgetData(
 
   // Latest weight
   const weightRow = await db.getFirstAsync<{ weight_kg: number }>(
-    'SELECT weight_kg FROM body_logs WHERE profile_id = ? ORDER BY date DESC LIMIT 1',
+    'SELECT weight_kg FROM body_logs WHERE profile_id = ? AND deleted_at IS NULL ORDER BY date DESC LIMIT 1',
     [profileId],
   );
 
-  // Workout count today
+  // Workout count today。S3-2b-D — 旧クエリは存在しない `date` 列を参照して
+  // 常に throw し (呼び出し側 .catch で無音)、widget_data は一度も書かれて
+  // いなかった。date(started_at) + finished/deleted ガードへ修復
+  // (getTodayWorkoutCalories と同じ規約: workoutRepository の前例パターン)。
   const workoutRow = await db.getFirstAsync<{ count: number }>(
-    'SELECT COUNT(*) as count FROM workout_sessions WHERE profile_id = ? AND date = ?',
+    `SELECT COUNT(*) as count FROM workout_sessions
+     WHERE profile_id = ? AND date(started_at) = ?
+       AND finished_at IS NOT NULL AND deleted_at IS NULL`,
     [profileId, today],
   );
 
