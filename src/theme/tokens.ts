@@ -73,6 +73,11 @@ export const colors = {
   // mapback」。バッジは bg = statusX + '18' (tint) + statusXText の組で
   // AA-normal を満たす (実測: 成功 4.98 / 注意 5.03 / 警告 5.78 / 中立 5.32、
   // dark はそれぞれ 6.68 / 6.80 / 5.71 / 4.95 — tint 合成後の値)。
+  // ⚠️ 使い分けの契約: statusX (bright fill) は tint 背景 (+alpha) と大面積
+  // 塗り専用で、light 面では非テキスト 3:1 を満たさない (success 2.22 /
+  // warning 2.20 on white)。アイコン・リング・バー等の 3:1 が要る非テキスト
+  // 要素と小テキストには必ず statusXText を使う (light=濃色で 3:1/4.5:1 とも
+  // pass、dark=bright mapback)。
   // 第1弾では既存画面の一括置換はせず、S3-3 で触る箇所のみ移行する。
   statusSuccess: '#34C759',
   statusWarning: '#FF9500',

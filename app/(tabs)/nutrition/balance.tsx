@@ -270,7 +270,11 @@ ${nutrientList}
   const renderStatusBadge = (status: BalanceStatus, intake: number) => {
     const badge = getBalanceStatusPresentation(status, intake, colors);
     return (
-      <View style={[styles.tableBadge, { backgroundColor: badge.bg }]}>
+      <View
+        style={[styles.tableBadge, { backgroundColor: badge.bg }]}
+        accessible
+        accessibilityLabel={badge.a11yLabel}
+      >
         <Text style={[styles.tableBadgeText, { color: badge.color }]}>{badge.text}</Text>
       </View>
     );
@@ -910,20 +914,23 @@ const styles = StyleSheet.create({
   tableColName: {
     flex: 2,
   },
+  // S3-3-B follow-up — バッジが「不足」→「△ 不足」「— 未記録」と長くなった
+  // ため判定列を 1→1.6 に拡張 (基準値/摂取量は右寄せ数値で縮小耐性がある)。
+  // 320pt 幅端末でも「— 未記録」が収まる配分 (Codex R1 #3)
   tableColTarget: {
-    flex: 2,
+    flex: 1.7,
     textAlign: 'right',
   },
   tableColIntake: {
-    flex: 2,
+    flex: 1.7,
     textAlign: 'right',
   },
   tableColStatus: {
-    flex: 1,
+    flex: 1.6,
     alignItems: 'flex-end',
   },
   tableBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 2,
     borderRadius: radius.full,
   },

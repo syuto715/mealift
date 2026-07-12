@@ -97,4 +97,10 @@ describe('summarizeAdviceContent', () => {
     const longSentence = 'い'.repeat(100) + '。次の文。';
     expect(summarizeAdviceContent(longSentence)).toBe('い'.repeat(80) + '…');
   });
+
+  it('絵文字 (サロゲートペア) を切り詰め境界で分断しない', () => {
+    const emoji = '💪'.repeat(100); // 各絵文字は UTF-16 で 2 code units
+    const out = summarizeAdviceContent(emoji);
+    expect(out).toBe('💪'.repeat(80) + '…');
+  });
 });

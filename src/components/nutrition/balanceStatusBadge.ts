@@ -12,6 +12,8 @@ import type { ThemeColors } from '../../theme/tokens';
 export interface BalanceStatusPresentation {
   /** 「△ 不足」のような記号込み表示文字列 */
   text: string;
+  /** スクリーンリーダー用 (記号なし — 記号名の読み上げ混入を避ける) */
+  a11yLabel: string;
   bg: string;
   color: string;
 }
@@ -24,6 +26,7 @@ export function getBalanceStatusPresentation(
   if (status === 'deficient' && intake <= 0) {
     return {
       text: '— 未記録',
+      a11yLabel: '未記録',
       bg: colors.surfaceSecondary,
       color: colors.statusNeutralText,
     };
@@ -32,18 +35,21 @@ export function getBalanceStatusPresentation(
     case 'adequate':
       return {
         text: '✓ 適正',
+        a11yLabel: '適正',
         bg: colors.statusSuccess + '18',
         color: colors.statusSuccessText,
       };
     case 'excess':
       return {
         text: '↑ 過剰',
+        a11yLabel: '過剰',
         bg: colors.statusWarning + '18',
         color: colors.statusWarningText,
       };
     case 'deficient':
       return {
         text: '△ 不足',
+        a11yLabel: '不足',
         bg: colors.statusWarning + '18',
         color: colors.statusWarningText,
       };

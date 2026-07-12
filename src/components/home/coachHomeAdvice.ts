@@ -47,9 +47,11 @@ export function summarizeAdviceContent(content: string): string {
   const firstSentence =
     firstStop >= 0 ? trimmed.slice(0, firstStop + 1) : trimmed;
   // 句点なしの長文や異常に長い1文は文字数で安全側に切る (numberOfLines の
-  // 中途切れと違い、明示の … を付ける)
-  if (firstSentence.length > SUMMARY_MAX_CHARS) {
-    return `${firstSentence.slice(0, SUMMARY_MAX_CHARS)}…`;
+  // 中途切れと違い、明示の … を付ける)。code unit ではなく code point で
+  // 数え、絵文字 (サロゲートペア) を境界で分断しない。
+  const points = Array.from(firstSentence);
+  if (points.length > SUMMARY_MAX_CHARS) {
+    return `${points.slice(0, SUMMARY_MAX_CHARS).join('')}…`;
   }
   return firstSentence;
 }

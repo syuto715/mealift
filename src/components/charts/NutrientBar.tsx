@@ -65,7 +65,11 @@ export function NutrientBar({
           {label}
         </Text>
         {showBadge && (
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+          <View
+            style={[styles.badge, { backgroundColor: badge.bg }]}
+            accessible
+            accessibilityLabel={badge.a11yLabel}
+          >
             <Text style={[styles.badgeText, { color: badge.color }]}>
               {badge.text}
             </Text>

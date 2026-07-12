@@ -116,6 +116,17 @@ describe('token contrast (WCAG AA) — audit E-08', () => {
     }
   });
 
+  it('status 系 text variant は非テキスト用途 (リング/アイコン) の 3:1 も満たす (S3-3)', () => {
+    // ProgressRing のトラックは surfaceSecondary。bright fill (statusX) は
+    // light で 2.2:1 なので、非テキスト要素は text variant を使う契約 —
+    // その前提となる 3:1 をピンする。
+    for (const scheme of [light, dark]) {
+      for (const c of [scheme.statusSuccessText, scheme.statusWarningText, scheme.statusDangerText]) {
+        expect(contrast(c, scheme.surfaceSecondary)).toBeGreaterThanOrEqual(AA_LARGE);
+      }
+    }
+  });
+
   it('macro bar fills pass 3:1 non-text contrast vs the ProgressBar track (S2-A)', () => {
     // PFC bars render on the surfaceSecondary track (ProgressBar default).
     // fat was 1.36:1 on light — invisible; pin all three per scheme.
