@@ -986,7 +986,9 @@ export async function getRecentSessionCount(
 ): Promise<number> {
   const db = await getDatabase();
   const result = await db.getFirstAsync<{ count: number }>(
-    `SELECT COUNT(*) as count FROM workout_sessions WHERE profile_id = ? AND started_at >= datetime('now', ?) AND deleted_at IS NULL`,
+    // S3-2 — finished_at ガード: 未終了 orphan 行 (kill/旧スワイプバック由来) が
+    // 週間カウント・予測・AIコーチ文脈に「実施回数」として混入していた
+    `SELECT COUNT(*) as count FROM workout_sessions WHERE profile_id = ? AND started_at >= datetime('now', ?) AND finished_at IS NOT NULL AND deleted_at IS NULL`,
     [profileId, `-${days} days`],
   );
   return result?.count ?? 0;
