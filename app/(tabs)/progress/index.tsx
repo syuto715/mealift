@@ -29,6 +29,7 @@ import { LineChart } from '../../../src/components/charts/LineChart';
 import { PredictionChart } from '../../../src/components/progress/PredictionChart';
 import { useBodyLogs } from '../../../src/hooks/useBodyLogs';
 import { usePrediction } from '../../../src/hooks/usePrediction';
+import { PREDICTION_MIN_DAYS } from '../../../src/constants/defaults';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { useHealthKitStore } from '../../../src/stores/healthKitStore';
 import { useUIStore } from '../../../src/stores/uiStore';
@@ -535,7 +536,10 @@ export default function ProgressScreen() {
             onValueChange={setPeriod}
           />
           <View style={styles.chartContainer}>
-            {chartData.length > 0 ? (
+            {/* S3-3-C — 「推移」は2点以上で初めて線になる (LineChart は1点だと
+                点のみ)。2点未満は縮小 placeholder + 残り記録数の動的表示。
+                記録ボタンはすぐ上の体重カードに常設のため文言のみ (S2-D)。 */}
+            {chartData.length >= 2 ? (
               <LineChart
                 data={chartData}
                 movingAverage={movingAverageData}
@@ -556,10 +560,10 @@ export default function ProgressScreen() {
                   { backgroundColor: colors.surfaceSecondary },
                 ]}
               >
-                {/* S2-D — 次の行動を促す空状態。記録ボタンはすぐ上の体重カードに
-                    常設のため文言のみ (重複ボタンを避ける) */}
                 <Text style={[styles.chartText, { color: colors.textSecondary }]}>
-                  体重を記録するとここに推移が表示されます
+                  {chartData.length === 1
+                    ? 'あと1回の記録で推移が表示されます'
+                    : '体重を記録するとここに推移が表示されます'}
                 </Text>
               </View>
             )}
@@ -650,12 +654,15 @@ export default function ProgressScreen() {
             <View style={styles.noDataContainer}>
               {!hasEnoughData ? (
                 <>
-                  {/* N は usePrediction の実 threshold (daysNeeded)。決め打ちしない。 */}
+                  {/* S3-3-C — 体重グラフと同形式「あとN…で表示されます」。
+                      N は usePrediction の実 threshold (daysNeeded、日数ベース)。
+                      旧・進捗行は「記録件数 + 不足日数」の単位混算だったため、
+                      記録期間 (日) に統一。 */}
                   <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
-                    あと{daysNeeded}日分の体重記録が必要です
+                    あと{daysNeeded}日分の記録で予測が表示されます
                   </Text>
                   <Text style={[styles.predictionProgress, { color: colors.textTertiary }]}>
-                    進捗 {recentWeightsForPrediction.length} / {recentWeightsForPrediction.length + daysNeeded} 日
+                    記録期間 {PREDICTION_MIN_DAYS - daysNeeded} / {PREDICTION_MIN_DAYS} 日
                   </Text>
                   <View style={styles.weightCardCta}>
                     <Button
@@ -1034,8 +1041,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   chartContainer: { marginTop: spacing.md, alignItems: 'center' },
+  // S3-3-C — 空状態はチャート実寸 (200) を確保せず縮小表示
   chartPlaceholder: {
-    height: 200,
+    height: 120,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
