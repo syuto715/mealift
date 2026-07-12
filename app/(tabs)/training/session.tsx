@@ -732,92 +732,99 @@ export default function SessionScreen() {
           )
         : null;
 
-    // Save to DB
+    // Save to DB。S3-2 (Codex R1 Critical): savingSetsRef の生存期間は
+    // addSet だけでなく派生書き込み (checkAndRecordPRs / CardioPRs の
+    // personal_records INSERT) の完了までに延長する。終了/破棄前の
+    // waitForPendingSetSaves がこの ref を見るため、解放が早いと
+    // 「破棄が既存 PR だけ tombstone → 遅れて新 PR が insert され残留」の
+    // レースが成立してしまう (e1RM 観測は addSet 内で await 済み)。
     savingSetsRef.current.add(set.id);
     try {
-      await workoutRepo.addSet(params.sessionId, {
-        exerciseId,
-        setNumber: set.setNumber,
-        weightKg: set.weightKg,
-        reps: set.reps,
-        rpe: set.rpe,
-        durationMinutes: set.durationMinutes,
-        distanceKm: set.distanceKm,
-        caloriesBurned: kcalToSave,
-        perceivedIntensity: set.perceivedIntensity,
-        // Build 15 / Feature 5-O — pass the per-set role through to
-        // workout_sets.set_type. Defaults to 'working' for sets created
-        // before pattern UI is wired in Phase 5.
-        setType: set.setType,
-        // Keep isWarmup in sync for the legacy boolean column. addSet
-        // derives set_type from isWarmup if setType is omitted; passing
-        // both keeps the columns aligned for any reader that still
-        // checks is_warmup directly (e.g. cardio totals filter).
-        isWarmup: set.setType === 'warmup',
-      });
-    } catch {
-      Alert.alert('エラー', 'セットの保存に失敗しました');
-      return;
+      try {
+        await workoutRepo.addSet(params.sessionId, {
+          exerciseId,
+          setNumber: set.setNumber,
+          weightKg: set.weightKg,
+          reps: set.reps,
+          rpe: set.rpe,
+          durationMinutes: set.durationMinutes,
+          distanceKm: set.distanceKm,
+          caloriesBurned: kcalToSave,
+          perceivedIntensity: set.perceivedIntensity,
+          // Build 15 / Feature 5-O — pass the per-set role through to
+          // workout_sets.set_type. Defaults to 'working' for sets created
+          // before pattern UI is wired in Phase 5.
+          setType: set.setType,
+          // Keep isWarmup in sync for the legacy boolean column. addSet
+          // derives set_type from isWarmup if setType is omitted; passing
+          // both keeps the columns aligned for any reader that still
+          // checks is_warmup directly (e.g. cardio totals filter).
+          isWarmup: set.setType === 'warmup',
+        });
+      } catch {
+        Alert.alert('エラー', 'セットの保存に失敗しました');
+        return;
+      }
+
+      completeSet(exerciseId, set.id);
+
+      // Haptic feedback on set completion
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      // Build 15 / Feature 5-C — addSet's hook may have appended a fresh
+      // estimated_1rm observation (Phase 3 raw + adjusted rows). Refetch
+      // the e1rm map so the chip strip on subsequent uncompleted sets
+      // reflects the latest current e1rm without waiting for a screen
+      // focus event.
+      void refetchE1rmMap();
+
+      // Check for PRs (Feature E). Strength tracks 1RM/weight/reps-at-weight;
+      // cardio/sports/other tracks duration/distance/kcal.
+      if (
+        isStrength &&
+        profile &&
+        set.weightKg != null &&
+        set.reps != null &&
+        set.weightKg > 0 &&
+        set.reps > 0
+      ) {
+        try {
+          const prs = await checkAndRecordPRs(
+            profile.id,
+            exerciseId,
+            set.weightKg,
+            set.reps,
+            params.sessionId
+          );
+          const filtered = canUse('prAllTypes')
+            ? prs
+            : prs.filter((p) => p.recordType === 'estimated_1rm');
+          if (filtered.length > 0) {
+            setPrToasts(filtered);
+          }
+        } catch {
+          // PR tracking failure should not block the set save
+        }
+      } else if (!isStrength && profile) {
+        try {
+          const prs = await checkAndRecordCardioPRs(
+            profile.id,
+            exerciseId,
+            set.durationMinutes,
+            set.distanceKm,
+            kcalToSave,
+            params.sessionId,
+          );
+          const filtered = canUse('prAllTypes')
+            ? prs
+            : prs.filter((p) => p.recordType === 'max_calories');
+          if (filtered.length > 0) setPrToasts(filtered);
+        } catch {
+          // non-fatal
+        }
+      }
     } finally {
       savingSetsRef.current.delete(set.id);
-    }
-
-    completeSet(exerciseId, set.id);
-
-    // Haptic feedback on set completion
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    // Build 15 / Feature 5-C — addSet's hook may have appended a fresh
-    // estimated_1rm observation (Phase 3 raw + adjusted rows). Refetch
-    // the e1rm map so the chip strip on subsequent uncompleted sets
-    // reflects the latest current e1rm without waiting for a screen
-    // focus event.
-    void refetchE1rmMap();
-
-    // Check for PRs (Feature E). Strength tracks 1RM/weight/reps-at-weight;
-    // cardio/sports/other tracks duration/distance/kcal.
-    if (
-      isStrength &&
-      profile &&
-      set.weightKg != null &&
-      set.reps != null &&
-      set.weightKg > 0 &&
-      set.reps > 0
-    ) {
-      try {
-        const prs = await checkAndRecordPRs(
-          profile.id,
-          exerciseId,
-          set.weightKg,
-          set.reps,
-          params.sessionId
-        );
-        const filtered = canUse('prAllTypes')
-          ? prs
-          : prs.filter((p) => p.recordType === 'estimated_1rm');
-        if (filtered.length > 0) {
-          setPrToasts(filtered);
-        }
-      } catch {
-        // PR tracking failure should not block the set save
-      }
-    } else if (!isStrength && profile) {
-      try {
-        const prs = await checkAndRecordCardioPRs(
-          profile.id,
-          exerciseId,
-          set.durationMinutes,
-          set.distanceKm,
-          kcalToSave,
-          params.sessionId,
-        );
-        const filtered = canUse('prAllTypes')
-          ? prs
-          : prs.filter((p) => p.recordType === 'max_calories');
-        if (filtered.length > 0) setPrToasts(filtered);
-      } catch {
-        // non-fatal
-      }
     }
 
     // Rest timer (Feature D). The set is already saved at this point, so a

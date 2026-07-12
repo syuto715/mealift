@@ -61,10 +61,19 @@ function makeFakeDb(tables: FakeTables, opts: { failOn?: string } = {}) {
           .filter((r) => r.session_id === params[0] && r.deleted_at === null)
           .map((r) => ({ id: r.id }));
       }
-      if (sql.includes('SELECT id FROM estimated_1rm WHERE source_set_id IN')) {
-        const ids = new Set(inList(sql, params, 0));
+      if (sql.includes('FROM estimated_1rm e')) {
+        // JOIN workout_sets ws ON ws.id = e.source_set_id WHERE ws.session_id = ?
+        // (ws.deleted_at は見ない — 削除済みセット由来の観測も対象)
+        const sessionSetIds = new Set(
+          tables.workout_sets
+            .filter((r) => r.session_id === params[0])
+            .map((r) => r.id),
+        );
         return tables.estimated_1rm
-          .filter((r) => ids.has(r.source_set_id as string) && r.deleted_at === null)
+          .filter(
+            (r) =>
+              sessionSetIds.has(r.source_set_id as string) && r.deleted_at === null,
+          )
           .map((r) => ({ id: r.id }));
       }
       if (sql.includes('SELECT id FROM personal_records WHERE session_id = ?')) {
@@ -241,6 +250,45 @@ describe('discardSession (S3-2)', () => {
     expect(deletedIds(db.tables.workout_sessions)).toEqual(['s1']);
     expect(deletedIds(db.tables.estimated_1rm)).toEqual([]);
     expect(mockEnqueue.mock.calls).toEqual([['workout_sessions', 's1', 'UPDATE']]);
+  });
+
+  it('removeSet 等で先に削除済みのセット由来 e1RM も tombstone する (Codex R1 Important #2)', async () => {
+    const tables = makeTables();
+    // set-c: 過去に removeSet で soft-delete 済み。その観測 e3 は active のまま
+    tables.workout_sets.push(
+      row('set-c', { session_id: 's1', deleted_at: '2026-06-01T00:00:00.000Z' }),
+    );
+    tables.estimated_1rm.push(row('e3', { source_set_id: 'set-c' }));
+    const db = makeFakeDb(tables);
+    mockGetDatabase.mockResolvedValue(db);
+
+    await discardSession('s1');
+
+    expect(deletedIds(db.tables.estimated_1rm)).toEqual(['e1', 'e2', 'e3']);
+    // set-c 自体は既に tombstone 済みなので touched されない (timestamps 不変)
+    const setC = db.tables.workout_sets.find((r) => r.id === 'set-c')!;
+    expect(setC.deleted_at).toBe('2026-06-01T00:00:00.000Z');
+    // enqueue は今回触った行のみ (set-c は含まない、e3 は含む)
+    const enqueuedIds = mockEnqueue.mock.calls.map((c) => c[1]);
+    expect(enqueuedIds).toContain('e3');
+    expect(enqueuedIds).not.toContain('set-c');
+  });
+
+  it('501 セットでも chunk 分割で全件 tombstone される (SQLite パラメータ上限対策)', async () => {
+    const tables = makeTables();
+    tables.workout_sets = Array.from({ length: 501 }, (_, i) =>
+      row(`bulk-${i}`, { session_id: 's1' }),
+    );
+    tables.estimated_1rm = [];
+    tables.personal_records = [];
+    const db = makeFakeDb(tables);
+    mockGetDatabase.mockResolvedValue(db);
+
+    await discardSession('s1');
+
+    expect(deletedIds(db.tables.workout_sets)).toHaveLength(501);
+    // enqueue も全セット + session
+    expect(mockEnqueue.mock.calls).toHaveLength(502);
   });
 
   it('無関係セッションの行 (sets/e1rm/PR) には触れない', async () => {

@@ -794,43 +794,47 @@ export async function finishSession(
 //   され得るが、server 側は id-keyed upsert なので無害)。
 // - タイムスタンプ: deleteRoutine のカスケード慣例に合わせ全行で同一 now を
 //   共有。updated_at bump により pull 側の edit-wins tombstone が成立する。
-// - IN 句: 1 セッションのセット数は高々数十 (SQLite パラメータ上限 999 に遠い)。
+// - IN 句: SQLite のパラメータ上限 (999) に依存しないよう chunk して UPDATE する。
 export async function discardSession(sessionId: string): Promise<void> {
   const db = await getDatabase();
   const now = new Date().toISOString();
 
+  // SQLite の変数上限 (SQLITE_MAX_VARIABLE_NUMBER, 既定 999) を踏まないよう
+  // id リストを分割して UPDATE する (通常セッションは 1 chunk)。
+  const CHUNK = 500;
+  const softDeleteByIds = async (table: string, ids: string[]): Promise<void> => {
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK);
+      const placeholders = chunk.map(() => '?').join(', ');
+      await db.runAsync(
+        `UPDATE ${table} SET deleted_at = ?, updated_at = ? WHERE id IN (${placeholders})`,
+        [now, now, ...chunk],
+      );
+    }
+  };
+
   await db.withTransactionAsync(async () => {
-    // 1. セッションのセット (未削除のみ)
+    // 1. セッションのセット (未削除のみ — 削除済みは removeSet 等で tombstone 済)
     const setRows = await db.getAllAsync<{ id: string }>(
       'SELECT id FROM workout_sets WHERE session_id = ? AND deleted_at IS NULL',
       [sessionId],
     );
     const setIds = setRows.map((r) => r.id);
+    await softDeleteByIds('workout_sets', setIds);
 
-    let e1rmIds: string[] = [];
-    if (setIds.length > 0) {
-      const placeholders = setIds.map(() => '?').join(', ');
-      await db.runAsync(
-        `UPDATE workout_sets SET deleted_at = ?, updated_at = ? WHERE id IN (${placeholders})`,
-        [now, now, ...setIds],
-      );
-
-      // 2. セット由来の e1RM 観測。source_set_id に index は無いが、テーブルは
-      //    working セット 1 本 ≈ 1 行の append-only で単一スキャンが現実的
-      //    (fetchRecentSetsForBias が同種の非 index 参照を既に運用)。
-      const e1rmRows = await db.getAllAsync<{ id: string }>(
-        `SELECT id FROM estimated_1rm WHERE source_set_id IN (${placeholders}) AND deleted_at IS NULL`,
-        setIds,
-      );
-      e1rmIds = e1rmRows.map((r) => r.id);
-      if (e1rmIds.length > 0) {
-        const e1rmPh = e1rmIds.map(() => '?').join(', ');
-        await db.runAsync(
-          `UPDATE estimated_1rm SET deleted_at = ?, updated_at = ? WHERE id IN (${e1rmPh})`,
-          [now, now, ...e1rmIds],
-        );
-      }
-    }
+    // 2. セッション由来の e1RM 観測。setIds 経由ではなく session_id への JOIN で
+    //    引く — removeSet 等で先に soft-delete されたセット由来の観測も漏らさない
+    //    (Codex 3-2 R1 Important #2)。source_set_id に index は無いが、テーブルは
+    //    working セット 1 本 ≈ 1 行の append-only で単一スキャンが現実的
+    //    (fetchRecentSetsForBias が同種の非 index 参照を既に運用)。
+    const e1rmRows = await db.getAllAsync<{ id: string }>(
+      `SELECT e.id FROM estimated_1rm e
+         JOIN workout_sets ws ON ws.id = e.source_set_id
+        WHERE ws.session_id = ? AND e.deleted_at IS NULL`,
+      [sessionId],
+    );
+    const e1rmIds = e1rmRows.map((r) => r.id);
+    await softDeleteByIds('estimated_1rm', e1rmIds);
 
     // 3. このセッションで達成した PR
     const prRows = await db.getAllAsync<{ id: string }>(
@@ -838,13 +842,7 @@ export async function discardSession(sessionId: string): Promise<void> {
       [sessionId],
     );
     const prIds = prRows.map((r) => r.id);
-    if (prIds.length > 0) {
-      const prPh = prIds.map(() => '?').join(', ');
-      await db.runAsync(
-        `UPDATE personal_records SET deleted_at = ?, updated_at = ? WHERE id IN (${prPh})`,
-        [now, now, ...prIds],
-      );
-    }
+    await softDeleteByIds('personal_records', prIds);
 
     // 4. セッション本体
     await db.runAsync(
@@ -974,7 +972,10 @@ export async function getSessions(
       ? ` AND started_at >= datetime('now', '-${historyWindowDays} days')`
       : '';
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    `SELECT * FROM workout_sessions WHERE profile_id = ? AND deleted_at IS NULL${clamp} ORDER BY started_at DESC LIMIT ?`,
+    // S3-2 — finished_at ガード: orphan (未終了) 行が新しい順の LIMIT を消費し、
+    // 正常な完了セッションを一覧から押し出すのを防ぐ。全呼び出し元 (home /
+    // training/index) は JS 側でも finished のみ使用しており意味は不変。
+    `SELECT * FROM workout_sessions WHERE profile_id = ? AND finished_at IS NOT NULL AND deleted_at IS NULL${clamp} ORDER BY started_at DESC LIMIT ?`,
     [profileId, limit],
   );
   return rows.map(rowToSession);
@@ -1296,10 +1297,13 @@ export async function getSessionWithRoutineName(
       ? ` AND s.started_at >= datetime('now', '-${historyWindowDays} days')`
       : '';
   const rows = await db.getAllAsync<Record<string, unknown>>(
+    // S3-2 — finished_at ガード (getSessions と同旨): orphan が LIMIT を消費して
+    // 履歴から完了セッションを押し出すのを防ぐ。呼び出し元 (history) は JS 側
+    // でも finished のみ使用。
     `SELECT s.*, r.name AS routine_name
      FROM workout_sessions s
      LEFT JOIN workout_routines r ON s.routine_id = r.id AND r.deleted_at IS NULL
-     WHERE s.profile_id = ? AND s.deleted_at IS NULL${clamp}
+     WHERE s.profile_id = ? AND s.finished_at IS NOT NULL AND s.deleted_at IS NULL${clamp}
      ORDER BY s.started_at DESC
      LIMIT ?`,
     [profileId, limit],
