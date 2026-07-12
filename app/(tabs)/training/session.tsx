@@ -58,6 +58,7 @@ import { calculateCaloriesBurned } from '../../../src/domain/cardioCalories';
 import {
   createSessionExitController,
   collectSessionStats,
+  computeElapsedSeconds,
   formatDiscardSummary,
 } from '../../../src/domain/sessionExit';
 import { estimateOneRepMax } from '../../../src/domain/oneRepMax';
@@ -326,6 +327,7 @@ export default function SessionScreen() {
 
   const {
     sessionId,
+    startedAt,
     exercises,
     startSession,
     endSession,
@@ -630,18 +632,28 @@ export default function SessionScreen() {
     init();
   }, [params.sessionId]);
 
-  // Elapsed timer
+  // Elapsed timer — S3-1-C: setInterval 加算方式 (バックグラウンドで凍結し、
+  // サマリ表示・カロリー計算が実時間より小さくなる) から、store.startedAt
+  // 起点の壁時計差分へ是正。復帰後の次 tick で正値に収束し、DB の
+  // duration_seconds (repo が started_at との差分で自算出) とも整合する。
+  // store 契約は不変 (既存 startedAt フィールドの読み取りのみ)。startedAt が
+  // 無い場合 (ホーム経路の未初期化セッション等) はマウント時刻起点。
+  const mountedAtRef = useRef(Date.now());
   useEffect(() => {
-    elapsedInterval.current = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
-    }, 1000);
+    const tick = () => {
+      setElapsedSeconds(
+        computeElapsedSeconds(startedAt, Date.now(), mountedAtRef.current),
+      );
+    };
+    tick();
+    elapsedInterval.current = setInterval(tick, 1000);
 
     return () => {
       if (elapsedInterval.current) {
         clearInterval(elapsedInterval.current);
       }
     };
-  }, []);
+  }, [startedAt]);
 
   // Haptic feedback when rest timer finishes
   useEffect(() => {
