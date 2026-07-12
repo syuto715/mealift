@@ -223,8 +223,13 @@ const RecommendationStrip = React.memo(function RecommendationStrip(props: {
   onApply: (weightKg: number, reps: number) => void;
   colors: ReturnType<typeof getColors>;
   gated: boolean;
+  // S3-1-D — 推奨がまだ出せない時のヒント (および gated 時のアップグレード
+  // バナー) は種目ごとに先頭の未完了 working セット行だけに出す。全行に
+  // 繰り返すノイズの是正。実際の推奨チップ (recommendation 非 null) は
+  // 行ごとに操作するものなので従来どおり全行。
+  hintEnabled: boolean;
 }) {
-  const { e1rm, targetRepsRaw, plateStep, rpeBias, onApply, colors, gated } = props;
+  const { e1rm, targetRepsRaw, plateStep, rpeBias, onApply, colors, gated, hintEnabled } = props;
   const parsedTarget = useMemo(() => parseTargetReps(targetRepsRaw), [targetRepsRaw]);
   // Baseline target RIR is 2 (= RPE ~8) per Build 15 5-C sign-off.
   // Phase 3.2 sign-off F7 — fold the per-user bias in here so the
@@ -242,7 +247,8 @@ const RecommendationStrip = React.memo(function RecommendationStrip(props: {
   if (gated) {
     // Skip the upgrade banner on free-form sessions (no routine
     // target → no recommendation context anyway, so nothing to gate).
-    if (parsedTarget == null) return null;
+    // S3-1-D: ヒントと同様、種目の先頭行のみ。
+    if (parsedTarget == null || !hintEnabled) return null;
     return (
       <TouchableOpacity
         style={[
@@ -266,7 +272,7 @@ const RecommendationStrip = React.memo(function RecommendationStrip(props: {
   // routine target exists — free-form sessions (target null) get no
   // strip and no hint, matching the legacy zero-state.
   if (recommendation === null) {
-    if (e1rm == null && parsedTarget != null) {
+    if (e1rm == null && parsedTarget != null && hintEnabled) {
       return (
         <View style={styles.recommendStripHintWrap}>
           <Text style={[styles.recommendHintText, { color: colors.textTertiary }]}>
@@ -1633,6 +1639,11 @@ export default function SessionScreen() {
                         }
                         colors={colors}
                         gated={recommendationGated}
+                        hintEnabled={
+                          exercise.sets.find(
+                            (s) => !s.completed && s.setType === 'working',
+                          )?.id === set.id
+                        }
                       />
                     )}
 
