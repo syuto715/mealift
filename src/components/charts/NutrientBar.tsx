@@ -57,9 +57,11 @@ export function NutrientBar({
 
   return (
     <View style={styles.row}>
-      {/* Left: label + badge */}
+      {/* Left: label + badge。S3-3-D — 旧: 横並び (width 90 にラベルとバッジが
+          同居し「エネル…」「ビタミ…」と潰れていた) → 縦積み + ラベル2行許容で
+          全栄養素名を判別可能に */}
       <View style={styles.labelCol}>
-        <Text style={[styles.label, { color: colors.textPrimary }]} numberOfLines={1}>
+        <Text style={[styles.label, { color: colors.textPrimary }]} numberOfLines={2}>
           {label}
         </Text>
         {showBadge && (
@@ -138,22 +140,23 @@ export function NutrientBar({
 }
 
 const styles = StyleSheet.create({
+  // S3-3-D — 高さは固定 44 → minHeight 52 (ラベル2行 32 + バッジ 18 の縦積み)
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 44,
+    minHeight: 52,
     gap: spacing.sm,
+    paddingVertical: 2,
   },
   labelCol: {
     width: 90,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 2,
     flexShrink: 0,
   },
   label: {
     ...typography.bodySmall,
-    flexShrink: 1,
   },
   badge: {
     paddingHorizontal: 6,
