@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors } from '../../src/theme/tokens';
 import { typography } from '../../src/theme/typography';
@@ -127,6 +127,16 @@ export default function HomeScreen() {
 
   // Water tracker (Feature I)
   const water = useWaterTracker(selectedDate);
+  // S3-2b — 記録ハブ (FAB シート) からの水分追加を、ホームへ戻った時に
+  // カードへ反映する (useWaterTracker は mount/date 変更時しか refresh しない)。
+  // refresh の identity は render ごとに変わるため ref 経由で最新を呼ぶ。
+  const waterRefreshRef = useRef(water.refresh);
+  waterRefreshRef.current = water.refresh;
+  useFocusEffect(
+    useCallback(() => {
+      void waterRefreshRef.current();
+    }, []),
+  );
 
   // Local state for async loaded data
   const [todayCalories, setTodayCalories] = useState(0);
