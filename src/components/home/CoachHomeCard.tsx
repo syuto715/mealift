@@ -70,7 +70,8 @@ export function CoachHomeCard(): React.ReactElement | null {
     : '記録するとミー先生からアドバイスが届きます。';
 
   return (
-    <Card style={styles.card}>
+    // padding md + 下余白なし — ホームの content gap に揃える (1画面目の密度優先)
+    <Card padding="md">
       <TouchableOpacity
         onPress={goToCoach}
         activeOpacity={0.7}
@@ -88,11 +89,10 @@ export function CoachHomeCard(): React.ReactElement | null {
           <Text style={[styles.title, { color: colors.textPrimary }]}>ミー先生のひとこと</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
         </View>
+        {/* S2-E — 空状態も textSecondary: textTertiary (4.12:1) は 12pt 通常
+            テキストの AA-normal (4.5:1) に未達のため (遡及review Important #2) */}
         <Text
-          style={[
-            styles.body,
-            { color: advice ? colors.textSecondary : colors.textTertiary },
-          ]}
+          style={[styles.body, { color: colors.textSecondary }]}
           numberOfLines={3}
         >
           {body}
@@ -106,7 +106,6 @@ export function CoachHomeCard(): React.ReactElement | null {
 }
 
 const styles = StyleSheet.create({
-  card: { marginBottom: spacing.md },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

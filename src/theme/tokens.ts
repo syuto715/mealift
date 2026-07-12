@@ -63,10 +63,13 @@ export const colors = {
   successText: '#1F7A3D',
   warningText: '#9A5B00',
 
-  // Macro colors
-  protein: '#5B8DEF',
-  fat: '#FFCC02',
-  carb: '#34C759',
+  // Macro colors — S2-A: light の淡いトラック (#F1F3F5) 上でバー塗りが
+  // WCAG 非テキスト 3:1 を満たすよう濃色化 (protein 4.25:1 / fat 3.24:1 /
+  // carb 3.12:1 vs surfaceSecondary。旧値は 2.90 / 1.36 / 2.00 で fail)。
+  // dark は従来の明るい値で既に 3:1 超のため dark.{protein,fat,carb} を維持。
+  protein: '#3D6FD6',
+  fat: '#B07E00',
+  carb: '#1E9E4A',
   calorie: '#FF6B35',
 
   // Light mode neutrals
@@ -93,6 +96,11 @@ export const colors = {
     // Audit E-08 — was #484F58 (2.09:1 on #161B22, near-invisible).
     // #7D8590 ≈ 4.64:1 on surface / 5.07:1 on background — passes AA.
     textTertiary: '#7D8590',
+    // S2-A — macro bright values. dark のトラック (#21262D) 上では明るい塗りが
+    // そのまま 3:1 超 (protein 4.71 / fat 10.07 / carb 6.86) なので従来値を維持。
+    protein: '#5B8DEF',
+    fat: '#FFCC02',
+    carb: '#34C759',
   },
 } as const;
 
@@ -138,13 +146,15 @@ export function getColors(scheme: ColorScheme) {
       primaryDark: colors.primaryDark,
       accent: colors.accent,
       accentLight: colors.accentLight,
-      // Phase A-1 — Plus tier tokens. Pass through same hex for
-      // light / dark; legibility on dark surfaces holds because
-      // gold reads well against #161B22 / #21262D.
+      // Phase A-1 — Plus tier tokens. fills/icons はゴールドが dark 面でも
+      // 3:1 を満たすためパススルー。S2-E: `proText` (#7B5A1F) だけは dark 面で
+      // 2.4-2.7:1 と AA fail のため、text 用途は明るいゴールド (proLight
+      // #D4A961 ≈ 7.0:1 on #21262D / 8.0:1 on #161B22) へマップバックする
+      // (successText/warningText と同じパターン)。
       pro: colors.pro,
       proLight: colors.proLight,
       proDark: colors.proDark,
-      proText: colors.proText,
+      proText: colors.proLight,
       proGradientStart: colors.proGradientStart,
       proGradientEnd: colors.proGradientEnd,
       onPrimary: colors.onPrimary,
@@ -155,9 +165,10 @@ export function getColors(scheme: ColorScheme) {
       // the text variants map back to the bright values here (E-08).
       successText: colors.success,
       warningText: colors.warning,
-      protein: colors.protein,
-      fat: colors.fat,
-      carb: colors.carb,
+      // S2-A — dark は明るい macro 値のまま (light のみ濃色化)。
+      protein: colors.dark.protein,
+      fat: colors.dark.fat,
+      carb: colors.dark.carb,
       calorie: colors.calorie,
       background: colors.dark.background,
       surface: colors.dark.surface,

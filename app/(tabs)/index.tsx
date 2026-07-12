@@ -480,25 +480,6 @@ export default function HomeScreen() {
     ? Number(Math.abs(latestWeight - goalWeight).toFixed(1))
     : null;
 
-  // ミー先生のひとこと — deterministic copy from already-loaded data (no AI call,
-  // no query). Branches on intake state + protein progress.
-  const meeHitokoto = useMemo(() => {
-    if (targetCalories <= 0) {
-      return 'プロフィールで目標カロリーを設定すると、毎日のアドバイスをお届けします。';
-    }
-    if (consumedCalories === 0) {
-      return '今日はまだ記録がありません。まずは最初の一食を記録してみましょう。';
-    }
-    const proteinShort = targetProteinG > 0 && totalProteinG < targetProteinG * 0.7;
-    if (consumedCalories >= targetCalories) {
-      return '今日の目標カロリーに到達しました。お疲れさまです。水分補給も忘れずに。';
-    }
-    if (proteinShort) {
-      return `あと ${remaining} kcal。タンパク質がやや不足ぎみなので、次の食事で意識してみましょう。`;
-    }
-    return `あと ${remaining} kcal 記録できます。バランスよく栄養を摂りましょう。`;
-  }, [targetCalories, consumedCalories, remaining, totalProteinG, targetProteinG]);
-
   // v6 record-flow — per-meal rows (presentation only; reuses useNutrition's
   // getMealItems, no new query). kcal = sum of the meal's item calories;
   // recorded = the meal has at least one item.
@@ -586,14 +567,13 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Date Navigator */}
-        <View style={{ marginBottom: spacing.sm }}>
-          <DateNavigator
-            selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
-            recordedDates={recordedDates}
-          />
-        </View>
+        {/* Date Navigator — compact: 1画面目の密度優先で上下余白を詰める */}
+        <DateNavigator
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+          recordedDates={recordedDates}
+          compact
+        />
 
         {/* Back to today button */}
         {!isViewingToday && (
@@ -611,7 +591,7 @@ export default function HomeScreen() {
         {/* v6 残りカロリーカード — 残り を主役に大きく、進捗バー、摂取/消費/目標、
             内訳ボタン。データは既存 derived (remaining/progress/consumedCalories/
             exerciseCal/targetCalories) を再利用。達成系は緑 (colors.success)。 */}
-        <Card variant="elevated" style={styles.v6CalCard}>
+        <Card variant="elevated" padding="md" style={styles.v6CalCard}>
           <Text style={[styles.v6CalLabel, { color: colors.textSecondary }]}>残り</Text>
           <View style={styles.v6CalHeroRow}>
             <Text style={[styles.v6CalHero, { color: colors.textPrimary }]}>
@@ -633,6 +613,19 @@ export default function HomeScreen() {
             <Text style={[styles.v6CalDot, { color: colors.textTertiary }]}>・</Text>
             <Text style={[styles.v6CalStat, { color: colors.textSecondary }]}>
               目標 <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>{targetCalories.toLocaleString()}</Text>
+            </Text>
+            <Text style={[styles.v6CalDot, { color: colors.textTertiary }]}>・</Text>
+            {/* 今日のトレ有無 — 1画面目で見えるよう stats 行に同居 (selectedDateFinishedSession 再利用) */}
+            <Text style={[styles.v6CalStat, { color: colors.textSecondary }]}>
+              トレ{' '}
+              <Text
+                style={{
+                  color: selectedDateFinishedSession ? colors.successText : colors.textSecondary,
+                  fontWeight: '700',
+                }}
+              >
+                {selectedDateFinishedSession ? '済' : 'なし'}
+              </Text>
             </Text>
           </View>
           {/* P2-1 サマリ — P/F/C 3指標。既存 useNutrition(totalXG)+profile(targetXG)
@@ -688,7 +681,7 @@ export default function HomeScreen() {
         {/* v6 今日の食事 — 朝/昼/夕/間 の行リスト。行全体タップで該当 meal の
             記録へ。記録シートは次 sprint。今は既存 /add-food (mealType scoped)
             へ繋ぐ (TODO: v6 記録シートに差し替え)。データは getMealItems 再利用。 */}
-        <Card style={styles.v6SectionCard}>
+        <Card padding="md" style={styles.v6SectionCard}>
           <View style={styles.v6SectionHeader}>
             <Text style={[styles.v6SectionTitle, { color: colors.textPrimary }]}>今日の食事</Text>
             <Badge
@@ -737,17 +730,10 @@ export default function HomeScreen() {
               <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
             </TouchableOpacity>
           ))}
-          {/* ミー先生のひとこと (deterministic・no AI/query) を控えめに */}
-          <View style={[styles.v6MeeHint, { borderTopColor: colors.border }]}>
-            <Ionicons name="sparkles" size={13} color={colors.primary} />
-            <Text style={[styles.v6MeeHintText, { color: colors.textSecondary }]} numberOfLines={2}>
-              {meeHitokoto}
-            </Text>
-          </View>
         </Card>
 
         {/* v6 水分 — その場で +200/+500 記録 (画面遷移なし)。既存 water.addWater 流用。 */}
-        <Card style={styles.v6SectionCard}>
+        <Card padding="md" style={styles.v6SectionCard}>
           <View style={styles.v6SectionHeader}>
             <Text style={[styles.v6SectionTitle, { color: colors.textPrimary }]}>水分</Text>
             <Text style={[styles.v6WaterAmount, { color: colors.textSecondary }]}>
@@ -775,7 +761,7 @@ export default function HomeScreen() {
         </Card>
 
         {/* v6 運動 — 状態 + 記録ボタン。既存 selectedDateFinishedSession / training/session を流用。 */}
-        <Card style={styles.v6SectionCard}>
+        <Card padding="md" style={styles.v6SectionCard}>
           <View style={styles.v6SectionHeader}>
             <Text style={[styles.v6SectionTitle, { color: colors.textPrimary }]}>運動</Text>
             {selectedDateFinishedSession && (
@@ -1154,22 +1140,14 @@ const styles = StyleSheet.create({
   v6SectionCard: { gap: spacing.sm },
   v6SectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   v6SectionTitle: { ...typography.titleSmall, fontWeight: '700' },
-  // 食事行
-  v6MealRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  // 食事行 — paddingVertical sm: 4行が1画面目〜1.5画面目に収まる行高 (タップ領域は
+  // 行全体 ≈55px を維持)
+  v6MealRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },
   v6MealDot: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   v6MealMid: { flex: 1, gap: 1 },
   v6MealName: { ...typography.bodyLarge, fontWeight: '600' },
   v6MealStatus: { ...typography.labelSmall },
   v6MealKcal: { ...typography.bodyMedium, fontWeight: '600', marginRight: spacing.xs },
-  v6MeeHint: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  v6MeeHintText: { ...typography.bodySmall, flex: 1, lineHeight: 18 },
   // 水分
   v6WaterAmount: { ...typography.bodyMedium },
   v6WaterBtnRow: { flexDirection: 'row', gap: spacing.sm },

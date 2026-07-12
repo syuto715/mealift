@@ -26,6 +26,8 @@ interface DateNavigatorProps {
   selectedDate: string; // 'yyyy-MM-dd'
   onDateChange: (date: string) => void;
   recordedDates?: string[];
+  /** 上下余白と月ラベル下余白を詰める密度優先モード (機能・タップ領域は不変)。 */
+  compact?: boolean;
 }
 
 const BADGE_SIZE = 44;
@@ -35,6 +37,7 @@ export function DateNavigator({
   selectedDate,
   onDateChange,
   recordedDates,
+  compact = false,
 }: DateNavigatorProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
@@ -106,9 +109,15 @@ export function DateNavigator({
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, compact && styles.containerCompact]}>
       {/* Month label */}
-      <Text style={[styles.monthLabel, { color: colors.textPrimary }]}>
+      <Text
+        style={[
+          styles.monthLabel,
+          compact && styles.monthLabelCompact,
+          { color: colors.textPrimary },
+        ]}
+      >
         {monthLabel}
       </Text>
 
@@ -237,10 +246,17 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     paddingBottom: spacing.sm,
   },
+  containerCompact: {
+    paddingTop: 0,
+    paddingBottom: 2,
+  },
   monthLabel: {
     ...typography.titleMedium,
     textAlign: 'center',
     marginBottom: spacing.sm,
+  },
+  monthLabelCompact: {
+    marginBottom: spacing.xs,
   },
   weekRow: {
     flexDirection: 'row',

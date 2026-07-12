@@ -1,23 +1,28 @@
-import { Tabs } from 'expo-router';
-import { View, StyleSheet, useColorScheme } from 'react-native';
+import { Tabs, router } from 'expo-router';
+import { View, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { getColors } from '../../src/theme/tokens';
+import { getColors, shadow } from '../../src/theme/tokens';
 import { typography } from '../../src/theme/typography';
+import { getISODate } from '../../src/utils/format';
 
-// v1.5.2 ボトムナビ全面再設計 — 6→5 タブ。
-//   ホーム / 食事 / 筋トレ / 進捗 / コーチ   (設定はボトムタブから削除)
-// - 「トレーニング」は幅で truncate (「トレーニ…」) するため「筋トレ」へ。
-// - 「記録」→「進捗」rename (Syuto 確認済 0-A: body-tracking + 分析が主体の
-//   hybrid 画面。weight 入力は data-input としてカード内に残る)。
-// - 設定タブは削除するが route は残す: expo-router は (tabs) 配下を自動でタブ化
-//   するため、screen 宣言を消すと既定タブとして復活する。`href: null` で
-//   タブバーから隠しつつ /(tabs)/settings/* への deep link / router.push は維持。
-//   設定への入口はホーム右上アイコン (app/(tabs)/index.tsx) に配線済 (0-B)。
-// - 中央「＋」FAB / 記録 action sheet は v1.6 へ defer (本ターン未実装)。
+// S2-B ボトムナビ再定義 — 5 タブ → 4 タブ + 中央「＋」記録 FAB。
+//   ホーム / 筋トレ / [＋] / 進捗 / コーチ
+// - 食事タブは廃止 (href: null)。中身の栄養バランス詳細 (nutrition/balance) は
+//   ホームのカロリーカード「内訳 >」から遷移する導線を維持。nutrition/* への
+//   cross-group 参照 (settings/user-foods・barcode・add-food 等 8 箇所) は
+//   route が残るため全パス無変更で生存する (settings タブと同じ href: null 方式。
+//   経緯コメントは下記 settings の項を参照)。
+// - 中央 FAB は custom tabBarButton: タブ遷移せず既存の記録フロー /add-food
+//   (root fullScreenModal・撮影優先) を現在時刻の mealType で開く。ホーム下部
+//   CTA と同一挙動 (v6 記録シートは未実装のため、その実装済み代替が /add-food)。
+// - 設定タブは従来どおり href: null で隠す (入口はホーム右上アイコン)。
+//   expo-router は (tabs) 配下を自動でタブ化するため、screen 宣言を消すと
+//   既定タブとして復活する。`href: null` でタブバーから隠しつつ deep link /
+//   router.push は維持、が確立済みパターン。
 //
 // 選択 UI: 選択中は薄い青ピル背景 + 塗りアイコン + 青、非選択は線アイコン +
-// やや濃いグレー (textSecondary)。最終アイコン/配色微調整は 6/1 実機。
+// やや濃いグレー (textSecondary)。
 export default function TabLayout() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
@@ -39,6 +44,15 @@ export default function TabLayout() {
         <Ionicons name={focused ? filled : outline} size={22} color={color} />
       </View>
     );
+
+  // 中央 FAB — タブ遷移を行わず記録フローを開く。mealType は現在時刻から決定
+  // (ホーム下部 CTA と同じ規則)。date は常に今日 (グローバル導線のため、ホームの
+  // selectedDate には連動しない)。
+  const openRecordFlow = () => {
+    const h = new Date().getHours();
+    const mealType = h < 10 ? 'breakfast' : h < 15 ? 'lunch' : h < 21 ? 'dinner' : 'snack';
+    router.push({ pathname: '/add-food', params: { mealType, date: getISODate() } });
+  };
 
   return (
     <Tabs
@@ -65,21 +79,13 @@ export default function TabLayout() {
         },
       }}
     >
-      {/* 順序: ホーム / 食事 / 筋トレ / 進捗 / コーチ
+      {/* 順序: ホーム / 筋トレ / [＋記録 FAB] / 進捗 / コーチ
           (JSX の Screen 順 = タブ表示順) */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'ホーム',
-          // TODO: 実機で最終アイコン確認
           tabBarIcon: tabIcon('home', 'home-outline'),
-        }}
-      />
-      <Tabs.Screen
-        name="nutrition"
-        options={{
-          title: '食事',
-          tabBarIcon: tabIcon('restaurant', 'restaurant-outline'),
         }}
       />
       <Tabs.Screen
@@ -87,6 +93,33 @@ export default function TabLayout() {
         options={{
           title: '筋トレ',
           tabBarIcon: tabIcon('barbell', 'barbell-outline'),
+        }}
+      />
+      {/* 中央 FAB — dummy route (app/(tabs)/record.tsx) の枠を custom button で
+          差し替え。既定の onPress (タブ遷移) は呼ばず /add-food を開くだけ。 */}
+      <Tabs.Screen
+        name="record"
+        options={{
+          title: '',
+          tabBarButton: () => (
+            <View style={styles.fabSlot} pointerEvents="box-none">
+              <TouchableOpacity
+                onPress={openRecordFlow}
+                activeOpacity={0.8}
+                style={[
+                  styles.fab,
+                  shadow.md,
+                  { backgroundColor: colors.primary, borderColor: colors.surface },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="食事を記録"
+                accessibilityHint="食品追加画面を開きます"
+                testID="tab-record-fab"
+              >
+                <Ionicons name="add" size={30} color={colors.onPrimary} />
+              </TouchableOpacity>
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
@@ -102,6 +135,14 @@ export default function TabLayout() {
         options={{
           title: 'コーチ',
           tabBarIcon: tabIcon('chatbubble-ellipses', 'chatbubble-ellipses-outline'),
+        }}
+      />
+      {/* 食事 — S2-B でタブ廃止。route は維持 (nutrition/balance = ホーム内訳の
+          遷移先、my-dish / food-submit / my-submissions 等は他画面から push)。 */}
+      <Tabs.Screen
+        name="nutrition"
+        options={{
+          href: null,
         }}
       />
       {/* 設定 — タブバーから隠す (href: null) が route は維持。
@@ -123,5 +164,20 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // FAB は他タブと同じ枠幅 (flex:1) の中で少し浮かせる。バー高 56 に対し
+  // -14 の持ち上げ + surface 色の縁取りで「浮いた +」に見せる。
+  fabSlot: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  fab: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -14,
   },
 });

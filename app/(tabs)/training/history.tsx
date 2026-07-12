@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { startOfWeek, endOfWeek, addDays, format } from 'date-fns';
 import { getColors } from '../../../src/theme/tokens';
@@ -49,8 +49,17 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Date navigation
-  const [selectedDate, setSelectedDate] = useState(getISODate());
+  // Date navigation — S2-F: カレンダーの日付タップから `date` param で
+  // その日を含む週へ合わせられるようにする。形式または値が不正 (2026-99-99 等、
+  // Invalid Date → 週計算の format が RangeError) なら無視して今日のまま。
+  const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
+  const [selectedDate, setSelectedDate] = useState(() => {
+    if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      const parsed = new Date(dateParam + 'T00:00:00');
+      if (!isNaN(parsed.getTime())) return dateParam;
+    }
+    return getISODate();
+  });
   const [recordedDates, setRecordedDates] = useState<string[]>([]);
 
   // Self-best 1RM map: exerciseId -> { oneRepMax, date }

@@ -825,6 +825,52 @@ export async function getRecordedSessionDates(
   return rows.map((r) => r.d);
 }
 
+// S2-F — 筋トレカレンダーの部位フィルタ用。月内の完了セッション日ごとに、
+// その日に鍛えた部位 (exercises.muscle_group、7-key マスタ) の distinct 集合を
+// 返す。日付は getRecordedSessionDates と同じ date(started_at) (= ISO UTC の
+// 日付部) で揃える。ウォームアップのみの種目は「鍛えた」に数えない
+// (fetchLastTrainedByMuscle の is_warmup = 0 と同じ扱い)。セットゼロの完了
+// セッションは JOIN で落ちるため、「実施日マーク (ALL)」には従来どおり
+// getRecordedSessionDates を使い、本メソッドはフィルタ用データに限る。
+// muscle_group は DB 由来の生文字列で返す — 呼び出し側が MUSCLE_GROUP_MAP で
+// 既知キーに絞る。
+export interface SessionMuscleDay {
+  date: string; // 'yyyy-MM-dd'
+  muscleGroups: string[];
+}
+
+export async function getSessionMuscleDaysForMonth(
+  profileId: string,
+  monthPrefix: string,
+  historyWindowDays?: number | null,
+): Promise<SessionMuscleDay[]> {
+  const db = await getDatabase();
+  const clamp =
+    historyWindowDays != null
+      ? ` AND date(s.started_at) >= date('now', '-${historyWindowDays} days')`
+      : '';
+  const rows = await db.getAllAsync<{ d: string; mg: string }>(
+    `SELECT DISTINCT date(s.started_at) AS d, e.muscle_group AS mg
+       FROM workout_sessions s
+       JOIN workout_sets ws ON ws.session_id = s.id AND ws.deleted_at IS NULL AND ws.is_warmup = 0
+       JOIN exercises e ON e.id = ws.exercise_id AND e.deleted_at IS NULL
+      WHERE s.profile_id = ?
+        AND date(s.started_at) LIKE ? || '%'
+        AND s.finished_at IS NOT NULL
+        AND s.deleted_at IS NULL${clamp}
+      ORDER BY d`,
+    [profileId, monthPrefix],
+  );
+  const byDate = new Map<string, string[]>();
+  for (const row of rows) {
+    if (!row.d || !row.mg) continue;
+    const list = byDate.get(row.d);
+    if (list) list.push(row.mg);
+    else byDate.set(row.d, [row.mg]);
+  }
+  return Array.from(byDate, ([date, muscleGroups]) => ({ date, muscleGroups }));
+}
+
 export async function getSessions(
   profileId: string,
   limit: number = 30,
