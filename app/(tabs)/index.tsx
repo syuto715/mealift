@@ -519,7 +519,7 @@ export default function HomeScreen() {
     } finally {
       startingWorkoutRef.current = false;
     }
-  }, [profile]);
+  }, [profile, router]);
 
   // Apply recommended calories
   const handleApplyRecommendation = useCallback(async () => {
