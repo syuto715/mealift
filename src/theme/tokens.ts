@@ -63,6 +63,28 @@ export const colors = {
   successText: '#1F7A3D',
   warningText: '#9A5B00',
 
+  // S3-3-A — status 系 semantic token (第1弾)。色の役割を固定する:
+  //   青 (primary)      = 操作・選択・リンク (状態には使わない)
+  //   緑 (statusSuccess) = 達成・回復・適正
+  //   amber (statusWarning) = 不足・注意 (責めないトーン。低スコアもこちら)
+  //   赤 (statusDanger)  = 破壊的操作・データ警告 (destructive は既存 error を継続)
+  //   グレー (statusNeutral) = 未入力・無効・対象外
+  // 構造は E-08 と同じ「fill は bright / text は light=濃色・dark=bright系へ
+  // mapback」。バッジは bg = statusX + '18' (tint) + statusXText の組で
+  // AA-normal を満たす (実測: 成功 4.98 / 注意 5.03 / 警告 5.78 / 中立 5.32、
+  // dark はそれぞれ 6.68 / 6.80 / 5.71 / 4.95 — tint 合成後の値)。
+  // 第1弾では既存画面の一括置換はせず、S3-3 で触る箇所のみ移行する。
+  statusSuccess: '#34C759',
+  statusWarning: '#FF9500',
+  statusDanger: '#FF3B30',
+  statusNeutral: '#767E86',
+  statusSuccessText: '#1F7A3D',
+  statusWarningText: '#9A5B00',
+  // #FF3B30 は dark 面でも小テキスト AA を割る (4.29 on #21262D) ため、
+  // danger は light/dark とも専用 text 値を持つ。
+  statusDangerText: '#B3261E',
+  statusNeutralText: '#5C6570',
+
   // Macro colors — S2-A: light の淡いトラック (#F1F3F5) 上でバー塗りが
   // WCAG 非テキスト 3:1 を満たすよう濃色化 (protein 4.25:1 / fat 3.24:1 /
   // carb 3.12:1 vs surfaceSecondary。旧値は 2.90 / 1.36 / 2.00 で fail)。
@@ -165,6 +187,16 @@ export function getColors(scheme: ColorScheme) {
       // the text variants map back to the bright values here (E-08).
       successText: colors.success,
       warningText: colors.warning,
+      // S3-3-A — status 系。dark の text は bright 系へ mapback (danger のみ
+      // #FF3B30 が dark 面 4.29:1 で AA を割るため明色 #FF6B60 を使う)。
+      statusSuccess: colors.statusSuccess,
+      statusWarning: colors.statusWarning,
+      statusDanger: colors.statusDanger,
+      statusNeutral: colors.dark.textTertiary,
+      statusSuccessText: colors.statusSuccess,
+      statusWarningText: colors.statusWarning,
+      statusDangerText: '#FF6B60',
+      statusNeutralText: colors.dark.textSecondary,
       // S2-A — dark は明るい macro 値のまま (light のみ濃色化)。
       protein: colors.dark.protein,
       fat: colors.dark.fat,
@@ -197,6 +229,15 @@ export function getColors(scheme: ColorScheme) {
     error: colors.error,
     successText: colors.successText,
     warningText: colors.warningText,
+    // S3-3-A — status 系 (light)。
+    statusSuccess: colors.statusSuccess,
+    statusWarning: colors.statusWarning,
+    statusDanger: colors.statusDanger,
+    statusNeutral: colors.statusNeutral,
+    statusSuccessText: colors.statusSuccessText,
+    statusWarningText: colors.statusWarningText,
+    statusDangerText: colors.statusDangerText,
+    statusNeutralText: colors.statusNeutralText,
     protein: colors.protein,
     fat: colors.fat,
     carb: colors.carb,
