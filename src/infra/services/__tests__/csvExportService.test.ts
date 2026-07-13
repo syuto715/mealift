@@ -124,7 +124,7 @@ describe('exportCsv', () => {
     expect(captured).not.toMatch(/\bws\.date\b/);
     expect(captured).not.toMatch(/date\(ws\.started_at\)/);
     expect(captured).toMatch(/ws\.started_at as started_at/);
-    expect(captured).toMatch(/ORDER BY ws\.started_at/);
+    expect(captured).toMatch(/ORDER BY datetime\(ws\.started_at\)/);
     expect(mockFileInstances[0].content).toContain('2026-07-05'); // local 日付
     expect(mockFileInstances[0].content).toContain('ベンチプレス');
   });

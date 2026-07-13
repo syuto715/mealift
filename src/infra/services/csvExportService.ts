@@ -98,7 +98,7 @@ async function generateTrainingCsv(profileId: string): Promise<string> {
      JOIN workout_sessions ws ON wss.session_id = ws.id
      JOIN exercises e ON wss.exercise_id = e.id
      WHERE ws.profile_id = ? AND ws.deleted_at IS NULL AND wss.deleted_at IS NULL
-     ORDER BY ws.started_at`,
+     ORDER BY datetime(ws.started_at)`,
     [profileId],
   );
 
