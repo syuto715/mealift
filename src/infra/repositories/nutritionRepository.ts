@@ -1,5 +1,7 @@
 import { getDatabase } from '../database/connection';
+import { subDays } from 'date-fns';
 import { generateId } from '../../utils/id';
+import { getISODate } from '../../utils/format';
 import { MealType } from '../../types/common';
 import { enqueueRowFromTable } from './syncRepository';
 import { bumpPublicFoodUseCount } from '../supabase/publicFoodUseCount';
@@ -211,7 +213,9 @@ function isDateBeyondWindow(date: string, historyWindowDays?: number | null): bo
   if (historyWindowDays == null) return false;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - historyWindowDays);
-  const cutoffStr = cutoff.toISOString().substring(0, 10);
+  // Sprint TZ — date param は local 日付 (meal_logs.date と同系)。cutoff も
+  // local 日付化する (旧 toISOString().substring は UTC 日付で境界 ±1 日ズレ)
+  const cutoffStr = getISODate(cutoff);
   return date < cutoffStr;
 }
 
@@ -338,17 +342,16 @@ export async function getRecordedNutritionDates(
   historyWindowDays?: number | null
 ): Promise<string[]> {
   const db = await getDatabase();
-  // When historyWindowDays is set, clamp to date('now', '-N days') so Free
-  // users don't see dots for dates they cannot open.
-  const clamp =
-    historyWindowDays != null
-      ? ` AND date >= date('now', '-${historyWindowDays} days')`
-      : '';
+  // When historyWindowDays is set, clamp so Free users don't see dots for
+  // dates they cannot open.
+  // Sprint TZ — local date 列との比較なので cutoff も local 日付 (旧 date('now') は UTC 今日で境界 ±1 日ズレ)
+  const clampDate =
+    historyWindowDays != null ? getISODate(subDays(new Date(), historyWindowDays)) : null;
   const rows = await db.getAllAsync<{ date: string }>(
     `SELECT DISTINCT date FROM meal_logs
-     WHERE profile_id = ? AND date LIKE ? || '%' AND deleted_at IS NULL${clamp}
+     WHERE profile_id = ? AND date LIKE ? || '%' AND deleted_at IS NULL${clampDate ? ' AND date >= ?' : ''}
      ORDER BY date`,
-    [profileId, monthPrefix]
+    clampDate ? [profileId, monthPrefix, clampDate] : [profileId, monthPrefix]
   );
   return rows.map((r) => r.date);
 }
@@ -461,10 +464,9 @@ export async function getPreviousMealsSummary(
   historyWindowDays?: number | null
 ): Promise<PreviousMealSummary[]> {
   const db = await getDatabase();
-  const clamp =
-    historyWindowDays != null
-      ? ` AND ml.date >= date('now', '-${historyWindowDays} days')`
-      : '';
+  // Sprint TZ — local date 列との比較なので cutoff も local 日付 (旧 date('now') は UTC 今日で境界 ±1 日ズレ)
+  const clampDate =
+    historyWindowDays != null ? getISODate(subDays(new Date(), historyWindowDays)) : null;
   const rows = await db.getAllAsync<{
     date: string;
     item_count: number;
@@ -473,12 +475,12 @@ export async function getPreviousMealsSummary(
     `SELECT ml.date, COUNT(mli.id) AS item_count, COALESCE(SUM(mli.calories), 0) AS total_calories
      FROM meal_logs ml
      LEFT JOIN meal_log_items mli ON mli.meal_log_id = ml.id AND mli.deleted_at IS NULL
-     WHERE ml.profile_id = ? AND ml.meal_type = ? AND ml.deleted_at IS NULL${clamp}
+     WHERE ml.profile_id = ? AND ml.meal_type = ? AND ml.deleted_at IS NULL${clampDate ? ' AND ml.date >= ?' : ''}
      GROUP BY ml.date
      HAVING item_count > 0
      ORDER BY ml.date DESC
      LIMIT ?`,
-    [profileId, mealType, limit]
+    clampDate ? [profileId, mealType, clampDate, limit] : [profileId, mealType, limit]
   );
 
   const out: PreviousMealSummary[] = [];
@@ -507,13 +509,15 @@ export async function getWeeklyCalories(
   profileId: string
 ): Promise<{ date: string; calories: number }[]> {
   const db = await getDatabase();
+  // Sprint TZ — local date 列との比較なので窓起点も local 日付
+  const sinceDate = getISODate(subDays(new Date(), 7));
   return db.getAllAsync<{ date: string; calories: number }>(
     `SELECT ml.date, COALESCE(SUM(mli.calories), 0) as calories
      FROM meal_logs ml
      LEFT JOIN meal_log_items mli ON mli.meal_log_id = ml.id AND mli.deleted_at IS NULL
-     WHERE ml.profile_id = ? AND ml.date >= date('now', '-7 days') AND ml.deleted_at IS NULL
+     WHERE ml.profile_id = ? AND ml.date >= ? AND ml.deleted_at IS NULL
      GROUP BY ml.date
      ORDER BY ml.date`,
-    [profileId]
+    [profileId, sinceDate]
   );
 }

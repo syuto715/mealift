@@ -2,6 +2,7 @@ import { File, Paths } from 'expo-file-system';
 import { shareAsync } from 'expo-sharing';
 import { format } from 'date-fns';
 import { getDatabase } from '../database/connection';
+import { localDateOf } from '../../utils/format';
 
 // UTF-8 BOM for proper Excel/Sheets opening
 const BOM = '\uFEFF';
@@ -89,9 +90,10 @@ async function generateTrainingCsv(profileId: string): Promise<string> {
     // workout_sessions has no `date` column (only started_at, a UTC ISO
     // string); the prior `ws.date` here failed statement prep with
     // "no such column: ws.date", so training CSV export always threw. Same
-    // audit class as the workoutSuggestion fix (C-06/D-08). Derive the day
-    // from started_at via date().
-    `SELECT date(ws.started_at) as date, e.name_ja as exercise_name, wss.set_number, wss.weight_kg, wss.reps, wss.rpe
+    // audit class as the workoutSuggestion fix (C-06/D-08).
+    // Sprint TZ — 日付列は SQL の date() (UTC 日付) ではなく started_at を
+    // 取得して JS 側 localDateOf で local 日付化する。
+    `SELECT ws.started_at as started_at, e.name_ja as exercise_name, wss.set_number, wss.weight_kg, wss.reps, wss.rpe
      FROM workout_sets wss
      JOIN workout_sessions ws ON wss.session_id = ws.id
      JOIN exercises e ON wss.exercise_id = e.id
@@ -103,7 +105,7 @@ async function generateTrainingCsv(profileId: string): Promise<string> {
   let csv = csvRow(['日付', '種目', 'セット', '重量(kg)', 'レップ', 'RPE']);
   for (const row of rows) {
     csv += csvRow([
-      row.date,
+      localDateOf(row.started_at as string),
       row.exercise_name,
       row.set_number,
       row.weight_kg,

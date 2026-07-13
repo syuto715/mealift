@@ -6,6 +6,7 @@
 
 import { generateWidgetData } from '../widgetService';
 import { getDatabase } from '../../database/connection';
+import { getISODate, localDayUtcRange } from '../../../utils/format';
 
 jest.mock('../../database/connection', () => ({ getDatabase: jest.fn() }));
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -55,20 +56,23 @@ describe('generateWidgetData (S3-2b-D 修復)', () => {
     expect(data.workoutsDone).toBe(1);
   });
 
-  it('workout COUNT は date(started_at) + finished/deleted ガードの規約に従う', async () => {
+  it('workout COUNT は local 今日の UTC instant 半開区間 + finished/deleted ガードの規約に従う (Sprint TZ)', async () => {
     const db = makeFakeDb();
     mockGetDatabase.mockResolvedValue(db);
 
     await generateWidgetData('profile-1');
 
     const workoutCall = db.calls.find((c) => c.sql.includes('FROM workout_sessions'))!;
-    expect(workoutCall.sql).toContain('date(started_at) = ?');
+    expect(workoutCall.sql).toContain('started_at >= ? AND started_at < ?');
+    expect(workoutCall.sql).not.toContain('date(started_at)');
     expect(workoutCall.sql).toContain('finished_at IS NOT NULL');
     expect(workoutCall.sql).toContain('deleted_at IS NULL');
     expect(workoutCall.sql).not.toMatch(/AND date = \?/);
-    // params は [profileId, 今日のローカル日付]
+    // params は [profileId, local今日のUTC区間開始, 区間終了] (ISO instant)
     expect(workoutCall.params[0]).toBe('profile-1');
-    expect(workoutCall.params[1]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const { startIso, endIso } = localDayUtcRange(getISODate());
+    expect(workoutCall.params[1]).toBe(startIso);
+    expect(workoutCall.params[2]).toBe(endIso);
   });
 
   it('meal/body クエリにも deleted_at ガードがある (tombstone 済み行の混入防止)', async () => {

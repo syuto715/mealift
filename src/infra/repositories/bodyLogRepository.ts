@@ -1,6 +1,8 @@
+import { subDays } from 'date-fns';
 import { getDatabase } from '../database/connection';
 import { BodyLog, BodyLogInput } from '../../types/bodyLog';
 import { generateId } from '../../utils/id';
+import { getISODate } from '../../utils/format';
 import { enqueueRowFromTable } from './syncRepository';
 
 function rowToBodyLog(row: Record<string, unknown>): BodyLog {
@@ -23,13 +25,12 @@ export async function getBodyLogs(
   historyWindowDays?: number | null,
 ): Promise<BodyLog[]> {
   const db = await getDatabase();
-  const clamp =
-    historyWindowDays != null
-      ? ` AND date >= date('now', '-${historyWindowDays} days')`
-      : '';
+  // Sprint TZ — local date 列との比較なので cutoff も local 日付 (旧 date('now') は UTC 今日で境界 ±1 日ズレ)
+  const clampDate =
+    historyWindowDays != null ? getISODate(subDays(new Date(), historyWindowDays)) : null;
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    `SELECT * FROM body_logs WHERE profile_id = ? AND deleted_at IS NULL${clamp} ORDER BY date DESC LIMIT ?`,
-    [profileId, limit]
+    `SELECT * FROM body_logs WHERE profile_id = ? AND deleted_at IS NULL${clampDate ? ' AND date >= ?' : ''} ORDER BY date DESC LIMIT ?`,
+    clampDate ? [profileId, clampDate, limit] : [profileId, limit]
   );
   return rows.map(rowToBodyLog);
 }
@@ -49,15 +50,14 @@ export async function getRecordedBodyLogDates(
   historyWindowDays?: number | null
 ): Promise<string[]> {
   const db = await getDatabase();
-  const clamp =
-    historyWindowDays != null
-      ? ` AND date >= date('now', '-${historyWindowDays} days')`
-      : '';
+  // Sprint TZ — local date 列との比較なので cutoff も local 日付 (旧 date('now') は UTC 今日で境界 ±1 日ズレ)
+  const clampDate =
+    historyWindowDays != null ? getISODate(subDays(new Date(), historyWindowDays)) : null;
   const rows = await db.getAllAsync<{ date: string }>(
     `SELECT DISTINCT date FROM body_logs
-     WHERE profile_id = ? AND date LIKE ? || '%' AND deleted_at IS NULL${clamp}
+     WHERE profile_id = ? AND date LIKE ? || '%' AND deleted_at IS NULL${clampDate ? ' AND date >= ?' : ''}
      ORDER BY date`,
-    [profileId, monthPrefix]
+    clampDate ? [profileId, monthPrefix, clampDate] : [profileId, monthPrefix]
   );
   return rows.map((r) => r.date);
 }
