@@ -45,7 +45,7 @@ describe('getTodayWorkoutCalories (Sprint TZ)', () => {
     await getTodayWorkoutCalories('p1', '2026-07-13');
 
     const call = db.calls[0];
-    expect(call.sql).toContain('started_at >= ? AND started_at < ?');
+    expect(call.sql).toContain('datetime(started_at) >= datetime(?) AND datetime(started_at) < datetime(?)');
     expect(call.sql).not.toContain('date(started_at)');
     const { startIso, endIso } = localDayUtcRange('2026-07-13');
     expect(call.params).toEqual(['p1', startIso, endIso]);
@@ -67,7 +67,7 @@ describe('getRecordedSessionDates (Sprint TZ)', () => {
 
     expect(dates).toEqual(['2026-07-01', '2026-07-13']);
     const call = db.calls[0];
-    expect(call.sql).not.toContain('date(started_at)');
+    expect(call.sql).toContain('datetime(started_at) >= datetime(?)');
     expect(call.sql).not.toContain('LIKE');
     const { startIso, endIso } = localMonthUtcRange('2026-07');
     expect(call.params).toEqual(['p1', startIso, endIso]);

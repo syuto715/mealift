@@ -75,7 +75,7 @@ export async function generateWidgetData(
   const { startIso, endIso } = localDayUtcRange(today);
   const workoutRow = await db.getFirstAsync<{ count: number }>(
     `SELECT COUNT(*) as count FROM workout_sessions
-     WHERE profile_id = ? AND started_at >= ? AND started_at < ?
+     WHERE profile_id = ? AND datetime(started_at) >= datetime(?) AND datetime(started_at) < datetime(?)
        AND finished_at IS NOT NULL AND deleted_at IS NULL`,
     [profileId, startIso, endIso],
   );

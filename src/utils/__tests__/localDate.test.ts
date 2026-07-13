@@ -6,7 +6,7 @@
 // local 0:30 を作って表現する — TZ=Asia/Tokyo で実行したときが
 // まさに JST ケースになる。
 
-import { getISODate, localDateOf, localDayUtcRange, localMonthUtcRange } from '../format';
+import { getISODate, localDateOf, localDaysAgoStartIso, localDayUtcRange, localMonthUtcRange } from '../format';
 
 describe('localDateOf (Sprint TZ)', () => {
   it('local 深夜 0:30 の UTC ISO は当日の local 日付になる (旧 UTC slice だと前日)', () => {
@@ -71,5 +71,46 @@ describe('localMonthUtcRange (Sprint TZ)', () => {
     const prevMonthLate = new Date(2026, 5, 30, 23, 30).toISOString();
     expect(firstNight >= startIso && firstNight < endIso).toBe(true);
     expect(prevMonthLate >= startIso).toBe(false);
+  });
+});
+
+describe('localDateOf — 形式耐性 (Sprint TZ R2)', () => {
+  it("sync pull 由来の '+00:00' オフセット形式も解釈する", () => {
+    const d = new Date(2026, 6, 13, 0, 30);
+    const offsetForm = d.toISOString().replace(/\.\d{3}Z$/, '+00:00');
+    expect(localDateOf(offsetForm)).toBe(getISODate(d));
+  });
+
+  it('不正形式は UTC date 部への fallback (throw しない)', () => {
+    expect(localDateOf('2026-07-13 12:00:00')).toBe('2026-07-13');
+  });
+});
+
+describe('DST 日の半開区間 (America/Los_Angeles 実行時に 23h/25h 日を検証)', () => {
+  it('2026-03-08 (US spring forward): 境界は local midnight 同士で、0:30/23:30 は区間内', () => {
+    const { startIso, endIso } = localDayUtcRange('2026-03-08');
+    expect(startIso).toBe(new Date(2026, 2, 8, 0, 0, 0).toISOString());
+    expect(endIso).toBe(new Date(2026, 2, 9, 0, 0, 0).toISOString());
+    const early = new Date(2026, 2, 8, 0, 30).toISOString();
+    const late = new Date(2026, 2, 8, 23, 30).toISOString();
+    expect(early >= startIso && early < endIso).toBe(true);
+    expect(late >= startIso && late < endIso).toBe(true);
+  });
+
+  it('2026-11-01 (US fall back): 同上 (25h 日)', () => {
+    const { startIso, endIso } = localDayUtcRange('2026-11-01');
+    expect(startIso).toBe(new Date(2026, 10, 1, 0, 0, 0).toISOString());
+    expect(endIso).toBe(new Date(2026, 10, 2, 0, 0, 0).toISOString());
+  });
+});
+
+describe('localDaysAgoStartIso (Sprint TZ R2)', () => {
+  it('「直近 N 日」= cutoff 日の local 0:00 起点 (境界日を丸ごと含むカレンダー日意味論)', () => {
+    const now = new Date(2026, 6, 31, 12, 0); // local 7/31 正午
+    const start = localDaysAgoStartIso(30, now);
+    // 30日前 = 7/1。その local 0:00 が窓開始 → 7/1 早朝の記録も「直近30日」に入る
+    expect(start).toBe(new Date(2026, 6, 1, 0, 0, 0).toISOString());
+    const earlyOnCutoffDay = new Date(2026, 6, 1, 8, 0).toISOString();
+    expect(earlyOnCutoffDay >= start).toBe(true);
   });
 });

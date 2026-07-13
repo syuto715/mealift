@@ -63,7 +63,7 @@ describe('generateWidgetData (S3-2b-D 修復)', () => {
     await generateWidgetData('profile-1');
 
     const workoutCall = db.calls.find((c) => c.sql.includes('FROM workout_sessions'))!;
-    expect(workoutCall.sql).toContain('started_at >= ? AND started_at < ?');
+    expect(workoutCall.sql).toContain('datetime(started_at) >= datetime(?) AND datetime(started_at) < datetime(?)');
     expect(workoutCall.sql).not.toContain('date(started_at)');
     expect(workoutCall.sql).toContain('finished_at IS NOT NULL');
     expect(workoutCall.sql).toContain('deleted_at IS NULL');

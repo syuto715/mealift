@@ -1,4 +1,4 @@
-import { format, formatDistanceToNow, isToday, isYesterday, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, isToday, isYesterday, parseISO, subDays } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 export function formatDate(date: string | Date, pattern: string = 'yyyy/MM/dd'): string {
@@ -75,14 +75,22 @@ export function getISODate(date: Date = new Date()): string {
 //   - UTC ISO → 日付化は localDateOf() (toISOString().slice(0,10) は UTC 日付に
 //     なるため禁止 — JST では 00:00-08:59 が前日にズレる)
 //   - SQL で「その local 日 / 月」に絞る場合は localDayUtcRange /
-//     localMonthUtcRange の UTC instant 半開区間を ISO-to-ISO で比較する
-//     (weeklyReport / volumeLandmark で確立済みのパターン。SQLite の
-//     date()/localtime には依存しない — index も効く)
+//     localMonthUtcRange の UTC instant 半開区間で比較する (weeklyReport /
+//     volumeLandmark で確立済みのパターン。localtime 修飾子には依存しない)
+//   - timestamp 列との比較は `datetime(col) >= datetime(?)` で正規化する —
+//     sync pull 由来の行は '+00:00' オフセット形式等が混在し得て、生の字句
+//     比較では時系列順にならない (旧 date() も非 index だったため perf 退行なし)
 // ---------------------------------------------------------------------------
 
-/** UTC ISO timestamp → その instant の local 'yyyy-MM-dd'。 */
+/** UTC ISO timestamp → その instant の local 'yyyy-MM-dd'。
+ *  sync pull 由来の '+00:00' オフセット形式も parseISO が解釈する。万一の
+ *  不正形式は UTC date 部への fallback (throw で画面を壊さない防御)。 */
 export function localDateOf(utcIso: string): string {
-  return format(parseISO(utcIso), 'yyyy-MM-dd');
+  const d = parseISO(utcIso);
+  if (Number.isNaN(d.getTime())) {
+    return utcIso.slice(0, 10);
+  }
+  return format(d, 'yyyy-MM-dd');
 }
 
 export interface UtcRange {
@@ -107,4 +115,11 @@ export function localMonthUtcRange(monthPrefix: string): UtcRange {
   const end = new Date(start);
   end.setMonth(end.getMonth() + 1);
   return { startIso: start.toISOString(), endIso: end.toISOString() };
+}
+
+/** 「直近 N 日」(今日を含む N 個の local 日) の窓開始 instant。
+ *  cutoff 日の local 0:00 起点 — date 列パスの `date >= getISODate(subDays(...))`
+ *  と同じカレンダー日意味論 (境界日を丸ごと含む) に揃える。 */
+export function localDaysAgoStartIso(days: number, now: Date = new Date()): string {
+  return localDayUtcRange(getISODate(subDays(now, days))).startIso;
 }

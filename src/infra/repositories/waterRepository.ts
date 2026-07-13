@@ -1,7 +1,7 @@
 import { getDatabase } from '../database/connection';
 import { WaterLog } from '../../types/water';
 import { generateId } from '../../utils/id';
-import { getISODate, localDateOf, localDayUtcRange } from '../../utils/format';
+import { getISODate, localDateOf, localDayUtcRange, localDaysAgoStartIso } from '../../utils/format';
 import { enqueueRowFromTable } from './syncRepository';
 
 function rowToWaterLog(row: Record<string, unknown>): WaterLog {
@@ -37,7 +37,8 @@ export async function addWaterLog(
 // Sprint TZ — 「その日の水分」は local 日付で定義する。logged_at は UTC ISO
 // 保存 (不変) のため、旧 substr(logged_at,1,10) は UTC 日付になり、JST
 // 00:00-08:59 の記録が「今日の合計」から漏れていた。local 日の UTC instant
-// 半開区間で ISO-to-ISO 比較する (規約は utils/format.ts 参照)。
+// 半開区間 + datetime() 正規化比較 (sync pull の形式混在耐性 — 規約は
+// utils/format.ts 参照)。
 export async function getTodayTotal(profileId: string, date?: string): Promise<number> {
   const db = await getDatabase();
   const target = date ?? getISODate();
@@ -45,7 +46,7 @@ export async function getTodayTotal(profileId: string, date?: string): Promise<n
   const row = await db.getFirstAsync<{ total: number }>(
     `SELECT COALESCE(SUM(amount_ml), 0) AS total
      FROM water_logs
-     WHERE user_id = ? AND logged_at >= ? AND logged_at < ? AND deleted_at IS NULL`,
+     WHERE user_id = ? AND datetime(logged_at) >= datetime(?) AND datetime(logged_at) < datetime(?) AND deleted_at IS NULL`,
     [profileId, startIso, endIso]
   );
   return row?.total ?? 0;
@@ -57,7 +58,7 @@ export async function getTodayLogs(profileId: string, date?: string): Promise<Wa
   const { startIso, endIso } = localDayUtcRange(target);
   const rows = await db.getAllAsync<Record<string, unknown>>(
     `SELECT * FROM water_logs
-     WHERE user_id = ? AND logged_at >= ? AND logged_at < ? AND deleted_at IS NULL
+     WHERE user_id = ? AND datetime(logged_at) >= datetime(?) AND datetime(logged_at) < datetime(?) AND deleted_at IS NULL
      ORDER BY logged_at DESC`,
     [profileId, startIso, endIso]
   );
@@ -72,11 +73,11 @@ export async function getHistory(
   // Sprint TZ — 日別キーを local 日付に (旧 GROUP BY substr は UTC 日付キー)。
   // rolling 窓も JS 計算の ISO instant に統一し、行を取って JS 側で
   // localDateOf により日別集計する。
-  const sinceIso = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const sinceIso = localDaysAgoStartIso(days);
   const rows = await db.getAllAsync<{ logged_at: string; amount_ml: number }>(
     `SELECT logged_at, amount_ml
      FROM water_logs
-     WHERE user_id = ? AND logged_at >= ? AND deleted_at IS NULL
+     WHERE user_id = ? AND datetime(logged_at) >= datetime(?) AND deleted_at IS NULL
      ORDER BY logged_at DESC`,
     [profileId, sinceIso]
   );

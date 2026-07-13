@@ -41,13 +41,35 @@ describe('local day/month UTC range × real SQLite (Sprint TZ)', () => {
     const rows = db
       .prepare(
         `SELECT id FROM workout_sessions
-          WHERE profile_id = 'p1' AND started_at >= ? AND started_at < ?
+          WHERE profile_id = 'p1' AND datetime(started_at) >= datetime(?) AND datetime(started_at) < datetime(?)
             AND finished_at IS NOT NULL AND deleted_at IS NULL
           ORDER BY id`,
       )
       .all(startIso, endIso) as { id: string }[];
 
     expect(rows.map((r) => r.id)).toEqual(['early', 'late']);
+  });
+
+  it('sync pull 由来の形式混在 (+00:00 オフセット / space 形式) でも datetime() 正規化で正しく分類される', () => {
+    // canonical toISOString の instant を各形式に変換した「同じ瞬間」の行
+    const earlyLocal = new Date(2026, 6, 13, 0, 30);
+    const toOffset = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, '+00:00');
+    const toSpace = (d: Date) => d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+    insert('offset-form', toOffset(earlyLocal)); // 2026-07-12T15:30:00+00:00 (JST例)
+    insert('space-form', toSpace(new Date(2026, 6, 13, 23, 30)));
+    insert('prev-offset', toOffset(new Date(2026, 6, 12, 23, 30)));
+
+    const { startIso, endIso } = localDayUtcRange('2026-07-13');
+    const rows = db
+      .prepare(
+        `SELECT id FROM workout_sessions
+          WHERE profile_id = 'p1' AND datetime(started_at) >= datetime(?) AND datetime(started_at) < datetime(?)
+            AND finished_at IS NOT NULL AND deleted_at IS NULL
+          ORDER BY id`,
+      )
+      .all(startIso, endIso) as { id: string }[];
+
+    expect(rows.map((r) => r.id).sort()).toEqual(['offset-form', 'space-form']);
   });
 
   it('月範囲クエリ + JS localDateOf の組で月末月初境界が正しい', () => {
@@ -60,7 +82,7 @@ describe('local day/month UTC range × real SQLite (Sprint TZ)', () => {
     const rows = db
       .prepare(
         `SELECT started_at FROM workout_sessions
-          WHERE profile_id = 'p1' AND started_at >= ? AND started_at < ?
+          WHERE profile_id = 'p1' AND datetime(started_at) >= datetime(?) AND datetime(started_at) < datetime(?)
           ORDER BY started_at`,
       )
       .all(startIso, endIso) as { started_at: string }[];
