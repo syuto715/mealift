@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -60,7 +60,12 @@ export default function WeeklyTrainingReportScreen() {
 
   const weekStartMs = weekStart.getTime();
 
+  // 週送り連打時に古い週の Promise が後から resolve して表示週と中身が
+  // ズレるのを防ぐ世代カウンタ (Codex S4 R1 Important #3)
+  const requestSeqRef = useRef(0);
+
   const loadReport = useCallback(async () => {
+    const seq = ++requestSeqRef.current;
     if (!profile) {
       setReport(null);
       setLoading(false);
@@ -68,11 +73,14 @@ export default function WeeklyTrainingReportScreen() {
     }
     setLoading(true);
     try {
-      setReport(await generateWeeklyTrainingReport(profile.id, new Date(weekStartMs)));
+      const data = await generateWeeklyTrainingReport(profile.id, new Date(weekStartMs));
+      if (seq !== requestSeqRef.current) return; // 古いリクエスト — 破棄
+      setReport(data);
     } catch {
+      if (seq !== requestSeqRef.current) return;
       setReport(null);
     } finally {
-      setLoading(false);
+      if (seq === requestSeqRef.current) setLoading(false);
     }
   }, [profile, weekStartMs]);
 
