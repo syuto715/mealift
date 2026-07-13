@@ -805,6 +805,19 @@ export default function TrainingScreen() {
               1回記録すると部位別ボリュームが表示されます
             </Text>
           )}
+
+          {/* S4-4 — 週次トレーニングレポートへの導線 */}
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/training/weekly-report')}
+            style={[styles.weeklyReportLink, { borderTopColor: colors.border }]}
+            accessibilityRole="button"
+            accessibilityLabel="週次レポートを見る"
+          >
+            <Text style={[styles.weeklyReportLinkText, { color: colors.primary }]}>
+              週次レポートを見る
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+          </TouchableOpacity>
         </Card>
 
         {/* v1.5 Stage 1 Phase 1.4 — weekly coach advice card
@@ -1324,4 +1337,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   analysisHint: { ...typography.bodySmall, marginTop: spacing.sm },
+  weeklyReportLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    minHeight: 44,
+  },
+  weeklyReportLinkText: { ...typography.labelMedium, fontWeight: '600' },
 });
