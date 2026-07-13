@@ -8,7 +8,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
@@ -55,7 +55,15 @@ export default function TrainingCalendarScreen() {
   const currentMonth = today.substring(0, 7);
 
   const [monthPrefix, setMonthPrefix] = useState(currentMonth);
-  const [filter, setFilter] = useState<CalendarFilter>('all');
+  // S4-5 — 週次レポートの回復マップ部位タップから `muscle` param で
+  // フィルタ初期値を受ける (history.tsx の date param と同方針: 7-key
+  // マスタに無い不正値は無視して 'all' のまま)
+  const { muscle: muscleParam } = useLocalSearchParams<{ muscle?: string }>();
+  const [filter, setFilter] = useState<CalendarFilter>(() =>
+    MUSCLE_GROUPS.some((g) => g.id === muscleParam)
+      ? (muscleParam as MuscleGroup)
+      : 'all',
+  );
   const [allDates, setAllDates] = useState<string[]>([]);
   const [muscleDays, setMuscleDays] = useState<workoutRepo.SessionMuscleDay[]>([]);
   const [loading, setLoading] = useState(true);
