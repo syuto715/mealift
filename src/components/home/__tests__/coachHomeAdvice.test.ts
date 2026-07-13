@@ -2,7 +2,7 @@
 // 回帰テスト: アクセス権のない scope の cached advice がホーム
 // カードの pick に混入しないこと。
 
-import { pickHomeAdvice } from '../coachHomeAdvice';
+import { pickHomeAdvice, summarizeAdviceContent } from '../coachHomeAdvice';
 import type { LocalCoachAdvice } from '../../../types/coachAdvice';
 
 const DAILY: LocalCoachAdvice = {
@@ -66,5 +66,41 @@ describe('pickHomeAdvice', () => {
     expect(
       pickHomeAdvice({ daily: null, weekly: WEEKLY, canDaily: true, canWeekly: true }),
     ).toBe(WEEKLY);
+  });
+});
+
+// S3-3-D — 要約1文抽出のピン
+
+describe('summarizeAdviceContent', () => {
+  it('先頭文 (最初の「。」まで) を返す', () => {
+    expect(
+      summarizeAdviceContent('先週は3回トレーニングできました。今週は脚の日を増やしましょう。最後に水分補給も。'),
+    ).toBe('先週は3回トレーニングできました。');
+  });
+
+  it('句点がない場合は 80 字で切って … を付ける', () => {
+    const long = 'あ'.repeat(120);
+    const out = summarizeAdviceContent(long);
+    expect(out).toBe('あ'.repeat(80) + '…');
+  });
+
+  it('80 字以内で句点なしならそのまま返す', () => {
+    expect(summarizeAdviceContent('短いアドバイス')).toBe('短いアドバイス');
+  });
+
+  it('空文字・空白のみは空文字を返す (空状態文言は呼び出し側)', () => {
+    expect(summarizeAdviceContent('')).toBe('');
+    expect(summarizeAdviceContent('   ')).toBe('');
+  });
+
+  it('先頭文自体が 80 字超なら 80 字 + …', () => {
+    const longSentence = 'い'.repeat(100) + '。次の文。';
+    expect(summarizeAdviceContent(longSentence)).toBe('い'.repeat(80) + '…');
+  });
+
+  it('絵文字 (サロゲートペア) を切り詰め境界で分断しない', () => {
+    const emoji = '💪'.repeat(100); // 各絵文字は UTF-16 で 2 code units
+    const out = summarizeAdviceContent(emoji);
+    expect(out).toBe('💪'.repeat(80) + '…');
   });
 });

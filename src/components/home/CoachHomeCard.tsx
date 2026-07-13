@@ -12,7 +12,7 @@ import {
   useCoachAdviceStore,
   selectLatestAdvice,
 } from '../../stores/coachAdviceStore';
-import { pickHomeAdvice } from './coachHomeAdvice';
+import { pickHomeAdvice, summarizeAdviceContent } from './coachHomeAdvice';
 
 // P2-2 — home "ミー先生のひとこと" card. Surfaces the latest ALREADY-CACHED
 // coach advice (read-only) and taps through to the coach chat. It never
@@ -65,8 +65,13 @@ export function CoachHomeCard(): React.ReactElement | null {
 
   const goToCoach = () => router.push('/(tabs)/coach');
 
-  const body = advice
-    ? advice.content
+  // S3-3-D — weekly (300-500字) は numberOfLines で文の途中で切れていたため、
+  // 要約1文 + 「詳しく見る」に (全文はコーチ画面の既存表示で読む)。
+  // content が空白のみの壊れた cached row は空状態扱いにする。
+  const summary = advice ? summarizeAdviceContent(advice.content) : '';
+  const hasAdviceText = summary !== '';
+  const body = hasAdviceText
+    ? summary
     : '記録するとミー先生からアドバイスが届きます。';
 
   return (
@@ -77,8 +82,8 @@ export function CoachHomeCard(): React.ReactElement | null {
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityLabel={
-          advice
-            ? `ミー先生のひとこと。${advice.content} タップで相談へ`
+          hasAdviceText
+            ? `ミー先生のひとこと。${body} タップで詳しく見る`
             : 'ミー先生に相談する'
         }
       >
@@ -97,9 +102,9 @@ export function CoachHomeCard(): React.ReactElement | null {
         >
           {body}
         </Text>
-        {!advice && (
-          <Text style={[styles.cta, { color: colors.primary }]}>相談する →</Text>
-        )}
+        <Text style={[styles.cta, { color: colors.primary }]}>
+          {hasAdviceText ? '詳しく見る →' : '相談する →'}
+        </Text>
       </TouchableOpacity>
     </Card>
   );

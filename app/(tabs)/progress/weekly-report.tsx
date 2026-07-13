@@ -368,12 +368,15 @@ export default function WeeklyReportScreen() {
     );
   }
 
+  // S3-3-B — 低スコアも赤 (error) ではなく amber (責めないトーン)。40 未満は
+  // 文言分岐 (「来週は頑張りましょう！」) とリング内のスコア数値が状態を伝える。
+  // リングは非テキスト要素のため text variant (light=濃色/dark=bright) を使う —
+  // bright fill は light の surfaceSecondary トラック上 1.98:1 で 3:1 を割る
+  // (Codex R1 #1)。
   const overallColor =
     report.overallScore >= 70
-      ? colors.success
-      : report.overallScore >= 40
-        ? colors.warning
-        : colors.error;
+      ? colors.statusSuccessText
+      : colors.statusWarningText;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
@@ -397,12 +400,17 @@ export default function WeeklyReportScreen() {
         {/* Overall Score */}
         <Card>
           <View style={styles.overallSection}>
+            {/* S3-3 — スコア数値を常設 (色に依存しない重症度表現、Codex R1 #2) */}
             <ProgressRing
               progress={report.overallScore / 100}
               size={100}
               strokeWidth={8}
               color={overallColor}
-            />
+            >
+              <Text style={[styles.overallValue, { color: colors.textPrimary }]}>
+                {report.overallScore}
+              </Text>
+            </ProgressRing>
             <View style={styles.overallText}>
               <Text style={[styles.overallLabel, { color: colors.textSecondary }]}>
                 総合スコア
@@ -797,6 +805,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   overallLabel: { ...typography.labelMedium },
+  overallValue: { ...typography.numberMedium },
   overallMessage: { ...typography.titleSmall },
   sectionTitle: {
     ...typography.titleSmall,

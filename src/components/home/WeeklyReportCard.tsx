@@ -16,12 +16,14 @@ export function WeeklyReportCard({ report, onPress }: WeeklyReportCardProps) {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
 
+  // S3-3-B — 週次レポート本体と同じ: 低スコアも赤ではなく amber (責めないトーン)。
+  // リングは surfaceSecondary トラック上の非テキスト要素のため text variant
+  // (light=濃色/dark=bright) を使う — bright fill は light で 1.98:1 と 3:1 を
+  // 割る (Codex R1 #1)。
   const scoreColor =
     report.overallScore >= 70
-      ? colors.success
-      : report.overallScore >= 40
-        ? colors.warning
-        : colors.error;
+      ? colors.statusSuccessText
+      : colors.statusWarningText;
 
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
@@ -40,12 +42,18 @@ export function WeeklyReportCard({ report, onPress }: WeeklyReportCardProps) {
 
         <View style={styles.body}>
           <View style={styles.scoreSection}>
+            {/* S3-3 — 低スコアと中スコアが同 amber になるため、数値を常設して
+                重症度を色以外でも伝える (Codex R1 #2) */}
             <ProgressRing
               progress={report.overallScore / 100}
               size={72}
               strokeWidth={6}
               color={scoreColor}
-            />
+            >
+              <Text style={[styles.scoreValue, { color: colors.textPrimary }]}>
+                {report.overallScore}
+              </Text>
+            </ProgressRing>
             <Text style={[styles.scoreLabel, { color: colors.textSecondary }]}>
               総合スコア
             </Text>
@@ -146,6 +154,9 @@ const styles = StyleSheet.create({
   },
   scoreLabel: {
     ...typography.labelSmall,
+  },
+  scoreValue: {
+    ...typography.numberSmall,
   },
   statsSection: {
     flex: 1,

@@ -871,8 +871,10 @@ export default function HomeScreen() {
               />
             </View>
           ) : (
-            <Text style={[styles.weightEmptyHint, { color: colors.textTertiary }]}>
-              7日分のデータがそろうとトレンドを表示します。
+            // S3-3-C — 実装条件 (直近7日内に2記録) に合わせた動的文言
+            // (旧「7日分のデータがそろうと…」は実装と乖離していた)
+            <Text style={[styles.weightEmptyHint, { color: colors.textSecondary }]}>
+              あと{2 - weight7d.length}回の記録でトレンドが表示されます
             </Text>
           )}
           <Text style={[styles.weightSummary, { color: colors.textSecondary }]}>

@@ -5,6 +5,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import type { ThemeColors } from '../../theme/tokens';
 import type { BalanceStatus } from '../../domain/nutrientBalance';
+import { getBalanceStatusPresentation } from '../nutrition/balanceStatusBadge';
 
 interface NutrientBarProps {
   label: string;
@@ -15,23 +16,6 @@ interface NutrientBarProps {
   isUpperLimit: boolean;
   colors: ThemeColors;
   maxRatio?: number;
-}
-
-const STATUS_LABELS: Record<BalanceStatus, string> = {
-  adequate: '適正',
-  excess: '過剰',
-  deficient: '不足',
-};
-
-function getStatusColors(status: BalanceStatus, colors: ThemeColors) {
-  switch (status) {
-    case 'adequate':
-      return { bg: colors.success, text: '#FFFFFF' };
-    case 'excess':
-      return { bg: colors.warning, text: '#FFFFFF' };
-    case 'deficient':
-      return { bg: colors.primary, text: '#FFFFFF' };
-  }
 }
 
 const BAR_HEIGHT = 14;
@@ -62,7 +46,8 @@ export function NutrientBar({
   const greenWidth = Math.min(barPercent, greenLimit);
   const orangeWidth = Math.max(0, barPercent - greenLimit);
 
-  const statusColors = getStatusColors(status, colors);
+  // S3-3-B — 記号+ラベル併記の tint バッジ (不足=青の操作色誤用を是正)
+  const badge = getBalanceStatusPresentation(status, intake, colors);
   const showBadge = target > 0;
 
   const formatValue = (v: number) => {
@@ -72,15 +57,21 @@ export function NutrientBar({
 
   return (
     <View style={styles.row}>
-      {/* Left: label + badge */}
+      {/* Left: label + badge。S3-3-D — 旧: 横並び (width 90 にラベルとバッジが
+          同居し「エネル…」「ビタミ…」と潰れていた) → 縦積み + ラベル2行許容で
+          全栄養素名を判別可能に */}
       <View style={styles.labelCol}>
-        <Text style={[styles.label, { color: colors.textPrimary }]} numberOfLines={1}>
+        <Text style={[styles.label, { color: colors.textPrimary }]} numberOfLines={2}>
           {label}
         </Text>
         {showBadge && (
-          <View style={[styles.badge, { backgroundColor: statusColors.bg }]}>
-            <Text style={[styles.badgeText, { color: statusColors.text }]}>
-              {STATUS_LABELS[status]}
+          <View
+            style={[styles.badge, { backgroundColor: badge.bg }]}
+            accessible
+            accessibilityLabel={badge.a11yLabel}
+          >
+            <Text style={[styles.badgeText, { color: badge.color }]}>
+              {badge.text}
             </Text>
           </View>
         )}
@@ -153,22 +144,23 @@ export function NutrientBar({
 }
 
 const styles = StyleSheet.create({
+  // S3-3-D — 高さは固定 44 → minHeight 52 (ラベル2行 32 + バッジ 18 の縦積み)
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 44,
+    minHeight: 52,
     gap: spacing.sm,
+    paddingVertical: 2,
   },
   labelCol: {
     width: 90,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 2,
     flexShrink: 0,
   },
   label: {
     ...typography.bodySmall,
-    flexShrink: 1,
   },
   badge: {
     paddingHorizontal: 6,
