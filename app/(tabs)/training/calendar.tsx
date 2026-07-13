@@ -33,7 +33,8 @@ import {
 
 // S2-F — 筋トレ月間カレンダー (自作グリッド、外部カレンダー依存なし)。
 // - トレーニング実施日 (完了セッション) にドット。定義は history の週ストリップと
-//   同じ getRecordedSessionDates (= date(started_at) / finished のみ)。
+//   同じ getRecordedSessionDates (Sprint TZ: started_at の **local 日付** /
+//   finished のみ — セルの iso (local) と直接突き合う)。
 // - 部位フィルタ: exercises.muscle_group (7-key マスタ) ベース。選択時は該当部位を
 //   その日に鍛えた日だけマーク (getSessionMuscleDaysForMonth)。
 // - 日付タップ → 既存のトレーニング履歴画面 (その日を含む週) へ。新規詳細画面は

@@ -19,7 +19,7 @@ import { spacing } from '../../src/theme/spacing';
 import { Card, ProgressBar, Button, Badge, DateNavigator, Toast } from '../../src/components/ui';
 import { PredictionChart } from '../../src/components/progress/PredictionChart';
 import { LineChart } from '../../src/components/charts/LineChart';
-import { getISODate, formatDate } from '../../src/utils/format';
+import { getISODate, formatDate, localDateOf } from '../../src/utils/format';
 import { getRecordedNutritionDates } from '../../src/infra/repositories/nutritionRepository';
 import { getRecordedSessionDates } from '../../src/infra/repositories/workoutRepository';
 import { useProfileStore } from '../../src/stores/profileStore';
@@ -365,14 +365,16 @@ export default function HomeScreen() {
   const targetFatG = profile?.targetFatG ?? 0;
   const targetCarbG = profile?.targetCarbG ?? 0;
 
-  // Selected date workout check
+  // Selected date workout check。Sprint TZ — startedAt (UTC ISO) の日付化は
+  // localDateOf (旧 substring は UTC 日付で、JST 深夜のセッションが前日扱い =
+  // 当日の運動カードに出なかった)
   const selectedDateWorkout = todaySessions.some((session) => {
-    const sessionDate = session.startedAt.substring(0, 10);
+    const sessionDate = localDateOf(session.startedAt);
     return sessionDate === selectedDate;
   });
 
   const selectedDateFinishedSession = todaySessions.find((session) => {
-    const sessionDate = session.startedAt.substring(0, 10);
+    const sessionDate = localDateOf(session.startedAt);
     return sessionDate === selectedDate && session.finishedAt !== null;
   });
 

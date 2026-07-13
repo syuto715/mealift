@@ -1,4 +1,5 @@
 import { getDatabase } from '../infra/database/connection';
+import { localDateOf } from '../utils/format';
 import { MuscleGroup } from '../types/common';
 import { MuscleRecoveryStatus, WorkoutSuggestion } from '../types/workoutSuggestion';
 import { differenceInHours } from 'date-fns';
@@ -118,7 +119,8 @@ export async function getRecoveryStatuses(
 
     return {
       muscleGroup: group,
-      lastTrainedDate: lastStr.split('T')[0],
+      // Sprint TZ — local 日付 (旧 split('T')[0] は UTC 日付)
+      lastTrainedDate: localDateOf(lastStr),
       hoursSinceTraining: hours,
       recoveryPercent,
       status,

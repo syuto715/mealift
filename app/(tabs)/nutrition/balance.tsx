@@ -18,7 +18,7 @@ import { spacing } from '../../../src/theme/spacing';
 import { useNutrition } from '../../../src/hooks/useNutrition';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { MealType } from '../../../src/types/common';
-import { formatDate } from '../../../src/utils/format';
+import { formatDate, getISODate } from '../../../src/utils/format';
 import {
   calculateNutrientBalance,
   NutrientBalanceResult,
@@ -114,7 +114,8 @@ export default function BalanceScreen() {
 
   const params = useLocalSearchParams<{ mealType?: string; date?: string }>();
   const initialTab = (params.mealType as TabKey) ?? 'daily';
-  const date = params.date ?? new Date().toISOString().slice(0, 10);
+  // Sprint TZ — fallback は local 今日 (旧 toISOString().slice は UTC 今日)
+  const date = params.date ?? getISODate();
 
   const { todaySummary } = useNutrition(date);
 

@@ -20,7 +20,7 @@ import { MUSCLE_GROUP_MAP } from '../../../src/constants/muscleGroups';
 import { WorkoutSession, WorkoutSet } from '../../../src/types/workout';
 import { estimateOneRepMax } from '../../../src/domain/oneRepMax';
 import * as workoutRepo from '../../../src/infra/repositories/workoutRepository';
-import { getISODate } from '../../../src/utils/format';
+import { getISODate, localDateOf } from '../../../src/utils/format';
 import { useSubscription } from '../../../src/hooks/useSubscription';
 import {
   historyWindowDaysFor,
@@ -95,7 +95,8 @@ export default function HistoryScreen() {
             if (!existing || orm > existing.oneRepMax) {
               bestsMap[s.exerciseId] = {
                 oneRepMax: orm,
-                date: session.startedAt.substring(0, 10),
+                // Sprint TZ — local 日付 (旧 substring は UTC 日付)
+                date: localDateOf(session.startedAt),
               };
             }
           }
@@ -138,7 +139,9 @@ export default function HistoryScreen() {
 
   const filteredSessions = useMemo(() => {
     return sessions.filter((item) => {
-      const sessionDate = item.session.startedAt.substring(0, 10);
+      // Sprint TZ — 週フィルタは local 日付同士で比較 (旧 substring は UTC
+      // 日付で、JST 月曜 00:00-08:59 のセッションが前週に表示されていた)
+      const sessionDate = localDateOf(item.session.startedAt);
       return sessionDate >= weekStart && sessionDate <= weekEnd;
     });
   }, [sessions, weekStart, weekEnd]);
@@ -162,7 +165,9 @@ export default function HistoryScreen() {
   };
 
   const formatShortDate = (dateStr: string): string => {
-    const d = new Date(dateStr);
+    // Sprint TZ — 'yyyy-MM-dd' の new Date() は UTC 深夜解釈で、UTC より西の
+    // TZ では前日表示になる。local midnight として明示 parse する
+    const d = new Date(`${dateStr}T00:00:00`);
     return `${d.getMonth() + 1}/${d.getDate()}`;
   };
 
