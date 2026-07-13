@@ -928,7 +928,7 @@ export async function getRecordedSessionDates(
     `SELECT started_at FROM workout_sessions
      WHERE profile_id = ? AND datetime(started_at) >= datetime(?) AND datetime(started_at) < datetime(?)
        AND finished_at IS NOT NULL AND deleted_at IS NULL${clampIso ? ' AND datetime(started_at) >= datetime(?)' : ''}
-     ORDER BY started_at`,
+     ORDER BY datetime(started_at)`,
     clampIso ? [profileId, startIso, endIso, clampIso] : [profileId, startIso, endIso],
   );
   const dates = new Set<string>();
@@ -970,7 +970,7 @@ export async function getSessionMuscleDaysForMonth(
         AND datetime(s.started_at) >= datetime(?) AND datetime(s.started_at) < datetime(?)
         AND s.finished_at IS NOT NULL
         AND s.deleted_at IS NULL${clampIso ? ' AND datetime(s.started_at) >= datetime(?)' : ''}
-      ORDER BY s.started_at`,
+      ORDER BY datetime(s.started_at)`,
     clampIso ? [profileId, startIso, endIso, clampIso] : [profileId, startIso, endIso],
   );
   const byDate = new Map<string, Set<string>>();
@@ -1002,7 +1002,7 @@ export async function getSessions(
     // S3-2 — finished_at ガード: orphan (未終了) 行が新しい順の LIMIT を消費し、
     // 正常な完了セッションを一覧から押し出すのを防ぐ。全呼び出し元 (home /
     // training/index) は JS 側でも finished のみ使用しており意味は不変。
-    `SELECT * FROM workout_sessions WHERE profile_id = ? AND finished_at IS NOT NULL AND deleted_at IS NULL${clampIso ? ' AND datetime(started_at) >= datetime(?)' : ''} ORDER BY started_at DESC LIMIT ?`,
+    `SELECT * FROM workout_sessions WHERE profile_id = ? AND finished_at IS NOT NULL AND deleted_at IS NULL${clampIso ? ' AND datetime(started_at) >= datetime(?)' : ''} ORDER BY datetime(started_at) DESC LIMIT ?`,
     clampIso ? [profileId, clampIso, limit] : [profileId, limit],
   );
   return rows.map(rowToSession);
@@ -1333,7 +1333,7 @@ export async function getSessionWithRoutineName(
      FROM workout_sessions s
      LEFT JOIN workout_routines r ON s.routine_id = r.id AND r.deleted_at IS NULL
      WHERE s.profile_id = ? AND s.finished_at IS NOT NULL AND s.deleted_at IS NULL${clampIso ? ' AND datetime(s.started_at) >= datetime(?)' : ''}
-     ORDER BY s.started_at DESC
+     ORDER BY datetime(s.started_at) DESC
      LIMIT ?`,
     clampIso ? [profileId, clampIso, limit] : [profileId, limit],
   );

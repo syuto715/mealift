@@ -59,7 +59,7 @@ export async function getTodayLogs(profileId: string, date?: string): Promise<Wa
   const rows = await db.getAllAsync<Record<string, unknown>>(
     `SELECT * FROM water_logs
      WHERE user_id = ? AND datetime(logged_at) >= datetime(?) AND datetime(logged_at) < datetime(?) AND deleted_at IS NULL
-     ORDER BY logged_at DESC`,
+     ORDER BY datetime(logged_at) DESC`,
     [profileId, startIso, endIso]
   );
   return rows.map(rowToWaterLog);
@@ -78,7 +78,7 @@ export async function getHistory(
     `SELECT logged_at, amount_ml
      FROM water_logs
      WHERE user_id = ? AND datetime(logged_at) >= datetime(?) AND deleted_at IS NULL
-     ORDER BY logged_at DESC`,
+     ORDER BY datetime(logged_at) DESC`,
     [profileId, sinceIso]
   );
   const byDate = new Map<string, number>();

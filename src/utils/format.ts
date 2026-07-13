@@ -77,18 +77,27 @@ export function getISODate(date: Date = new Date()): string {
 //   - SQL で「その local 日 / 月」に絞る場合は localDayUtcRange /
 //     localMonthUtcRange の UTC instant 半開区間で比較する (weeklyReport /
 //     volumeLandmark で確立済みのパターン。localtime 修飾子には依存しない)
-//   - timestamp 列との比較は `datetime(col) >= datetime(?)` で正規化する —
-//     sync pull 由来の行は '+00:00' オフセット形式等が混在し得て、生の字句
-//     比較では時系列順にならない (旧 date() も非 index だったため perf 退行なし)
+//   - timestamp 列との比較・ORDER BY は `datetime(col)` で正規化する —
+//     sync pull 由来の行は '+00:00'・naive space 形式等が混在し得て、生の字句
+//     比較では時系列順にならない。datetime() は index range を使えないが、
+//     個人スケールのテーブルでは正しさを優先する (日次系は旧 date() も
+//     非 index。rolling 窓のみ raw 比較からの perf トレードだが許容)
 // ---------------------------------------------------------------------------
 
 /** UTC ISO timestamp → その instant の local 'yyyy-MM-dd'。
- *  sync pull 由来の '+00:00' オフセット形式も parseISO が解釈する。万一の
+ *  DB の timestamp は全て UTC 意図 (toISOString / datetime('now') / server
+ *  timestamptz)。ただし表記は 'Z'・'+00:00'・naive space 形式が混在し得る —
+ *  naive 形式を parseISO に直接渡すと **local time として誤解釈**されるため、
+ *  timezone 指定のない入力は UTC として正規化してから parse する。
  *  不正形式は UTC date 部への fallback (throw で画面を壊さない防御)。 */
 export function localDateOf(utcIso: string): string {
-  const d = parseISO(utcIso);
+  const trimmed = utcIso.trim();
+  // 'Z' またはオフセット (+09:00 / +0000) が無ければ UTC の naive 表記とみなす
+  const hasTz = /(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed);
+  const normalized = hasTz ? trimmed : `${trimmed.replace(' ', 'T')}Z`;
+  const d = parseISO(normalized);
   if (Number.isNaN(d.getTime())) {
-    return utcIso.slice(0, 10);
+    return trimmed.slice(0, 10);
   }
   return format(d, 'yyyy-MM-dd');
 }

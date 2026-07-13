@@ -70,6 +70,14 @@ describe('local day/month UTC range × real SQLite (Sprint TZ)', () => {
       .all(startIso, endIso) as { id: string }[];
 
     expect(rows.map((r) => r.id).sort()).toEqual(['offset-form', 'space-form']);
+
+    // 取得後の JS 日付化も形式混在で正しい (Codex R2 #1)
+    const stored = db
+      .prepare(`SELECT started_at FROM workout_sessions WHERE id IN ('offset-form', 'space-form')`)
+      .all() as { started_at: string }[];
+    for (const r of stored) {
+      expect(localDateOf(r.started_at)).toBe('2026-07-13');
+    }
   });
 
   it('月範囲クエリ + JS localDateOf の組で月末月初境界が正しい', () => {

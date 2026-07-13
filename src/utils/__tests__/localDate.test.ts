@@ -74,15 +74,23 @@ describe('localMonthUtcRange (Sprint TZ)', () => {
   });
 });
 
-describe('localDateOf — 形式耐性 (Sprint TZ R2)', () => {
+describe('localDateOf — 形式耐性 (Sprint TZ R2/R3)', () => {
   it("sync pull 由来の '+00:00' オフセット形式も解釈する", () => {
     const d = new Date(2026, 6, 13, 0, 30);
     const offsetForm = d.toISOString().replace(/\.\d{3}Z$/, '+00:00');
     expect(localDateOf(offsetForm)).toBe(getISODate(d));
   });
 
-  it('不正形式は UTC date 部への fallback (throw しない)', () => {
-    expect(localDateOf('2026-07-13 12:00:00')).toBe('2026-07-13');
+  it("naive space 形式 (datetime('now') 由来) は UTC として解釈する — parseISO の local 誤解釈を防ぐ", () => {
+    // local 0:30 の instant を space 形式にすると、parseISO 直呼びでは
+    // local 15:30 前日等に誤解釈され日付がズレる (Codex R2 #1)
+    const d = new Date(2026, 6, 13, 0, 30);
+    const spaceForm = d.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, '');
+    expect(localDateOf(spaceForm)).toBe(getISODate(d));
+  });
+
+  it('不正形式は date 部への fallback (throw しない)', () => {
+    expect(localDateOf('9999-99-99T99:99:99Z')).toBe('9999-99-99');
   });
 });
 
