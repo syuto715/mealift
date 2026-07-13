@@ -95,10 +95,13 @@ describe('exportCsv', () => {
 
   // Audit follow-up (independent-review Nit #1) — the training query used
   // `ws.date`, a column workout_sessions does not have (only started_at), so
-  // export threw "no such column: ws.date". Pin the fixed SQL: reject the bad
-  // column, require the date be derived from started_at.
-  it('training export does not reference the non-existent ws.date column', async () => {
+  // export threw "no such column: ws.date".
+  // Sprint TZ — 日付列は SQL の date(ws.started_at) (UTC 日付) でもなく、
+  // started_at を取得して JS 側 localDateOf で local 日付化する規約に更新。
+  it('training export の日付は started_at の local 日付 (ws.date / date() 不使用)', async () => {
     let captured = '';
+    // local 深夜 0:30 のセット — 旧 date() 規約なら (JSTで) 前日になるケース
+    const startedAt = new Date(2026, 6, 5, 0, 30).toISOString();
     mockGetAllAsync.mockImplementation(async (sql: string) => {
       captured = sql;
       if (/\bws\.date\b/.test(sql)) {
@@ -106,7 +109,7 @@ describe('exportCsv', () => {
       }
       return [
         {
-          date: '2026-07-05',
+          started_at: startedAt,
           exercise_name: 'ベンチプレス',
           set_number: 1,
           weight_kg: 60,
@@ -119,9 +122,10 @@ describe('exportCsv', () => {
     await exportCsv('training', 'profile-1');
 
     expect(captured).not.toMatch(/\bws\.date\b/);
-    expect(captured).toMatch(/date\(ws\.started_at\)/);
-    expect(captured).toMatch(/ORDER BY ws\.started_at/);
-    expect(mockFileInstances[0].content).toContain('2026-07-05');
+    expect(captured).not.toMatch(/date\(ws\.started_at\)/);
+    expect(captured).toMatch(/ws\.started_at as started_at/);
+    expect(captured).toMatch(/ORDER BY datetime\(ws\.started_at\)/);
+    expect(mockFileInstances[0].content).toContain('2026-07-05'); // local 日付
     expect(mockFileInstances[0].content).toContain('ベンチプレス');
   });
 });

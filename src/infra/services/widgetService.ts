@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { getDatabase } from '../database/connection';
 import { format } from 'date-fns';
+import { localDayUtcRange } from '../../utils/format';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,15 +69,15 @@ export async function generateWidgetData(
     [profileId],
   );
 
-  // Workout count today。S3-2b-D — 旧クエリは存在しない `date` 列を参照して
-  // 常に throw し (呼び出し側 .catch で無音)、widget_data は一度も書かれて
-  // いなかった。date(started_at) + finished/deleted ガードへ修復
-  // (getTodayWorkoutCalories と同じ規約: workoutRepository の前例パターン)。
+  // Workout count today。Sprint TZ — today は local 日付なので、UTC ISO の
+  // started_at は localDayUtcRange の半開区間で比較する (旧 date(started_at)
+  // は UTC 日付で JST 00:00-08:59 が前日に漏れた)。
+  const { startIso, endIso } = localDayUtcRange(today);
   const workoutRow = await db.getFirstAsync<{ count: number }>(
     `SELECT COUNT(*) as count FROM workout_sessions
-     WHERE profile_id = ? AND date(started_at) = ?
+     WHERE profile_id = ? AND datetime(started_at) >= datetime(?) AND datetime(started_at) < datetime(?)
        AND finished_at IS NOT NULL AND deleted_at IS NULL`,
-    [profileId, today],
+    [profileId, startIso, endIso],
   );
 
   return {

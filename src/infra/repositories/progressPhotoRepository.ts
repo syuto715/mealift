@@ -1,6 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
 import { getDatabase } from '../database/connection';
+import { subDays } from 'date-fns';
 import { generateId } from '../../utils/id';
+import { getISODate } from '../../utils/format';
 import { ProgressPhoto, ProgressPhotoInput, PoseType } from '../../types/progressPhoto';
 import { canAddProgressPhoto } from '../../domain/subscription/gates';
 import type { PlanStatus } from '../services/subscriptionService';
@@ -103,7 +105,8 @@ export async function getPhotosByDate(
   if (historyWindowDays != null) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - historyWindowDays);
-    if (date < cutoff.toISOString().substring(0, 10)) return [];
+    // Sprint TZ — local date 列との比較なので cutoff も local 日付化
+    if (date < getISODate(cutoff)) return [];
   }
   const db = await getDatabase();
   const rows = await db.getAllAsync<Record<string, unknown>>(
@@ -119,13 +122,12 @@ export async function getPhotoDates(
   historyWindowDays?: number | null,
 ): Promise<string[]> {
   const db = await getDatabase();
-  const clamp =
-    historyWindowDays != null
-      ? ` AND date >= date('now', '-${historyWindowDays} days')`
-      : '';
+  // Sprint TZ — local date 列との比較なので cutoff も local 日付 (旧 date('now') は UTC 今日で境界 ±1 日ズレ)
+  const clampDate =
+    historyWindowDays != null ? getISODate(subDays(new Date(), historyWindowDays)) : null;
   const rows = await db.getAllAsync<{ date: string }>(
-    `SELECT DISTINCT date FROM progress_photos WHERE profile_id = ? AND deleted_at IS NULL${clamp} ORDER BY date DESC LIMIT ?`,
-    [profileId, limit],
+    `SELECT DISTINCT date FROM progress_photos WHERE profile_id = ? AND deleted_at IS NULL${clampDate ? ' AND date >= ?' : ''} ORDER BY date DESC LIMIT ?`,
+    clampDate ? [profileId, clampDate, limit] : [profileId, limit],
   );
   return rows.map((r) => r.date);
 }
@@ -136,13 +138,12 @@ export async function getAllPhotos(
   historyWindowDays?: number | null,
 ): Promise<ProgressPhoto[]> {
   const db = await getDatabase();
-  const clamp =
-    historyWindowDays != null
-      ? ` AND date >= date('now', '-${historyWindowDays} days')`
-      : '';
+  // Sprint TZ — local date 列との比較なので cutoff も local 日付 (旧 date('now') は UTC 今日で境界 ±1 日ズレ)
+  const clampDate =
+    historyWindowDays != null ? getISODate(subDays(new Date(), historyWindowDays)) : null;
   const rows = await db.getAllAsync<Record<string, unknown>>(
-    `SELECT * FROM progress_photos WHERE profile_id = ? AND deleted_at IS NULL${clamp} ORDER BY date DESC, created_at DESC LIMIT ?`,
-    [profileId, limit],
+    `SELECT * FROM progress_photos WHERE profile_id = ? AND deleted_at IS NULL${clampDate ? ' AND date >= ?' : ''} ORDER BY date DESC, created_at DESC LIMIT ?`,
+    clampDate ? [profileId, clampDate, limit] : [profileId, limit],
   );
   return rows.map(rowToPhoto);
 }

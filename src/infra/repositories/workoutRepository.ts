@@ -1,6 +1,13 @@
 import type * as SQLite from 'expo-sqlite';
 import { getDatabase } from '../database/connection';
 import { generateId } from '../../utils/id';
+import {
+  getISODate,
+  localDateOf,
+  localDayUtcRange,
+  localDaysAgoStartIso,
+  localMonthUtcRange,
+} from '../../utils/format';
 import { MuscleGroup } from '../../types/common';
 import { enqueueRowFromTable } from './syncRepository';
 import { estimate1RM } from '../../domain/oneRepMax';
@@ -867,12 +874,17 @@ export async function discardSession(sessionId: string): Promise<void> {
 
 export async function getTodayWorkoutCalories(profileId: string, date?: string): Promise<number> {
   const db = await getDatabase();
-  const targetDate = date ?? new Date().toISOString().substring(0, 10);
+  // Sprint TZ — date param は local 'yyyy-MM-dd' (呼び出し元は selectedDate /
+  // getISODate)。旧実装は UTC 今日 fallback + date(started_at) (UTC 日付) で、
+  // JST 00:00-08:59 のセッションが「今日の消費」から漏れていた。local 日の
+  // UTC instant 半開区間で ISO-to-ISO 比較する (規約は utils/format.ts 参照)。
+  const targetDate = date ?? getISODate();
+  const { startIso, endIso } = localDayUtcRange(targetDate);
   const result = await db.getFirstAsync<{ total: number }>(
     `SELECT COALESCE(SUM(estimated_calories), 0) as total
      FROM workout_sessions
-     WHERE profile_id = ? AND date(started_at) = ? AND finished_at IS NOT NULL AND deleted_at IS NULL`,
-    [profileId, targetDate],
+     WHERE profile_id = ? AND datetime(started_at) >= datetime(?) AND datetime(started_at) < datetime(?) AND finished_at IS NOT NULL AND deleted_at IS NULL`,
+    [profileId, startIso, endIso],
   );
   return result?.total ?? 0;
 }
@@ -896,36 +908,47 @@ export async function getSession(sessionId: string): Promise<WorkoutSessionWithS
   return { ...session, sets: setRows.map(rowToSet) };
 }
 
+// Sprint TZ — 「実施日」は local 日付で定義する。旧実装の date(started_at)
+// (UTC 日付) は JST 00:00-08:59 のセッションをカレンダー前日にマークしていた。
+// local 月の UTC instant 半開区間で行を取り、JS 側 localDateOf で日付化する。
+// free-tier clamp は「今日を含む直近 N 個の local 日」(カレンダー日意味論 —
+// date 列パスの `date >= getISODate(subDays)` と同じで境界日を丸ごと含む)。
+// 比較は datetime() 正規化 — sync pull 由来の行は '+00:00' オフセット形式等が
+// 混在し得て、生の字句比較では時系列順にならないため。
 export async function getRecordedSessionDates(
   profileId: string,
   monthPrefix: string,
   historyWindowDays?: number | null,
 ): Promise<string[]> {
   const db = await getDatabase();
-  const clamp =
-    historyWindowDays != null
-      ? ` AND date(started_at) >= date('now', '-${historyWindowDays} days')`
-      : '';
-  const rows = await db.getAllAsync<{ d: string }>(
-    `SELECT DISTINCT date(started_at) as d FROM workout_sessions
-     WHERE profile_id = ? AND date(started_at) LIKE ? || '%' AND finished_at IS NOT NULL AND deleted_at IS NULL${clamp}
-     ORDER BY d`,
-    [profileId, monthPrefix],
+  const { startIso, endIso } = localMonthUtcRange(monthPrefix);
+  const clampIso =
+    historyWindowDays != null ? localDaysAgoStartIso(historyWindowDays) : null;
+  const rows = await db.getAllAsync<{ started_at: string }>(
+    `SELECT started_at FROM workout_sessions
+     WHERE profile_id = ? AND datetime(started_at) >= datetime(?) AND datetime(started_at) < datetime(?)
+       AND finished_at IS NOT NULL AND deleted_at IS NULL${clampIso ? ' AND datetime(started_at) >= datetime(?)' : ''}
+     ORDER BY datetime(started_at)`,
+    clampIso ? [profileId, startIso, endIso, clampIso] : [profileId, startIso, endIso],
   );
-  return rows.map((r) => r.d);
+  const dates = new Set<string>();
+  for (const row of rows) {
+    dates.add(localDateOf(row.started_at));
+  }
+  return Array.from(dates).sort();
 }
 
 // S2-F — 筋トレカレンダーの部位フィルタ用。月内の完了セッション日ごとに、
 // その日に鍛えた部位 (exercises.muscle_group、7-key マスタ) の distinct 集合を
-// 返す。日付は getRecordedSessionDates と同じ date(started_at) (= ISO UTC の
-// 日付部) で揃える。ウォームアップのみの種目は「鍛えた」に数えない
-// (fetchLastTrainedByMuscle の is_warmup = 0 と同じ扱い)。セットゼロの完了
-// セッションは JOIN で落ちるため、「実施日マーク (ALL)」には従来どおり
-// getRecordedSessionDates を使い、本メソッドはフィルタ用データに限る。
-// muscle_group は DB 由来の生文字列で返す — 呼び出し側が MUSCLE_GROUP_MAP で
-// 既知キーに絞る。
+// 返す。Sprint TZ: 日付は getRecordedSessionDates と同じ **local 日付**
+// (UTC instant 半開区間 + JS localDateOf) で揃える。ウォームアップのみの
+// 種目は「鍛えた」に数えない (fetchLastTrainedByMuscle の is_warmup = 0 と
+// 同じ扱い)。セットゼロの完了セッションは JOIN で落ちるため、「実施日マーク
+// (ALL)」には従来どおり getRecordedSessionDates を使い、本メソッドは
+// フィルタ用データに限る。muscle_group は DB 由来の生文字列で返す —
+// 呼び出し側が MUSCLE_GROUP_MAP で既知キーに絞る。
 export interface SessionMuscleDay {
-  date: string; // 'yyyy-MM-dd'
+  date: string; // 'yyyy-MM-dd' (local)
   muscleGroups: string[];
 }
 
@@ -935,30 +958,34 @@ export async function getSessionMuscleDaysForMonth(
   historyWindowDays?: number | null,
 ): Promise<SessionMuscleDay[]> {
   const db = await getDatabase();
-  const clamp =
-    historyWindowDays != null
-      ? ` AND date(s.started_at) >= date('now', '-${historyWindowDays} days')`
-      : '';
-  const rows = await db.getAllAsync<{ d: string; mg: string }>(
-    `SELECT DISTINCT date(s.started_at) AS d, e.muscle_group AS mg
+  const { startIso, endIso } = localMonthUtcRange(monthPrefix);
+  const clampIso =
+    historyWindowDays != null ? localDaysAgoStartIso(historyWindowDays) : null;
+  const rows = await db.getAllAsync<{ started_at: string; mg: string }>(
+    `SELECT DISTINCT s.started_at AS started_at, e.muscle_group AS mg
        FROM workout_sessions s
        JOIN workout_sets ws ON ws.session_id = s.id AND ws.deleted_at IS NULL AND ws.is_warmup = 0
        JOIN exercises e ON e.id = ws.exercise_id AND e.deleted_at IS NULL
       WHERE s.profile_id = ?
-        AND date(s.started_at) LIKE ? || '%'
+        AND datetime(s.started_at) >= datetime(?) AND datetime(s.started_at) < datetime(?)
         AND s.finished_at IS NOT NULL
-        AND s.deleted_at IS NULL${clamp}
-      ORDER BY d`,
-    [profileId, monthPrefix],
+        AND s.deleted_at IS NULL${clampIso ? ' AND datetime(s.started_at) >= datetime(?)' : ''}
+      ORDER BY datetime(s.started_at)`,
+    clampIso ? [profileId, startIso, endIso, clampIso] : [profileId, startIso, endIso],
   );
-  const byDate = new Map<string, string[]>();
+  const byDate = new Map<string, Set<string>>();
   for (const row of rows) {
-    if (!row.d || !row.mg) continue;
-    const list = byDate.get(row.d);
-    if (list) list.push(row.mg);
-    else byDate.set(row.d, [row.mg]);
+    if (!row.started_at || !row.mg) continue;
+    // DISTINCT は (started_at, mg) 粒度になったため、日付化後に Set で dedupe
+    const d = localDateOf(row.started_at);
+    const set = byDate.get(d);
+    if (set) set.add(row.mg);
+    else byDate.set(d, new Set([row.mg]));
   }
-  return Array.from(byDate, ([date, muscleGroups]) => ({ date, muscleGroups }));
+  return Array.from(byDate, ([date, muscleGroups]) => ({
+    date,
+    muscleGroups: Array.from(muscleGroups),
+  }));
 }
 
 export async function getSessions(
@@ -967,16 +994,16 @@ export async function getSessions(
   historyWindowDays?: number | null,
 ): Promise<WorkoutSession[]> {
   const db = await getDatabase();
-  const clamp =
-    historyWindowDays != null
-      ? ` AND started_at >= datetime('now', '-${historyWindowDays} days')`
-      : '';
+  // Sprint TZ — 窓は「今日を含む直近 N 個の local 日」起点の instant param。
+  // 比較は datetime() 正規化 (sync pull の形式混在耐性)。
+  const clampIso =
+    historyWindowDays != null ? localDaysAgoStartIso(historyWindowDays) : null;
   const rows = await db.getAllAsync<Record<string, unknown>>(
     // S3-2 — finished_at ガード: orphan (未終了) 行が新しい順の LIMIT を消費し、
     // 正常な完了セッションを一覧から押し出すのを防ぐ。全呼び出し元 (home /
     // training/index) は JS 側でも finished のみ使用しており意味は不変。
-    `SELECT * FROM workout_sessions WHERE profile_id = ? AND finished_at IS NOT NULL AND deleted_at IS NULL${clamp} ORDER BY started_at DESC LIMIT ?`,
-    [profileId, limit],
+    `SELECT * FROM workout_sessions WHERE profile_id = ? AND finished_at IS NOT NULL AND deleted_at IS NULL${clampIso ? ' AND datetime(started_at) >= datetime(?)' : ''} ORDER BY datetime(started_at) DESC LIMIT ?`,
+    clampIso ? [profileId, clampIso, limit] : [profileId, limit],
   );
   return rows.map(rowToSession);
 }
@@ -986,11 +1013,14 @@ export async function getRecentSessionCount(
   days: number = 7,
 ): Promise<number> {
   const db = await getDatabase();
+  // Sprint TZ — 窓は「今日を含む直近 N 個の local 日」(カレンダー日意味論、
+  // date 列パスと同じ)。datetime() 正規化で sync pull 由来の形式混在にも耐性
+  const sinceIso = localDaysAgoStartIso(days);
   const result = await db.getFirstAsync<{ count: number }>(
     // S3-2 — finished_at ガード: 未終了 orphan 行 (kill/旧スワイプバック由来) が
     // 週間カウント・予測・AIコーチ文脈に「実施回数」として混入していた
-    `SELECT COUNT(*) as count FROM workout_sessions WHERE profile_id = ? AND started_at >= datetime('now', ?) AND finished_at IS NOT NULL AND deleted_at IS NULL`,
-    [profileId, `-${days} days`],
+    `SELECT COUNT(*) as count FROM workout_sessions WHERE profile_id = ? AND datetime(started_at) >= datetime(?) AND finished_at IS NOT NULL AND deleted_at IS NULL`,
+    [profileId, sinceIso],
   );
   return result?.count ?? 0;
 }
@@ -1292,10 +1322,9 @@ export async function getSessionWithRoutineName(
   historyWindowDays?: number | null,
 ): Promise<(WorkoutSession & { routineName: string | null })[]> {
   const db = await getDatabase();
-  const clamp =
-    historyWindowDays != null
-      ? ` AND s.started_at >= datetime('now', '-${historyWindowDays} days')`
-      : '';
+  // Sprint TZ — 窓はカレンダー日意味論 + datetime() 正規化 (getSessions と同じ)
+  const clampIso =
+    historyWindowDays != null ? localDaysAgoStartIso(historyWindowDays) : null;
   const rows = await db.getAllAsync<Record<string, unknown>>(
     // S3-2 — finished_at ガード (getSessions と同旨): orphan が LIMIT を消費して
     // 履歴から完了セッションを押し出すのを防ぐ。呼び出し元 (history) は JS 側
@@ -1303,10 +1332,10 @@ export async function getSessionWithRoutineName(
     `SELECT s.*, r.name AS routine_name
      FROM workout_sessions s
      LEFT JOIN workout_routines r ON s.routine_id = r.id AND r.deleted_at IS NULL
-     WHERE s.profile_id = ? AND s.finished_at IS NOT NULL AND s.deleted_at IS NULL${clamp}
-     ORDER BY s.started_at DESC
+     WHERE s.profile_id = ? AND s.finished_at IS NOT NULL AND s.deleted_at IS NULL${clampIso ? ' AND datetime(s.started_at) >= datetime(?)' : ''}
+     ORDER BY datetime(s.started_at) DESC
      LIMIT ?`,
-    [profileId, limit],
+    clampIso ? [profileId, clampIso, limit] : [profileId, limit],
   );
 
   return rows.map((row) => ({
