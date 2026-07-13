@@ -125,15 +125,22 @@ export async function getE1RMHistory(
 // getE1RMHistory は下限のみ + 種目単位なので週切り出し・全種目横断には使えない
 // (上限なしで今週分が前週側に混入する)。
 //
-// - 区間は [startIso, endIso) の半開。observed_at は addSet 経由の
-//   toISOString canonical 形式だが、sync pull 由来の形式混在に備えて
-//   datetime() 正規化で比較する (Sprint TZ 規約)。
+// - 週帰属は source set の **セッション started_at** 基準 (Codex S4 R1
+//   Important #1)。observed_at (= set の created_at) 基準だと、日曜深夜に
+//   開始し月曜 0時台に記録したセットの e1RM だけが翌週へずれ、同じ画面の
+//   セット数集計 (session started_at 基準) と週が食い違う。区間は
+//   [startIso, endIso) の半開、datetime() 正規化 (Sprint TZ 規約)。
+// - orphan/tombstone 規約 (同 Important #1): estimated_1rm は addSet 時点で
+//   書かれるため、source set → session まで JOIN で遡って
+//   ws.deleted_at IS NULL (set 単体削除の残留 e1RM を遮蔽) と
+//   s.finished_at IS NOT NULL / s.deleted_at IS NULL (orphan・破棄) を必須に
+//   する。s.profile_id = e1.profile_id は fetchRecentSetsForBias と同じ
+//   sync-poisoned 行への defense in depth。source_set_id が NULL の行
+//   (workout 経路は常に set id を渡すので通常は存在しない) は inner JOIN で
+//   落ちる — セッションに帰属できない観測は週次ハイライトに出さない。
 // - MAX は formula を問わず全行が対象 ('avg' と RPE 補正の 'adjusted' の
 //   両方)。「その週に観測された最良の推定値」という週間ベスト意味論で、
 //   今週/前週とも同一ルールなので比較の基準は揃う。
-// - 破棄セッション由来の行は discardSession が estimated_1rm も tombstone
-//   するため deleted_at IS NULL で除外される。exercises 側の tombstone も
-//   JOIN 条件でガード。
 export interface WeeklyMaxE1RM {
   exerciseId: string;
   exerciseNameJa: string;
@@ -155,10 +162,16 @@ export async function getWeeklyMaxE1RMs(
             ex.name_ja AS exercise_name_ja,
             MAX(e1.e1rm_kg) AS max_e1rm_kg
        FROM estimated_1rm e1
+       JOIN workout_sets ws ON ws.id = e1.source_set_id
+        AND ws.deleted_at IS NULL
+       JOIN workout_sessions s ON s.id = ws.session_id
+        AND s.profile_id = e1.profile_id
+        AND s.finished_at IS NOT NULL
+        AND s.deleted_at IS NULL
        JOIN exercises ex ON ex.id = e1.exercise_id AND ex.deleted_at IS NULL
       WHERE e1.profile_id = ?
-        AND datetime(e1.observed_at) >= datetime(?)
-        AND datetime(e1.observed_at) < datetime(?)
+        AND datetime(s.started_at) >= datetime(?)
+        AND datetime(s.started_at) < datetime(?)
         AND e1.deleted_at IS NULL
       GROUP BY e1.exercise_id
       ORDER BY max_e1rm_kg DESC`,
