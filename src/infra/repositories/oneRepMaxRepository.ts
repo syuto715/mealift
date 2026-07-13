@@ -135,7 +135,9 @@ export async function getE1RMHistory(
 //   ws.deleted_at IS NULL (set 単体削除の残留 e1RM を遮蔽) と
 //   s.finished_at IS NOT NULL / s.deleted_at IS NULL (orphan・破棄) を必須に
 //   する。s.profile_id = e1.profile_id は fetchRecentSetsForBias と同じ
-//   sync-poisoned 行への defense in depth。source_set_id が NULL の行
+//   sync-poisoned 行への defense in depth。ws.exercise_id = e1.exercise_id
+//   も同趣旨 (Codex S4 R2 Nit — 別種目の set に紐づいた不整合 e1RM を
+//   e1.exercise_id 側のハイライトに出さない)。source_set_id が NULL の行
 //   (workout 経路は常に set id を渡すので通常は存在しない) は inner JOIN で
 //   落ちる — セッションに帰属できない観測は週次ハイライトに出さない。
 // - MAX は formula を問わず全行が対象 ('avg' と RPE 補正の 'adjusted' の
@@ -163,6 +165,7 @@ export async function getWeeklyMaxE1RMs(
             MAX(e1.e1rm_kg) AS max_e1rm_kg
        FROM estimated_1rm e1
        JOIN workout_sets ws ON ws.id = e1.source_set_id
+        AND ws.exercise_id = e1.exercise_id
         AND ws.deleted_at IS NULL
        JOIN workout_sessions s ON s.id = ws.session_id
         AND s.profile_id = e1.profile_id

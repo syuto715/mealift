@@ -156,6 +156,7 @@ describe('getWeeklyMaxE1RMs (S4-1 / S4-R2 orphan・週帰属)', () => {
     db.exec(`CREATE TABLE workout_sets (
       id TEXT PRIMARY KEY,
       session_id TEXT NOT NULL,
+      exercise_id TEXT NOT NULL,
       deleted_at TEXT
     )`);
     db.exec(`CREATE TABLE exercises (
@@ -190,6 +191,8 @@ describe('getWeeklyMaxE1RMs (S4-1 / S4-R2 orphan・週帰属)', () => {
       e1rmDeleted?: boolean;
       sourceSetId?: string | null;
       sessionId?: string;
+      // set 側の exercise_id を意図的に食い違わせる (sync 不整合行の再現)
+      setExerciseId?: string;
     } = {},
   ) => {
     const n = ++seq;
@@ -210,8 +213,8 @@ describe('getWeeklyMaxE1RMs (S4-1 / S4-R2 orphan・週帰属)', () => {
     }
     const setId = `set-${n}`;
     db.prepare(
-      `INSERT INTO workout_sets (id, session_id, deleted_at) VALUES (?, ?, ?)`,
-    ).run(setId, sessionId, opts.setDeleted ? sessionIso : null);
+      `INSERT INTO workout_sets (id, session_id, exercise_id, deleted_at) VALUES (?, ?, ?, ?)`,
+    ).run(setId, sessionId, opts.setExerciseId ?? exerciseId, opts.setDeleted ? sessionIso : null);
     db.prepare(
       `INSERT INTO estimated_1rm (id, profile_id, exercise_id, e1rm_kg, formula, source_set_id, observed_at, deleted_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -315,6 +318,17 @@ describe('getWeeklyMaxE1RMs (S4-1 / S4-R2 orphan・週帰属)', () => {
   it('source_set_id NULL (セッションに帰属できない観測) は出力に含めない', async () => {
     insertObservation('ex-bench', 75, new Date(2026, 6, 14, 10, 0));
     insertObservation('ex-bench', 120, new Date(2026, 6, 15, 10, 0), { sourceSetId: null });
+
+    expect(await getWeeklyMaxE1RMs('p1', startIso, endIso)).toEqual([
+      { exerciseId: 'ex-bench', exerciseNameJa: 'ベンチプレス', maxE1rmKg: 75 },
+    ]);
+  });
+
+  it('set と e1rm の exercise_id 不整合行 (sync 不整合) は出力に含めない (Codex S4 R2 Nit)', async () => {
+    insertObservation('ex-bench', 75, new Date(2026, 6, 14, 10, 0));
+    insertObservation('ex-bench', 130, new Date(2026, 6, 15, 10, 0), {
+      setExerciseId: 'ex-squat',
+    });
 
     expect(await getWeeklyMaxE1RMs('p1', startIso, endIso)).toEqual([
       { exerciseId: 'ex-bench', exerciseNameJa: 'ベンチプレス', maxE1rmKg: 75 },
