@@ -1025,6 +1025,43 @@ export async function getRecentSessionCount(
   return result?.count ?? 0;
 }
 
+// S4-1 — 週次トレーニングレポートの合計行 (read-only)。
+// duration_seconds は finishSession のみが書く session 単位の列なので、
+// workout_sets への JOIN なし = weeklyReport.ts の scalar-subquery コメントが
+// 警告する fan-out (セット数分の重複加算) は構造的に起きない。
+// 境界は local 月曜 00:00 → toISOString の UTC instant 半開区間 [startIso, endIso)
+// を呼び出し側 (domain/weeklyTrainingReport) が渡す。
+export interface WeeklyTrainingTotals {
+  sessionCount: number;
+  totalDurationSeconds: number;
+}
+
+export async function getWeeklyTrainingTotals(
+  profileId: string,
+  startIso: string,
+  endIso: string,
+): Promise<WeeklyTrainingTotals> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{
+    session_count: number;
+    total_duration: number;
+  }>(
+    `SELECT COUNT(*) AS session_count,
+            COALESCE(SUM(duration_seconds), 0) AS total_duration
+       FROM workout_sessions
+      WHERE profile_id = ?
+        AND datetime(started_at) >= datetime(?)
+        AND datetime(started_at) < datetime(?)
+        AND finished_at IS NOT NULL
+        AND deleted_at IS NULL`,
+    [profileId, startIso, endIso],
+  );
+  return {
+    sessionCount: row?.session_count ?? 0,
+    totalDurationSeconds: row?.total_duration ?? 0,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Sets
 // ---------------------------------------------------------------------------
