@@ -64,10 +64,19 @@ const STATE_SYMBOL: Record<RecoveryMapState, string> = {
 // 各部位の描画図形 + 44pt 保証ヒット領域 + 日数ラベル位置。
 // legs は前面=大腿四頭筋、背面=臀部/ハム/カーフをまとめて 1 部位として塗る
 // (6 部位粒度では脚は一体)。chest / core は前面のみ、back は背面のみ。
+// 左右ペアの部位 (肩・腕) はヒット領域も左右 2 枚 (Codex S4 R1 Important #2 —
+// 1 枚だと反対側が小さい実図形の当たり判定に戻る)。
+interface HitRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface RegionSpec {
   group: MuscleGroup;
-  // 40×40 viewBox 単位以上 (= 44pt 以上 @220×440 描画)
-  hit: { x: number; y: number; width: number; height: number };
+  // 各 40×40 viewBox 単位以上 (= 44pt 以上 @220×440 描画)
+  hits: HitRect[];
   label: { x: number; y: number };
   shapes: (fill: string) => React.ReactNode;
 }
@@ -75,7 +84,7 @@ interface RegionSpec {
 const FRONT_REGIONS: RegionSpec[] = [
   {
     group: 'chest',
-    hit: { x: 75, y: 70, width: 50, height: 40 },
+    hits: [{ x: 75, y: 70, width: 50, height: 40 }],
     label: { x: 100, y: 96 },
     shapes: (fill) => (
       <Rect x={75} y={78} width={50} height={28} rx={12} fill={fill} />
@@ -83,7 +92,7 @@ const FRONT_REGIONS: RegionSpec[] = [
   },
   {
     group: 'core',
-    hit: { x: 75, y: 110, width: 50, height: 40 },
+    hits: [{ x: 75, y: 110, width: 50, height: 40 }],
     label: { x: 100, y: 134 },
     shapes: (fill) => (
       <Rect x={78} y={112} width={44} height={36} rx={10} fill={fill} />
@@ -91,7 +100,10 @@ const FRONT_REGIONS: RegionSpec[] = [
   },
   {
     group: 'shoulders',
-    hit: { x: 34, y: 62, width: 40, height: 40 },
+    hits: [
+      { x: 34, y: 62, width: 40, height: 40 },
+      { x: 126, y: 62, width: 40, height: 40 },
+    ],
     label: { x: 56, y: 70 },
     shapes: (fill) => (
       <>
@@ -102,7 +114,10 @@ const FRONT_REGIONS: RegionSpec[] = [
   },
   {
     group: 'arms',
-    hit: { x: 31, y: 105, width: 40, height: 40 },
+    hits: [
+      { x: 31, y: 105, width: 40, height: 40 },
+      { x: 129, y: 105, width: 40, height: 40 },
+    ],
     label: { x: 51, y: 158 },
     shapes: (fill) => (
       <>
@@ -113,7 +128,7 @@ const FRONT_REGIONS: RegionSpec[] = [
   },
   {
     group: 'legs',
-    hit: { x: 60, y: 200, width: 80, height: 80 },
+    hits: [{ x: 60, y: 200, width: 80, height: 80 }],
     label: { x: 100, y: 244 },
     shapes: (fill) => (
       <>
@@ -127,7 +142,7 @@ const FRONT_REGIONS: RegionSpec[] = [
 const BACK_REGIONS: RegionSpec[] = [
   {
     group: 'back',
-    hit: { x: 73, y: 75, width: 54, height: 75 },
+    hits: [{ x: 73, y: 75, width: 54, height: 75 }],
     label: { x: 100, y: 116 },
     shapes: (fill) => (
       <Rect x={73} y={75} width={54} height={75} rx={16} fill={fill} />
@@ -135,7 +150,10 @@ const BACK_REGIONS: RegionSpec[] = [
   },
   {
     group: 'shoulders',
-    hit: { x: 34, y: 62, width: 40, height: 40 },
+    hits: [
+      { x: 34, y: 62, width: 40, height: 40 },
+      { x: 126, y: 62, width: 40, height: 40 },
+    ],
     label: { x: 56, y: 70 },
     shapes: (fill) => (
       <>
@@ -146,7 +164,10 @@ const BACK_REGIONS: RegionSpec[] = [
   },
   {
     group: 'arms',
-    hit: { x: 31, y: 105, width: 40, height: 40 },
+    hits: [
+      { x: 31, y: 105, width: 40, height: 40 },
+      { x: 129, y: 105, width: 40, height: 40 },
+    ],
     label: { x: 51, y: 158 },
     shapes: (fill) => (
       <>
@@ -157,7 +178,7 @@ const BACK_REGIONS: RegionSpec[] = [
   },
   {
     group: 'legs',
-    hit: { x: 60, y: 188, width: 80, height: 160 },
+    hits: [{ x: 60, y: 188, width: 80, height: 160 }],
     label: { x: 100, y: 206 },
     shapes: (fill) => (
       <>
@@ -289,14 +310,18 @@ function RecoveryRegion({
       accessibilityLabel={a11yLabel}
       accessibilityRole={interactive ? 'button' : 'image'}
     >
-      {/* 44pt 保証の透明ヒット領域 (G の onPress は描画領域にのみ反応するため) */}
-      <Rect
-        x={region.hit.x}
-        y={region.hit.y}
-        width={region.hit.width}
-        height={region.hit.height}
-        fill="transparent"
-      />
+      {/* 44pt 保証の透明ヒット領域 (G の onPress は描画領域にのみ反応するため。
+          左右ペア部位は両側に敷く) */}
+      {region.hits.map((hit, i) => (
+        <Rect
+          key={i}
+          x={hit.x}
+          y={hit.y}
+          width={hit.width}
+          height={hit.height}
+          fill="transparent"
+        />
+      ))}
       {entry.state === 'untrained' ? (
         <G
           stroke={colors.statusNeutralText}
