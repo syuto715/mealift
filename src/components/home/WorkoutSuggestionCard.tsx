@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getColors, radius } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
-import { Card } from '../ui';
+import { Card, Button } from '../ui';
 import { WorkoutSuggestion, MuscleRecoveryStatus } from '../../types/workoutSuggestion';
 
 const MUSCLE_LABELS: Record<string, string> = {
@@ -33,6 +33,49 @@ export function WorkoutSuggestionCard({ suggestion, onPress }: WorkoutSuggestion
   const colors = getColors(scheme);
 
   const isRestDay = suggestion.suggestedMuscleGroups.length === 0;
+
+  // S4.5-D — 記録ゼロの判別キーは lastTrainedDate === null。系統A
+  // (getRecoveryStatuses) は未トレ部位を recoveryPercent 100 / status
+  // 'recovered' で返す契約 (ソート・reason 生成が依存) なので、計算には
+  // 触れず表示層でのみ出し分ける。
+  const hasAnyRecord = suggestion.recoveryStatuses.some(
+    (s) => s.lastTrainedDate !== null,
+  );
+
+  // 全部位が記録ゼロ — 100% グリーンバー6本 + 「十分に回復しています」は
+  // 新規ユーザーに誤情報なので、カード全体を空状態 + CTA に置き換える。
+  // onPress はカード本体と同じ既存導線 (筋トレタブ) を使う。
+  if (!hasAnyRecord) {
+    return (
+      <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
+        <Card>
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Ionicons name="barbell-outline" size={20} color={colors.primary} />
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+                おすすめワークアウト
+              </Text>
+            </View>
+          </View>
+          <View style={styles.emptyBody}>
+            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
+              まだトレーニング記録がありません
+            </Text>
+            <Text style={[styles.emptyDescription, { color: colors.textTertiary }]}>
+              記録すると部位ごとの回復状態がここに表示されます
+            </Text>
+          </View>
+          <Button
+            title="ワークアウトを開始"
+            onPress={onPress}
+            variant="primary"
+            size="md"
+            fullWidth
+          />
+        </Card>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
@@ -80,6 +123,21 @@ function RecoveryBar({
   colors: ReturnType<typeof getColors>;
 }) {
   const barColor = STATUS_COLORS[status.status](colors);
+
+  // S4.5-D — 記録ゼロ部位は 100% (系統A の未トレ契約値) を出さず、
+  // データ不足である事実を表示する。
+  if (status.lastTrainedDate === null) {
+    return (
+      <View style={styles.barRow}>
+        <Text style={[styles.barLabel, { color: colors.textTertiary }]}>
+          {MUSCLE_LABELS[status.muscleGroup] ?? status.muscleGroup}
+        </Text>
+        <Text style={[styles.barNoData, { color: colors.textTertiary }]}>
+          記録が不足しています
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.barRow}>
@@ -148,6 +206,27 @@ const styles = StyleSheet.create({
     width: 32,
     textAlign: 'right',
     fontVariant: ['tabular-nums'],
+  },
+  // S4.5-D — 記録ゼロ部位の不足表示 (バー + % の領域を1テキストで置換)
+  barNoData: {
+    ...typography.labelSmall,
+    flex: 1,
+    textAlign: 'right',
+  },
+  // S4.5-D — 全部位記録ゼロ時のカード内空状態
+  emptyBody: {
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    ...typography.titleSmall,
+    textAlign: 'center',
+  },
+  emptyDescription: {
+    ...typography.bodySmall,
+    textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',
