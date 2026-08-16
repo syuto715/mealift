@@ -191,10 +191,13 @@ export default function WeeklyTrainingReportScreen() {
                   // S4.5-D — 全部位が記録ゼロ (untrained) のときは薄い点線
                   // シルエットの代わりに空状態 + CTA。判定は summarize 済みの
                   // entries (全履歴基準) — hasAnyVolume (週次基準) ではない。
+                  // S4.5-D2 — 回復マップの対象は筋トレ部位のみ (有酸素は対象外)
+                  // のため、有酸素のみのユーザーが同画面の週次ハイライトと
+                  // 矛盾を感じないよう「筋トレ部位」スコープの文言にする。
                   <EmptyState
                     icon="barbell-outline"
-                    title="まだトレーニング記録がありません"
-                    description="トレーニングを記録すると、部位ごとの回復状態がここに表示されます"
+                    title="まだ筋トレ部位の記録がありません"
+                    description="筋トレを記録すると、部位ごとの回復状態がここに表示されます"
                     primaryAction={{
                       label: 'ワークアウトを開始',
                       onPress: () => router.push('/(tabs)/training'),

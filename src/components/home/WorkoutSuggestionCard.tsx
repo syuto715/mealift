@@ -58,11 +58,14 @@ export function WorkoutSuggestionCard({ suggestion, onPress }: WorkoutSuggestion
             </View>
           </View>
           <View style={styles.emptyBody}>
+            {/* S4.5-D2 — 系統A の回復対象は 6 筋群のみ (有酸素 full_body は
+                対象外) のため、有酸素の記録があるユーザーにも矛盾しないよう
+                「筋トレ」スコープの文言にする。 */}
             <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
-              まだトレーニング記録がありません
+              まだ筋トレの記録がありません
             </Text>
             <Text style={[styles.emptyDescription, { color: colors.textTertiary }]}>
-              記録すると部位ごとの回復状態がここに表示されます
+              筋トレを記録すると部位ごとの回復状態がここに表示されます
             </Text>
           </View>
           <Button
