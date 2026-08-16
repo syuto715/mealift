@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getColors, radius } from '../../../src/theme/tokens';
@@ -32,10 +33,23 @@ import {
   requestServerAccountDeletion,
   wipeLocalAfterDeletion,
 } from '../../../src/infra/services/accountDeletionService';
+import { buildVersionLabel } from '../../../src/utils/versionLabel';
 
 // iOS App Store subscription management. Account deletion does NOT cancel an
 // active App Store subscription — only the user can, here.
 const APP_STORE_SUBSCRIPTIONS_URL = 'itms-apps://apps.apple.com/account/subscriptions';
+
+// S4.5-F — バージョン表記は app.config.ts の version (Constants.expoConfig
+// 経由) が真実のソース。APP_CONFIG.VERSION は expoConfig が取れない稀ケースの
+// fallback のみ。iOS は binary の build number (EAS remote autoIncrement) を
+// 併記して「v1.6.1 (36)」形式。Android は platform manifest が空のため
+// バージョンのみ (expo-application は直接依存に無く新規依存は禁止)。
+const VERSION_LABEL = buildVersionLabel({
+  expoVersion: Constants.expoConfig?.version,
+  fallbackVersion: APP_CONFIG.VERSION,
+  nativeBuildNumber:
+    Platform.OS === 'ios' ? Constants.platform?.ios?.buildNumber : null,
+});
 
 const STORAGE_KEY_REST_TIMER = 'setting_rest_timer';
 const STORAGE_KEY_THEME = 'setting_theme';
@@ -563,7 +577,7 @@ export default function SettingsScreen() {
         )}
 
         <Text style={[styles.version, { color: colors.textTertiary }]}>
-          {APP_CONFIG.APP_NAME} v{APP_CONFIG.VERSION}
+          {APP_CONFIG.APP_NAME} {VERSION_LABEL}
         </Text>
       </ScrollView>
 
@@ -577,7 +591,7 @@ export default function SettingsScreen() {
             {APP_CONFIG.APP_NAME}
           </Text>
           <Text style={[styles.aboutVersion, { color: colors.textSecondary }]}>
-            バージョン {APP_CONFIG.VERSION}
+            {VERSION_LABEL}
           </Text>
           <View style={styles.aboutLinks}>
             <TouchableOpacity
