@@ -14,7 +14,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { usePreventRemove } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -324,6 +324,10 @@ const RecommendationStrip = React.memo(function RecommendationStrip(props: {
 export default function SessionScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
+  // S4.5-A 追補 — 下部固定バー (80px スペーサー付き) の削除で、SafeAreaView
+  // edges=['top'] のこの画面はスクロール末尾がホームインジケータ帯まで達する。
+  // 実 inset 分の余白を contentContainerStyle 側で回復する。
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ sessionId: string; routineId?: string; templateId?: string }>();
   const profile = useProfileStore((s) => s.profile);
   // S2-B — raw TextInput (強度 / reps) 用の共有「完了」ツールバー。number-pad は
@@ -1218,7 +1222,10 @@ export default function SessionScreen() {
       {/* Main Content */}
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: spacing.xl + insets.bottom },
+        ]}
         showsVerticalScrollIndicator={false}
         // Audit E-07 — keep the focused set-entry row above the keyboard
         // (iOS). Set logging is the most-repeated data entry in the app.
