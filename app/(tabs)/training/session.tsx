@@ -1787,20 +1787,7 @@ export default function SessionScreen() {
           <Text style={[styles.addExerciseText, { color: colors.primary }]}>+ 種目を追加</Text>
         </TouchableOpacity>
 
-        {/* Spacer for bottom button */}
-        <View style={styles.bottomSpacer} />
       </ScrollView>
-
-      {/* Bottom fixed button — S3-1: 終了シートへ合流 */}
-      <View style={[styles.bottomBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-        <Button
-          title="セッション終了"
-          onPress={openExitSheet}
-          variant="primary"
-          size="lg"
-          fullWidth
-        />
-      </View>
 
       {/* Build 15 / Feature 5-O — per-set role override sheet.
           Opens on long-press of any set row. */}
@@ -2120,7 +2107,9 @@ export default function SessionScreen() {
           [キャンセル] の3択、完了セットゼロは [破棄して終了] / [キャンセル] の
           2択 (空 finished 行を作らない)。メモ入力は保存時のみ意味を持つため
           記録ありのときだけ表示 (finishSession の note へ渡る配線は不変)。
-          保存/破棄の実行中は backdrop タップでも閉じない。 */}
+          保存/破棄の実行中は backdrop タップでも閉じない。
+          S4.5-A — 下部「セッション終了」バーを削除し、入口はヘッダ右「終了」
+          (+ Android back の usePreventRemove 合流) に一本化。 */}
       <BottomSheet
         visible={showExitSheet}
         onClose={() => {
@@ -2155,7 +2144,7 @@ export default function SessionScreen() {
               </>
             ) : (
               <Text style={[styles.exitEmptyText, { color: colors.textSecondary }]}>
-                このセッションにはまだ記録がありません。
+                まだ種目が記録されていません。
               </Text>
             )}
             <TouchableOpacity
@@ -2168,7 +2157,11 @@ export default function SessionScreen() {
               disabled={exitBusy}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel="このセッションの記録を破棄して終了"
+              accessibilityLabel={
+                hasRecordedSets
+                  ? 'このセッションの記録を破棄して終了'
+                  : 'セッションを破棄して終了'
+              }
               accessibilityHint="確認ダイアログを表示します"
               accessibilityState={{ disabled: exitBusy, busy: isDiscarding }}
             >
@@ -2176,7 +2169,9 @@ export default function SessionScreen() {
                 <ActivityIndicator size="small" color={colors.error} />
               ) : (
                 <Text style={[styles.exitDiscardText, { color: colors.error }]}>
-                  このセッションの記録を破棄して終了
+                  {hasRecordedSets
+                    ? 'このセッションの記録を破棄して終了'
+                    : 'セッションを破棄して終了'}
                 </Text>
               )}
             </TouchableOpacity>
@@ -2597,17 +2592,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   addExerciseText: { ...typography.labelLarge },
-  bottomSpacer: { height: 80 },
-  // Bottom bar
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-    borderTopWidth: 0.5,
-  },
   // Exercise picker
   exercisePickerContent: { gap: spacing.md },
   filterScroll: { flexGrow: 0 },
