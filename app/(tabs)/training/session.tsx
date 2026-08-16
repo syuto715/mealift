@@ -523,17 +523,34 @@ export default function SessionScreen() {
   // マウントされたままの本画面の beforeRemove に無音で握り潰されて login へ
   // 遷移できなくなる (内部 review R2 Important)。endSession 済みなら守る対象が
   // 無いのでガードを外す — 保存/破棄パスも endSession → back の順なので
-  // allowLeaveRef と二重に整合する。mount 直後の 1 フレーム (init effect が
-  // startSession を呼ぶ前) はガード未武装だが、その時点で失われる記録は無い。
+  // allowLeaveRef と二重に整合する。mount 直後の隙間は下の storeArmedRef
+  // (S4.5-C4) が塞ぐ。
   const navigation = useNavigation();
   const allowLeaveRef = useRef(false);
-  usePreventRemove(!!params.sessionId && sessionId === params.sessionId, ({ data }) => {
-    if (allowLeaveRef.current) {
-      navigation.dispatch(data.action);
-      return;
+  // S4.5-C4 (Codex R1 Important #1) — C3 の store AND 条件は「mount 直後の
+  // 数フレーム (init effect が startSession を呼ぶ前)」までガードを外していた。
+  // セッション DB 行は遷移前に INSERT 済みなので、この隙間に native back が
+  // 入ると未終了行が孤児化する。store がこの画面のセッションを一度も反映して
+  // いない間はガードを武装したままにし、endSession 後 (保存/破棄/logout/
+  // リセット) だけ解除する。ref の反転は store 変更の re-render と同時なので
+  // 描画時の評価値は常に意図どおり。
+  const storeArmedRef = useRef(false);
+  useEffect(() => {
+    if (params.sessionId && sessionId === params.sessionId) {
+      storeArmedRef.current = true;
     }
-    setShowExitSheet(true);
-  });
+  }, [params.sessionId, sessionId]);
+  usePreventRemove(
+    !!params.sessionId &&
+      (!storeArmedRef.current || sessionId === params.sessionId),
+    ({ data }) => {
+      if (allowLeaveRef.current) {
+        navigation.dispatch(data.action);
+        return;
+      }
+      setShowExitSheet(true);
+    },
+  );
 
   // Summary
   const [showSummary, setShowSummary] = useState(false);
@@ -976,9 +993,18 @@ export default function SessionScreen() {
     return savingSetsRef.current.size === 0;
   }, []);
 
+  // S4.5-B2 (Codex R1 Important #2) — 保存/破棄ハンドラの同期再入 guard。
+  // isFinishing/isDiscarding は state のため同一フレーム連打に効かず、
+  // exitController.busy は waitForPendingSetSaves 完了後まで立たない。その
+  // 窓での二重起動は 2 本目が discardExit/saveExit から 'busy' を受けて
+  // finally で isDiscarding/isFinishing を false に戻し、1 本目の実行中に
+  // シートをキャンセルできる乖離を生んでいた (C-11 と同じ ref パターン)。
+  const exitingRef = useRef(false);
+
   const handleFinishSession = useCallback(async () => {
-    if (isFinishing || exitController.isBusy()) return;
+    if (isFinishing || exitController.isBusy() || exitingRef.current) return;
     if (!params.sessionId) return;
+    exitingRef.current = true;
     setIsFinishing(true);
     Keyboard.dismiss();
     try {
@@ -1086,6 +1112,7 @@ export default function SessionScreen() {
       // シートは閉じない — guard は解除済みなので再試行できる
       Alert.alert('エラー', 'セッションの終了に失敗しました。通信と空き容量を確認して、もう一度お試しください。');
     } finally {
+      exitingRef.current = false;
       setIsFinishing(false);
     }
   }, [isFinishing, exitController, params.sessionId, profile, sessionNote, startedAt, waitForPendingSetSaves]);
@@ -1134,7 +1161,8 @@ export default function SessionScreen() {
   // シート内に表示)。旧 iOS Alert 2段目は削除し、[破棄する] で即実行する。
   // 失敗系 Alert (保存未完了 timeout / 破棄失敗) はエラー通知なので維持。
   const handleDiscardSession = useCallback(async () => {
-    if (!params.sessionId || exitController.isBusy()) return;
+    if (!params.sessionId || exitController.isBusy() || exitingRef.current) return;
+    exitingRef.current = true;
     setIsDiscarding(true);
     Keyboard.dismiss();
     try {
@@ -1160,6 +1188,7 @@ export default function SessionScreen() {
       // バック済みなので部分破棄状態はない)
       Alert.alert('エラー', '記録の破棄に失敗しました。もう一度お試しください。');
     } finally {
+      exitingRef.current = false;
       setIsDiscarding(false);
     }
   }, [params.sessionId, exitController, endSession, restTimer, waitForPendingSetSaves]);
