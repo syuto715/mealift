@@ -517,9 +517,17 @@ export default function SessionScreen() {
   // 終了シートへ合流させる (iOS スワイプは下の Stack.Screen gestureEnabled:false
   // で遮断)。保存完了パスは allowLeaveRef を立ててから router.back() し、
   // ここで元の action をそのまま dispatch して抜ける (race のない公式パターン)。
+  // S4.5-C3 — enabled を store の sessionId と AND にする。params だけキーに
+  // すると、セッション中の logout/ローカルリセット/アカウント削除 (paywall
+  // 迂回で settings から実行可能、いずれも endSession() 後に root replace) が、
+  // マウントされたままの本画面の beforeRemove に無音で握り潰されて login へ
+  // 遷移できなくなる (内部 review R2 Important)。endSession 済みなら守る対象が
+  // 無いのでガードを外す — 保存/破棄パスも endSession → back の順なので
+  // allowLeaveRef と二重に整合する。mount 直後の 1 フレーム (init effect が
+  // startSession を呼ぶ前) はガード未武装だが、その時点で失われる記録は無い。
   const navigation = useNavigation();
   const allowLeaveRef = useRef(false);
-  usePreventRemove(!!params.sessionId, ({ data }) => {
+  usePreventRemove(!!params.sessionId && sessionId === params.sessionId, ({ data }) => {
     if (allowLeaveRef.current) {
       navigation.dispatch(data.action);
       return;
