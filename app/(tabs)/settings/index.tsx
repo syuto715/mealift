@@ -539,38 +539,47 @@ export default function SettingsScreen() {
             />
           </Card>
         )}
-        <TouchableOpacity
-          style={[styles.logoutButton, { backgroundColor: colors.error + '15' }]}
-          onPress={handleResetData}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="refresh-outline" size={20} color={colors.error} />
-          <Text style={[styles.logoutText, { color: colors.error }]}>ローカルデータをリセット</Text>
-        </TouchableOpacity>
-
+        {/* S4.5-G — 危険操作の3段階化 (見た目のみ。handler・確認 Alert は
+            一切不変)。全ボタン error 一色だった状態を是正:
+              ログアウト = 通常 (データは消えない・再ログイン可能)
+              リセット   = warning (ローカルデータ喪失)
+              アカウント削除 = danger + 最下部 (不可逆・全データ喪失)
+            前景は S3-3 token 契約どおり statusXText (bright statusX は
+            +alpha の tint 背景のみ、'18' は badge tint の規約 alpha)。 */}
         {!isLocalOnly && (
           <TouchableOpacity
-            style={[styles.logoutButton, { backgroundColor: colors.error + '15' }]}
+            style={[styles.logoutButton, { backgroundColor: colors.surfaceSecondary }]}
             onPress={handleLogout}
             activeOpacity={0.7}
           >
-            <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text style={[styles.logoutText, { color: colors.error }]}>ログアウト</Text>
+            <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
+            <Text style={[styles.logoutText, { color: colors.textPrimary }]}>ログアウト</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity
+          style={[styles.logoutButton, { backgroundColor: colors.statusWarning + '18' }]}
+          onPress={handleResetData}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="refresh-outline" size={20} color={colors.statusWarningText} />
+          <Text style={[styles.logoutText, { color: colors.statusWarningText }]}>
+            ローカルデータをリセット
+          </Text>
+        </TouchableOpacity>
 
         {/* v1.6.0 Sprint 6 — App Store 5.1.1(v): アプリ内アカウント削除。
             サーバー(auth.users)を削除し全データを cascade 削除。local-only
             ユーザーはサーバーアカウントが無いので非表示。 */}
         {!isLocalOnly && (
           <TouchableOpacity
-            style={[styles.logoutButton, { backgroundColor: colors.error + '15' }]}
+            style={[styles.logoutButton, { backgroundColor: colors.statusDanger + '18' }]}
             onPress={handleDeleteAccount}
             activeOpacity={0.7}
             disabled={deletingAccount}
           >
-            <Ionicons name="trash-outline" size={20} color={colors.error} />
-            <Text style={[styles.logoutText, { color: colors.error }]}>
+            <Ionicons name="trash-outline" size={20} color={colors.statusDangerText} />
+            <Text style={[styles.logoutText, { color: colors.statusDangerText }]}>
               {deletingAccount ? '削除しています…' : 'アカウントを削除'}
             </Text>
           </TouchableOpacity>
