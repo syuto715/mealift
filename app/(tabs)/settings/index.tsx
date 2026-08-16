@@ -22,6 +22,7 @@ import { Card, SegmentedControl, Modal, Button } from '../../../src/components/u
 import { ProCard } from '../../../src/components/shared/ProCard';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useProfileStore } from '../../../src/stores/profileStore';
+import { useWorkoutStore } from '../../../src/stores/workoutStore';
 import { useHealthKitStore } from '../../../src/stores/healthKitStore';
 import { useSubscription } from '../../../src/hooks/useSubscription';
 import { APP_CONFIG } from '../../../src/constants/config';
@@ -176,6 +177,10 @@ export default function SettingsScreen() {
             try {
               await resetAllData();
               await AsyncStorage.clear();
+              // S4.5-C2 — このパスは logout() を通らないため、進行中ワーク
+              // アウトの in-memory セッションをここで破棄する。残留すると
+              // タブバー非表示 (store 主体判定) が再ログイン後も効き続ける。
+              useWorkoutStore.getState().endSession();
               router.replace('/(auth)/login');
             } catch {
               Alert.alert('エラー', 'データの削除に失敗しました');

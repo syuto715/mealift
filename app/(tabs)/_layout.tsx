@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Tabs, useSegments } from 'expo-router';
+import { Tabs, useSegments, router } from 'expo-router';
 import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,10 @@ import { getColors, shadow } from '../../src/theme/tokens';
 import { typography } from '../../src/theme/typography';
 import { RecordHub } from '../../src/components/record/RecordHub';
 import { useWorkoutStore } from '../../src/stores/workoutStore';
-import { shouldHideTabBar } from '../../src/domain/tabBarVisibility';
+import {
+  shouldHideTabBar,
+  shouldShowSessionReturnPill,
+} from '../../src/domain/tabBarVisibility';
 
 // S2-B ボトムナビ再定義 — 5 タブ → 4 タブ + 中央「＋」記録 FAB。
 //   ホーム / 筋トレ / [＋] / 進捗 / コーチ
@@ -42,8 +45,16 @@ export default function TabLayout() {
   // fallback として渡す。保存/破棄の endSession が sessionId を null にすると
   // 自動復帰する。
   const segments = useSegments();
-  const workoutSessionActive = useWorkoutStore((s) => s.sessionId !== null);
+  const workoutSessionId = useWorkoutStore((s) => s.sessionId);
+  const workoutSessionActive = workoutSessionId !== null;
   const hideTabBar = shouldHideTabBar(segments, workoutSessionActive);
+  // S4.5-C2 — セッション進行中に session 画面以外へ居る間 (paywall 迂回・
+  // native pop 等) はタブバーも back も無い袋小路になり得るため、復帰 pill を
+  // 常設する。判定は純関数 (テスト付き)。
+  const showSessionReturnPill = shouldShowSessionReturnPill(
+    segments,
+    workoutSessionActive,
+  );
 
   // Pill-backed icon: filled glyph + 薄青ピル when focused, outline + gray else.
   // The active/inactive *tint* (icon + label color) is driven by
@@ -184,6 +195,36 @@ export default function TabLayout() {
     {/* S3-2b 記録ハブ — FAB から開く4導線シート + 水分 Undo トースト +
         体重クイック入力。Tabs の兄弟としてタブバー外にオーバーレイ描画。 */}
     <RecordHub visible={hubVisible} onClose={() => setHubVisible(false)} />
+
+    {/* S4.5-C2 — セッション復帰 pill。集中モード (store 主体のバー非表示) 中に
+        session 画面以外へ居る全経路の回復導線。router.navigate は履歴に
+        session が残っていればそこへ戻り、native pop で消えていれば sessionId
+        params 付きで再 push (session 側 init effect の
+        sessionId === params.sessionId ガードで store の記録は無傷)。 */}
+    {showSessionReturnPill && workoutSessionId != null && (
+      <TouchableOpacity
+        style={[
+          styles.sessionPill,
+          shadow.md,
+          { backgroundColor: colors.primary, bottom: insets.bottom + 16 },
+        ]}
+        onPress={() =>
+          router.navigate({
+            pathname: '/(tabs)/training/session',
+            params: { sessionId: workoutSessionId },
+          })
+        }
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="進行中のワークアウトに戻る"
+        testID="session-return-pill"
+      >
+        <Ionicons name="barbell" size={16} color={colors.onPrimary} />
+        <Text style={[styles.sessionPillText, { color: colors.onPrimary }]}>
+          セッションに戻る
+        </Text>
+      </TouchableOpacity>
+    )}
     </>
   );
 }
@@ -220,5 +261,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     marginTop: 1,
+  },
+  // S4.5-C2 — セッション復帰 pill (下中央フロート)
+  sessionPill: {
+    position: 'absolute',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 9999,
+  },
+  sessionPillText: {
+    ...typography.labelMedium,
+    fontWeight: '600',
   },
 });

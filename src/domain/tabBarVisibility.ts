@@ -29,3 +29,21 @@ export function shouldHideTabBar(
   // diagnostic/* はバー表示のまま)。
   return last === '[id]' && segments[segments.length - 2] === 'coach';
 }
+
+// S4.5-C2 — 「セッションに戻る」pill の表示判定。
+//
+// store 主体の非表示は、セッション進行中に session 画面以外へ居る状態
+// (実在: 推奨ストリップの paywall push → settings/subscription → back で
+// settings/index、および usePreventRemove を素通りする native pop) で
+// タブバーも back も無い袋小路を作り得る (内部 review Critical)。
+// その全クラスに対する回復導線として、セッション進行中かつ session 画面に
+// いない間は常に復帰 pill を出す。タップで store の sessionId を params に
+// router.navigate → 既存 instance へ復帰 (native pop 後は再 push、init effect
+// の sessionId === params.sessionId ガードで再初期化はスキップされ store の
+// 記録がそのまま生きる)。
+export function shouldShowSessionReturnPill(
+  segments: readonly string[],
+  workoutSessionActive: boolean,
+): boolean {
+  return workoutSessionActive && segments[segments.length - 1] !== 'session';
+}

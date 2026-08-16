@@ -6,7 +6,10 @@
 // 判定入力が (SESSION, true) から動かないこと自体が構造保証 — テストは
 // 「その入力なら常に true」という不変条件と、route が動く経路 (種目追加往復の
 // paywall push・native pop) でも store 主体で true になることを検分する。
-import { shouldHideTabBar } from '../tabBarVisibility';
+import {
+  shouldHideTabBar,
+  shouldShowSessionReturnPill,
+} from '../tabBarVisibility';
 
 const SESSION = ['(tabs)', 'training', 'session'];
 const TRAINING_INDEX = ['(tabs)', 'training'];
@@ -99,5 +102,30 @@ describe('shouldHideTabBar — S4.5-C 7経路回帰', () => {
     expect(shouldHideTabBar(['(tabs)', 'coach'], false)).toBe(false);
     // '[id]' 単体 (直前が coach でない) は隠さない
     expect(shouldHideTabBar(['(tabs)', 'progress', '[id]'], false)).toBe(false);
+  });
+});
+
+// S4.5-C2 — 「セッションに戻る」復帰 pill。store 主体の非表示が作り得る
+// 袋小路 (paywall 迂回で settings/index に着地 / native pop で session 画面が
+// 消える) の全クラスに対する回復導線。
+describe('shouldShowSessionReturnPill — S4.5-C2 袋小路の回復導線', () => {
+  it('paywall 迂回中 (セッション進行中 × settings 系 route) は pill を出す', () => {
+    expect(shouldShowSessionReturnPill(SUBSCRIPTION, true)).toBe(true);
+    expect(shouldShowSessionReturnPill(['(tabs)', 'settings'], true)).toBe(true);
+  });
+
+  it('native pop で session が route から消えた孤児状態でも pill を出す', () => {
+    expect(shouldShowSessionReturnPill(TRAINING_INDEX, true)).toBe(true);
+    expect(shouldShowSessionReturnPill(['(tabs)', 'index'], true)).toBe(true);
+  });
+
+  it('session 画面上では出さない (集中モードのノイズにしない)', () => {
+    expect(shouldShowSessionReturnPill(SESSION, true)).toBe(false);
+  });
+
+  it('セッションが無ければどこでも出さない', () => {
+    expect(shouldShowSessionReturnPill(TRAINING_INDEX, false)).toBe(false);
+    expect(shouldShowSessionReturnPill(SUBSCRIPTION, false)).toBe(false);
+    expect(shouldShowSessionReturnPill(['(tabs)', 'coach', '[id]'], false)).toBe(false);
   });
 });
