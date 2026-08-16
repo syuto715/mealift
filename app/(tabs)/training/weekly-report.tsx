@@ -17,6 +17,7 @@ import { spacing } from '../../../src/theme/spacing';
 import { Card, Button, ProgressBar, Modal } from '../../../src/components/ui';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { RecoveryBodyMap, type RecoverySide } from '../../../src/components/training/RecoveryBodyMap';
+import { EmptyState } from '../../../src/components/shared/EmptyState';
 import {
   generateWeeklyTrainingReport,
   buildTrainingWeek,
@@ -186,15 +187,35 @@ export default function WeeklyTrainingReportScreen() {
                     />
                   </TouchableOpacity>
                 </View>
-                <RecoveryBodyMap
-                  entries={report.recovery}
-                  currentSide={side}
-                  onToggleSide={() => setSide((s) => (s === 'front' ? 'back' : 'front'))}
-                  onMusclePress={handleMusclePress}
-                />
-                <Text style={[styles.mapHint, { color: colors.textTertiary }]}>
-                  部位をタップするとカレンダーで履歴を確認できます
-                </Text>
+                {report.recovery.every((e) => e.state === 'untrained') ? (
+                  // S4.5-D — 全部位が記録ゼロ (untrained) のときは薄い点線
+                  // シルエットの代わりに空状態 + CTA。判定は summarize 済みの
+                  // entries (全履歴基準) — hasAnyVolume (週次基準) ではない。
+                  // S4.5-D2 — 回復マップの対象は筋トレ部位のみ (有酸素は対象外)
+                  // のため、有酸素のみのユーザーが同画面の週次ハイライトと
+                  // 矛盾を感じないよう「筋トレ部位」スコープの文言にする。
+                  <EmptyState
+                    icon="barbell-outline"
+                    title="まだ筋トレ部位の記録がありません"
+                    description="筋トレを記録すると、部位ごとの回復状態がここに表示されます"
+                    primaryAction={{
+                      label: 'ワークアウトを開始',
+                      onPress: () => router.push('/(tabs)/training'),
+                    }}
+                  />
+                ) : (
+                  <>
+                    <RecoveryBodyMap
+                      entries={report.recovery}
+                      currentSide={side}
+                      onToggleSide={() => setSide((s) => (s === 'front' ? 'back' : 'front'))}
+                      onMusclePress={handleMusclePress}
+                    />
+                    <Text style={[styles.mapHint, { color: colors.textTertiary }]}>
+                      部位をタップするとカレンダーで履歴を確認できます
+                    </Text>
+                  </>
+                )}
               </Card>
             )}
 

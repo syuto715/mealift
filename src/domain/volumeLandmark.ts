@@ -299,3 +299,13 @@ export function summarizeVolumeGroups(
     };
   });
 }
+
+// S4.5-E — 「今週セットが 1 つでもあるか」。summarizeVolumeGroups は常に
+// 全 9 グループを返す (length チェックは空判定にならない) ため、0 件時に
+// 色帯チャートを空状態へ差し替える判定はこのヘルパーで行う。
+// (ボリュームダッシュボード本体と progress タブの preview カードで共用)
+export function hasAnyVolume(
+  summaries: readonly Pick<VolumeGroupSummary, 'weeklySets'>[],
+): boolean {
+  return summaries.some((s) => s.weeklySets > 0);
+}

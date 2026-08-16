@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getColors, radius } from '../../../src/theme/tokens';
@@ -21,6 +22,7 @@ import { Card, SegmentedControl, Modal, Button } from '../../../src/components/u
 import { ProCard } from '../../../src/components/shared/ProCard';
 import { useAuthStore } from '../../../src/stores/authStore';
 import { useProfileStore } from '../../../src/stores/profileStore';
+import { useWorkoutStore } from '../../../src/stores/workoutStore';
 import { useHealthKitStore } from '../../../src/stores/healthKitStore';
 import { useSubscription } from '../../../src/hooks/useSubscription';
 import { APP_CONFIG } from '../../../src/constants/config';
@@ -32,10 +34,23 @@ import {
   requestServerAccountDeletion,
   wipeLocalAfterDeletion,
 } from '../../../src/infra/services/accountDeletionService';
+import { buildVersionLabel } from '../../../src/utils/versionLabel';
 
 // iOS App Store subscription management. Account deletion does NOT cancel an
 // active App Store subscription — only the user can, here.
 const APP_STORE_SUBSCRIPTIONS_URL = 'itms-apps://apps.apple.com/account/subscriptions';
+
+// S4.5-F — バージョン表記は app.config.ts の version (Constants.expoConfig
+// 経由) が真実のソース。APP_CONFIG.VERSION は expoConfig が取れない稀ケースの
+// fallback のみ。iOS は binary の build number (EAS remote autoIncrement) を
+// 併記して「v1.6.1 (36)」形式。Android は platform manifest が空のため
+// バージョンのみ (expo-application は直接依存に無く新規依存は禁止)。
+const VERSION_LABEL = buildVersionLabel({
+  expoVersion: Constants.expoConfig?.version,
+  fallbackVersion: APP_CONFIG.VERSION,
+  nativeBuildNumber:
+    Platform.OS === 'ios' ? Constants.platform?.ios?.buildNumber : null,
+});
 
 const STORAGE_KEY_REST_TIMER = 'setting_rest_timer';
 const STORAGE_KEY_THEME = 'setting_theme';
@@ -162,6 +177,10 @@ export default function SettingsScreen() {
             try {
               await resetAllData();
               await AsyncStorage.clear();
+              // S4.5-C2 — このパスは logout() を通らないため、進行中ワーク
+              // アウトの in-memory セッションをここで破棄する。残留すると
+              // タブバー非表示 (store 主体判定) が再ログイン後も効き続ける。
+              useWorkoutStore.getState().endSession();
               router.replace('/(auth)/login');
             } catch {
               Alert.alert('エラー', 'データの削除に失敗しました');
@@ -525,45 +544,54 @@ export default function SettingsScreen() {
             />
           </Card>
         )}
-        <TouchableOpacity
-          style={[styles.logoutButton, { backgroundColor: colors.error + '15' }]}
-          onPress={handleResetData}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="refresh-outline" size={20} color={colors.error} />
-          <Text style={[styles.logoutText, { color: colors.error }]}>ローカルデータをリセット</Text>
-        </TouchableOpacity>
-
+        {/* S4.5-G — 危険操作の3段階化 (見た目のみ。handler・確認 Alert は
+            一切不変)。全ボタン error 一色だった状態を是正:
+              ログアウト = 通常 (データは消えない・再ログイン可能)
+              リセット   = warning (ローカルデータ喪失)
+              アカウント削除 = danger + 最下部 (不可逆・全データ喪失)
+            前景は S3-3 token 契約どおり statusXText (bright statusX は
+            +alpha の tint 背景のみ、'18' は badge tint の規約 alpha)。 */}
         {!isLocalOnly && (
           <TouchableOpacity
-            style={[styles.logoutButton, { backgroundColor: colors.error + '15' }]}
+            style={[styles.logoutButton, { backgroundColor: colors.surfaceSecondary }]}
             onPress={handleLogout}
             activeOpacity={0.7}
           >
-            <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text style={[styles.logoutText, { color: colors.error }]}>ログアウト</Text>
+            <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
+            <Text style={[styles.logoutText, { color: colors.textPrimary }]}>ログアウト</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity
+          style={[styles.logoutButton, { backgroundColor: colors.statusWarning + '18' }]}
+          onPress={handleResetData}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="refresh-outline" size={20} color={colors.statusWarningText} />
+          <Text style={[styles.logoutText, { color: colors.statusWarningText }]}>
+            ローカルデータをリセット
+          </Text>
+        </TouchableOpacity>
 
         {/* v1.6.0 Sprint 6 — App Store 5.1.1(v): アプリ内アカウント削除。
             サーバー(auth.users)を削除し全データを cascade 削除。local-only
             ユーザーはサーバーアカウントが無いので非表示。 */}
         {!isLocalOnly && (
           <TouchableOpacity
-            style={[styles.logoutButton, { backgroundColor: colors.error + '15' }]}
+            style={[styles.logoutButton, { backgroundColor: colors.statusDanger + '18' }]}
             onPress={handleDeleteAccount}
             activeOpacity={0.7}
             disabled={deletingAccount}
           >
-            <Ionicons name="trash-outline" size={20} color={colors.error} />
-            <Text style={[styles.logoutText, { color: colors.error }]}>
+            <Ionicons name="trash-outline" size={20} color={colors.statusDangerText} />
+            <Text style={[styles.logoutText, { color: colors.statusDangerText }]}>
               {deletingAccount ? '削除しています…' : 'アカウントを削除'}
             </Text>
           </TouchableOpacity>
         )}
 
         <Text style={[styles.version, { color: colors.textTertiary }]}>
-          {APP_CONFIG.APP_NAME} v{APP_CONFIG.VERSION}
+          {APP_CONFIG.APP_NAME} {VERSION_LABEL}
         </Text>
       </ScrollView>
 
@@ -577,7 +605,7 @@ export default function SettingsScreen() {
             {APP_CONFIG.APP_NAME}
           </Text>
           <Text style={[styles.aboutVersion, { color: colors.textSecondary }]}>
-            バージョン {APP_CONFIG.VERSION}
+            {VERSION_LABEL}
           </Text>
           <View style={styles.aboutLinks}>
             <TouchableOpacity

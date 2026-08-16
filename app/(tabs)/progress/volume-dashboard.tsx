@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getColors } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
-import { Card } from '../../../src/components/ui';
+import { Card, Button, Modal } from '../../../src/components/ui';
 import { VolumeLandmarkChart } from '../../../src/components/training/VolumeLandmarkChart';
 import { AutoDeloadBanner } from '../../../src/components/training/AutoDeloadBanner';
 import { DeloadRoutinePickerModal } from '../../../src/components/training/DeloadRoutinePickerModal';
@@ -24,6 +24,7 @@ import { useSubscription } from '../../../src/hooks/useSubscription';
 import {
   aggregateWeeklySetsByMuscle,
   summarizeVolumeGroups,
+  hasAnyVolume,
   type VolumeGroup,
   type VolumeGroupSummary,
 } from '../../../src/domain/volumeLandmark';
@@ -74,6 +75,8 @@ export default function VolumeDashboardScreen() {
   // active row exists. Drives the AutoDeloadBanner visibility.
   const [activeRec, setActiveRec] = useState<DeloadRecommendation | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
+  // S4.5-E — MAV/MEV/MRV の用語説明モーダル (weekly-report の 見かた と同型)
+  const [landmarkHelpVisible, setLandmarkHelpVisible] = useState(false);
   // Codex review pass 1 / Important #4 — `loading` only flips true
   // on the very first load. Subsequent useFocusEffect refetches
   // keep the existing `summaries` painted while the new query is
@@ -259,17 +262,41 @@ export default function VolumeDashboardScreen() {
           )}
 
           <Card>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              部位別週間セット数
-            </Text>
-            <Text style={[styles.helpText, { color: colors.textTertiary }]}>
-              バー上の縦線が今週のセット数。緑の濃い帯が MAV (推奨ボリューム)、黄色は MRV 手前の注意域、赤は MRV 超過です。
-            </Text>
-            {summaries && summaries.length > 0 ? (
-              <VolumeLandmarkChart summaries={summaries} />
+            {/* S4.5-E — セクション見出し + MAV 等の用語説明を開く info ボタン
+                (weekly-report の「見かた」ヘルプと同型) */}
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
+                部位別週間セット数
+              </Text>
+              <TouchableOpacity
+                onPress={() => setLandmarkHelpVisible(true)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="MAV などボリューム帯の説明を表示"
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+            {/* S4.5-E — summarizeVolumeGroups は常に全 9 グループを返すため、
+                空判定は length ではなく hasAnyVolume (週セット合計 > 0)。
+                0 件時は色帯を出さず空状態テキストのみ。 */}
+            {summaries && hasAnyVolume(summaries) ? (
+              <>
+                <Text style={[styles.helpText, { color: colors.textTertiary }]}>
+                  バー上の縦線が今週のセット数。緑の濃い帯が MAV (推奨ボリューム)、黄色は MRV 手前の注意域、赤は MRV 超過です。
+                </Text>
+                <VolumeLandmarkChart summaries={summaries} />
+              </>
             ) : (
+              // S4.5-E2 (Codex R1) — 集計対象は筋トレ 9 部位のみ (有酸素は
+              // primary_muscle 非対応で除外) のため「筋トレ部位」スコープの文言
               <Text style={[styles.emptyDataText, { color: colors.textTertiary }]}>
-                今週のトレーニングデータがありません
+                今週の筋トレ部位のセット記録はまだありません。{'\n'}
+                筋トレを完了するとここに部位別の週間ボリュームが集計されます。
               </Text>
             )}
           </Card>
@@ -333,6 +360,27 @@ export default function VolumeDashboardScreen() {
           onClose={() => setPickerVisible(false)}
         />
       )}
+
+      {/* S4.5-E — MAV/MEV/MRV 用語説明モーダル。コピーは下部
+          「ランドマークについて」カードと同一基準 (RP 2017) */}
+      <Modal
+        visible={landmarkHelpVisible}
+        onClose={() => setLandmarkHelpVisible(false)}
+        title="ボリューム帯の見かた"
+      >
+        <Text style={[styles.helpModalText, { color: colors.textSecondary }]}>
+          MAV (適応量域) — 筋肥大に最も効率的な週間セット数のゾーン。濃い緑の帯 (凡例の「適正」) に対応します。{'\n\n'}
+          MEV (最低有効量) — この値未満は成長刺激が不十分です (灰色の「不足」帯)。{'\n\n'}
+          MRV (回復可能上限) — 超えると回復が追いつかず、デロードが推奨されます (黄色は MRV 手前の「多め」、赤は「過剰」)。{'\n\n'}
+          基準値は一般的なリファレンスのため、自分の回復能力に応じて微調整してください。
+        </Text>
+        <Button
+          title="閉じる"
+          onPress={() => setLandmarkHelpVisible(false)}
+          variant="ghost"
+          fullWidth
+        />
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -427,6 +475,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.titleSmall,
     marginBottom: spacing.sm,
+  },
+  // S4.5-E — 見出し + info ボタンの行
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  helpModalText: {
+    ...typography.bodyMedium,
+    lineHeight: 22,
+    marginBottom: spacing.md,
   },
   helpText: {
     ...typography.bodySmall,

@@ -263,6 +263,34 @@ export function VolumeLandmarkChart({
           </View>
         );
       })}
+      {/* S4.5-E — 色帯の凡例1行 (フル表示のみ。compact preview は省略)。
+          これは「色」の説明であり、ゾーン分類語彙 (ZONE_LABEL_JA:
+          mav_to_mrv=適正 — weekly-report と共通、混在させない) は不変。
+          黄帯 (mavMax→MRV) は分類上は適正圏内の注意域なので、凡例だけ
+          「多め」の色注記を与える。 */}
+      {!compact && (
+        <View
+          style={styles.legendLine}
+          accessibilityLabel="色帯の凡例: 灰色は不足、薄い緑は増加余地、濃い緑は適正、黄色は多め、赤は過剰"
+        >
+          {(
+            [
+              { color: ZONE_COLORS.belowMev, label: '不足' },
+              { color: ZONE_COLORS.mevToMavMin, label: '増加余地' },
+              { color: ZONE_COLORS.mavRange, label: '適正' },
+              { color: ZONE_COLORS.mavMaxToMrv, label: '多め' },
+              { color: ZONE_COLORS.aboveMrv, label: '過剰' },
+            ] as const
+          ).map((item) => (
+            <View key={item.label} style={styles.legendItem}>
+              <View style={[styles.legendSwatch, { backgroundColor: item.color }]} />
+              <Text style={[styles.legendItemText, { color: colors.textTertiary }]}>
+                {item.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -325,6 +353,29 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   zoneLabelCompact: {
+    fontSize: 10,
+  },
+  // S4.5-E — 色帯凡例 (1行、折返し許容)
+  legendLine: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    columnGap: spacing.md,
+    rowGap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  legendSwatch: {
+    width: 14,
+    height: 8,
+    borderRadius: 2,
+  },
+  legendItemText: {
+    ...typography.labelSmall,
     fontSize: 10,
   },
 });

@@ -1,6 +1,10 @@
 export const APP_CONFIG = {
   APP_NAME: 'ミーリフト',
-  VERSION: '1.0.0',
+  // S4.5-F — fallback 専用。表示の真実のソースは app.config.ts の version
+  // (Constants.expoConfig 経由、src/utils/versionLabel.ts 参照)。ここは
+  // expoConfig が取れない稀ケースでしか使われないが、リリース時は
+  // app.config.ts と揃えておく。
+  VERSION: '1.6.1',
   DATABASE_NAME: 'mealift.db',
   DATABASE_VERSION: 1,
   SYNC_INTERVAL_MS: 5 * 60 * 1000,

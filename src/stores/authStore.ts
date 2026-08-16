@@ -275,6 +275,17 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           // No-op — best-effort in-memory reset.
         }
+        // S4.5-C2 — 進行中ワークアウトの in-memory セッションも破棄する。
+        // sessionId が残ると (a) タブバー非表示 (shouldHideTabBar の store 主体
+        // 判定) が再ログイン後も全域で効き続ける、(b) 別ユーザーで再ログイン
+        // した際に前ユーザーのセッション内容が復帰 pill から見える。
+        // Drafting 106 の logout-reset パターン (上の 3 store と同じ lazy import)。
+        try {
+          const { useWorkoutStore } = await import('./workoutStore');
+          useWorkoutStore.getState().endSession();
+        } catch {
+          // No-op.
+        }
       },
 
       startLocalMode: () => {

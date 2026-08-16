@@ -14,7 +14,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, Stack, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { usePreventRemove } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -324,6 +324,10 @@ const RecommendationStrip = React.memo(function RecommendationStrip(props: {
 export default function SessionScreen() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
+  // S4.5-A 追補 — 下部固定バー (80px スペーサー付き) の削除で、SafeAreaView
+  // edges=['top'] のこの画面はスクロール末尾がホームインジケータ帯まで達する。
+  // 実 inset 分の余白を contentContainerStyle 側で回復する。
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ sessionId: string; routineId?: string; templateId?: string }>();
   const profile = useProfileStore((s) => s.profile);
   // S2-B — raw TextInput (強度 / reps) 用の共有「完了」ツールバー。number-pad は
@@ -513,15 +517,40 @@ export default function SessionScreen() {
   // 終了シートへ合流させる (iOS スワイプは下の Stack.Screen gestureEnabled:false
   // で遮断)。保存完了パスは allowLeaveRef を立ててから router.back() し、
   // ここで元の action をそのまま dispatch して抜ける (race のない公式パターン)。
+  // S4.5-C3 — enabled を store の sessionId と AND にする。params だけキーに
+  // すると、セッション中の logout/ローカルリセット/アカウント削除 (paywall
+  // 迂回で settings から実行可能、いずれも endSession() 後に root replace) が、
+  // マウントされたままの本画面の beforeRemove に無音で握り潰されて login へ
+  // 遷移できなくなる (内部 review R2 Important)。endSession 済みなら守る対象が
+  // 無いのでガードを外す — 保存/破棄パスも endSession → back の順なので
+  // allowLeaveRef と二重に整合する。mount 直後の隙間は下の storeArmedRef
+  // (S4.5-C4) が塞ぐ。
   const navigation = useNavigation();
   const allowLeaveRef = useRef(false);
-  usePreventRemove(!!params.sessionId, ({ data }) => {
-    if (allowLeaveRef.current) {
-      navigation.dispatch(data.action);
-      return;
+  // S4.5-C4 (Codex R1 Important #1) — C3 の store AND 条件は「mount 直後の
+  // 数フレーム (init effect が startSession を呼ぶ前)」までガードを外していた。
+  // セッション DB 行は遷移前に INSERT 済みなので、この隙間に native back が
+  // 入ると未終了行が孤児化する。store がこの画面のセッションを一度も反映して
+  // いない間はガードを武装したままにし、endSession 後 (保存/破棄/logout/
+  // リセット) だけ解除する。ref の反転は store 変更の re-render と同時なので
+  // 描画時の評価値は常に意図どおり。
+  const storeArmedRef = useRef(false);
+  useEffect(() => {
+    if (params.sessionId && sessionId === params.sessionId) {
+      storeArmedRef.current = true;
     }
-    setShowExitSheet(true);
-  });
+  }, [params.sessionId, sessionId]);
+  usePreventRemove(
+    !!params.sessionId &&
+      (!storeArmedRef.current || sessionId === params.sessionId),
+    ({ data }) => {
+      if (allowLeaveRef.current) {
+        navigation.dispatch(data.action);
+        return;
+      }
+      setShowExitSheet(true);
+    },
+  );
 
   // Summary
   const [showSummary, setShowSummary] = useState(false);
@@ -964,9 +993,18 @@ export default function SessionScreen() {
     return savingSetsRef.current.size === 0;
   }, []);
 
+  // S4.5-B2 (Codex R1 Important #2) — 保存/破棄ハンドラの同期再入 guard。
+  // isFinishing/isDiscarding は state のため同一フレーム連打に効かず、
+  // exitController.busy は waitForPendingSetSaves 完了後まで立たない。その
+  // 窓での二重起動は 2 本目が discardExit/saveExit から 'busy' を受けて
+  // finally で isDiscarding/isFinishing を false に戻し、1 本目の実行中に
+  // シートをキャンセルできる乖離を生んでいた (C-11 と同じ ref パターン)。
+  const exitingRef = useRef(false);
+
   const handleFinishSession = useCallback(async () => {
-    if (isFinishing || exitController.isBusy()) return;
+    if (isFinishing || exitController.isBusy() || exitingRef.current) return;
     if (!params.sessionId) return;
+    exitingRef.current = true;
     setIsFinishing(true);
     Keyboard.dismiss();
     try {
@@ -1074,6 +1112,7 @@ export default function SessionScreen() {
       // シートは閉じない — guard は解除済みなので再試行できる
       Alert.alert('エラー', 'セッションの終了に失敗しました。通信と空き容量を確認して、もう一度お試しください。');
     } finally {
+      exitingRef.current = false;
       setIsFinishing(false);
     }
   }, [isFinishing, exitController, params.sessionId, profile, sessionNote, startedAt, waitForPendingSetSaves]);
@@ -1115,60 +1154,44 @@ export default function SessionScreen() {
     setShowExitSheet(true);
   }, [params.sessionId]);
 
-  // S3-2 「このセッションの記録を破棄して終了」— repo の discardSession
-  // (セッション/セット/e1RM 観測/PR を単一トランザクションで tombstone) を
-  // exitController 経由で呼ぶ。S3-1 R3 で除去した導線の復活。
-  // 「推奨重量の学習・自己ベストからも取り除かれます」は S3-2 で構造的に事実。
-  const handleDiscardSession = useCallback(() => {
-    if (!params.sessionId || exitController.isBusy()) return;
-    const stats = collectSessionStats(exercises);
-    // 確認文の経過時間も表示時点で再計算 (stale tick 対策は保存側と同じ)
-    const confirmElapsedSeconds = computeElapsedSeconds(
-      startedAt,
-      Date.now(),
-      mountedAtRef.current,
-    );
-    const message =
-      stats.completedSetCount === 0
-        ? 'このセッションには記録がありません。破棄して終了しますか？'
-        : `${formatDiscardSummary(confirmElapsedSeconds, stats)}の記録を破棄して終了します。推奨重量の学習・自己ベストからも取り除かれます。元に戻せません。`;
-    Alert.alert('記録を破棄しますか？', message, [
-      { text: 'キャンセル', style: 'cancel' },
-      {
-        text: '破棄する',
-        style: 'destructive',
-        onPress: async () => {
-          if (!params.sessionId || exitController.isBusy()) return;
-          setIsDiscarding(true);
-          try {
-            // in-flight のセット保存を待ってから破棄 (レースで INSERT が
-            // tombstone 対象から漏れるのを防ぐ)。timeout 時は進まない。
-            const setsSettled = await waitForPendingSetSaves();
-            if (!setsSettled) {
-              Alert.alert(
-                'エラー',
-                'セットの保存が完了していません。数秒待ってから、もう一度お試しください。',
-              );
-              return;
-            }
-            const result = await exitController.discardExit(params.sessionId);
-            if (result !== 'done') return;
-            setShowExitSheet(false);
-            endSession();
-            restTimer.stop();
-            allowLeaveRef.current = true;
-            router.back();
-          } catch {
-            // シートは開いたまま — 再試行できる (トランザクションは全ロール
-            // バック済みなので部分破棄状態はない)
-            Alert.alert('エラー', '記録の破棄に失敗しました。もう一度お試しください。');
-          } finally {
-            setIsDiscarding(false);
-          }
-        },
-      },
-    ]);
-  }, [params.sessionId, exitController, exercises, startedAt, endSession, restTimer, waitForPendingSetSaves]);
+  // S3-2 「記録を破棄して終了」— repo の discardSession (セッション/セット/
+  // e1RM 観測/PR を単一トランザクションで tombstone) を exitController 経由で
+  // 呼ぶ。「推奨重量の学習・自己ベストからも取り除かれます」は S3-2 で構造的に事実。
+  // S4.5-B — 破棄確認は終了シート1枚に統合 (経過時間・種目数・セット数と警告を
+  // シート内に表示)。旧 iOS Alert 2段目は削除し、[破棄する] で即実行する。
+  // 失敗系 Alert (保存未完了 timeout / 破棄失敗) はエラー通知なので維持。
+  const handleDiscardSession = useCallback(async () => {
+    if (!params.sessionId || exitController.isBusy() || exitingRef.current) return;
+    exitingRef.current = true;
+    setIsDiscarding(true);
+    Keyboard.dismiss();
+    try {
+      // in-flight のセット保存を待ってから破棄 (レースで INSERT が
+      // tombstone 対象から漏れるのを防ぐ)。timeout 時は進まない。
+      const setsSettled = await waitForPendingSetSaves();
+      if (!setsSettled) {
+        Alert.alert(
+          'エラー',
+          'セットの保存が完了していません。数秒待ってから、もう一度お試しください。',
+        );
+        return;
+      }
+      const result = await exitController.discardExit(params.sessionId);
+      if (result !== 'done') return;
+      setShowExitSheet(false);
+      endSession();
+      restTimer.stop();
+      allowLeaveRef.current = true;
+      router.back();
+    } catch {
+      // シートは開いたまま — 再試行できる (トランザクションは全ロール
+      // バック済みなので部分破棄状態はない)
+      Alert.alert('エラー', '記録の破棄に失敗しました。もう一度お試しください。');
+    } finally {
+      exitingRef.current = false;
+      setIsDiscarding(false);
+    }
+  }, [params.sessionId, exitController, endSession, restTimer, waitForPendingSetSaves]);
 
   const formatPreviousSet = (prevSet: WorkoutSet): string => {
     return `${prevSet.weightKg ?? 0}kg × ${prevSet.reps ?? 0}回`;
@@ -1184,6 +1207,10 @@ export default function SessionScreen() {
   // 消費 kcal を汚す問題の解消)。store の completed は同期更新なので
   // シート表示判定には store だけで足りる。
   const hasRecordedSets = exercises.some((ex) => ex.sets.some((s) => s.completed));
+  // S4.5-B — シートに出す破棄対象サマリ「経過N分・N種目Nセット」。画面は
+  // elapsedSeconds の interval tick で毎秒 re-render するため、render 計算だけで
+  // 表示は追従する (Alert 時代の「表示時点で再計算」は不要になった)。
+  const exitStats = collectSessionStats(exercises);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
@@ -1232,7 +1259,10 @@ export default function SessionScreen() {
       {/* Main Content */}
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: spacing.xl + insets.bottom },
+        ]}
         showsVerticalScrollIndicator={false}
         // Audit E-07 — keep the focused set-entry row above the keyboard
         // (iOS). Set logging is the most-repeated data entry in the app.
@@ -1787,20 +1817,7 @@ export default function SessionScreen() {
           <Text style={[styles.addExerciseText, { color: colors.primary }]}>+ 種目を追加</Text>
         </TouchableOpacity>
 
-        {/* Spacer for bottom button */}
-        <View style={styles.bottomSpacer} />
       </ScrollView>
-
-      {/* Bottom fixed button — S3-1: 終了シートへ合流 */}
-      <View style={[styles.bottomBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-        <Button
-          title="セッション終了"
-          onPress={openExitSheet}
-          variant="primary"
-          size="lg"
-          fullWidth
-        />
-      </View>
 
       {/* Build 15 / Feature 5-O — per-set role override sheet.
           Opens on long-press of any set row. */}
@@ -2120,7 +2137,11 @@ export default function SessionScreen() {
           [キャンセル] の3択、完了セットゼロは [破棄して終了] / [キャンセル] の
           2択 (空 finished 行を作らない)。メモ入力は保存時のみ意味を持つため
           記録ありのときだけ表示 (finishSession の note へ渡る配線は不変)。
-          保存/破棄の実行中は backdrop タップでも閉じない。 */}
+          保存/破棄の実行中は backdrop タップでも閉じない。
+          S4.5-A — 下部「セッション終了」バーを削除し、入口はヘッダ右「終了」
+          (+ Android back の usePreventRemove 合流) に一本化。
+          S4.5-B — 破棄確認をこのシート1枚に統合: サマリ (経過・種目・セット) と
+          警告をシート内に表示し、[破棄する] で即実行 (旧 iOS Alert 2段目を削除)。 */}
       <BottomSheet
         visible={showExitSheet}
         onClose={() => {
@@ -2132,6 +2153,9 @@ export default function SessionScreen() {
           <View style={styles.exitSheetContent}>
             {hasRecordedSets ? (
               <>
+                <Text style={[styles.exitStatsText, { color: colors.textSecondary }]}>
+                  {formatDiscardSummary(elapsedSeconds, exitStats)}
+                </Text>
                 <Input
                   label="メモ（任意）"
                   placeholder="セッションのメモを入力..."
@@ -2152,10 +2176,13 @@ export default function SessionScreen() {
                   loading={isFinishing}
                   disabled={exitBusy}
                 />
+                <Text style={[styles.exitDiscardWarning, { color: colors.textTertiary }]}>
+                  破棄すると推奨重量の学習・自己ベストからも取り除かれます。元に戻せません。
+                </Text>
               </>
             ) : (
               <Text style={[styles.exitEmptyText, { color: colors.textSecondary }]}>
-                このセッションにはまだ記録がありません。
+                まだ種目が記録されていません。
               </Text>
             )}
             <TouchableOpacity
@@ -2168,15 +2195,17 @@ export default function SessionScreen() {
               disabled={exitBusy}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel="このセッションの記録を破棄して終了"
-              accessibilityHint="確認ダイアログを表示します"
+              accessibilityLabel={
+                hasRecordedSets ? '記録を破棄して終了' : 'セッションを破棄して終了'
+              }
+              accessibilityHint="記録を破棄して終了します。元に戻せません"
               accessibilityState={{ disabled: exitBusy, busy: isDiscarding }}
             >
               {isDiscarding ? (
                 <ActivityIndicator size="small" color={colors.error} />
               ) : (
                 <Text style={[styles.exitDiscardText, { color: colors.error }]}>
-                  このセッションの記録を破棄して終了
+                  {hasRecordedSets ? '破棄する' : 'セッションを破棄して終了'}
                 </Text>
               )}
             </TouchableOpacity>
@@ -2597,17 +2626,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   addExerciseText: { ...typography.labelLarge },
-  bottomSpacer: { height: 80 },
-  // Bottom bar
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-    borderTopWidth: 0.5,
-  },
   // Exercise picker
   exercisePickerContent: { gap: spacing.md },
   filterScroll: { flexGrow: 0 },
@@ -2660,6 +2678,14 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   exitEmptyText: { ...typography.bodyMedium, textAlign: 'center' },
+  // S4.5-B — シート内の破棄対象サマリ + 破棄警告 (旧 Alert 2段目の内容を移設)
+  exitStatsText: { ...typography.bodyMedium, textAlign: 'center' },
+  exitDiscardWarning: {
+    ...typography.bodySmall,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
   exitDiscardBtn: {
     minHeight: 48,
     alignItems: 'center',
