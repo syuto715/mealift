@@ -292,9 +292,11 @@ export default function VolumeDashboardScreen() {
                 <VolumeLandmarkChart summaries={summaries} />
               </>
             ) : (
+              // S4.5-E2 (Codex R1) — 集計対象は筋トレ 9 部位のみ (有酸素は
+              // primary_muscle 非対応で除外) のため「筋トレ部位」スコープの文言
               <Text style={[styles.emptyDataText, { color: colors.textTertiary }]}>
-                今週のセット記録はまだありません。{'\n'}
-                トレーニングを完了するとここに部位別の週間ボリュームが集計されます。
+                今週の筋トレ部位のセット記録はまだありません。{'\n'}
+                筋トレを完了するとここに部位別の週間ボリュームが集計されます。
               </Text>
             )}
           </Card>

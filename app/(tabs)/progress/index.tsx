@@ -777,12 +777,15 @@ export default function ProgressScreen() {
             </View>
             {/* S4.5-E — summarizeVolumeGroups は常に全 9 グループを返すため
                 length > 0 は空判定にならない。全部位 0 セットの週は
-                0-set バー3本の代わりに空状態テキスト (「全て見る」導線は維持)。 */}
+                0-set バー3本の代わりに空状態テキスト (「全て見る」導線は維持)。
+                S4.5-E2 (Codex R1) — 集計対象は筋トレ 9 部位のみ (有酸素は
+                primary_muscle 非対応で除外) のため、有酸素のみの週にも矛盾
+                しない「筋トレ部位」スコープの文言にする。 */}
             {hasAnyVolume(volumePreview) ? (
               <VolumeLandmarkChart summaries={volumePreview} topN={3} compact />
             ) : (
               <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
-                今週のセット記録はまだありません
+                今週の筋トレ部位のセット記録はまだありません
               </Text>
             )}
           </Card>
