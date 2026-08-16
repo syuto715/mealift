@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { getColors, shadow } from '../../src/theme/tokens';
 import { typography } from '../../src/theme/typography';
 import { RecordHub } from '../../src/components/record/RecordHub';
+import { useWorkoutStore } from '../../src/stores/workoutStore';
+import { shouldHideTabBar } from '../../src/domain/tabBarVisibility';
 
 // S2-B ボトムナビ再定義 — 5 タブ → 4 タブ + 中央「＋」記録 FAB。
 //   ホーム / 筋トレ / [＋] / 進捗 / コーチ
@@ -29,20 +31,19 @@ export default function TabLayout() {
   const colors = getColors(scheme);
   const insets = useSafeAreaInsets();
 
-  // S3-1-A 集中モード — ワークアウトセッション表示中はタブバー (FAB 含む) を
-  // 非表示にし、タブ遷移によるセッション離脱経路を構造的に塞ぐ。route 判定は
-  // useSegments (onboarding/_layout.tsx と同型の前例)。セッション終了/破棄で
-  // training へ pop すると segments が変わり自動復帰する。
+  // S3-1-A 集中モード — ワークアウトセッション中はタブバー (FAB 含む) を
+  // 非表示にし、タブ遷移によるセッション離脱経路を構造的に塞ぐ。
+  // S4.5-C — 判定を route 派生 (segments 末尾 === 'session') から
+  // workoutStore.sessionId (セッション進行中の単一ソース) 主体へ是正。route
+  // 判定はセッション中に別 route が乗る遷移 (paywall push 等) や native pop で
+  // 破れ、集中モード中にバーが再表示される regression の原因だった。判定本体は
+  // 純関数 shouldHideTabBar (7経路の回帰テスト付き) に抽出。segments は
+  // push 直後の初回フレーム・未初期化 session 画面・コーチ会話 (S3-2b-B) の
+  // fallback として渡す。保存/破棄の endSession が sessionId を null にすると
+  // 自動復帰する。
   const segments = useSegments();
-  const inWorkoutSession = segments[segments.length - 1] === 'session';
-  // S3-2b-B チャット集中モード — コーチ会話画面 ((tabs)/coach/[id]) でも
-  // タブバーを消す。useSegments は動的 segment をファイル名 '[id]' のまま
-  // 返すため、直前 segment 'coach' との組で会話画面のみを特定できる
-  // (coach/index・相談テーマ・diagnostic/* はバー表示のまま)。
-  const inCoachThread =
-    segments[segments.length - 1] === '[id]' &&
-    segments[segments.length - 2] === 'coach';
-  const hideTabBar = inWorkoutSession || inCoachThread;
+  const workoutSessionActive = useWorkoutStore((s) => s.sessionId !== null);
+  const hideTabBar = shouldHideTabBar(segments, workoutSessionActive);
 
   // Pill-backed icon: filled glyph + 薄青ピル when focused, outline + gray else.
   // The active/inactive *tint* (icon + label color) is driven by
@@ -63,7 +64,7 @@ export default function TabLayout() {
 
   // S3-2b — 中央 FAB は記録ハブ (何を記録しますか? シート) を開く。
   // 4導線 (食事/体重/水分/ワークアウト) の実体は RecordHub 側。
-  // 集中モード (inWorkoutSession) 中はタブバーごと FAB が消えるため、
+  // 集中モード (hideTabBar) 中はタブバーごと FAB が消えるため、
   // シートが開かれることはない。
   const [hubVisible, setHubVisible] = useState(false);
 
