@@ -48,6 +48,7 @@ import { calculateAllCalories, calculateDailyBurn } from '../../../src/domain/ca
 import {
   aggregateWeeklySetsByMuscle,
   summarizeVolumeGroups,
+  hasAnyVolume,
   type VolumeGroupSummary,
 } from '../../../src/domain/volumeLandmark';
 import { VolumeLandmarkChart } from '../../../src/components/training/VolumeLandmarkChart';
@@ -759,7 +760,7 @@ export default function ProgressScreen() {
             Plus-only; Free users don't see this card at all. The
             preview shows the user's top-3 most-trained muscles as
             of this week, with a tap-target to the full dashboard. */}
-        {volumeDashboardUnlocked && volumePreview && volumePreview.length > 0 && (
+        {volumeDashboardUnlocked && volumePreview && (
           <Card>
             <View style={styles.volumeHeader}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>
@@ -774,7 +775,16 @@ export default function ProgressScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-            <VolumeLandmarkChart summaries={volumePreview} topN={3} compact />
+            {/* S4.5-E — summarizeVolumeGroups は常に全 9 グループを返すため
+                length > 0 は空判定にならない。全部位 0 セットの週は
+                0-set バー3本の代わりに空状態テキスト (「全て見る」導線は維持)。 */}
+            {hasAnyVolume(volumePreview) ? (
+              <VolumeLandmarkChart summaries={volumePreview} topN={3} compact />
+            ) : (
+              <Text style={[styles.noDataText, { color: colors.textSecondary }]}>
+                今週のセット記録はまだありません
+              </Text>
+            )}
           </Card>
         )}
 

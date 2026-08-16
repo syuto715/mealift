@@ -25,6 +25,7 @@ import {
   classifyVolume,
   aggregateWeeklySetsByMuscle,
   summarizeVolumeGroups,
+  hasAnyVolume,
   type VolumeGroup,
 } from '../volumeLandmark';
 
@@ -619,5 +620,28 @@ describe('summarizeVolumeGroups', () => {
     const byGroup = new Map(summaries.map((s) => [s.group, s]));
     expect(byGroup.get('back')?.weeklySets).toBe(0);
     expect(byGroup.get('back')?.zone).toBe('below_mev');
+  });
+});
+
+// S4.5-E — 0件時の空状態 gating 用ヘルパー。summarizeVolumeGroups が常に
+// 全 9 グループを返す (length チェック無効) ことへの対になるテスト。
+describe('hasAnyVolume', () => {
+  const zeroSets = Object.fromEntries(
+    VOLUME_GROUPS_ORDER.map((g) => [g, 0]),
+  ) as Record<VolumeGroup, number>;
+
+  it('全部位 0 セットなら false (summarize は 9 行返すが空扱い)', () => {
+    const summaries = summarizeVolumeGroups(zeroSets);
+    expect(summaries).toHaveLength(VOLUME_GROUPS_ORDER.length);
+    expect(hasAnyVolume(summaries)).toBe(false);
+  });
+
+  it('1 部位でもセットがあれば true', () => {
+    const summaries = summarizeVolumeGroups({ ...zeroSets, chest: 1 });
+    expect(hasAnyVolume(summaries)).toBe(true);
+  });
+
+  it('空配列は false', () => {
+    expect(hasAnyVolume([])).toBe(false);
   });
 });
