@@ -19,6 +19,7 @@ import { useNutrition } from '../../../src/hooks/useNutrition';
 import { useProfileStore } from '../../../src/stores/profileStore';
 import { MealType } from '../../../src/types/common';
 import { formatDate, getISODate } from '../../../src/utils/format';
+import { formatCoachTextFull } from '../../../src/domain/coachText';
 import {
   calculateNutrientBalance,
   NutrientBalanceResult,
@@ -692,8 +693,10 @@ ${nutrientList}
                       },
                     ]}
                   >
+                    {/* S4.6-B — Markdown 記号・定型挨拶を render 側で整形
+                        (番号付きリストは EF プロンプトが要求するため保持) */}
                     <Text style={[styles.aiCardText, { color: colors.textPrimary }]}>
-                      {aiAdvice}
+                      {formatCoachTextFull(aiAdvice)}
                     </Text>
                   </View>
                   <View style={styles.aiFeedbackRow}>

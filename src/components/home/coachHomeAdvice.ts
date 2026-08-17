@@ -4,6 +4,7 @@
 // memory)。
 
 import type { LocalCoachAdvice } from '../../types/coachAdvice';
+import { parseCoachText } from '../../domain/coachText';
 
 export interface PickHomeAdviceInput {
   daily: LocalCoachAdvice | null;
@@ -36,12 +37,16 @@ export function pickHomeAdvice({
 // S3-3-D — ホームカード用の要約1文。weekly advice は 300-500 字 (EF プロンプト
 // 仕様) で numberOfLines では文の途中で切れていた。LocalCoachAdvice に title/
 // 要約フィールドは無いため、先頭文 (最初の「。」まで) をクライアントで抽出する。
-// EF プロンプトの構成上、weekly の先頭文は「先週の振り返り」1文なので要約として
-// 成立する。全文は「詳しく見る」タップでコーチ画面へ (既存遷移)。
+// S4.6-B — 抽出前に挨拶・Markdown を除去 (parseCoachText)。永続化済みの
+// advice 行が「こんにちは、ミー先生です。」で始まると、その挨拶文がそのまま
+// 要約になっていた (先頭文抽出が挨拶の「。」で止まる)。タイトル行 (見出し/
+// 全体強調、≤24 code points) が抽出できた場合はそれが最良の1行要約。
 const SUMMARY_MAX_CHARS = 80;
 
 export function summarizeAdviceContent(content: string): string {
-  const trimmed = content.trim();
+  const { title, body } = parseCoachText(content);
+  if (title !== null) return title;
+  const trimmed = body.trim();
   if (trimmed === '') return trimmed;
   const firstStop = trimmed.indexOf('。');
   const firstSentence =

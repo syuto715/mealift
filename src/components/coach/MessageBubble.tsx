@@ -12,6 +12,7 @@ import { getColors } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import type { LocalChatMessage } from '../../types/chat';
+import { stripCoachMarkdown } from '../../domain/coachText';
 
 // v1.5 Stage 1 Phase 1.2 — chat message bubble.
 //
@@ -54,6 +55,15 @@ function MessageBubbleImpl({
     isAssistant &&
     (message.status === 'partial' || message.status === 'error');
 
+  // S4.6-B — assistant 応答のみ Markdown 記号を除去して表示する (EF 出力に
+  // ** / # が混ざる)。挨拶はチャットでは会話として自然なので除去しない。
+  // stripCoachMarkdown は完結ペアのみ除去する規約なので、SSE streaming の
+  // 未閉じ ** チャンクも壊れない。O(n) の純関数で毎 token 再レンダーにも
+  // 耐える (memo 化は既存のまま)。
+  const displayContent = isAssistant
+    ? stripCoachMarkdown(message.content)
+    : message.content;
+
   return (
     <View
       style={[
@@ -72,7 +82,7 @@ function MessageBubbleImpl({
         accessibilityRole="text"
         accessibilityLabel={`${
           isUser ? 'あなた' : 'ミー先生'
-        }: ${message.content || (isInFlight ? '応答を生成中' : '')}`}
+        }: ${displayContent || (isInFlight ? '応答を生成中' : '')}`}
         accessibilityState={{
           busy: isInFlight,
           disabled: message.status === 'error',
@@ -80,7 +90,7 @@ function MessageBubbleImpl({
       >
         {message.content.length > 0 && (
           <Text style={[styles.text, { color: textColor }]}>
-            {message.content}
+            {displayContent}
           </Text>
         )}
         {isInFlight && message.content.length === 0 && (

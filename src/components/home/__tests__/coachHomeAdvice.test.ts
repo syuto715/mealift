@@ -103,4 +103,31 @@ describe('summarizeAdviceContent', () => {
     const out = summarizeAdviceContent(emoji);
     expect(out).toBe('💪'.repeat(80) + '…');
   });
+
+  // S4.6-B — 挨拶・Markdown 除去後に先頭文を取る回帰
+  it('永続化済みの定型挨拶が要約にならない (S4.6-B の本命バグ)', () => {
+    expect(
+      summarizeAdviceContent(
+        'こんにちは、ミー先生です。先週は3回トレーニングできました。今週も継続しましょう。',
+      ),
+    ).toBe('先週は3回トレーニングできました。');
+  });
+
+  it('Markdown 記号は要約から除去される', () => {
+    expect(
+      summarizeAdviceContent('**先週の振り返り**は順調でした。今週も継続を。'),
+    ).toBe('先週の振り返りは順調でした。');
+  });
+
+  it('見出し/全体強調のタイトル行があればそれを要約に使う', () => {
+    expect(
+      summarizeAdviceContent('## 今週の重点\nタンパク質を意識しましょう。'),
+    ).toBe('今週の重点');
+  });
+
+  it('挨拶だけの content は挨拶がそのまま出る (空カードにしない fallback)', () => {
+    expect(summarizeAdviceContent('こんにちは、ミー先生です。')).toBe(
+      'こんにちは、ミー先生です。',
+    );
+  });
 });

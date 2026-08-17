@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -7,6 +7,7 @@ import {
   View,
   useColorScheme,
 } from 'react-native';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useCoachAdviceStore,
@@ -20,6 +21,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import type { CoachAdviceScope } from '../../types/coachAdvice';
 import { pickAdviceCardState, type AdviceCardState } from './adviceCardState';
+import { parseCoachText } from '../../domain/coachText';
 
 // v1.5 Stage 1 Phase 1.4 — embedded coach-advice card.
 //
@@ -88,6 +90,12 @@ export function AdviceCard({ scope, testID }: Props): React.ReactElement | null 
     dismissError();
     void fetchAdvice({ userId, profileId, scope });
   }, [userId, profileId, scope, dismissError, fetchAdvice]);
+
+  // S4.6-B — 挨拶・Markdown 除去 + タイトル抽出 (render ごとの再パースを避ける)
+  const parsed = useMemo(
+    () => (advice ? parseCoachText(advice.content) : null),
+    [advice],
+  );
 
   const scopeLabel = scope === 'weekly' ? '今週' : '今日';
 
@@ -197,13 +205,38 @@ export function AdviceCard({ scope, testID }: Props): React.ReactElement | null 
         </View>
       )}
 
+      {/* S4.6-B — 全文垂れ流し (300-500字 + Markdown 記号露出) をやめ、
+          タイトル行 (あれば) + 本文3行 + 意図的省略 +「詳しく見る」の
+          カード構造に統一。全文は /(tabs)/coach/advice の整形済み表示で読む。 */}
       {cardState === 'content' && advice && (
-        <Text
-          style={[styles.body, { color: colors.textPrimary }]}
-          testID="advice-card-content"
-        >
-          {advice.content}
-        </Text>
+        <>
+          {parsed?.title != null && (
+            <Text
+              style={[styles.adviceTitle, { color: colors.textPrimary }]}
+              numberOfLines={1}
+            >
+              {parsed.title}
+            </Text>
+          )}
+          <Text
+            style={[styles.body, { color: colors.textPrimary }]}
+            numberOfLines={3}
+            testID="advice-card-content"
+          >
+            {parsed?.body ?? ''}
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/coach/advice')}
+            accessibilityRole="button"
+            accessibilityLabel="アドバイスを詳しく見る"
+            accessibilityHint="ミー先生のアドバイス全文を表示します"
+            testID="advice-card-detail"
+          >
+            <Text style={[styles.detailCta, { color: colors.primary }]}>
+              詳しく見る →
+            </Text>
+          </TouchableOpacity>
+        </>
       )}
 
       <Text style={[styles.footer, { color: colors.textTertiary }]}>
@@ -227,6 +260,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+  },
+  // S4.6-B — 要約カード構造のタイトル行 + 詳しく見る CTA
+  adviceTitle: {
+    ...typography.labelMedium,
+    fontWeight: '700',
+  },
+  detailCta: {
+    ...typography.labelMedium,
+    fontWeight: '600',
   },
   headerText: {
     ...typography.titleSmall,
