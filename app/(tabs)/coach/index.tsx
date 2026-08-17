@@ -23,6 +23,7 @@ import {
   NEW_CONVERSATION_OPTIONS,
 } from '../../../src/domain/coachThemes';
 import { displayConversationTitle } from '../../../src/domain/conversationTitle';
+import { formatDateTimeJa } from '../../../src/utils/format';
 import { getColors } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
@@ -361,7 +362,7 @@ export default function CoachConversationList() {
                   {displayConversationTitle(item.title, item.updatedAt)}
                 </Text>
                 <Text style={[styles.rowMeta, { color: colors.textTertiary }]}>
-                  {new Date(item.updatedAt).toLocaleString('ja-JP')}
+                  {formatDateTimeJa(item.updatedAt)}
                 </Text>
               </View>
               <Ionicons

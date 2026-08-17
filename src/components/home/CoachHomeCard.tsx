@@ -13,6 +13,7 @@ import {
   selectLatestAdvice,
 } from '../../stores/coachAdviceStore';
 import { pickHomeAdvice, summarizeAdviceContent } from './coachHomeAdvice';
+import { parseCoachText } from '../../domain/coachText';
 
 // P2-2 — home "ミー先生のひとこと" card. Surfaces the latest ALREADY-CACHED
 // coach advice (read-only) and taps through to the coach chat. It never
@@ -64,26 +65,33 @@ export function CoachHomeCard(): React.ReactElement | null {
   const advice = pickHomeAdvice({ daily, weekly, canDaily, canWeekly });
 
   const goToCoach = () => router.push('/(tabs)/coach');
+  // S4.6-B — 全文表示は専用画面へ (review #7 の redesign でコーチ index から
+  // AdviceCard が外れ、「詳しく見る」の行き先に全文が無くなっていた)。
+  const goToAdvice = () => router.push('/(tabs)/coach/advice');
 
-  // S3-3-D — weekly (300-500字) は numberOfLines で文の途中で切れていたため、
-  // 要約1文 + 「詳しく見る」に (全文はコーチ画面の既存表示で読む)。
+  // S3-3-D — weekly (300-500字) は numberOfLines で文の途中で切れていた。
+  // S4.6-B — タイトル行 (あれば) + 本文 2-3 行 + 意図的省略 +「詳しく見る」の
+  // カード構造に発展。挨拶・Markdown は parseCoachText が除去する。
   // content が空白のみの壊れた cached row は空状態扱いにする。
+  const parsed = advice ? parseCoachText(advice.content) : null;
+  const hasAdviceText = parsed !== null && parsed.body !== '';
+  const body =
+    hasAdviceText && parsed
+      ? parsed.body
+      : '記録するとミー先生からアドバイスが届きます。';
+  // a11y には短い1行要約 (タイトル優先) を使う
   const summary = advice ? summarizeAdviceContent(advice.content) : '';
-  const hasAdviceText = summary !== '';
-  const body = hasAdviceText
-    ? summary
-    : '記録するとミー先生からアドバイスが届きます。';
 
   return (
     // padding md + 下余白なし — ホームの content gap に揃える (1画面目の密度優先)
     <Card padding="md">
       <TouchableOpacity
-        onPress={goToCoach}
+        onPress={hasAdviceText ? goToAdvice : goToCoach}
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityLabel={
           hasAdviceText
-            ? `ミー先生のひとこと。${body} タップで詳しく見る`
+            ? `ミー先生のひとこと。${summary} タップで詳しく見る`
             : 'ミー先生に相談する'
         }
       >
@@ -94,6 +102,14 @@ export function CoachHomeCard(): React.ReactElement | null {
           <Text style={[styles.title, { color: colors.textPrimary }]}>ミー先生のひとこと</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
         </View>
+        {hasAdviceText && parsed?.title != null && (
+          <Text
+            style={[styles.adviceTitle, { color: colors.textPrimary }]}
+            numberOfLines={1}
+          >
+            {parsed.title}
+          </Text>
+        )}
         {/* S2-E — 空状態も textSecondary: textTertiary (4.12:1) は 12pt 通常
             テキストの AA-normal (4.5:1) に未達のため (遡及review Important #2) */}
         <Text
@@ -125,6 +141,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: { ...typography.labelLarge, fontWeight: '600', flex: 1 },
+  // S4.6-B — advice のタイトル行 (見出し/全体強調から抽出)
+  adviceTitle: { ...typography.labelMedium, fontWeight: '700', marginBottom: 2 },
   body: { ...typography.bodySmall, lineHeight: 20 },
   cta: { ...typography.labelMedium, fontWeight: '600', marginTop: spacing.sm },
 });

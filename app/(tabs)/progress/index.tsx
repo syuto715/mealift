@@ -45,6 +45,7 @@ import { useSubscription } from '../../../src/hooks/useSubscription';
 import { historyWindowDaysFor } from '../../../src/domain/subscription/gates';
 import { BodyLog } from '../../../src/types/bodyLog';
 import { calculateAllCalories, calculateDailyBurn } from '../../../src/domain/calories';
+import { getBurnFormulaParts } from '../../../src/utils/burnFormula';
 import {
   aggregateWeeklySetsByMuscle,
   summarizeVolumeGroups,
@@ -54,12 +55,15 @@ import {
 import { VolumeLandmarkChart } from '../../../src/components/training/VolumeLandmarkChart';
 import { router } from 'expo-router';
 
+// S4.6-C — ラベルは日本語表記 (value は PERIOD_DAYS / period state のキー
+// なので不変)。SegmentedControl は flex:1 x5 で 320pt 幅端末でも
+// 1 セグメント ≈49pt — '1か月' (fontSize 12 で ≈31pt) は収まる。
 const PERIOD_SEGMENTS = [
-  { label: '1W', value: '1W' },
-  { label: '1M', value: '1M' },
-  { label: '3M', value: '3M' },
-  { label: '6M', value: '6M' },
-  { label: '1Y', value: '1Y' },
+  { label: '1週', value: '1W' },
+  { label: '1か月', value: '1M' },
+  { label: '3か月', value: '3M' },
+  { label: '6か月', value: '6M' },
+  { label: '1年', value: '1Y' },
 ];
 
 const PERIOD_DAYS: Record<string, number> = {
@@ -212,6 +216,21 @@ export default function ProgressScreen() {
     const totalBurn = calculateDailyBurn(tdee, todayWorkoutCal);
     return { bmr, tdee, workoutCal: todayWorkoutCal, totalBurn };
   }, [profile, todayWorkoutCal]);
+
+  // S4.6-E — 式表示「基礎代謝 + 活動 + ワークアウト = 合計」の各項。
+  // 合計は tdee + round(workout×0.5) (二重計上回避の domain 契約) のため、
+  // 各項は残差方式 (burnFormula) で導出し、表示された式の算術を常に成立させる。
+  const burnParts = useMemo(
+    () =>
+      calorieBreakdown
+        ? getBurnFormulaParts(
+            calorieBreakdown.bmr,
+            calorieBreakdown.tdee,
+            calorieBreakdown.totalBurn,
+          )
+        : null,
+    [calorieBreakdown],
+  );
 
   // v1.5 UI sprint Phase 1c — read the REAL HealthKit authorization state from
   // the same single source of truth the Settings screen uses
@@ -688,40 +707,53 @@ export default function ProgressScreen() {
         </Card>
 
         {/* Calorie burn breakdown */}
-        {calorieBreakdown && (
+        {calorieBreakdown && burnParts && (
           <Card>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
               {isViewingToday ? '今日の消費カロリー' : `${format(parseISO(selectedDate), 'M/d')}の消費カロリー`}
             </Text>
-            <View style={styles.burnGrid}>
-              <View style={styles.burnItem}>
+            {/* S4.6-E — 2x2 グリッド (合計と各項の関係が読めない + 表示合計が
+                各項の和と不一致) を式表示に。各項は burnFormula の残差方式で
+                式の算術が常に成立する。ワークアウト項はセッション推定の 50%
+                (二重計上回避) — 旧コード内コメントの事実を脚注で可視化。 */}
+            <View
+              style={styles.burnFormulaRow}
+              accessible
+              accessibilityLabel={`基礎代謝${burnParts.bmrPart}、活動${burnParts.activityPart}、ワークアウト${burnParts.workoutPart}、合計${burnParts.total}キロカロリー`}
+            >
+              <View style={styles.burnTerm}>
                 <Text style={[styles.burnValue, { color: colors.textPrimary }]}>
-                  {calorieBreakdown.bmr}
+                  {burnParts.bmrPart.toLocaleString()}
                 </Text>
                 <Text style={[styles.burnLabel, { color: colors.textSecondary }]}>基礎代謝</Text>
               </View>
-              <View style={styles.burnItem}>
-                {/* v1.5.2 Sprint 3 — 活動消費 = TDEE − 基礎代謝 (日常の生活活動分)。
-                    各項は個別の指標で、合計消費 (HealthKit 連携時は実測値を含むため
-                    基礎代謝+活動消費+ワークアウト と必ずしも一致しない) が総量の正値。 */}
+              <Text style={[styles.burnOperator, { color: colors.textTertiary }]}>+</Text>
+              <View style={styles.burnTerm}>
                 <Text style={[styles.burnValue, { color: colors.textPrimary }]}>
-                  {Math.max(0, calorieBreakdown.tdee - calorieBreakdown.bmr)}
+                  {burnParts.activityPart.toLocaleString()}
                 </Text>
-                <Text style={[styles.burnLabel, { color: colors.textSecondary }]}>活動消費</Text>
+                <Text style={[styles.burnLabel, { color: colors.textSecondary }]}>活動</Text>
               </View>
-              <View style={styles.burnItem}>
+              <Text style={[styles.burnOperator, { color: colors.textTertiary }]}>+</Text>
+              <View style={styles.burnTerm}>
                 <Text style={[styles.burnValue, { color: colors.calorie }]}>
-                  {calorieBreakdown.workoutCal}
+                  {burnParts.workoutPart.toLocaleString()}
                 </Text>
                 <Text style={[styles.burnLabel, { color: colors.textSecondary }]}>ワークアウト</Text>
               </View>
-              <View style={styles.burnItem}>
-                <Text style={[styles.burnValue, { color: colors.primary }]}>
-                  {calorieBreakdown.totalBurn}
+              <Text style={[styles.burnOperator, { color: colors.textTertiary }]}>=</Text>
+              <View style={styles.burnTerm}>
+                <Text style={[styles.burnValue, styles.burnTotalValue, { color: colors.primary }]}>
+                  {burnParts.total.toLocaleString()}
                 </Text>
-                <Text style={[styles.burnLabel, { color: colors.textSecondary }]}>合計消費</Text>
+                <Text style={[styles.burnLabel, { color: colors.textSecondary }]}>合計 kcal</Text>
               </View>
             </View>
+            {burnParts.workoutPart > 0 && (
+              <Text style={[styles.burnFootnote, { color: colors.textTertiary }]}>
+                ※ 活動分との二重計上を避けるため、ワークアウト消費の50%を加算しています
+              </Text>
+            )}
             <View style={[styles.healthKitStatus, { backgroundColor: colors.surfaceSecondary }]}>
               <Ionicons
                 name="heart-outline"
@@ -1153,24 +1185,41 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: spacing.lg,
   },
-  // Calorie burn section
-  burnGrid: {
+  // Calorie burn section — S4.6-E 式表示 (旧 2x2 burnGrid/burnItem を置換)
+  burnFormulaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  burnItem: {
-    width: '46%',
     alignItems: 'center',
+    justifyContent: 'center',
+    columnGap: spacing.xs,
+    rowGap: spacing.sm,
     paddingVertical: spacing.md,
+  },
+  burnTerm: {
+    alignItems: 'center',
+  },
+  burnOperator: {
+    ...typography.numberLarge,
+    fontSize: 18,
+    marginBottom: spacing.md,
   },
   burnValue: {
     ...typography.numberLarge,
-    fontSize: 24,
+    // 4項 + 演算子を1行に収めるため旧 24 から縮小 (合計のみ強調)
+    fontSize: 18,
+  },
+  burnTotalValue: {
+    fontSize: 22,
   },
   burnLabel: {
     ...typography.labelSmall,
     marginTop: spacing.xs,
+    fontSize: 10,
+  },
+  burnFootnote: {
+    ...typography.labelSmall,
+    fontSize: 10,
+    marginBottom: spacing.sm,
   },
   healthKitStatus: {
     flexDirection: 'row',

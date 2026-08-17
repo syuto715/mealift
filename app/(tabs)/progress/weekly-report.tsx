@@ -18,6 +18,7 @@ import { spacing } from '../../../src/theme/spacing';
 import { Card, ProgressRing, Button } from '../../../src/components/ui';
 import { useSubscription } from '../../../src/hooks/useSubscription';
 import { useProfileStore } from '../../../src/stores/profileStore';
+import { formatDateJa } from '../../../src/utils/format';
 import {
   WeeklyReportData,
   WeeklyNarrative,
@@ -394,7 +395,7 @@ export default function WeeklyReportScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.dateRange, { color: colors.textSecondary }]}>
-          {report.weekStart} ~ {report.weekEnd}
+          {formatDateJa(report.weekStart)} 〜 {formatDateJa(report.weekEnd)}
         </Text>
 
         {/* Overall Score */}

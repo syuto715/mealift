@@ -42,14 +42,10 @@ const APP_STORE_SUBSCRIPTIONS_URL = 'itms-apps://apps.apple.com/account/subscrip
 
 // S4.5-F — バージョン表記は app.config.ts の version (Constants.expoConfig
 // 経由) が真実のソース。APP_CONFIG.VERSION は expoConfig が取れない稀ケースの
-// fallback のみ。iOS は binary の build number (EAS remote autoIncrement) を
-// 併記して「v1.6.1 (36)」形式。Android は platform manifest が空のため
-// バージョンのみ (expo-application は直接依存に無く新規依存は禁止)。
+// fallback のみ。S4.6-F — build number 併記は廃止 (「v1.6.1」のみ)。
 const VERSION_LABEL = buildVersionLabel({
   expoVersion: Constants.expoConfig?.version,
   fallbackVersion: APP_CONFIG.VERSION,
-  nativeBuildNumber:
-    Platform.OS === 'ios' ? Constants.platform?.ios?.buildNumber : null,
 });
 
 const STORAGE_KEY_REST_TIMER = 'setting_rest_timer';

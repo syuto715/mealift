@@ -18,6 +18,46 @@ export function formatTimeAgo(date: string | Date): string {
   return formatDistanceToNow(d, { addSuffix: true, locale: ja });
 }
 
+// S4.6-C — 日本語の表示フォーマッタ (表示専用の追加。getISODate /
+// localDateOf 等の TZ 規約ユーティリティ・データキーには触れない)。
+// 当年は年を省略する (「8月17日」/「2025年12月31日」)。now はテスト注入用。
+
+/** 日付の日本語表示。'yyyy-MM-dd' 文字列 (parseISO = local midnight、
+ *  new Date('yyyy-MM-dd') の UTC midnight 事故を避ける) と Date を受ける。
+ *  不正な文字列は入力をそのまま返す防御。 */
+export function formatDateJa(
+  date: string | Date,
+  now: Date = new Date(),
+): string {
+  const d = typeof date === 'string' ? parseISO(date) : date;
+  if (Number.isNaN(d.getTime())) {
+    return typeof date === 'string' ? date : '';
+  }
+  const pattern =
+    d.getFullYear() === now.getFullYear() ? 'M月d日' : 'yyyy年M月d日';
+  return format(d, pattern, { locale: ja });
+}
+
+/** UTC timestamp の日本語日時表示 (秒なし)。DB 由来の表記は 'Z'・'+00:00'・
+ *  naive space 形式が混在し得るため、localDateOf と同じ規約で TZ 指定なし
+ *  入力を UTC として正規化してから local 表示する。不正形式は入力を
+ *  そのまま返す防御。 */
+export function formatDateTimeJa(
+  utcIso: string,
+  now: Date = new Date(),
+): string {
+  const trimmed = utcIso.trim();
+  const hasTz = /(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed);
+  const normalized = hasTz ? trimmed : `${trimmed.replace(' ', 'T')}Z`;
+  const d = parseISO(normalized);
+  if (Number.isNaN(d.getTime())) return trimmed;
+  const pattern =
+    d.getFullYear() === now.getFullYear()
+      ? 'M月d日 HH:mm'
+      : 'yyyy年M月d日 HH:mm';
+  return format(d, pattern, { locale: ja });
+}
+
 export function formatNumber(value: number, decimals: number = 0): string {
   return value.toFixed(decimals);
 }

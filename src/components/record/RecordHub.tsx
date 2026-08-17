@@ -155,10 +155,12 @@ export function RecordHub({ visible, onClose }: RecordHubProps) {
     hint: string;
     onPress: () => void;
   }[] = [
+    // S4.6-D — 押した結果が分かる動詞付き形式に統一 (accessibilityLabel は
+    // opt.label をそのまま使うため自動追従)。key/testID は e2e 安定性のため不変。
     { key: 'food', icon: 'restaurant-outline', label: '食事を記録', hint: '食品追加画面を開きます', onPress: handleFood },
-    { key: 'weight', icon: 'scale-outline', label: '体重', hint: '体重入力を開きます', onPress: handleWeight },
-    { key: 'water', icon: 'water-outline', label: '水分', hint: 'シート内で水分を記録します', onPress: () => setMode('water') },
-    { key: 'workout', icon: 'barbell-outline', label: 'ワークアウト', hint: 'ワークアウトセッションを開始します', onPress: handleWorkout },
+    { key: 'weight', icon: 'scale-outline', label: '体重を記録', hint: '体重入力を開きます', onPress: handleWeight },
+    { key: 'water', icon: 'water-outline', label: '水分を記録', hint: 'シート内で水分を記録します', onPress: () => setMode('water') },
+    { key: 'workout', icon: 'barbell-outline', label: '筋トレを開始', hint: '筋トレセッションを開始します', onPress: handleWorkout },
   ];
 
   return (
