@@ -27,8 +27,11 @@ import {
 //   既定タブとして復活する。`href: null` でタブバーから隠しつつ deep link /
 //   router.push は維持、が確立済みパターン。
 //
-// 選択 UI: 選択中は薄い青ピル背景 + 塗りアイコン + 青、非選択は線アイコン +
-// やや濃いグレー (textSecondary)。
+// 選択 UI (S4.6-A): 選択中は薄青の 32px 真円 + 濃青の塗りアイコン + 濃青ラベル、
+// 非選択は背景なし + 線アイコン + やや濃いグレー (textSecondary)。
+// 旧実装 (54x28 楕円ピル + 同系色 primary) は「薄い青丸だけに見える」と
+// 外部UXレビューで指摘 — 同一色相の wash-out (light 3.95:1 / dark 3.48:1)
+// と楕円がアイコンを飲む形状が原因。
 export default function TabLayout() {
   const scheme = useColorScheme() ?? 'light';
   const colors = getColors(scheme);
@@ -56,17 +59,23 @@ export default function TabLayout() {
     workoutSessionActive,
   );
 
-  // Pill-backed icon: filled glyph + 薄青ピル when focused, outline + gray else.
-  // The active/inactive *tint* (icon + label color) is driven by
-  // tabBarActiveTintColor / tabBarInactiveTintColor below, so `color` already
-  // carries the right value; the pill only adds the focused background.
+  // Circle-backed icon (S4.6-A): filled glyph + 薄青の 32px 真円 when focused,
+  // outline + gray else. The active/inactive *tint* (icon + label color) is
+  // driven by tabBarActiveTintColor / tabBarInactiveTintColor below, so
+  // `color` already carries the right value; the circle only adds the focused
+  // background. 32px が clip-safe な上限: bottom-tabs (uikit) のアイコン枠は
+  // 31x28 固定 + overflow visible なので、はみ出しは 0.5/2px に収まる
+  // (36px はラベルに 4px 食い込む)。dark はバー (#161B22) と tint の差が
+  // ほぼ無い (~1.16:1) ため alpha を '26' (15%) に上げて円を知覚可能にする。
   const tabIcon =
     (filled: keyof typeof Ionicons.glyphMap, outline: keyof typeof Ionicons.glyphMap) =>
     ({ color, focused }: { color: string; focused: boolean }) => (
       <View
         style={[
           styles.iconPill,
-          focused && { backgroundColor: colors.primary + '1A' },
+          focused && {
+            backgroundColor: colors.primary + (scheme === 'dark' ? '26' : '1A'),
+          },
         ]}
       >
         <Ionicons name={focused ? filled : outline} size={22} color={color} />
@@ -84,7 +93,13 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
+        // S4.6-A — 選択色は同系色 wash-out を避け scheme 別の濃青にする。
+        // react-navigation は activeTintColor でアイコンとラベルを同時に
+        // 着色する。light: primaryDark #1557B0 (円上 6.10:1 / 白上 6.95:1)、
+        // dark: primaryLight #4A9AF5 (円上 5.11:1 / #161B22 上 5.96:1)。
+        // primaryDark を dark で使うのは 2.26:1 で不可 (S3-3 mapback 契約)。
+        tabBarActiveTintColor:
+          scheme === 'dark' ? colors.primaryLight : colors.primaryDark,
         // 非選択は textTertiary (薄すぎ) ではなく textSecondary でやや濃いグレー。
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
@@ -230,10 +245,11 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+  // S4.6-A — 選択背景は 32px 真円 (旧: paddingH16/V3 の 54x28 楕円ピル)。
   iconPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 3,
-    borderRadius: 9999,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
