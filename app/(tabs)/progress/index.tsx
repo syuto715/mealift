@@ -54,12 +54,15 @@ import {
 import { VolumeLandmarkChart } from '../../../src/components/training/VolumeLandmarkChart';
 import { router } from 'expo-router';
 
+// S4.6-C — ラベルは日本語表記 (value は PERIOD_DAYS / period state のキー
+// なので不変)。SegmentedControl は flex:1 x5 で 320pt 幅端末でも
+// 1 セグメント ≈49pt — '1か月' (fontSize 12 で ≈31pt) は収まる。
 const PERIOD_SEGMENTS = [
-  { label: '1W', value: '1W' },
-  { label: '1M', value: '1M' },
-  { label: '3M', value: '3M' },
-  { label: '6M', value: '6M' },
-  { label: '1Y', value: '1Y' },
+  { label: '1週', value: '1W' },
+  { label: '1か月', value: '1M' },
+  { label: '3か月', value: '3M' },
+  { label: '6か月', value: '6M' },
+  { label: '1年', value: '1Y' },
 ];
 
 const PERIOD_DAYS: Record<string, number> = {

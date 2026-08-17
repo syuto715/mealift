@@ -6,6 +6,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { Card, ProgressRing } from '../ui';
 import { WeeklyReportData } from '../../types/weeklyReport';
+import { formatDateJa } from '../../utils/format';
 
 interface WeeklyReportCardProps {
   report: WeeklyReportData;
@@ -36,7 +37,7 @@ export function WeeklyReportCard({ report, onPress }: WeeklyReportCardProps) {
             </Text>
           </View>
           <Text style={[styles.dateRange, { color: colors.textTertiary }]}>
-            {report.weekStart} ~ {report.weekEnd}
+            {formatDateJa(report.weekStart)} 〜 {formatDateJa(report.weekEnd)}
           </Text>
         </View>
 

@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import { formatDateJa } from '../../../src/utils/format';
 import { getColors, radius } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
@@ -223,7 +224,7 @@ export default function PhotosScreen() {
                 contentFit="cover"
               />
               <Text style={[styles.compareDate, { color: colors.textSecondary }]}>
-                {photo.date}
+                {formatDateJa(photo.date)}
               </Text>
             </View>
           ))}
@@ -323,7 +324,7 @@ export default function PhotosScreen() {
                   contentFit="cover"
                 />
                 <View style={[styles.tileDateOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                  <Text style={styles.tileDateText}>{item.date}</Text>
+                  <Text style={styles.tileDateText}>{formatDateJa(item.date)}</Text>
                 </View>
                 <View style={[styles.tilePoseBadge, { backgroundColor: colors.primary }]}>
                   <Text style={styles.tilePoseText}>
@@ -399,7 +400,7 @@ export default function PhotosScreen() {
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
               <Text style={styles.viewerDate}>
-                {viewerPhoto?.date}
+                {viewerPhoto ? formatDateJa(viewerPhoto.date) : ''}
               </Text>
               <TouchableOpacity
                 onPress={() => viewerPhoto && handleDelete(viewerPhoto)}
