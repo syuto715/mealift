@@ -101,6 +101,9 @@ export function AdviceCard({ scope, testID }: Props): React.ReactElement | null 
 
   if (cardState === 'locked') {
     return (
+      // S4.6-B3 (Codex R2) — locked 分岐も accessible グループ化を解除:
+      // 子の ProInlineCTA (TouchableOpacity) が個別フォーカスできず、
+      // スクリーンリーダーでプラン画面へ進めなかった (content 側 B2 と同クラス)。
       <View
         style={[
           styles.card,
@@ -109,9 +112,6 @@ export function AdviceCard({ scope, testID }: Props): React.ReactElement | null 
             borderColor: colors.border,
           },
         ]}
-        accessible
-        accessibilityRole="summary"
-        accessibilityLabel={`ミー先生からの${scopeLabel}のアドバイス。 Plus プランで利用可能`}
         testID={testID ?? 'advice-card-locked'}
       >
         <View style={styles.headerRow}>
