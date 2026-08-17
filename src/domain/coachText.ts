@@ -12,8 +12,17 @@
 // (最小レンダリングの太字化ではなく)。streaming 中の未閉じ ** は
 // 完結ペアのみ除去する規約により素通しになる (チャンク単位で安全)。
 
-/** タイトルとして扱う最大長 (code point — 絵文字を分断しない)。 */
+/** タイトルとして扱う最大長 (近似 grapheme — 絵文字を分断しない)。 */
 const MAX_TITLE_CODEPOINTS = 24;
+
+/** 近似 grapheme 数 (S4.6-B2, Codex R1 Nit)。Hermes に Intl.Segmenter が
+ *  無いため、ZWJ 連結絵文字 (🏋️‍♀️ = 4 code points 等) が code point 数えで
+ *  水増しされて正当な短タイトルが落ちるのを、ZWJ と異体字セレクタを
+ *  カウントから除外して緩和する (テキスト自体は変更しない)。 */
+function countApproxGraphemes(text: string): number {
+  // U+200D = ZWJ, U+FE0F = variation selector-16
+  return Array.from(text.replace(/[‍️]/g, '')).length;
+}
 
 // 定型挨拶: 先頭一致のみ (本文中の自己言及は対象外)。挨拶と自己紹介は
 // 「こんにちは、ミー先生です。」のように連なるため、各パターンを繰り返し
@@ -91,7 +100,7 @@ export function parseCoachText(content: string): ParsedCoachText {
 
   if (rawTitle !== null) {
     const title = stripCoachMarkdown(rawTitle).trim();
-    if (title !== '' && Array.from(title).length <= MAX_TITLE_CODEPOINTS) {
+    if (title !== '' && countApproxGraphemes(title) <= MAX_TITLE_CODEPOINTS) {
       const body = stripCoachMarkdown(
         lines.slice(firstIdx + 1).join('\n'),
       ).trim();

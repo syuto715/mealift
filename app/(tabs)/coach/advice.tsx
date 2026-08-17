@@ -22,7 +22,7 @@ import { ProInlineCTA } from '../../../src/components/shared/ProInlineCTA';
 import { getColors } from '../../../src/theme/tokens';
 import { typography } from '../../../src/theme/typography';
 import { spacing } from '../../../src/theme/spacing';
-import { formatDate } from '../../../src/utils/format';
+import { formatDateJa, localDateOf } from '../../../src/utils/format';
 
 // S4.6-B — ミー先生アドバイスの全文表示画面。
 //
@@ -121,8 +121,12 @@ export default function CoachAdviceScreen() {
           </View>
         ) : (
           <>
+            {/* S4.6-B2 (Codex R1) — generatedAt は UTC timestamp (naive 表記
+                混在)。formatDate は parseISO 直呼びで naive を local 誤解釈
+                するため、localDateOf (UTC 正規化 → local 日付) を通してから
+                formatDateJa (当年は年省略・他年は年付き) で表示する。 */}
             <Text style={[styles.meta, { color: colors.textTertiary }]}>
-              {scopeLabel}のアドバイス ・ {formatDate(advice.generatedAt, 'M月d日')}
+              {scopeLabel}のアドバイス ・ {formatDateJa(localDateOf(advice.generatedAt))}
             </Text>
             {parsed.title != null && (
               <Text style={[styles.title, { color: colors.textPrimary }]}>

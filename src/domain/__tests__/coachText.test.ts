@@ -95,6 +95,14 @@ describe('parseCoachText', () => {
     expect(parsed.title).toBe(title);
   });
 
+  it('ZWJ 連結絵文字クラスタは水増しカウントしない (S4.6-B2)', () => {
+    // 🏋️‍♀️ = 4 code points (🏋 + VS16 + ZWJ + ♀ + VS16) だが見た目 1 文字。
+    // code point 数えだと 5 個で 24 超になりタイトル落ちしていた。
+    const title = '🏋️‍♀️'.repeat(5) + 'トレ計画';
+    const parsed = parseCoachText(`## ${title}\n本文。`);
+    expect(parsed.title).toBe(title);
+  });
+
   it('挨拶だけの content は挨拶を本文として残す (空カードにしない)', () => {
     const parsed = parseCoachText('こんにちは、ミー先生です。');
     expect(parsed.title).toBeNull();

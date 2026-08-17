@@ -148,6 +148,10 @@ export function AdviceCard({ scope, testID }: Props): React.ReactElement | null 
   }
 
   return (
+    // S4.6-B2 (Codex R1) — `accessible` の親グループ化をやめる: 子に
+    // 「詳しく見る」「再試行」の Touchable を含むため、グループ化すると
+    // スクリーンリーダーで個別フォーカスできず全文画面へ到達できない。
+    // 各子要素 (ヘッダ・本文・ボタン) が個別に読み上げられる。
     <View
       style={[
         styles.card,
@@ -156,13 +160,6 @@ export function AdviceCard({ scope, testID }: Props): React.ReactElement | null 
           borderColor: colors.border,
         },
       ]}
-      accessible
-      accessibilityRole="summary"
-      accessibilityLabel={`ミー先生からの${scopeLabel}のアドバイス`}
-      accessibilityState={{
-        busy: cardState === 'loading',
-        disabled: cardState === 'error',
-      }}
       testID={testID ?? `advice-card-${scope}`}
     >
       <View style={styles.headerRow}>
@@ -207,37 +204,49 @@ export function AdviceCard({ scope, testID }: Props): React.ReactElement | null 
 
       {/* S4.6-B — 全文垂れ流し (300-500字 + Markdown 記号露出) をやめ、
           タイトル行 (あれば) + 本文3行 + 意図的省略 +「詳しく見る」の
-          カード構造に統一。全文は /(tabs)/coach/advice の整形済み表示で読む。 */}
-      {cardState === 'content' && advice && (
-        <>
-          {parsed?.title != null && (
+          カード構造に統一。全文は /(tabs)/coach/advice の整形済み表示で読む。
+          S4.6-B2 (Codex R1) — content が空白のみの壊れた cached row は
+          空本文 + 空の全文画面への CTA になるため、fallback 文言に落とし
+          CTA を出さない。 */}
+      {cardState === 'content' &&
+        advice &&
+        (parsed !== null && parsed.body !== '' ? (
+          <>
+            {parsed.title != null && (
+              <Text
+                style={[styles.adviceTitle, { color: colors.textPrimary }]}
+                numberOfLines={1}
+              >
+                {parsed.title}
+              </Text>
+            )}
             <Text
-              style={[styles.adviceTitle, { color: colors.textPrimary }]}
-              numberOfLines={1}
+              style={[styles.body, { color: colors.textPrimary }]}
+              numberOfLines={3}
+              testID="advice-card-content"
             >
-              {parsed.title}
+              {parsed.body}
             </Text>
-          )}
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/coach/advice')}
+              accessibilityRole="button"
+              accessibilityLabel="アドバイスを詳しく見る"
+              accessibilityHint="ミー先生のアドバイス全文を表示します"
+              testID="advice-card-detail"
+            >
+              <Text style={[styles.detailCta, { color: colors.primary }]}>
+                詳しく見る →
+              </Text>
+            </TouchableOpacity>
+          </>
+        ) : (
           <Text
-            style={[styles.body, { color: colors.textPrimary }]}
-            numberOfLines={3}
+            style={[styles.body, { color: colors.textSecondary }]}
             testID="advice-card-content"
           >
-            {parsed?.body ?? ''}
+            アドバイスを準備しています。しばらくしてからもう一度お試しください。
           </Text>
-          <TouchableOpacity
-            onPress={() => router.push('/(tabs)/coach/advice')}
-            accessibilityRole="button"
-            accessibilityLabel="アドバイスを詳しく見る"
-            accessibilityHint="ミー先生のアドバイス全文を表示します"
-            testID="advice-card-detail"
-          >
-            <Text style={[styles.detailCta, { color: colors.primary }]}>
-              詳しく見る →
-            </Text>
-          </TouchableOpacity>
-        </>
-      )}
+        ))}
 
       <Text style={[styles.footer, { color: colors.textTertiary }]}>
         ミー先生 (AI コーチ)
