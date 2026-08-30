@@ -25,7 +25,13 @@ import type { MenuItemRecord } from '../types';
 // Codex round 2 で発見、 +18 dropped rows 復活)。
 // nakau は ミニ を持たず、 (小盛, 並盛, 大盛) の 3-size chain が
 // 主流。 sukiya は ミニ / 中盛 / メガ / N倍盛 / ごはん少なめ 併用。
-const SIZE_LABELS = [
+//
+// S5b: chain ごとに label 体系が分岐した (なか卯 2026-08-19 版 PDF が
+// 麺類の単独漢字 size と `W 〜` size を導入) ため、 label list は
+// パラメータ化した。 既存 chain (sukiya 等) は DEFAULT_SIZE_LABELS の
+// まま呼び出すので抽出結果は完全不変。 配列順 = サイズ昇順 が契約
+// (groupSizeRows の単調増加判定が依存)。
+export const DEFAULT_SIZE_LABELS: readonly string[] = [
   'ごはん少なめ',
   '小盛',
   'ミニ',
@@ -38,12 +44,28 @@ const SIZE_LABELS = [
   '３倍盛',
   '４倍盛',
   '５倍盛',
-] as const;
+];
 
 // "ミニ 488 15.8 16.1 69.8 2.8" を捕捉。
 // 数値は整数 (kcal) または 小数点付き (g)。
-const SIZE_ROW_REGEX =
-  /^(ごはん少なめ|小盛|ミニ|並盛|中盛|大盛|特盛|メガ|[2-5]倍盛|[２-５]倍盛)\s+(\d+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)$/;
+// 全角 [２-５]倍盛 は normalizeSize と対で半角にも matchさせる。
+function buildSizeRowRegex(labels: readonly string[]): RegExp {
+  // 長い label を先に置かないと alternation が prefix で短絡する
+  // (例: `小` が `小盛` を食う)。全角数字 label は半角版も許容。
+  const alternation = [...labels]
+    .sort((a, b) => b.length - a.length)
+    .flatMap((l) => {
+      const escaped = l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const halfWidth = escaped.replace(/[２３４５]/g, (c) =>
+        String.fromCharCode(c.charCodeAt(0) - 0xfee0),
+      );
+      return halfWidth === escaped ? [escaped] : [escaped, halfWidth];
+    })
+    .join('|');
+  return new RegExp(
+    `^(${alternation})\\s+(\\d+)\\s+(\\d+(?:\\.\\d+)?)\\s+(\\d+(?:\\.\\d+)?)\\s+(\\d+(?:\\.\\d+)?)\\s+(\\d+(?:\\.\\d+)?)$`,
+  );
+}
 
 export interface ZenshoSizeRow {
   size: string;
@@ -55,11 +77,15 @@ export interface ZenshoSizeRow {
 }
 
 // Step 1: PDF text から size 行を抽出。
-export function extractSizeRows(rawText: string): ZenshoSizeRow[] {
+export function extractSizeRows(
+  rawText: string,
+  labels: readonly string[] = DEFAULT_SIZE_LABELS,
+): ZenshoSizeRow[] {
+  const regex = buildSizeRowRegex(labels);
   const rows: ZenshoSizeRow[] = [];
   for (const line of rawText.split(/\r?\n/)) {
     const trimmed = line.trim();
-    const m = trimmed.match(SIZE_ROW_REGEX);
+    const m = trimmed.match(regex);
     if (!m) continue;
     rows.push({
       size: normalizeSize(m[1]),
@@ -79,13 +105,26 @@ function normalizeSize(s: string): string {
   return s.replace(/２/g, '2').replace(/３/g, '3').replace(/４/g, '4').replace(/５/g, '5');
 }
 
-function sizeIndex(size: string): number {
-  // SIZE_LABELS は全角版、 input は normalize 済 → 比較は片寄せ。
+function sizeIndex(size: string, labels: readonly string[]): number {
+  // label list は全角版を含みうる、 input は normalize 済 → 比較は片寄せ。
   const normalized = normalizeSize(size);
-  for (let i = 0; i < SIZE_LABELS.length; i += 1) {
-    if (normalizeSize(SIZE_LABELS[i]) === normalized) return i;
+  for (let i = 0; i < labels.length; i += 1) {
+    if (normalizeSize(labels[i]) === normalized) return i;
   }
   return -1;
+}
+
+// size label の「family」— なか卯 2026-08-19 版 PDF は 1 メニュー card
+// 内で同一 family の label しか使わない (丼 = 〜盛 / 麺 = 単独漢字 /
+// 肉 2 倍系 = `W 〜`)。 family が切り替わったら index の大小に関係なく
+// 新しい card。 これが無いと「大盛 → W 小盛 → … → W 大盛 → 小盛」の
+// 並びで W card と次の base card が index 単調増加のまま融合する。
+// 既存 chain (sukiya 等) の label は全て 'std' family なので、 この
+// 判定は従来の index-reset 判定と完全に同値 = 無回帰。
+function sizeFamily(size: string): string {
+  if (size.startsWith('W ')) return 'W';
+  if (size === '小' || size === '並' || size === '大' || size === '特') return 'plain';
+  return 'std';
 }
 
 // Step 2: 連続 size 行を group に分割。
@@ -96,7 +135,10 @@ function sizeIndex(size: string): number {
 //     [ミニ, 並盛, 中盛, 大盛, 特盛, メガ]            → group B (牛丼)
 //     [ミニ, 並盛, 中盛, 大盛, 特盛, メガ]            → group C (ねぎ玉牛丼)
 //     ...
-export function groupSizeRows(rows: ZenshoSizeRow[]): ZenshoSizeRow[][] {
+export function groupSizeRows(
+  rows: ZenshoSizeRow[],
+  labels: readonly string[] = DEFAULT_SIZE_LABELS,
+): ZenshoSizeRow[][] {
   const groups: ZenshoSizeRow[][] = [];
   let current: ZenshoSizeRow[] = [];
   for (const row of rows) {
@@ -104,10 +146,12 @@ export function groupSizeRows(rows: ZenshoSizeRow[]): ZenshoSizeRow[][] {
       current.push(row);
       continue;
     }
-    const prevIdx = sizeIndex(current[current.length - 1].size);
-    const curIdx = sizeIndex(row.size);
-    // 新 group の判定: 現サイズが直前サイズより前方 OR 同じ
-    if (curIdx <= prevIdx) {
+    const prev = current[current.length - 1];
+    const prevIdx = sizeIndex(prev.size, labels);
+    const curIdx = sizeIndex(row.size, labels);
+    // 新 group の判定: 現サイズが直前サイズより前方 OR 同じ、
+    // または size family の切り替わり (sizeFamily コメント参照)。
+    if (curIdx <= prevIdx || sizeFamily(row.size) !== sizeFamily(prev.size)) {
       groups.push(current);
       current = [row];
     } else {
@@ -162,9 +206,10 @@ export function parseZenshoPdf(
   rawText: string,
   menuNames: string[],
   meta: { sourceUrl: string; sourceCapturedAt: string; restaurantCategory?: string },
+  labels: readonly string[] = DEFAULT_SIZE_LABELS,
 ): { items: MenuItemRecord[]; totalGroups: number; unmappedGroups: number } {
-  const rows = extractSizeRows(rawText);
-  const groups = groupSizeRows(rows);
+  const rows = extractSizeRows(rawText, labels);
+  const groups = groupSizeRows(rows, labels);
   const { items, unmappedGroups } = applyMenuNames(groups, menuNames, meta);
   return {
     items,
