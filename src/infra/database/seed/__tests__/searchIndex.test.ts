@@ -126,6 +126,17 @@ describe('search-index snapshot (Drafting 159 build-time kuromoji)', () => {
       expect(restaurant.some((r) => r.name_ja === 'ごはん 2倍盛')).toBe(false);
     });
 
+    it('folds the normalized chainName into aliases_concat (混在表記ブランドの検索修正)', () => {
+      // query 側 normalizeForSearch は ひらがな→カタカナ 変換するため、
+      // 「すき家」は「スキ家」として FTS に渡る。 raw brand 列とは
+      // 一致しないので、 正規化形が aliases_concat に居ることが
+      // 「すき家 牛丼」ヒットの前提 (S5b dogfood simulation で確認)。
+      const gyudon = restaurant.find((r) => r.source_id === 'sukiya:牛丼 並盛');
+      expect(gyudon?.aliases_concat).toContain('スキ家');
+      const oyakodon = restaurant.find((r) => r.source_id === 'nakau:親子丼 並盛');
+      expect(oyakodon?.aliases_concat).toContain('ナカ卯');
+    });
+
     it('carries sourceCapturedAt (取得日) in nutrition_json for batch-1 rows', () => {
       for (const id of ['sukiya:牛丼 並盛', 'nakau:親子丼 並盛', 'joyfull:キッズうどん', 'cocos:ココスのハンバーグ']) {
         const row = restaurant.find((r) => r.source_id === id);

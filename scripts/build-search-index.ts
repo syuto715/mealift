@@ -426,7 +426,16 @@ async function buildRestaurantRows(
       // v1.5.1 — fold the chain's colloquial-shorthand aliases into every
       // menu row so 「マック ポテト」「スタバ ラテ」「吉牛 並盛」 hit via
       // brand-shorthand + menu-term token-wise FTS5 AND.
-      const brandAliases = aliasesForBrand(chain.chainName);
+      //
+      // S5b — chainName 自体も alias に足す。 query 側は
+      // normalizeForSearch でひらがな→カタカナ変換されるため、 混在
+      // 表記ブランド (すき家→スキ家、 なか卯→ナカ卯、 くら寿司→クラ寿司
+      // 等) は raw の brand 列 token と一致せず 0 ヒットだった
+      // (S5b dogfood simulation で発見した v1.5.1 以来の実バグ)。
+      // buildAliasesConcat が正規化して格納するので、 正規化系が
+      // aliases_concat 側で必ずヒットするようになる。 全かな・全漢字
+      // ブランドでは brand 列と重複するだけで無害。
+      const brandAliases = [...aliasesForBrand(chain.chainName), chain.chainName];
       out.push({
         source_type: 'restaurant_menu',
         source_id: sourceId,
