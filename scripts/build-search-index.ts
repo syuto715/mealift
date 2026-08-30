@@ -113,6 +113,9 @@ const BRAND_ALIASES: Record<string, string[]> = {
   'ドトールコーヒー': ['ドトール', 'DOUTOR'],
   'コメダ珈琲店': ['コメダ', 'コメダ珈琲'],
   'プロント': ['PRONTO'],
+  // Family restaurants (S5b 追加)
+  'ジョイフル': ['Joyfull', 'joyfull'],
+  'ココス': ["COCO'S", 'cocos', "ココス COCO'S"],
   // Specialty
   'CoCo壱番屋': ['ココイチ', 'CoCo壱', 'ココ壱'],
   '餃子の王将': ['王将', '餃王'],
@@ -183,6 +186,12 @@ interface RestaurantMenuItemRow {
   saturatedFatG?: number | null;
   cholesterolMg?: number | null;
   sourceUrl?: string | null;
+  // S5b — 取得日 (ISO YYYY-MM-DD)。 出典表示 (取得日) 用。
+  sourceCapturedAt?: string | null;
+  // S5b — 廃番フラグ (scripts/seed/discontinued.ts)。 true の item は
+  // snapshot に emit しない = 検索から除外。 既存端末に残った行は
+  // seedSearchIndex の stale-row sweep が削除する。
+  discontinued?: boolean;
 }
 
 interface RestaurantScrapeOutput {
@@ -209,6 +218,7 @@ export interface SearchIndexNutritionJson {
   sodiumMg?: number | null;
   saturatedFatG?: number | null;
   cholesterolMg?: number | null;
+  sourceCapturedAt?: string | null;
   calciumMg?: number | null;
   ironMg?: number | null;
   magnesiumMg?: number | null;
@@ -285,6 +295,8 @@ function menuItemToNutrition(item: RestaurantMenuItemRow): SearchIndexNutritionJ
     saturatedFatG: item.saturatedFatG,
     cholesterolMg: item.cholesterolMg,
     sourceUrl: item.sourceUrl,
+    // S5b — build 時に落ちていた取得日を回収 (5a recon §4 の宿題)。
+    sourceCapturedAt: item.sourceCapturedAt,
   };
 }
 
@@ -373,17 +385,44 @@ async function buildRestaurantRows(
   for (const file of files) {
     const raw = fs.readFileSync(path.join(RESTAURANT_DATA_DIR, file), 'utf-8');
     const chain = JSON.parse(raw) as RestaurantScrapeOutput;
-    for (let i = 0; i < chain.menuItems.length; i += 1) {
-      const item = chain.menuItems[i];
+    // S5b — source_id の安定キー化。 旧形式 `${slug}_${offset}` は配列
+    // 順依存で、 メニュー改定の中間挿入により search_favorites の
+    // (source_type, source_id) 参照が別 item にズレる時限爆弾だった
+    // (5a recon §4)。 新形式 `${slug}:${item.name}` は並び替え・挿入に
+    // 不変。 favorites 側は現時点で書き込みコードが存在しない (v38 の
+    // テーブルのみ、 add-food.tsx の cleanup queue コメント参照) ため、
+    // 切れる既存参照は無い — favorites 実装前の今が唯一の安全な移行点。
+    // 既存端末の旧 positional 行は seedSearchIndex の sweep が削除する。
+    //
+    // 一意性: 同名再掲は (a) 栄養値も同一なら redundant なので skip
+    // (従来は検索に重複ヒットしていた)、 (b) 異値なら `#2` 連番を
+    // 付与 (committed JSON のファイル順で決定的)。
+    const seenIds = new Map<string, RestaurantMenuItemRow>();
+    let dedupedCount = 0;
+    for (const item of chain.menuItems) {
+      // S5b — 廃番 item は snapshot から除外 = 検索から除外。
+      if (item.discontinued) continue;
       const reading = yomigana(tokenizer, item.name);
       // Per-record source label (Drafting 152) — falls back to
       // 'official_disclosure' when the seed omits the field.
       const sourceLabel = item.source || 'official_disclosure';
-      // Deterministic id derived from chain slug + offset; the
-      // server-side migration uses the same pattern (epic §4.2),
-      // and the search-index seed loader matches on this id when
-      // an upsert is needed.
-      const sourceId = `${chain.chainSlug}_${i.toString().padStart(4, '0')}`;
+      let sourceId = `${chain.chainSlug}:${item.name}`;
+      const dup = seenIds.get(sourceId);
+      if (dup) {
+        const sameValues =
+          dup.caloriesPerServing === item.caloriesPerServing
+          && dup.proteinG === item.proteinG
+          && dup.fatG === item.fatG
+          && dup.carbG === item.carbG;
+        if (sameValues) {
+          dedupedCount += 1;
+          continue;
+        }
+        let n = 2;
+        while (seenIds.has(`${sourceId}#${n}`)) n += 1;
+        sourceId = `${sourceId}#${n}`;
+      }
+      seenIds.set(sourceId, item);
       // v1.5.1 — fold the chain's colloquial-shorthand aliases into every
       // menu row so 「マック ポテト」「スタバ ラテ」「吉牛 並盛」 hit via
       // brand-shorthand + menu-term token-wise FTS5 AND.
@@ -402,6 +441,13 @@ async function buildRestaurantRows(
         is_common: 0,
         nutrition_json: JSON.stringify(menuItemToNutrition(item)),
       });
+    }
+    const skippedDiscontinued = chain.menuItems.filter((m) => m.discontinued).length;
+    if (dedupedCount > 0 || skippedDiscontinued > 0) {
+      console.log(
+        `[search-index] ${chain.chainSlug}: deduped ${dedupedCount} identical re-listings, `
+        + `excluded ${skippedDiscontinued} discontinued`,
+      );
     }
   }
   return out;
