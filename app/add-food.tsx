@@ -942,8 +942,12 @@ export default function AddFoodScreen() {
       // 色のみ依存にならない。 公式 = success 系、 AI 推定 = 中立
       // (不安を煽らないトーン、 詳細画面に説明あり)。
       const sourceBadge = getSourceBadge(food);
-      const sourceBadgeColor =
-        sourceBadge?.kind === 'official' ? colors.success : colors.textSecondary;
+      // Codex R1 Important — success は白地の小文字で 2.22:1 (AA 不適合)。
+      // 文字は successText、 背景の淡色 tint は success のまま。
+      const sourceBadgeTextColor =
+        sourceBadge?.kind === 'official' ? colors.successText : colors.textSecondary;
+      const sourceBadgeBgColor =
+        (sourceBadge?.kind === 'official' ? colors.success : colors.textSecondary) + '18';
       return (
         <TouchableOpacity
           style={[styles.foodRow, { borderBottomColor: colors.border }]}
@@ -977,8 +981,8 @@ export default function AddFoodScreen() {
                   style={[
                     styles.sourceBadge,
                     {
-                      color: sourceBadgeColor,
-                      backgroundColor: sourceBadgeColor + '18',
+                      color: sourceBadgeTextColor,
+                      backgroundColor: sourceBadgeBgColor,
                     },
                   ]}
                   numberOfLines={1}

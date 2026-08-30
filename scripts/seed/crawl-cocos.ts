@@ -129,6 +129,16 @@ async function main(): Promise<void> {
   const categories = extractCategoryUrls(indexHtml);
   console.log(`[cocos] ${categories.length} category pages`);
 
+  if (categories.length === 0) {
+    // Codex R1 Important — index ページの構造変化で category が 0 に
+    // なった場合、 空 JSON を「正常」として出荷してはいけない。
+    throw new Error('[cocos] no category pages discovered — index 構造変化の疑い、fail-fast');
+  }
+
+  const items: MenuItemRecord[] = [];
+  const byName = new Map<string, MenuItemRecord>();
+  const dropped: string[] = [];
+
   const itemUrls = new Set<string>();
   for (const cat of categories) {
     await sleep(SLEEP_MS);
@@ -138,14 +148,16 @@ async function main(): Promise<void> {
       for (const u of urls) itemUrls.add(u);
       console.log(`  ${cat} → ${urls.length} item URLs`);
     } catch (e) {
+      // Codex R1 Important — カテゴリ丸ごとの欠落を droppedItems に
+      // 記録して partial: true に反映する (観測可能性の確保)。
+      dropped.push(`category-failed: ${cat} — ${(e as Error).message}`);
       console.log(`  FAIL category ${cat} — ${(e as Error).message}`);
     }
   }
   console.log(`[cocos] ${itemUrls.size} unique item URLs`);
-
-  const items: MenuItemRecord[] = [];
-  const byName = new Map<string, MenuItemRecord>();
-  const dropped: string[] = [];
+  if (itemUrls.size === 0) {
+    throw new Error('[cocos] no item URLs discovered — category 構造変化の疑い、fail-fast');
+  }
   let done = 0;
   for (const url of [...itemUrls].sort()) {
     await sleep(SLEEP_MS);
@@ -190,6 +202,10 @@ async function main(): Promise<void> {
       dropped.push(`fetch-failed: ${url} — ${(e as Error).message}`);
       console.log(`  [${done}/${itemUrls.size}] FAIL ${url} — ${(e as Error).message}`);
     }
+  }
+
+  if (items.length === 0) {
+    throw new Error('[cocos] 0 items extracted — item ページ構造変化の疑い、fail-fast');
   }
 
   const output: RestaurantScrapeOutput = {

@@ -322,6 +322,28 @@ function yomigana(
   return reading;
 }
 
+// S5b (Codex R1 Important) — 品名の内容語 token を単独 alias として
+// 切り出す。 unicode61 は CJK を空白・記号でしか区切らないため、
+// 「ココスのハンバーグ」は 1 token になり、 query 「ハンバーグ」が
+// 当たらない。 kuromoji の分かち書きで内容語 (助詞・助動詞・記号
+// 以外、 2 文字以上) の surface と reading を aliases に足すことで
+// 語単位の部分ヒットを可能にする (substring match は ngram 導入
+// (v37 候補) まで未対応)。
+const TOKEN_ALIAS_EXCLUDED_POS = new Set(['助詞', '助動詞', '記号']);
+
+function contentTokenAliases(
+  tokenizer: kuromoji.Tokenizer<kuromoji.IpadicFeatures>,
+  text: string,
+): string[] {
+  const out: string[] = [];
+  for (const t of tokenizer.tokenize(text)) {
+    if (TOKEN_ALIAS_EXCLUDED_POS.has(t.pos)) continue;
+    if (t.surface_form.length >= 2) out.push(t.surface_form);
+    if (t.reading && t.reading !== '*' && t.reading.length >= 2) out.push(t.reading);
+  }
+  return out;
+}
+
 function buildAliasesConcat(
   canonicalReading: string,
   aliases: string[],
@@ -445,6 +467,7 @@ async function buildRestaurantRows(
         aliases_concat: buildAliasesConcat(reading, [
           ...(item.aliases ?? []),
           ...brandAliases,
+          ...contentTokenAliases(tokenizer, item.name),
         ]),
         source_label: sourceLabel,
         is_common: 0,

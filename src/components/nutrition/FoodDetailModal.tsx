@@ -390,8 +390,11 @@ export function FoodDetailModal({
           {(() => {
             const badge = getSourceBadge(food);
             if (!badge) return null;
-            const badgeColor =
-              badge.kind === 'official' ? colors.success : colors.textSecondary;
+            // Codex R1 Important — 小文字の文字色は AA 対応の successText。
+            const badgeTextColor =
+              badge.kind === 'official' ? colors.successText : colors.textSecondary;
+            const badgeBgColor =
+              (badge.kind === 'official' ? colors.success : colors.textSecondary) + '18';
             const line = formatSourceLine(food);
             const disclaimer = sourceDisclaimer(food);
             return (
@@ -406,7 +409,7 @@ export function FoodDetailModal({
                   <Text
                     style={[
                       styles.sourceBadge,
-                      { color: badgeColor, backgroundColor: badgeColor + '18' },
+                      { color: badgeTextColor, backgroundColor: badgeBgColor },
                     ]}
                   >
                     {badge.label}
