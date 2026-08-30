@@ -9,7 +9,7 @@
   ],
   "attribution": "公式 PDF より (Zensho HD nutrition disclosure)",
   "attributionUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-  "sourceCapturedAt": "2026-05-18",
+  "sourceCapturedAt": "2026-08-30",
   "menuItems": [
     {
       "name": "牛皿 ミニ",
@@ -23,7 +23,7 @@
       "saltG": 1.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛皿 並盛",
@@ -37,7 +37,7 @@
       "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛皿 中盛",
@@ -51,7 +51,7 @@
       "saltG": 2.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛皿 2倍盛",
@@ -65,7 +65,7 @@
       "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛皿 3倍盛",
@@ -79,7 +79,7 @@
       "saltG": 5.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛皿 4倍盛",
@@ -93,7 +93,7 @@
       "saltG": 8.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛皿 5倍盛",
@@ -107,7 +107,7 @@
       "saltG": 9.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛丼 ミニ",
@@ -121,7 +121,7 @@
       "saltG": 1.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛丼 並盛",
@@ -135,7 +135,7 @@
       "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛丼 中盛",
@@ -149,7 +149,7 @@
       "saltG": 2.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛丼 大盛",
@@ -163,7 +163,7 @@
       "saltG": 3.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛丼 特盛",
@@ -177,7 +177,7 @@
       "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛丼 メガ",
@@ -191,178 +191,178 @@
       "saltG": 5.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おろしポン酢牛丼 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 488,
+      "caloriesPerServing": 487,
       "proteinG": 15.8,
       "fatG": 16.1,
-      "carbG": 69.8,
+      "carbG": 69.6,
       "saltG": 2.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おろしポン酢牛丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 719,
-      "proteinG": 22.7,
+      "caloriesPerServing": 718,
+      "proteinG": 22.6,
       "fatG": 23.5,
-      "carbG": 103.9,
+      "carbG": 103.7,
       "saltG": 3.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おろしポン酢牛丼 中盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 776,
-      "proteinG": 27.6,
+      "caloriesPerServing": 775,
+      "proteinG": 27.5,
       "fatG": 33.5,
-      "carbG": 90.6,
+      "carbG": 90.4,
       "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おろしポン酢牛丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 932,
-      "proteinG": 29.4,
+      "caloriesPerServing": 931,
+      "proteinG": 29.3,
       "fatG": 30.8,
-      "carbG": 134.2,
+      "carbG": 134,
       "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おろしポン酢牛丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1124,
-      "proteinG": 38.8,
+      "caloriesPerServing": 1123,
+      "proteinG": 38.7,
       "fatG": 45.7,
-      "carbG": 139,
+      "carbG": 138.8,
       "saltG": 5.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おろしポン酢牛丼 メガ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1389,
-      "proteinG": 51.8,
+      "caloriesPerServing": 1388,
+      "proteinG": 51.7,
       "fatG": 66.4,
-      "carbG": 145.7,
+      "carbG": 145.5,
       "saltG": 6.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ねぎ玉牛丼 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 571,
-      "proteinG": 22.5,
-      "fatG": 22.5,
-      "carbG": 70.7,
+      "caloriesPerServing": 562,
+      "proteinG": 22,
+      "fatG": 22.4,
+      "carbG": 68.6,
       "saltG": 2.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ねぎ玉牛丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 802,
-      "proteinG": 29.4,
-      "fatG": 29.9,
-      "carbG": 104.8,
+      "caloriesPerServing": 793,
+      "proteinG": 28.9,
+      "fatG": 29.8,
+      "carbG": 102.7,
       "saltG": 3.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ねぎ玉牛丼 中盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 864,
-      "proteinG": 34.3,
-      "fatG": 39.9,
-      "carbG": 91.5,
+      "caloriesPerServing": 855,
+      "proteinG": 33.8,
+      "fatG": 39.8,
+      "carbG": 89.4,
       "saltG": 3.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ねぎ玉牛丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1015,
-      "proteinG": 36.1,
-      "fatG": 37.2,
-      "carbG": 135.1,
+      "caloriesPerServing": 1006,
+      "proteinG": 35.6,
+      "fatG": 37.1,
+      "carbG": 133,
       "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ねぎ玉牛丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1207,
-      "proteinG": 45.5,
-      "fatG": 52.1,
-      "carbG": 139.9,
+      "caloriesPerServing": 1198,
+      "proteinG": 45,
+      "fatG": 52,
+      "carbG": 137.8,
       "saltG": 5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ねぎ玉牛丼 メガ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1472,
-      "proteinG": 58.5,
-      "fatG": 72.8,
-      "carbG": 146.6,
+      "caloriesPerServing": 1463,
+      "proteinG": 58,
+      "fatG": 72.7,
+      "carbG": 144.5,
       "saltG": 6.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "高菜明太マヨ牛丼 ミニ",
+      "name": "とろ～り3種のチーズ牛丼 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -373,10 +373,10 @@
       "saltG": 2.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "高菜明太マヨ牛丼 並盛",
+      "name": "とろ～り3種のチーズ牛丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -387,10 +387,10 @@
       "saltG": 3.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "高菜明太マヨ牛丼 中盛",
+      "name": "とろ～り3種のチーズ牛丼 中盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -401,10 +401,10 @@
       "saltG": 3.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "高菜明太マヨ牛丼 大盛",
+      "name": "とろ～り3種のチーズ牛丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -415,10 +415,10 @@
       "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "高菜明太マヨ牛丼 特盛",
+      "name": "とろ～り3種のチーズ牛丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -429,10 +429,10 @@
       "saltG": 5.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "高菜明太マヨ牛丼 メガ",
+      "name": "とろ～り3種のチーズ牛丼 メガ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -443,7 +443,7 @@
       "saltG": 6.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "わさび山かけ牛丼 ミニ",
@@ -457,7 +457,7 @@
       "saltG": 1.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "わさび山かけ牛丼 並盛",
@@ -471,7 +471,7 @@
       "saltG": 2.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "わさび山かけ牛丼 中盛",
@@ -485,7 +485,7 @@
       "saltG": 3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "わさび山かけ牛丼 大盛",
@@ -499,7 +499,7 @@
       "saltG": 3.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "わさび山かけ牛丼 特盛",
@@ -513,7 +513,7 @@
       "saltG": 4.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "わさび山かけ牛丼 メガ",
@@ -527,7 +527,7 @@
       "saltG": 5.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "かつぶしオクラ牛丼 ミニ",
@@ -541,7 +541,7 @@
       "saltG": 2.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "かつぶしオクラ牛丼 並盛",
@@ -555,7 +555,7 @@
       "saltG": 3.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "かつぶしオクラ牛丼 中盛",
@@ -569,7 +569,7 @@
       "saltG": 3.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "かつぶしオクラ牛丼 大盛",
@@ -583,7 +583,7 @@
       "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "かつぶしオクラ牛丼 特盛",
@@ -597,7 +597,7 @@
       "saltG": 5.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "かつぶしオクラ牛丼 メガ",
@@ -611,10 +611,10 @@
       "saltG": 6.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "とろ～り3種のチーズ牛丼 ミニ",
+      "name": "高菜明太マヨ牛丼 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -625,10 +625,10 @@
       "saltG": 4.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "とろ～り3種のチーズ牛丼 並盛",
+      "name": "高菜明太マヨ牛丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -639,10 +639,10 @@
       "saltG": 4.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "とろ～り3種のチーズ牛丼 中盛",
+      "name": "高菜明太マヨ牛丼 中盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -653,10 +653,10 @@
       "saltG": 5.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "とろ～り3種のチーズ牛丼 大盛",
+      "name": "高菜明太マヨ牛丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -667,10 +667,10 @@
       "saltG": 5.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "とろ～り3種のチーズ牛丼 特盛",
+      "name": "高菜明太マヨ牛丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -681,10 +681,10 @@
       "saltG": 6.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "とろ～り3種のチーズ牛丼 メガ",
+      "name": "高菜明太マヨ牛丼 メガ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -695,7 +695,7 @@
       "saltG": 8.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛丼 ミニ",
@@ -709,7 +709,7 @@
       "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛丼 並盛",
@@ -723,7 +723,7 @@
       "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛丼 中盛",
@@ -737,7 +737,7 @@
       "saltG": 4.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛丼 大盛",
@@ -751,7 +751,7 @@
       "saltG": 4.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛丼 特盛",
@@ -765,7 +765,7 @@
       "saltG": 6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛丼 メガ",
@@ -779,7 +779,7 @@
       "saltG": 7.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨチーズ牛丼 ミニ",
@@ -793,7 +793,7 @@
       "saltG": 3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨチーズ牛丼 並盛",
@@ -807,7 +807,7 @@
       "saltG": 3.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨチーズ牛丼 中盛",
@@ -821,7 +821,7 @@
       "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨチーズ牛丼 大盛",
@@ -835,7 +835,7 @@
       "saltG": 4.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨチーズ牛丼 特盛",
@@ -849,7 +849,7 @@
       "saltG": 5.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨチーズ牛丼 メガ",
@@ -863,7 +863,7 @@
       "saltG": 7.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨキムチ牛丼 ミニ",
@@ -877,7 +877,7 @@
       "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨキムチ牛丼 並盛",
@@ -891,7 +891,7 @@
       "saltG": 5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨキムチ牛丼 中盛",
@@ -905,7 +905,7 @@
       "saltG": 5.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨキムチ牛丼 大盛",
@@ -919,7 +919,7 @@
       "saltG": 5.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨキムチ牛丼 特盛",
@@ -933,7 +933,7 @@
       "saltG": 6.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨキムチ牛丼 メガ",
@@ -947,94 +947,346 @@
       "saltG": 8.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ニンニクの芽牛丼 ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 538,
+      "proteinG": 16.7,
+      "fatG": 20,
+      "carbG": 74.7,
+      "saltG": 2.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ニンニクの芽牛丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 769,
+      "proteinG": 23.6,
+      "fatG": 27.4,
+      "carbG": 108.8,
+      "saltG": 3.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ニンニクの芽牛丼 中盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 826,
+      "proteinG": 28.5,
+      "fatG": 37.4,
+      "carbG": 95.5,
+      "saltG": 3.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ニンニクの芽牛丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 982,
+      "proteinG": 30.3,
+      "fatG": 34.7,
+      "carbG": 139.1,
+      "saltG": 4.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ニンニクの芽牛丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1174,
+      "proteinG": 39.7,
+      "fatG": 49.6,
+      "carbG": 143.9,
+      "saltG": 5.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ニンニクの芽牛丼 メガ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1439,
+      "proteinG": 52.7,
+      "fatG": 70.3,
+      "carbG": 150.6,
+      "saltG": 6.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ダブルニンニク牛丼 ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 581,
+      "proteinG": 18.8,
+      "fatG": 20.6,
+      "carbG": 81.8,
+      "saltG": 2.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ダブルニンニク牛丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 812,
+      "proteinG": 25.7,
+      "fatG": 28,
+      "carbG": 115.9,
+      "saltG": 3.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ダブルニンニク牛丼 中盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 869,
+      "proteinG": 30.6,
+      "fatG": 38,
+      "carbG": 102.6,
+      "saltG": 4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ダブルニンニク牛丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1025,
+      "proteinG": 32.4,
+      "fatG": 35.3,
+      "carbG": 146.2,
+      "saltG": 4.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ダブルニンニク牛丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1217,
+      "proteinG": 41.8,
+      "fatG": 50.2,
+      "carbG": 151,
+      "saltG": 5.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ダブルニンニク牛丼 メガ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1482,
+      "proteinG": 54.8,
+      "fatG": 70.9,
+      "carbG": 157.7,
+      "saltG": 6.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "トリプルニンニク牛丼 ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 623,
+      "proteinG": 20.1,
+      "fatG": 22.1,
+      "carbG": 87.6,
+      "saltG": 3.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "トリプルニンニク牛丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 854,
+      "proteinG": 27,
+      "fatG": 29.5,
+      "carbG": 121.7,
+      "saltG": 4.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "トリプルニンニク牛丼 中盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 911,
+      "proteinG": 31.9,
+      "fatG": 39.5,
+      "carbG": 108.4,
+      "saltG": 4.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "トリプルニンニク牛丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1067,
+      "proteinG": 33.7,
+      "fatG": 36.8,
+      "carbG": 152,
+      "saltG": 5.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "トリプルニンニク牛丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1259,
+      "proteinG": 43.1,
+      "fatG": 51.7,
+      "carbG": 156.8,
+      "saltG": 6.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "トリプルニンニク牛丼 メガ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1524,
+      "proteinG": 56.1,
+      "fatG": 72.4,
+      "carbG": 163.5,
+      "saltG": 7.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛丼ライト ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 309,
+      "caloriesPerServing": 311,
       "proteinG": 18.5,
       "fatG": 19.9,
-      "carbG": 14.8,
-      "saltG": 1.9,
+      "carbG": 14.7,
+      "saltG": 1.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛丼ライト 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 397,
+      "caloriesPerServing": 399,
       "proteinG": 22.8,
       "fatG": 26.8,
-      "carbG": 16.8,
-      "saltG": 2.3,
+      "carbG": 16.7,
+      "saltG": 2.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛丼ライト 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 485,
+      "caloriesPerServing": 487,
       "proteinG": 27.1,
       "fatG": 33.6,
-      "carbG": 18.9,
-      "saltG": 2.8,
+      "carbG": 18.8,
+      "saltG": 2.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ねぎ玉牛丼ライト ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 412,
-      "proteinG": 25.8,
-      "fatG": 26.4,
-      "carbG": 19,
+      "caloriesPerServing": 402,
+      "proteinG": 25.3,
+      "fatG": 26.3,
+      "carbG": 16.9,
       "saltG": 1.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ねぎ玉牛丼ライト 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 485,
-      "proteinG": 29.6,
-      "fatG": 33.1,
-      "carbG": 18.4,
+      "caloriesPerServing": 476,
+      "proteinG": 29.1,
+      "fatG": 33,
+      "carbG": 16.3,
       "saltG": 2.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ねぎ玉牛丼ライト 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 586,
-      "proteinG": 34.3,
-      "fatG": 40.1,
-      "carbG": 23.1,
+      "caloriesPerServing": 577,
+      "proteinG": 33.8,
+      "fatG": 40,
+      "carbG": 21,
       "saltG": 2.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "高菜明太マヨ牛丼ライト ミニ",
+      "name": "とろ～り3種のチーズ牛丼ライト ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1045,10 +1297,10 @@
       "saltG": 2.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "高菜明太マヨ牛丼ライト 並盛",
+      "name": "とろ～り3種のチーズ牛丼ライト 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1059,10 +1311,10 @@
       "saltG": 2.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "高菜明太マヨ牛丼ライト 大盛",
+      "name": "とろ～り3種のチーズ牛丼ライト 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1073,7 +1325,7 @@
       "saltG": 3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "わさび山かけ牛丼ライト ミニ",
@@ -1087,7 +1339,7 @@
       "saltG": 1.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "わさび山かけ牛丼ライト 並盛",
@@ -1101,7 +1353,7 @@
       "saltG": 1.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "わさび山かけ牛丼ライト 大盛",
@@ -1115,10 +1367,10 @@
       "saltG": 2.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "とろ～り3種のチーズ牛丼ライト ミニ",
+      "name": "高菜明太マヨ牛丼ライト ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1129,10 +1381,10 @@
       "saltG": 3.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "とろ～り3種のチーズ牛丼ライト 並盛",
+      "name": "高菜明太マヨ牛丼ライト 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1143,10 +1395,10 @@
       "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "とろ～り3種のチーズ牛丼ライト 大盛",
+      "name": "高菜明太マヨ牛丼ライト 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1157,49 +1409,49 @@
       "saltG": 4.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛丼ライト（テイクアウト） ミニ",
+      "name": "おろしポン酢牛丼ライト ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 322,
-      "proteinG": 18.8,
+      "caloriesPerServing": 323,
+      "proteinG": 18.7,
       "fatG": 20,
-      "carbG": 17.6,
-      "saltG": 1.9,
+      "carbG": 17.4,
+      "saltG": 1.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛丼ライト（テイクアウト） 並盛",
+      "name": "おろしポン酢牛丼ライト 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 410,
-      "proteinG": 23.1,
+      "caloriesPerServing": 411,
+      "proteinG": 23,
       "fatG": 26.9,
-      "carbG": 19.7,
-      "saltG": 2.3,
+      "carbG": 19.5,
+      "saltG": 2.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛丼ライト（テイクアウト） 大盛",
+      "name": "おろしポン酢牛丼ライト 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 497,
-      "proteinG": 27.4,
+      "caloriesPerServing": 498,
+      "proteinG": 27.3,
       "fatG": 33.7,
-      "carbG": 21.8,
-      "saltG": 2.8,
+      "carbG": 21.6,
+      "saltG": 2.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "かつぶしオクラ牛丼ライト ミニ",
@@ -1213,7 +1465,7 @@
       "saltG": 1.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "かつぶしオクラ牛丼ライト 並盛",
@@ -1227,7 +1479,7 @@
       "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "かつぶしオクラ牛丼ライト 大盛",
@@ -1241,7 +1493,7 @@
       "saltG": 2.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛丼ライト ミニ",
@@ -1255,7 +1507,7 @@
       "saltG": 2.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛丼ライト 並盛",
@@ -1269,7 +1521,7 @@
       "saltG": 3.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛丼ライト 大盛",
@@ -1283,10 +1535,10 @@
       "saltG": 3.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "おろしポン酢牛丼ライト ミニ",
+      "name": "牛丼ライト（テイクアウト） ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1297,10 +1549,10 @@
       "saltG": 2.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "おろしポン酢牛丼ライト 並盛",
+      "name": "牛丼ライト（テイクアウト） 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1311,10 +1563,10 @@
       "saltG": 3.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "おろしポン酢牛丼ライト 大盛",
+      "name": "牛丼ライト（テイクアウト） 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1325,7 +1577,7 @@
       "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛・お食事サラダ 並盛",
@@ -1339,7 +1591,7 @@
       "saltG": 1.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "チキン・お食事サラダ 並盛",
@@ -1353,7 +1605,7 @@
       "saltG": 0.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "カレー ミニ",
@@ -1367,7 +1619,7 @@
       "saltG": 2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "カレー 並盛",
@@ -1381,7 +1633,7 @@
       "saltG": 3.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "カレー 大盛",
@@ -1395,7 +1647,7 @@
       "saltG": 5.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "カレー メガ",
@@ -1409,10 +1661,10 @@
       "saltG": 7.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "ソーセージカレー ミニ",
+      "name": "牛カレー ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1423,10 +1675,10 @@
       "saltG": 3.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "ソーセージカレー 並盛",
+      "name": "牛カレー 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1437,10 +1689,10 @@
       "saltG": 4.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "ソーセージカレー 大盛",
+      "name": "牛カレー 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1451,10 +1703,10 @@
       "saltG": 6.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "ソーセージカレー メガ",
+      "name": "牛カレー メガ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1465,7 +1717,7 @@
       "saltG": 8.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "とろ～りチーズカレー ミニ",
@@ -1479,7 +1731,7 @@
       "saltG": 3.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "とろ～りチーズカレー 並盛",
@@ -1493,7 +1745,7 @@
       "saltG": 4.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "とろ～りチーズカレー 大盛",
@@ -1507,7 +1759,7 @@
       "saltG": 6.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "とろ～りチーズカレー メガ",
@@ -1521,7 +1773,7 @@
       "saltG": 8.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまカレー ミニ",
@@ -1535,7 +1787,7 @@
       "saltG": 2.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまカレー 並盛",
@@ -1549,7 +1801,7 @@
       "saltG": 3.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまカレー 大盛",
@@ -1563,7 +1815,7 @@
       "saltG": 5.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまカレー メガ",
@@ -1577,7 +1829,7 @@
       "saltG": 7.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "チーズおんたまカレー ミニ",
@@ -1591,7 +1843,7 @@
       "saltG": 3.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "チーズおんたまカレー 並盛",
@@ -1605,7 +1857,7 @@
       "saltG": 4.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "チーズおんたまカレー 大盛",
@@ -1619,7 +1871,7 @@
       "saltG": 6.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "チーズおんたまカレー メガ",
@@ -1633,7 +1885,7 @@
       "saltG": 9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたま牛カレー ミニ",
@@ -1647,7 +1899,7 @@
       "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたま牛カレー 並盛",
@@ -1661,7 +1913,7 @@
       "saltG": 5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたま牛カレー 大盛",
@@ -1675,7 +1927,7 @@
       "saltG": 6.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたま牛カレー メガ",
@@ -1689,10 +1941,10 @@
       "saltG": 9.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズソーセージカレー ミニ",
+      "name": "チーズ牛カレー ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1703,10 +1955,10 @@
       "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズソーセージカレー 並盛",
+      "name": "チーズ牛カレー 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1717,10 +1969,10 @@
       "saltG": 5.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズソーセージカレー 大盛",
+      "name": "チーズ牛カレー 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1731,10 +1983,10 @@
       "saltG": 7.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズソーセージカレー メガ",
+      "name": "チーズ牛カレー メガ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1745,38 +1997,38 @@
       "saltG": 10,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズインハンバーグカレー ミニ",
+      "name": "ソーセージカレー ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 647,
-      "proteinG": 18.4,
-      "fatG": 30.6,
+      "caloriesPerServing": 641,
+      "proteinG": 18.2,
+      "fatG": 30.1,
       "carbG": 75.1,
-      "saltG": 3.9,
+      "saltG": 3.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズインハンバーグカレー 並盛",
+      "name": "ソーセージカレー 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 910,
-      "proteinG": 23.7,
-      "fatG": 38.3,
+      "caloriesPerServing": 903,
+      "proteinG": 23.5,
+      "fatG": 37.8,
       "carbG": 118.4,
-      "saltG": 5.5,
+      "saltG": 5.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズインハンバーグカレー 大盛",
+      "name": "ソーセージカレー 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1787,10 +2039,10 @@
       "saltG": 7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズインハンバーグカレー メガ",
+      "name": "ソーセージカレー メガ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1801,7 +2053,7 @@
       "saltG": 9.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ほうれん草カレー ミニ",
@@ -1815,7 +2067,7 @@
       "saltG": 2.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ほうれん草カレー 並盛",
@@ -1829,7 +2081,7 @@
       "saltG": 3.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ほうれん草カレー 大盛",
@@ -1843,7 +2095,7 @@
       "saltG": 5.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ほうれん草カレー メガ",
@@ -1857,10 +2109,10 @@
       "saltG": 7.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズ牛カレー ミニ",
+      "name": "チーズソーセージカレー ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1871,10 +2123,10 @@
       "saltG": 4.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズ牛カレー 並盛",
+      "name": "チーズソーセージカレー 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1885,10 +2137,10 @@
       "saltG": 6.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズ牛カレー 大盛",
+      "name": "チーズソーセージカレー 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1899,10 +2151,10 @@
       "saltG": 8.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズ牛カレー メガ",
+      "name": "チーズソーセージカレー メガ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -1913,7 +2165,7 @@
       "saltG": 10.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "チーズほうれん草カレー ミニ",
@@ -1927,7 +2179,7 @@
       "saltG": 3.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "チーズほうれん草カレー 並盛",
@@ -1941,7 +2193,7 @@
       "saltG": 4.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "チーズほうれん草カレー 大盛",
@@ -1955,7 +2207,7 @@
       "saltG": 6.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "チーズほうれん草カレー メガ",
@@ -1969,7 +2221,7 @@
       "saltG": 9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "肉2倍牛カレー ミニ",
@@ -1983,7 +2235,7 @@
       "saltG": 4.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "肉2倍牛カレー 並盛",
@@ -1997,7 +2249,7 @@
       "saltG": 6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "肉2倍牛カレー 大盛",
@@ -2011,7 +2263,7 @@
       "saltG": 7.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "肉2倍牛カレー メガ",
@@ -2025,7 +2277,7 @@
       "saltG": 10.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "目玉焼き牛カレー ミニ",
@@ -2039,7 +2291,7 @@
       "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "目玉焼き牛カレー 並盛",
@@ -2053,7 +2305,7 @@
       "saltG": 5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "目玉焼き牛カレー 大盛",
@@ -2067,7 +2319,7 @@
       "saltG": 6.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "目玉焼き牛カレー メガ",
@@ -2081,63 +2333,399 @@
       "saltG": 9.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛カレー ミニ",
+      "name": "目玉焼きほうれん草カレー ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 625,
-      "proteinG": 25.3,
-      "fatG": 23.2,
-      "carbG": 79.4,
-      "saltG": 3.4,
+      "caloriesPerServing": 517,
+      "proteinG": 16.6,
+      "fatG": 17.6,
+      "carbG": 73.7,
+      "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛カレー 並盛",
+      "name": "目玉焼きほうれん草カレー 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 888,
-      "proteinG": 30.6,
-      "fatG": 30.8,
-      "carbG": 122.7,
-      "saltG": 5,
+      "caloriesPerServing": 779,
+      "proteinG": 21.9,
+      "fatG": 25.2,
+      "carbG": 117,
+      "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛カレー 大盛",
+      "name": "目玉焼きほうれん草カレー 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1202,
-      "proteinG": 36.7,
-      "fatG": 38.6,
-      "carbG": 177.8,
-      "saltG": 6.6,
+      "caloriesPerServing": 1094,
+      "proteinG": 28.1,
+      "fatG": 33,
+      "carbG": 172.1,
+      "saltG": 5.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛カレー メガ",
+      "name": "目玉焼きほうれん草カレー メガ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1546,
-      "proteinG": 43.3,
-      "fatG": 46.6,
-      "carbG": 239.2,
+      "caloriesPerServing": 1438,
+      "proteinG": 34.7,
+      "fatG": 41,
+      "carbG": 233.6,
+      "saltG": 8.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "目玉焼きソーセージカレー ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 757,
+      "proteinG": 25.6,
+      "fatG": 39.6,
+      "carbG": 75.3,
+      "saltG": 4.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "目玉焼きソーセージカレー 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1020,
+      "proteinG": 30.9,
+      "fatG": 47.3,
+      "carbG": 118.6,
+      "saltG": 5.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "目玉焼きソーセージカレー 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1334,
+      "proteinG": 37.1,
+      "fatG": 55,
+      "carbG": 173.7,
+      "saltG": 7.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "目玉焼きソーセージカレー メガ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1678,
+      "proteinG": 43.7,
+      "fatG": 63,
+      "carbG": 235.1,
+      "saltG": 9.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 631,
+      "proteinG": 28.5,
+      "fatG": 20,
+      "carbG": 84.1,
+      "saltG": 4.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 893,
+      "proteinG": 33.8,
+      "fatG": 27.7,
+      "carbG": 127.4,
+      "saltG": 6.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1208,
+      "proteinG": 40,
+      "fatG": 35.4,
+      "carbG": 182.5,
+      "saltG": 7.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー メガ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1551,
+      "proteinG": 46.6,
+      "fatG": 43.4,
+      "carbG": 243.9,
+      "saltG": 10.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー 肉ダブル ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 867,
+      "proteinG": 49.5,
+      "fatG": 32,
+      "carbG": 95.2,
+      "saltG": 6.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー 肉ダブル 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1129,
+      "proteinG": 54.8,
+      "fatG": 39.6,
+      "carbG": 138.4,
+      "saltG": 8.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー 肉ダブル 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1444,
+      "proteinG": 61,
+      "fatG": 47.4,
+      "carbG": 193.5,
+      "saltG": 10,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー 肉ダブル メガ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1787,
+      "proteinG": 67.6,
+      "fatG": 55.4,
+      "carbG": 255,
+      "saltG": 12.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー 肉トリプル ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1103,
+      "proteinG": 70.4,
+      "fatG": 43.9,
+      "carbG": 106.2,
       "saltG": 9.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー 肉トリプル 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1365,
+      "proteinG": 75.7,
+      "fatG": 51.6,
+      "carbG": 149.5,
+      "saltG": 10.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー 肉トリプル 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1680,
+      "proteinG": 81.9,
+      "fatG": 59.4,
+      "carbG": 204.6,
+      "saltG": 12.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ポークロックカレー 肉トリプル メガ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 2023,
+      "proteinG": 88.5,
+      "fatG": 67.3,
+      "carbG": 266,
+      "saltG": 14.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "にんにくポークロックカレー ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 673,
+      "proteinG": 30.6,
+      "fatG": 20.6,
+      "carbG": 91.3,
+      "saltG": 4.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "にんにくポークロックカレー 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 936,
+      "proteinG": 35.9,
+      "fatG": 28.3,
+      "carbG": 134.5,
+      "saltG": 6.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "にんにくポークロックカレー 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1250,
+      "proteinG": 42.1,
+      "fatG": 36,
+      "carbG": 189.6,
+      "saltG": 7.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "にんにくポークロックカレー メガ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1594,
+      "proteinG": 48.7,
+      "fatG": 44,
+      "carbG": 251.1,
+      "saltG": 10.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "にんにくファイヤーポークロックカレー ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 673,
+      "proteinG": 29.9,
+      "fatG": 21.6,
+      "carbG": 89.9,
+      "saltG": 5.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "にんにくファイヤーポークロックカレー 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 936,
+      "proteinG": 35.2,
+      "fatG": 29.3,
+      "carbG": 133.2,
+      "saltG": 6.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "にんにくファイヤーポークロックカレー 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1250,
+      "proteinG": 41.4,
+      "fatG": 37,
+      "carbG": 188.3,
+      "saltG": 8.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "にんにくファイヤーポークロックカレー メガ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1594,
+      "proteinG": 48,
+      "fatG": 45,
+      "carbG": 249.7,
+      "saltG": 11,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "旨だしとりそぼろ丼 ミニ",
@@ -2151,7 +2739,7 @@
       "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "旨だしとりそぼろ丼 並盛",
@@ -2165,7 +2753,7 @@
       "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "旨だしとりそぼろ丼 大盛",
@@ -2179,7 +2767,7 @@
       "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "旨だしとりそぼろ丼 特盛",
@@ -2193,315 +2781,525 @@
       "saltG": 6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "明太マヨ旨だしとりそぼろ丼 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 674,
-      "proteinG": 30,
+      "caloriesPerServing": 673,
+      "proteinG": 29.9,
       "fatG": 21.1,
-      "carbG": 90.6,
+      "carbG": 90.4,
       "saltG": 4.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "明太マヨ旨だしとりそぼろ丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 743,
-      "proteinG": 31.2,
+      "caloriesPerServing": 742,
+      "proteinG": 31.1,
       "fatG": 21.4,
-      "carbG": 106.2,
+      "carbG": 106,
       "saltG": 4.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "明太マヨ旨だしとりそぼろ丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 864,
-      "proteinG": 33.2,
+      "caloriesPerServing": 863,
+      "proteinG": 33.1,
       "fatG": 21.8,
-      "carbG": 133.6,
+      "carbG": 133.4,
       "saltG": 4.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "明太マヨ旨だしとりそぼろ丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1041,
-      "proteinG": 48.5,
+      "caloriesPerServing": 1040,
+      "proteinG": 48.4,
       "fatG": 28.2,
-      "carbG": 146.5,
+      "carbG": 146.3,
       "saltG": 6.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "オクラ旨だしとりそぼろ丼 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 621,
+      "caloriesPerServing": 620,
       "proteinG": 30.6,
       "fatG": 14.2,
-      "carbG": 93.7,
+      "carbG": 93.5,
       "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "オクラ旨だしとりそぼろ丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 690,
+      "caloriesPerServing": 689,
       "proteinG": 31.8,
       "fatG": 14.5,
-      "carbG": 109.3,
+      "carbG": 109.1,
       "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "オクラ旨だしとりそぼろ丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 811,
+      "caloriesPerServing": 810,
       "proteinG": 33.8,
       "fatG": 14.9,
-      "carbG": 136.7,
+      "carbG": 136.5,
       "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "オクラ旨だしとりそぼろ丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 988,
+      "caloriesPerServing": 987,
       "proteinG": 49.1,
       "fatG": 21.3,
-      "carbG": 149.6,
+      "carbG": 149.4,
       "saltG": 6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "まぐろたたき皿 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 177,
-      "proteinG": 21.9,
-      "fatG": 8.7,
+      "caloriesPerServing": 170,
+      "proteinG": 20.8,
+      "fatG": 8.2,
       "carbG": 2.7,
       "saltG": 0.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "まぐろたたき丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 591,
-      "proteinG": 28.9,
-      "fatG": 10.1,
-      "carbG": 96.1,
-      "saltG": 1.7,
+      "caloriesPerServing": 580,
+      "proteinG": 27.6,
+      "fatG": 9.6,
+      "carbG": 95,
+      "saltG": 1.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "まぐろたたき丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 719,
-      "proteinG": 31.1,
-      "fatG": 10.5,
-      "carbG": 125.2,
-      "saltG": 1.7,
+      "caloriesPerServing": 705,
+      "proteinG": 29.7,
+      "fatG": 10,
+      "carbG": 123.3,
+      "saltG": 1.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "まぐろたたき丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 887,
-      "proteinG": 52,
-      "fatG": 18.9,
-      "carbG": 126,
-      "saltG": 2.8,
+      "caloriesPerServing": 864,
+      "proteinG": 49.5,
+      "fatG": 18,
+      "carbG": 124,
+      "saltG": 2.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "まぐろユッケ丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 699,
-      "proteinG": 36.3,
-      "fatG": 16.8,
-      "carbG": 100.4,
-      "saltG": 2.8,
+      "caloriesPerServing": 687,
+      "proteinG": 35,
+      "fatG": 16.4,
+      "carbG": 99.2,
+      "saltG": 2.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "まぐろユッケ丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 827,
-      "proteinG": 38.5,
-      "fatG": 17.2,
-      "carbG": 129.5,
-      "saltG": 2.8,
+      "caloriesPerServing": 812,
+      "proteinG": 37.1,
+      "fatG": 16.8,
+      "carbG": 127.5,
+      "saltG": 2.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "まぐろユッケ丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1023,
-      "proteinG": 60,
-      "fatG": 26.8,
-      "carbG": 134.2,
-      "saltG": 4.8,
+      "caloriesPerServing": 1000,
+      "proteinG": 57.5,
+      "fatG": 25.9,
+      "carbG": 132.3,
+      "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけまぐろたたき丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 639,
-      "proteinG": 30.2,
-      "fatG": 10.1,
-      "carbG": 106.7,
-      "saltG": 1.8,
+      "caloriesPerServing": 628,
+      "proteinG": 29,
+      "fatG": 9.6,
+      "carbG": 105.5,
+      "saltG": 1.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけまぐろたたき丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 767,
-      "proteinG": 32.4,
-      "fatG": 10.5,
-      "carbG": 135.8,
+      "caloriesPerServing": 753,
+      "proteinG": 31.1,
+      "fatG": 10,
+      "carbG": 133.8,
       "saltG": 1.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけまぐろたたき丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 936,
-      "proteinG": 53.3,
-      "fatG": 18.9,
-      "carbG": 136.5,
-      "saltG": 2.9,
+      "caloriesPerServing": 912,
+      "proteinG": 50.9,
+      "fatG": 18,
+      "carbG": 134.6,
+      "saltG": 2.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛カルビ焼肉丼 ごはん少なめ",
+      "name": "鉄火丼 ごはん少なめ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 830,
-      "proteinG": 25.5,
-      "fatG": 38.3,
-      "carbG": 95.8,
-      "saltG": 2.9,
+      "caloriesPerServing": 458,
+      "proteinG": 27.1,
+      "fatG": 3.3,
+      "carbG": 79.1,
+      "saltG": 1.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛カルビ焼肉丼 並盛",
+      "name": "鉄火丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 885,
-      "proteinG": 26.4,
-      "fatG": 38.6,
-      "carbG": 108.3,
+      "caloriesPerServing": 527,
+      "proteinG": 28.3,
+      "fatG": 3.6,
+      "carbG": 94.7,
+      "saltG": 1.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "鉄火丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 652,
+      "proteinG": 30.4,
+      "fatG": 4,
+      "carbG": 122.9,
+      "saltG": 1.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "鉄火丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 760,
+      "proteinG": 50.8,
+      "fatG": 5.9,
+      "carbG": 124,
+      "saltG": 1.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "鉄火たたき丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 618,
+      "proteinG": 46.9,
+      "fatG": 11.3,
+      "carbG": 80,
+      "saltG": 1.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "鉄火たたき丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 687,
+      "proteinG": 48.1,
+      "fatG": 11.6,
+      "carbG": 95.6,
+      "saltG": 1.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "鉄火たたき丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 812,
+      "proteinG": 50.2,
+      "fatG": 12,
+      "carbG": 123.9,
+      "saltG": 1.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "鉄火たたき丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 920,
+      "proteinG": 70.7,
+      "fatG": 13.9,
+      "carbG": 125,
+      "saltG": 2.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "山かけ鉄火丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 506,
+      "proteinG": 28.5,
+      "fatG": 3.3,
+      "carbG": 89.6,
+      "saltG": 1.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "山かけ鉄火丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 575,
+      "proteinG": 29.7,
+      "fatG": 3.6,
+      "carbG": 105.2,
+      "saltG": 1.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "山かけ鉄火丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 700,
+      "proteinG": 31.8,
+      "fatG": 4,
+      "carbG": 133.5,
+      "saltG": 1.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "山かけ鉄火丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 808,
+      "proteinG": 52.2,
+      "fatG": 5.9,
+      "carbG": 134.6,
+      "saltG": 1.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ばくだん鉄火丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 687,
+      "proteinG": 43.3,
+      "fatG": 13.7,
+      "carbG": 98.2,
+      "saltG": 1.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ばくだん鉄火丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 756,
+      "proteinG": 44.5,
+      "fatG": 14,
+      "carbG": 113.8,
+      "saltG": 1.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ばくだん鉄火丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 881,
+      "proteinG": 46.6,
+      "fatG": 14.4,
+      "carbG": 142.1,
+      "saltG": 1.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ばくだん鉄火丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 989,
+      "proteinG": 67,
+      "fatG": 16.3,
+      "carbG": 143.2,
+      "saltG": 2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "おんたま牛ネバとろ丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 757,
+      "proteinG": 27.4,
+      "fatG": 22.5,
+      "carbG": 108,
       "saltG": 2.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛カルビ焼肉丼 大盛",
+      "name": "おんたま牛ネバとろ丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1037,
-      "proteinG": 29,
-      "fatG": 39.2,
-      "carbG": 142.7,
-      "saltG": 2.9,
+      "caloriesPerServing": 878,
+      "proteinG": 29.4,
+      "fatG": 23,
+      "carbG": 139.3,
+      "saltG": 2.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛カルビ焼肉丼 特盛",
+      "name": "おんたま牛ネバとろ丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1522,
-      "proteinG": 48.6,
-      "fatG": 76.2,
-      "carbG": 161,
-      "saltG": 5.3,
+      "caloriesPerServing": 1075,
+      "proteinG": 39.3,
+      "fatG": 38,
+      "carbG": 145.1,
+      "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛カルビ焼肉丼 ごはん少なめ",
@@ -2515,7 +3313,7 @@
       "saltG": 4.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛カルビ焼肉丼 並盛",
@@ -2529,7 +3327,7 @@
       "saltG": 4.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛カルビ焼肉丼 大盛",
@@ -2543,7 +3341,7 @@
       "saltG": 4.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "キムチ牛カルビ焼肉丼 特盛",
@@ -2557,10 +3355,10 @@
       "saltG": 7.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "ねぎ玉牛カルビ焼肉丼 ごはん少なめ",
+      "name": "チーズ牛カルビ焼肉丼 ごはん少なめ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -2571,10 +3369,10 @@
       "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "ねぎ玉牛カルビ焼肉丼 並盛",
+      "name": "チーズ牛カルビ焼肉丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -2585,10 +3383,10 @@
       "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "ねぎ玉牛カルビ焼肉丼 大盛",
+      "name": "チーズ牛カルビ焼肉丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -2599,10 +3397,10 @@
       "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "ねぎ玉牛カルビ焼肉丼 特盛",
+      "name": "チーズ牛カルビ焼肉丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
@@ -2613,63 +3411,63 @@
       "saltG": 6.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズ牛カルビ焼肉丼 ごはん少なめ",
+      "name": "ねぎ玉牛カルビ焼肉丼 ごはん少なめ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 945,
+      "caloriesPerServing": 946,
       "proteinG": 33.8,
-      "fatG": 45.4,
-      "carbG": 100.8,
+      "fatG": 45.3,
+      "carbG": 101.2,
       "saltG": 3.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズ牛カルビ焼肉丼 並盛",
+      "name": "ねぎ玉牛カルビ焼肉丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1012,
-      "proteinG": 35.1,
-      "fatG": 45.7,
-      "carbG": 116.1,
-      "saltG": 3.2,
+      "caloriesPerServing": 1015,
+      "proteinG": 35,
+      "fatG": 45.6,
+      "carbG": 116.8,
+      "saltG": 3.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズ牛カルビ焼肉丼 大盛",
+      "name": "ねぎ玉牛カルビ焼肉丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1150,
-      "proteinG": 37.4,
-      "fatG": 46.2,
-      "carbG": 147.4,
-      "saltG": 3.2,
+      "caloriesPerServing": 1153,
+      "proteinG": 37.3,
+      "fatG": 46.1,
+      "carbG": 148.1,
+      "saltG": 3.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "チーズ牛カルビ焼肉丼 特盛",
+      "name": "ねぎ玉牛カルビ焼肉丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1635,
-      "proteinG": 57,
-      "fatG": 83.2,
-      "carbG": 165.6,
-      "saltG": 5.7,
+      "caloriesPerServing": 1638,
+      "proteinG": 56.9,
+      "fatG": 83.1,
+      "carbG": 166.4,
+      "saltG": 6.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく牛カルビ焼肉丼 ごはん少なめ",
@@ -2683,7 +3481,7 @@
       "saltG": 3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく牛カルビ焼肉丼 並盛",
@@ -2697,7 +3495,7 @@
       "saltG": 3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく牛カルビ焼肉丼 大盛",
@@ -2711,7 +3509,7 @@
       "saltG": 3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく牛カルビ焼肉丼 特盛",
@@ -2725,7 +3523,7 @@
       "saltG": 5.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨチーズ牛カルビ焼肉丼 ごはん少なめ",
@@ -2739,21 +3537,21 @@
       "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨチーズ牛カルビ焼肉丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1127,
-      "proteinG": 37.6,
+      "caloriesPerServing": 1140,
+      "proteinG": 37.8,
       "fatG": 56.3,
-      "carbG": 117.4,
-      "saltG": 3.8,
+      "carbG": 120.6,
+      "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨチーズ牛カルビ焼肉丼 大盛",
@@ -2767,7 +3565,7 @@
       "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨチーズ牛カルビ焼肉丼 特盛",
@@ -2781,7 +3579,7 @@
       "saltG": 6.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨキムチ牛カルビ焼肉丼 ごはん少なめ",
@@ -2795,21 +3593,21 @@
       "saltG": 5.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨキムチ牛カルビ焼肉丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1029,
-      "proteinG": 30.7,
+      "caloriesPerServing": 1043,
+      "proteinG": 30.9,
       "fatG": 46.5,
-      "carbG": 121.9,
-      "saltG": 5,
+      "carbG": 125.1,
+      "saltG": 5.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨキムチ牛カルビ焼肉丼 大盛",
@@ -2823,7 +3621,7 @@
       "saltG": 5.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "にんにく明太マヨキムチ牛カルビ焼肉丼 特盛",
@@ -2837,287 +3635,287 @@
       "saltG": 7.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "シャキうま塩野菜牛丼 ごはん少なめ",
+      "name": "ニンニクの芽牛カルビ焼肉丼 ごはん少なめ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 622,
-      "proteinG": 18.1,
-      "fatG": 21.6,
-      "carbG": 91.3,
-      "saltG": 2.9,
+      "caloriesPerServing": 904,
+      "proteinG": 27.4,
+      "fatG": 42.3,
+      "carbG": 104.8,
+      "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "シャキうま塩野菜牛丼 並盛",
+      "name": "ニンニクの芽牛カルビ焼肉丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 784,
-      "proteinG": 23.9,
-      "fatG": 28.8,
-      "carbG": 109.8,
-      "saltG": 3.6,
+      "caloriesPerServing": 973,
+      "proteinG": 28.6,
+      "fatG": 42.6,
+      "carbG": 120.4,
+      "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "シャキうま塩野菜牛丼 大盛",
+      "name": "ニンニクの芽牛カルビ焼肉丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 997,
+      "caloriesPerServing": 1111,
+      "proteinG": 30.9,
+      "fatG": 43.1,
+      "carbG": 151.7,
+      "saltG": 4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ニンニクの芽牛カルビ焼肉丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1596,
+      "proteinG": 50.6,
+      "fatG": 80.1,
+      "carbG": 170,
+      "saltG": 6.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ダブルニンニク牛カルビ焼肉丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 947,
+      "proteinG": 29.4,
+      "fatG": 42.9,
+      "carbG": 111.9,
+      "saltG": 4.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "ダブルニンニク牛カルビ焼肉丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1016,
       "proteinG": 30.6,
-      "fatG": 36.1,
-      "carbG": 140.1,
-      "saltG": 4.3,
+      "fatG": 43.2,
+      "carbG": 127.6,
+      "saltG": 4.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "シャキうま塩野菜牛丼 特盛",
+      "name": "ダブルニンニク牛カルビ焼肉丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1189,
-      "proteinG": 40,
-      "fatG": 51,
-      "carbG": 144.9,
-      "saltG": 5.4,
+      "caloriesPerServing": 1154,
+      "proteinG": 32.9,
+      "fatG": 43.7,
+      "carbG": 158.9,
+      "saltG": 4.1,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "おんたまシャキうま塩野菜牛丼 ごはん少なめ",
+      "name": "ダブルニンニク牛カルビ焼肉丼 特盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 705,
-      "proteinG": 24.8,
-      "fatG": 27.3,
-      "carbG": 91.4,
-      "saltG": 3.1,
+      "caloriesPerServing": 1639,
+      "proteinG": 52.6,
+      "fatG": 80.7,
+      "carbG": 177.1,
+      "saltG": 6.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "おんたまシャキうま塩野菜牛丼 並盛",
+      "name": "トリプルニンニク牛カルビ焼肉丼 ごはん少なめ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 867,
-      "proteinG": 30.6,
-      "fatG": 34.5,
-      "carbG": 109.9,
-      "saltG": 3.8,
+      "caloriesPerServing": 990,
+      "proteinG": 30.8,
+      "fatG": 44.5,
+      "carbG": 117.7,
+      "saltG": 4.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "おんたまシャキうま塩野菜牛丼 大盛",
+      "name": "トリプルニンニク牛カルビ焼肉丼 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1080,
-      "proteinG": 37.3,
-      "fatG": 41.8,
-      "carbG": 140.2,
-      "saltG": 4.5,
+      "caloriesPerServing": 1059,
+      "proteinG": 32,
+      "fatG": 44.8,
+      "carbG": 133.4,
+      "saltG": 4.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "おんたまシャキうま塩野菜牛丼 特盛",
+      "name": "トリプルニンニク牛カルビ焼肉丼 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1272,
-      "proteinG": 46.7,
-      "fatG": 56.7,
-      "carbG": 145,
+      "caloriesPerServing": 1197,
+      "proteinG": 34.3,
+      "fatG": 45.3,
+      "carbG": 164.7,
+      "saltG": 4.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "トリプルニンニク牛カルビ焼肉丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1681,
+      "proteinG": 53.9,
+      "fatG": 82.3,
+      "carbG": 182.9,
+      "saltG": 7.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "シビ辛麻婆茄子牛丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 759,
+      "proteinG": 20.8,
+      "fatG": 33.3,
+      "carbG": 94.8,
+      "saltG": 4.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "シビ辛麻婆茄子牛丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 828,
+      "proteinG": 22,
+      "fatG": 33.5,
+      "carbG": 110.4,
+      "saltG": 4.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "シビ辛麻婆茄子牛丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 949,
+      "proteinG": 24,
+      "fatG": 33.9,
+      "carbG": 137.8,
+      "saltG": 4.2,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "シビ辛麻婆茄子牛丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1146,
+      "proteinG": 33.9,
+      "fatG": 49,
+      "carbG": 143.6,
+      "saltG": 5.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "おんたまシビ辛麻婆茄子牛丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 842,
+      "proteinG": 27.5,
+      "fatG": 38.9,
+      "carbG": 95,
+      "saltG": 4.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "おんたまシビ辛麻婆茄子牛丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 911,
+      "proteinG": 28.7,
+      "fatG": 39.2,
+      "carbG": 110.6,
+      "saltG": 4.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "おんたまシビ辛麻婆茄子牛丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1032,
+      "proteinG": 30.7,
+      "fatG": 39.6,
+      "carbG": 138,
+      "saltG": 4.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "おんたまシビ辛麻婆茄子牛丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1229,
+      "proteinG": 40.6,
+      "fatG": 54.6,
+      "carbG": 143.8,
       "saltG": 5.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "スパイシーキーマカレー丼 ごはん少なめ",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 656,
-      "proteinG": 23.1,
-      "fatG": 21.8,
-      "carbG": 91.9,
-      "saltG": 3.5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "スパイシーキーマカレー丼 並盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 726,
-      "proteinG": 24.2,
-      "fatG": 22,
-      "carbG": 107.6,
-      "saltG": 3.5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "スパイシーキーマカレー丼 大盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 847,
-      "proteinG": 26.3,
-      "fatG": 23.3,
-      "carbG": 248.9,
-      "saltG": 3.5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "チーズスパイシーキーマカレー丼 ごはん少なめ",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 784,
-      "proteinG": 31.6,
-      "fatG": 31.9,
-      "carbG": 92.4,
-      "saltG": 4.1,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "チーズスパイシーキーマカレー丼 並盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 853,
-      "proteinG": 32.7,
-      "fatG": 32.2,
-      "carbG": 108.1,
-      "saltG": 4.1,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "チーズスパイシーキーマカレー丼 大盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 974,
-      "proteinG": 34.8,
-      "fatG": 33.5,
-      "carbG": 249.4,
-      "saltG": 4.1,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "牛あいがけスパイシーキーマカレー丼 ごはん少なめ",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 855,
-      "proteinG": 32.7,
-      "fatG": 36.7,
-      "carbG": 98.5,
-      "saltG": 5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "牛あいがけスパイシーキーマカレー丼 並盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 924,
-      "proteinG": 33.9,
-      "fatG": 36.9,
-      "carbG": 114.2,
-      "saltG": 5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "牛あいがけスパイシーキーマカレー丼 大盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 1045,
-      "proteinG": 35.9,
-      "fatG": 38.2,
-      "carbG": 255.5,
-      "saltG": 5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "牛あいがけチーズスパイシーキーマカレー丼 ごはん少なめ",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 982,
-      "proteinG": 41.2,
-      "fatG": 46.9,
-      "carbG": 99,
-      "saltG": 5.5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "牛あいがけチーズスパイシーキーマカレー丼 並盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 1052,
-      "proteinG": 42.4,
-      "fatG": 47.1,
-      "carbG": 114.7,
-      "saltG": 5.5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "牛あいがけチーズスパイシーキーマカレー丼 大盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 1173,
-      "proteinG": 44.4,
-      "fatG": 48.4,
-      "carbG": 256,
-      "saltG": 5.5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "うな皿 並盛",
@@ -3131,7 +3929,7 @@
       "saltG": 1.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "うな皿 特盛",
@@ -3145,7 +3943,7 @@
       "saltG": 3.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "うな丼 並盛",
@@ -3159,7 +3957,7 @@
       "saltG": 2.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "うな丼 大盛",
@@ -3173,7 +3971,7 @@
       "saltG": 2.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "うな丼 特盛",
@@ -3187,7 +3985,7 @@
       "saltG": 3.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまうな丼 ごはん少なめ",
@@ -3201,7 +3999,7 @@
       "saltG": 2.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまうな丼 並盛",
@@ -3215,7 +4013,7 @@
       "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまうな丼 大盛",
@@ -3229,7 +4027,7 @@
       "saltG": 2.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまうな丼 特盛",
@@ -3243,7 +4041,7 @@
       "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけうな丼 ごはん少なめ",
@@ -3257,7 +4055,7 @@
       "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけうな丼 並盛",
@@ -3271,7 +4069,7 @@
       "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけうな丼 大盛",
@@ -3285,7 +4083,7 @@
       "saltG": 2.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけうな丼 特盛",
@@ -3299,7 +4097,7 @@
       "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "うな牛皿 並盛",
@@ -3313,7 +4111,7 @@
       "saltG": 2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "うな牛皿 特盛",
@@ -3327,7 +4125,7 @@
       "saltG": 2.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "うな牛 ごはん少なめ",
@@ -3341,7 +4139,7 @@
       "saltG": 3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "うな牛 並盛",
@@ -3355,7 +4153,7 @@
       "saltG": 3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "うな牛 大盛",
@@ -3369,7 +4167,7 @@
       "saltG": 3.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "うな牛 特盛",
@@ -3383,7 +4181,7 @@
       "saltG": 4.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまうな牛 ごはん少なめ",
@@ -3397,7 +4195,7 @@
       "saltG": 3.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまうな牛 並盛",
@@ -3411,7 +4209,7 @@
       "saltG": 3.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまうな牛 大盛",
@@ -3425,7 +4223,7 @@
       "saltG": 3.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おんたまうな牛 特盛",
@@ -3439,7 +4237,7 @@
       "saltG": 4.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけうな牛 ごはん少なめ",
@@ -3453,7 +4251,7 @@
       "saltG": 3.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけうな牛 並盛",
@@ -3467,7 +4265,7 @@
       "saltG": 3.2,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけうな牛 大盛",
@@ -3481,7 +4279,7 @@
       "saltG": 3.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけうな牛 特盛",
@@ -3495,1267 +4293,1267 @@
       "saltG": 4.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛皿定食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 832,
+      "caloriesPerServing": 831,
       "proteinG": 31.7,
       "fatG": 30.8,
-      "carbG": 107,
+      "carbG": 106.3,
       "saltG": 4.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛皿定食 中盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 966,
+      "caloriesPerServing": 965,
       "proteinG": 38.3,
       "fatG": 41.2,
-      "carbG": 110.5,
+      "carbG": 109.8,
       "saltG": 5.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛皿定食 2倍盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1116,
+      "caloriesPerServing": 1115,
       "proteinG": 45.8,
       "fatG": 52.6,
-      "carbG": 114.7,
+      "carbG": 114,
       "saltG": 6.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おろしポン酢牛皿定食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 768,
-      "proteinG": 25.9,
-      "fatG": 25.2,
-      "carbG": 110.7,
+      "caloriesPerServing": 766,
+      "proteinG": 25.8,
+      "fatG": 25.1,
+      "carbG": 110,
       "saltG": 5.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おろしポン酢牛皿定食 中盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 833,
-      "proteinG": 31.3,
-      "fatG": 35.3,
-      "carbG": 98.6,
+      "caloriesPerServing": 831,
+      "proteinG": 31.2,
+      "fatG": 35.2,
+      "carbG": 97.9,
       "saltG": 6.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "おろしポン酢牛皿定食 2倍盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1069,
-      "proteinG": 40.3,
-      "fatG": 47,
-      "carbG": 122.3,
+      "caloriesPerServing": 1067,
+      "proteinG": 40.2,
+      "fatG": 46.9,
+      "carbG": 121.6,
       "saltG": 7.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけとろろ牛皿定食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 885,
-      "proteinG": 33.2,
+      "caloriesPerServing": 883,
+      "proteinG": 33.1,
       "fatG": 30.9,
-      "carbG": 118.3,
+      "carbG": 117.6,
       "saltG": 5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけとろろ牛皿定食 中盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 883,
-      "proteinG": 33.1,
-      "fatG": 30.7,
-      "carbG": 118.4,
-      "saltG": 5.9,
+      "caloriesPerServing": 1015,
+      "proteinG": 39.6,
+      "fatG": 41.1,
+      "carbG": 121.2,
+      "saltG": 6.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "山かけとろろ牛皿定食 2倍盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 1170,
-      "proteinG": 47.4,
-      "fatG": 52.8,
-      "carbG": 126.6,
-      "saltG": 6.8,
+      "caloriesPerServing": 1167,
+      "proteinG": 47.2,
+      "fatG": 52.7,
+      "carbG": 125.3,
+      "saltG": 6.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "鮭定食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 436,
-      "proteinG": 21.2,
+      "caloriesPerServing": 434,
+      "proteinG": 21.1,
       "fatG": 10.1,
-      "carbG": 66.4,
+      "carbG": 65.7,
       "saltG": 4.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "鮭定食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 574,
-      "proteinG": 23.5,
+      "caloriesPerServing": 572,
+      "proteinG": 23.4,
       "fatG": 10.6,
-      "carbG": 97.6,
+      "carbG": 96.9,
       "saltG": 4.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "鮭定食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 696,
-      "proteinG": 25.7,
+      "caloriesPerServing": 694,
+      "proteinG": 25.6,
       "fatG": 11,
-      "carbG": 125.2,
+      "carbG": 124.5,
       "saltG": 4.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆定食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 443,
-      "proteinG": 19.1,
-      "fatG": 10.2,
-      "carbG": 70.5,
-      "saltG": 3.7,
+      "caloriesPerServing": 482,
+      "proteinG": 22.3,
+      "fatG": 13,
+      "carbG": 71.8,
+      "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆定食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 581,
-      "proteinG": 21.4,
-      "fatG": 10.7,
-      "carbG": 101.7,
-      "saltG": 3.7,
+      "caloriesPerServing": 620,
+      "proteinG": 24.6,
+      "fatG": 13.5,
+      "carbG": 103,
+      "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆定食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 702,
-      "proteinG": 23.4,
-      "fatG": 11.1,
-      "carbG": 129.1,
-      "saltG": 3.7,
+      "caloriesPerServing": 741,
+      "proteinG": 26.6,
+      "fatG": 13.9,
+      "carbG": 130.4,
+      "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "鮭・納豆定食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 562,
-      "proteinG": 32,
-      "fatG": 17.7,
-      "carbG": 70,
-      "saltG": 5.1,
+      "caloriesPerServing": 602,
+      "proteinG": 35.3,
+      "fatG": 20.5,
+      "carbG": 71.9,
+      "saltG": 4.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "鮭・納豆定食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 700,
-      "proteinG": 34.3,
-      "fatG": 18.2,
-      "carbG": 101.2,
-      "saltG": 5.1,
+      "caloriesPerServing": 740,
+      "proteinG": 37.6,
+      "fatG": 21,
+      "carbG": 103.1,
+      "saltG": 4.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "鮭・納豆定食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 821,
-      "proteinG": 36.3,
-      "fatG": 18.6,
-      "carbG": 128.6,
-      "saltG": 5.1,
+      "caloriesPerServing": 861,
+      "proteinG": 39.6,
+      "fatG": 21.4,
+      "carbG": 130.5,
+      "saltG": 4.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "さば定食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 551,
-      "proteinG": 22.1,
+      "caloriesPerServing": 549,
+      "proteinG": 22,
       "fatG": 22.5,
-      "carbG": 66.4,
+      "carbG": 65.7,
       "saltG": 3.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "さば定食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 689,
-      "proteinG": 24.4,
+      "caloriesPerServing": 687,
+      "proteinG": 24.3,
       "fatG": 23,
-      "carbG": 97.6,
+      "carbG": 96.9,
       "saltG": 3.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "さば定食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 810,
-      "proteinG": 26.4,
+      "caloriesPerServing": 808,
+      "proteinG": 26.3,
       "fatG": 23.4,
-      "carbG": 125,
+      "carbG": 124.3,
       "saltG": 3.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "さば納豆定食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 671,
-      "proteinG": 32.1,
-      "fatG": 29.6,
-      "carbG": 69.3,
-      "saltG": 4.1,
+      "caloriesPerServing": 720,
+      "proteinG": 36.2,
+      "fatG": 32.8,
+      "carbG": 71.8,
+      "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "さば納豆定食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 809,
-      "proteinG": 34.4,
-      "fatG": 30.1,
-      "carbG": 100.5,
-      "saltG": 4.1,
+      "caloriesPerServing": 858,
+      "proteinG": 38.5,
+      "fatG": 33.3,
+      "carbG": 103,
+      "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "さば納豆定食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 930,
-      "proteinG": 36.4,
-      "fatG": 30.5,
-      "carbG": 127.9,
-      "saltG": 4.1,
+      "caloriesPerServing": 979,
+      "proteinG": 40.5,
+      "fatG": 33.7,
+      "carbG": 130.4,
+      "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "たまかけ朝食 ミニ",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 393,
-      "proteinG": 14.8,
-      "fatG": 8.1,
-      "carbG": 65.4,
-      "saltG": 2.4,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "たまかけ朝食 並盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 531,
-      "proteinG": 17.1,
-      "fatG": 8.6,
-      "carbG": 96.6,
-      "saltG": 2.4,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "たまかけ朝食 大盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 652,
-      "proteinG": 19.1,
-      "fatG": 9,
-      "carbG": 124,
-      "saltG": 2.4,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "納豆たまかけ朝食 ミニ",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 430,
-      "proteinG": 18,
-      "fatG": 9.6,
-      "carbG": 67.9,
-      "saltG": 2.5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "納豆たまかけ朝食 並盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 568,
-      "proteinG": 20.3,
-      "fatG": 10.1,
-      "carbG": 99.1,
-      "saltG": 2.5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "納豆たまかけ朝食 大盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 689,
-      "proteinG": 22.3,
-      "fatG": 10.5,
-      "carbG": 126.5,
-      "saltG": 2.5,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "焼鮭たまかけ朝食 ミニ",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 503,
-      "proteinG": 20.3,
-      "fatG": 16.2,
-      "carbG": 69.1,
-      "saltG": 3.3,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "焼鮭たまかけ朝食 並盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 641,
-      "proteinG": 22.6,
-      "fatG": 16.7,
-      "carbG": 100.3,
-      "saltG": 3.3,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "焼鮭たまかけ朝食 大盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 762,
-      "proteinG": 24.6,
-      "fatG": 17.1,
-      "carbG": 127.7,
-      "saltG": 3.3,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "牛たまかけ朝食 ミニ",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 546,
-      "proteinG": 28.7,
-      "fatG": 18.6,
-      "carbG": 66.1,
-      "saltG": 3.6,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "牛たまかけ朝食 並盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 684,
-      "proteinG": 31,
-      "fatG": 19.1,
-      "carbG": 97.3,
-      "saltG": 3.6,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "牛たまかけ朝食 大盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 805,
-      "proteinG": 33,
-      "fatG": 19.5,
-      "carbG": 124.7,
-      "saltG": 3.6,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "塩さばたまかけ朝食 ミニ",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 628,
-      "proteinG": 28.7,
-      "fatG": 28,
-      "carbG": 65.4,
-      "saltG": 2.9,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "塩さばたまかけ朝食 並盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 766,
-      "proteinG": 31,
-      "fatG": 28.5,
-      "carbG": 96.6,
-      "saltG": 2.9,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "塩さばたまかけ朝食 大盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 887,
-      "proteinG": 33,
-      "fatG": 28.9,
-      "carbG": 124,
-      "saltG": 2.9,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "まぜのっけ朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 411,
-      "proteinG": 15.1,
-      "fatG": 8.6,
-      "carbG": 69,
-      "saltG": 3.1,
+      "caloriesPerServing": 392,
+      "proteinG": 14.8,
+      "fatG": 8.1,
+      "carbG": 65.2,
+      "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "まぜのっけ朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 549,
-      "proteinG": 17.4,
-      "fatG": 9.1,
-      "carbG": 100.2,
-      "saltG": 3.1,
+      "caloriesPerServing": 531,
+      "proteinG": 17.1,
+      "fatG": 8.6,
+      "carbG": 96.4,
+      "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "まぜのっけ朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 670,
-      "proteinG": 19.4,
-      "fatG": 9.5,
-      "carbG": 127.6,
-      "saltG": 3.1,
+      "caloriesPerServing": 652,
+      "proteinG": 19.1,
+      "fatG": 9,
+      "carbG": 123.8,
+      "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆まぜのっけ朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 448,
-      "proteinG": 18.3,
-      "fatG": 10.2,
-      "carbG": 71.5,
-      "saltG": 3.3,
+      "caloriesPerServing": 481,
+      "proteinG": 22.2,
+      "fatG": 12.8,
+      "carbG": 71.2,
+      "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆まぜのっけ朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 586,
-      "proteinG": 20.6,
-      "fatG": 10.7,
-      "carbG": 102.7,
-      "saltG": 3.3,
+      "caloriesPerServing": 619,
+      "proteinG": 24.5,
+      "fatG": 13.3,
+      "carbG": 102.4,
+      "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆まぜのっけ朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 707,
-      "proteinG": 22.6,
-      "fatG": 11.1,
-      "carbG": 130.1,
-      "saltG": 3.3,
+      "caloriesPerServing": 740,
+      "proteinG": 26.5,
+      "fatG": 13.7,
+      "carbG": 129.8,
+      "saltG": 2.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "焼鮭まぜのっけ朝食 ミニ",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 521,
-      "proteinG": 20.5,
-      "fatG": 16.7,
-      "carbG": 72.7,
-      "saltG": 4,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "焼鮭まぜのっけ朝食 並盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 659,
-      "proteinG": 22.8,
-      "fatG": 17.2,
-      "carbG": 103.9,
-      "saltG": 4,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "焼鮭まぜのっけ朝食 大盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 780,
-      "proteinG": 24.8,
-      "fatG": 17.6,
-      "carbG": 131.3,
-      "saltG": 4,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛まぜのっけ朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 564,
-      "proteinG": 29,
-      "fatG": 19.1,
-      "carbG": 69.7,
-      "saltG": 4.4,
+      "caloriesPerServing": 503,
+      "proteinG": 20.3,
+      "fatG": 16.2,
+      "carbG": 69,
+      "saltG": 3.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛まぜのっけ朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 702,
-      "proteinG": 31.3,
-      "fatG": 19.6,
-      "carbG": 100.9,
-      "saltG": 4.4,
+      "caloriesPerServing": 641,
+      "proteinG": 22.6,
+      "fatG": 16.7,
+      "carbG": 100.2,
+      "saltG": 3.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛まぜのっけ朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 819,
-      "proteinG": 33.3,
-      "fatG": 20,
-      "carbG": 128.3,
-      "saltG": 4.4,
+      "caloriesPerServing": 762,
+      "proteinG": 24.6,
+      "fatG": 17.1,
+      "carbG": 127.6,
+      "saltG": 3.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "焼鮭まぜのっけ朝食 ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 514,
+      "proteinG": 27.9,
+      "fatG": 15.7,
+      "carbG": 65.3,
+      "saltG": 3.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "焼鮭まぜのっけ朝食 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 652,
+      "proteinG": 30.2,
+      "fatG": 16.2,
+      "carbG": 96.5,
+      "saltG": 3.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "焼鮭まぜのっけ朝食 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 773,
+      "proteinG": 32.2,
+      "fatG": 16.6,
+      "carbG": 123.9,
+      "saltG": 3.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "塩さばまぜのっけ朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 646,
-      "proteinG": 29,
-      "fatG": 28.5,
-      "carbG": 69,
-      "saltG": 3.7,
+      "caloriesPerServing": 628,
+      "proteinG": 28.7,
+      "fatG": 27.9,
+      "carbG": 65.3,
+      "saltG": 2.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "塩さばまぜのっけ朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 784,
-      "proteinG": 31.3,
-      "fatG": 29,
-      "carbG": 100.2,
-      "saltG": 3.7,
+      "caloriesPerServing": 766,
+      "proteinG": 31,
+      "fatG": 28.4,
+      "carbG": 96.5,
+      "saltG": 2.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "塩さばまぜのっけ朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 905,
-      "proteinG": 33.3,
-      "fatG": 29.4,
-      "carbG": 127.6,
-      "saltG": 3.7,
+      "caloriesPerServing": 887,
+      "proteinG": 33,
+      "fatG": 28.8,
+      "carbG": 123.9,
+      "saltG": 2.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "自社製ベーコンエッグ朝食 ミニ",
+      "name": "たまかけ朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 569,
-      "proteinG": 20.5,
-      "fatG": 22.9,
+      "caloriesPerServing": 422,
+      "proteinG": 15.6,
+      "fatG": 10.3,
+      "carbG": 67.5,
+      "saltG": 3.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "たまかけ朝食 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 560,
+      "proteinG": 17.9,
+      "fatG": 10.8,
+      "carbG": 98.7,
+      "saltG": 3.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "たまかけ朝食 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 681,
+      "proteinG": 19.9,
+      "fatG": 11.2,
+      "carbG": 126.1,
+      "saltG": 3.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "納豆たまかけ朝食 ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 510,
+      "proteinG": 23,
+      "fatG": 15,
+      "carbG": 73.4,
+      "saltG": 3.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "納豆たまかけ朝食 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 648,
+      "proteinG": 25.3,
+      "fatG": 15.5,
+      "carbG": 104.6,
+      "saltG": 3.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "納豆たまかけ朝食 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 769,
+      "proteinG": 27.3,
+      "fatG": 15.9,
+      "carbG": 132,
+      "saltG": 3.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "牛たまかけ朝食 ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 532,
+      "proteinG": 21.1,
+      "fatG": 18.4,
       "carbG": 71.2,
       "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "自社製ベーコンエッグ朝食 並盛",
+      "name": "牛たまかけ朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 707,
-      "proteinG": 22.8,
-      "fatG": 23.4,
+      "caloriesPerServing": 670,
+      "proteinG": 23.4,
+      "fatG": 18.9,
       "carbG": 102.4,
       "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "自社製ベーコンエッグ朝食 大盛",
+      "name": "牛たまかけ朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 828,
-      "proteinG": 24.8,
-      "fatG": 23.8,
+      "caloriesPerServing": 791,
+      "proteinG": 25.4,
+      "fatG": 19.3,
       "carbG": 129.8,
       "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "納豆ベーコンエッグ朝食 ミニ",
+      "name": "焼鮭たまかけ朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 606,
-      "proteinG": 23.7,
-      "fatG": 24.5,
-      "carbG": 73.7,
-      "saltG": 4.2,
+      "caloriesPerServing": 542,
+      "proteinG": 28.6,
+      "fatG": 17.8,
+      "carbG": 67.6,
+      "saltG": 4.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "納豆ベーコンエッグ朝食 並盛",
+      "name": "焼鮭たまかけ朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 744,
-      "proteinG": 26,
-      "fatG": 25,
-      "carbG": 104.9,
-      "saltG": 4.2,
+      "caloriesPerServing": 680,
+      "proteinG": 30.9,
+      "fatG": 18.3,
+      "carbG": 98.8,
+      "saltG": 4.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "納豆ベーコンエッグ朝食 大盛",
+      "name": "焼鮭たまかけ朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 865,
-      "proteinG": 28,
-      "fatG": 25.4,
-      "carbG": 132.3,
-      "saltG": 4.2,
+      "caloriesPerServing": 797,
+      "proteinG": 32.9,
+      "fatG": 18.7,
+      "carbG": 126.2,
+      "saltG": 4.5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
-      "name": "牛小鉢ベーコンエッグ朝食 ミニ",
+      "name": "塩さばたまかけ朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 676,
-      "proteinG": 25.9,
+      "caloriesPerServing": 657,
+      "proteinG": 29.5,
+      "fatG": 30.1,
+      "carbG": 67.6,
+      "saltG": 3.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "塩さばたまかけ朝食 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 795,
+      "proteinG": 31.8,
+      "fatG": 30.6,
+      "carbG": 98.8,
+      "saltG": 3.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "塩さばたまかけ朝食 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 916,
+      "proteinG": 33.8,
       "fatG": 31,
-      "carbG": 74.2,
-      "saltG": 4.9,
+      "carbG": 126.2,
+      "saltG": 3.6,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "牛小鉢ベーコンエッグ朝食 並盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 814,
-      "proteinG": 28.2,
-      "fatG": 31.5,
-      "carbG": 105.4,
-      "saltG": 4.9,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
-    },
-    {
-      "name": "牛小鉢ベーコンエッグ朝食 大盛",
-      "category": "牛丼",
-      "servingSizeG": 100,
-      "servingUnit": "g",
-      "caloriesPerServing": 935,
-      "proteinG": 30.2,
-      "fatG": 31.9,
-      "carbG": 132.8,
-      "saltG": 4.9,
-      "source": "official_disclosure",
-      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ソーセージエッグ朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 544,
-      "proteinG": 20.3,
-      "fatG": 20.7,
+      "caloriesPerServing": 579,
+      "proteinG": 21.1,
+      "fatG": 24.6,
       "carbG": 69.7,
-      "saltG": 3.8,
+      "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ソーセージエッグ朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 682,
-      "proteinG": 22.6,
-      "fatG": 21.2,
+      "caloriesPerServing": 717,
+      "proteinG": 23.4,
+      "fatG": 25.1,
       "carbG": 100.9,
-      "saltG": 3.8,
+      "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ソーセージエッグ朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 803,
-      "proteinG": 24.6,
-      "fatG": 21.6,
+      "caloriesPerServing": 838,
+      "proteinG": 25.4,
+      "fatG": 25.5,
       "carbG": 128.3,
-      "saltG": 3.8,
+      "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆ソーセージエッグ朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 581,
-      "proteinG": 23.5,
-      "fatG": 22.3,
-      "carbG": 72.2,
+      "caloriesPerServing": 668,
+      "proteinG": 28.4,
+      "fatG": 29.3,
+      "carbG": 75.7,
       "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆ソーセージエッグ朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 719,
-      "proteinG": 25.8,
-      "fatG": 22.8,
-      "carbG": 103.4,
+      "caloriesPerServing": 806,
+      "proteinG": 30.7,
+      "fatG": 29.8,
+      "carbG": 106.9,
       "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆ソーセージエッグ朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 840,
-      "proteinG": 27.8,
-      "fatG": 23.2,
-      "carbG": 130.8,
+      "caloriesPerServing": 927,
+      "proteinG": 32.7,
+      "fatG": 30.2,
+      "carbG": 134.3,
       "saltG": 4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛小鉢ソーセージエッグ朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 654,
-      "proteinG": 25.8,
-      "fatG": 28.8,
-      "carbG": 73.4,
-      "saltG": 4.7,
+      "caloriesPerServing": 687,
+      "proteinG": 26.4,
+      "fatG": 32.7,
+      "carbG": 72.7,
+      "saltG": 4.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛小鉢ソーセージエッグ朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 792,
-      "proteinG": 28.1,
-      "fatG": 29.3,
-      "carbG": 104.6,
-      "saltG": 4.7,
+      "caloriesPerServing": 825,
+      "proteinG": 28.7,
+      "fatG": 33.2,
+      "carbG": 103.9,
+      "saltG": 4.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛小鉢ソーセージエッグ朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 913,
-      "proteinG": 30.1,
-      "fatG": 29.7,
-      "carbG": 132,
+      "caloriesPerServing": 946,
+      "proteinG": 30.7,
+      "fatG": 33.6,
+      "carbG": 131.3,
+      "saltG": 4.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "自社製ベーコンエッグ朝食 ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 554,
+      "proteinG": 20.8,
+      "fatG": 22.4,
+      "carbG": 68.2,
+      "saltG": 3.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "自社製ベーコンエッグ朝食 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 692,
+      "proteinG": 23.1,
+      "fatG": 22.9,
+      "carbG": 99.4,
+      "saltG": 3.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "自社製ベーコンエッグ朝食 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 813,
+      "proteinG": 25.1,
+      "fatG": 23.3,
+      "carbG": 126.8,
+      "saltG": 3.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "納豆ベーコンエッグ朝食 ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 643,
+      "proteinG": 28.2,
+      "fatG": 27.1,
+      "carbG": 74.1,
+      "saltG": 3.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "納豆ベーコンエッグ朝食 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 781,
+      "proteinG": 30.5,
+      "fatG": 27.6,
+      "carbG": 105.3,
+      "saltG": 3.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "納豆ベーコンエッグ朝食 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 902,
+      "proteinG": 32.5,
+      "fatG": 28,
+      "carbG": 132.7,
+      "saltG": 3.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "牛小鉢ベーコンエッグ朝食 ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 664,
+      "proteinG": 26.4,
+      "fatG": 30.5,
+      "carbG": 71.9,
       "saltG": 4.7,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "牛小鉢ベーコンエッグ朝食 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 802,
+      "proteinG": 28.7,
+      "fatG": 31,
+      "carbG": 103.1,
+      "saltG": 4.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "牛小鉢ベーコンエッグ朝食 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 923,
+      "proteinG": 30.7,
+      "fatG": 31.4,
+      "carbG": 130.5,
+      "saltG": 4.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "焼鮭朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 480,
-      "proteinG": 22.2,
-      "fatG": 13.4,
-      "carbG": 69.5,
-      "saltG": 4.2,
+      "caloriesPerServing": 458,
+      "proteinG": 21.8,
+      "fatG": 12.1,
+      "carbG": 67.4,
+      "saltG": 4.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "焼鮭朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 618,
-      "proteinG": 24.5,
-      "fatG": 13.9,
-      "carbG": 100.7,
-      "saltG": 4.2,
+      "caloriesPerServing": 596,
+      "proteinG": 24.1,
+      "fatG": 12.6,
+      "carbG": 98.6,
+      "saltG": 4.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "焼鮭朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 735,
-      "proteinG": 26.5,
-      "fatG": 14.3,
-      "carbG": 128.1,
-      "saltG": 4.2,
+      "caloriesPerServing": 713,
+      "proteinG": 26.1,
+      "fatG": 13,
+      "carbG": 126,
+      "saltG": 4.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆焼鮭朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 522,
-      "proteinG": 25.7,
-      "fatG": 15.1,
-      "carbG": 72.5,
-      "saltG": 4.4,
+      "caloriesPerServing": 546,
+      "proteinG": 29.2,
+      "fatG": 16.8,
+      "carbG": 73.3,
+      "saltG": 4.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆焼鮭朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 660,
-      "proteinG": 28,
-      "fatG": 15.6,
-      "carbG": 103.7,
-      "saltG": 4.4,
+      "caloriesPerServing": 684,
+      "proteinG": 31.5,
+      "fatG": 17.3,
+      "carbG": 104.5,
+      "saltG": 4.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆焼鮭朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 777,
-      "proteinG": 30,
-      "fatG": 16,
-      "carbG": 131.1,
-      "saltG": 4.4,
+      "caloriesPerServing": 801,
+      "proteinG": 33.5,
+      "fatG": 17.7,
+      "carbG": 131.9,
+      "saltG": 4.3,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛焼鮭朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 579,
-      "proteinG": 28.9,
-      "fatG": 20.5,
-      "carbG": 72.7,
-      "saltG": 4,
+      "caloriesPerServing": 589,
+      "proteinG": 29.4,
+      "fatG": 22.1,
+      "carbG": 71.2,
+      "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛焼鮭朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 717,
-      "proteinG": 31.2,
-      "fatG": 21,
-      "carbG": 103.9,
-      "saltG": 4,
+      "caloriesPerServing": 727,
+      "proteinG": 31.7,
+      "fatG": 22.6,
+      "carbG": 102.4,
+      "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛焼鮭朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 838,
-      "proteinG": 33.2,
-      "fatG": 21.4,
-      "carbG": 131.3,
-      "saltG": 4,
+      "caloriesPerServing": 848,
+      "proteinG": 33.7,
+      "fatG": 23,
+      "carbG": 129.8,
+      "saltG": 3.9,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "塩さば朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 562,
-      "proteinG": 22.2,
-      "fatG": 22.8,
-      "carbG": 68.8,
-      "saltG": 3.5,
+      "caloriesPerServing": 573,
+      "proteinG": 22.7,
+      "fatG": 24.4,
+      "carbG": 67.4,
+      "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "塩さば朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 700,
-      "proteinG": 24.5,
-      "fatG": 23.3,
-      "carbG": 100,
-      "saltG": 3.5,
+      "caloriesPerServing": 711,
+      "proteinG": 25,
+      "fatG": 24.9,
+      "carbG": 98.6,
+      "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "塩さば朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 821,
-      "proteinG": 26.5,
-      "fatG": 23.7,
-      "carbG": 127.4,
-      "saltG": 3.5,
+      "caloriesPerServing": 832,
+      "proteinG": 27,
+      "fatG": 25.3,
+      "carbG": 126,
+      "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆塩さば朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 604,
-      "proteinG": 25.8,
-      "fatG": 24.5,
-      "carbG": 71.8,
-      "saltG": 3.7,
+      "caloriesPerServing": 661,
+      "proteinG": 30.1,
+      "fatG": 29.2,
+      "carbG": 73.3,
+      "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆塩さば朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 742,
-      "proteinG": 28.1,
-      "fatG": 25,
-      "carbG": 103,
-      "saltG": 3.7,
+      "caloriesPerServing": 799,
+      "proteinG": 32.4,
+      "fatG": 29.7,
+      "carbG": 104.5,
+      "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "納豆塩さば朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 863,
-      "proteinG": 30.1,
-      "fatG": 25.4,
-      "carbG": 130.4,
-      "saltG": 3.7,
+      "caloriesPerServing": 920,
+      "proteinG": 34.4,
+      "fatG": 30.1,
+      "carbG": 131.9,
+      "saltG": 3.4,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛塩さば朝食 ミニ",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 693,
-      "proteinG": 28.8,
-      "fatG": 31.2,
-      "carbG": 72.8,
-      "saltG": 4.9,
+      "caloriesPerServing": 703,
+      "proteinG": 29.3,
+      "fatG": 32.9,
+      "carbG": 71.3,
+      "saltG": 4.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛塩さば朝食 並盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 831,
-      "proteinG": 31.1,
-      "fatG": 31.7,
-      "carbG": 104,
-      "saltG": 4.9,
+      "caloriesPerServing": 841,
+      "proteinG": 31.6,
+      "fatG": 33.4,
+      "carbG": 102.5,
+      "saltG": 4.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "牛塩さば朝食 大盛",
       "category": "牛丼",
       "servingSizeG": 100,
       "servingUnit": "g",
-      "caloriesPerServing": 952,
-      "proteinG": 33.1,
-      "fatG": 32.1,
-      "carbG": 131.4,
-      "saltG": 4.9,
+      "caloriesPerServing": 962,
+      "proteinG": 33.6,
+      "fatG": 33.8,
+      "carbG": 129.9,
+      "saltG": 4.8,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ごはん ミニ",
@@ -4769,7 +5567,7 @@
       "saltG": 0,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ごはん 並盛",
@@ -4783,7 +5581,7 @@
       "saltG": 0,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
     },
     {
       "name": "ごはん 大盛",
@@ -4797,7 +5595,455 @@
       "saltG": 0,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "牛カルビ焼肉皿 2倍盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 972,
+      "proteinG": 39.4,
+      "fatG": 74.2,
+      "carbG": 36.6,
+      "saltG": 5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "レモネードスカッシュ メガ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 276,
+      "proteinG": 0.9,
+      "fatG": 0.4,
+      "carbG": 66.1,
+      "saltG": 0,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-08-30"
+    },
+    {
+      "name": "チーズインハンバーグカレー ミニ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 647,
+      "proteinG": 18.4,
+      "fatG": 30.6,
+      "carbG": 75.1,
+      "saltG": 3.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "チーズインハンバーグカレー 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 910,
+      "proteinG": 23.7,
+      "fatG": 38.3,
+      "carbG": 118.4,
+      "saltG": 5.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "チーズインハンバーグカレー 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1218,
+      "proteinG": 29.6,
+      "fatG": 45.5,
+      "carbG": 173.4,
+      "saltG": 7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "チーズインハンバーグカレー メガ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1562,
+      "proteinG": 36.2,
+      "fatG": 53.5,
+      "carbG": 234.9,
+      "saltG": 9.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "牛カルビ焼肉丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 830,
+      "proteinG": 25.5,
+      "fatG": 38.3,
+      "carbG": 95.8,
+      "saltG": 2.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "牛カルビ焼肉丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 885,
+      "proteinG": 26.4,
+      "fatG": 38.6,
+      "carbG": 108.3,
+      "saltG": 2.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "牛カルビ焼肉丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1037,
+      "proteinG": 29,
+      "fatG": 39.2,
+      "carbG": 142.7,
+      "saltG": 2.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "牛カルビ焼肉丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1522,
+      "proteinG": 48.6,
+      "fatG": 76.2,
+      "carbG": 161,
+      "saltG": 5.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "シャキうま塩野菜牛丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 622,
+      "proteinG": 18.1,
+      "fatG": 21.6,
+      "carbG": 91.3,
+      "saltG": 2.9,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "シャキうま塩野菜牛丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 784,
+      "proteinG": 23.9,
+      "fatG": 28.8,
+      "carbG": 109.8,
+      "saltG": 3.6,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "シャキうま塩野菜牛丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 997,
+      "proteinG": 30.6,
+      "fatG": 36.1,
+      "carbG": 140.1,
+      "saltG": 4.3,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "シャキうま塩野菜牛丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1189,
+      "proteinG": 40,
+      "fatG": 51,
+      "carbG": 144.9,
+      "saltG": 5.4,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "おんたまシャキうま塩野菜牛丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 705,
+      "proteinG": 24.8,
+      "fatG": 27.3,
+      "carbG": 91.4,
+      "saltG": 3.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "おんたまシャキうま塩野菜牛丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 867,
+      "proteinG": 30.6,
+      "fatG": 34.5,
+      "carbG": 109.9,
+      "saltG": 3.8,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "おんたまシャキうま塩野菜牛丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1080,
+      "proteinG": 37.3,
+      "fatG": 41.8,
+      "carbG": 140.2,
+      "saltG": 4.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "おんたまシャキうま塩野菜牛丼 特盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1272,
+      "proteinG": 46.7,
+      "fatG": 56.7,
+      "carbG": 145,
+      "saltG": 5.7,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "スパイシーキーマカレー丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 656,
+      "proteinG": 23.1,
+      "fatG": 21.8,
+      "carbG": 91.9,
+      "saltG": 3.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "スパイシーキーマカレー丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 726,
+      "proteinG": 24.2,
+      "fatG": 22,
+      "carbG": 107.6,
+      "saltG": 3.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "スパイシーキーマカレー丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 847,
+      "proteinG": 26.3,
+      "fatG": 23.3,
+      "carbG": 248.9,
+      "saltG": 3.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "チーズスパイシーキーマカレー丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 784,
+      "proteinG": 31.6,
+      "fatG": 31.9,
+      "carbG": 92.4,
+      "saltG": 4.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "チーズスパイシーキーマカレー丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 853,
+      "proteinG": 32.7,
+      "fatG": 32.2,
+      "carbG": 108.1,
+      "saltG": 4.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "チーズスパイシーキーマカレー丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 974,
+      "proteinG": 34.8,
+      "fatG": 33.5,
+      "carbG": 249.4,
+      "saltG": 4.1,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "牛あいがけスパイシーキーマカレー丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 855,
+      "proteinG": 32.7,
+      "fatG": 36.7,
+      "carbG": 98.5,
+      "saltG": 5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "牛あいがけスパイシーキーマカレー丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 924,
+      "proteinG": 33.9,
+      "fatG": 36.9,
+      "carbG": 114.2,
+      "saltG": 5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "牛あいがけスパイシーキーマカレー丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1045,
+      "proteinG": 35.9,
+      "fatG": 38.2,
+      "carbG": 255.5,
+      "saltG": 5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "牛あいがけチーズスパイシーキーマカレー丼 ごはん少なめ",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 982,
+      "proteinG": 41.2,
+      "fatG": 46.9,
+      "carbG": 99,
+      "saltG": 5.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "牛あいがけチーズスパイシーキーマカレー丼 並盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1052,
+      "proteinG": 42.4,
+      "fatG": 47.1,
+      "carbG": 114.7,
+      "saltG": 5.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
+    },
+    {
+      "name": "牛あいがけチーズスパイシーキーマカレー丼 大盛",
+      "category": "牛丼",
+      "servingSizeG": 100,
+      "servingUnit": "g",
+      "caloriesPerServing": 1173,
+      "proteinG": 44.4,
+      "fatG": 48.4,
+      "carbG": 256,
+      "saltG": 5.5,
+      "source": "official_disclosure",
+      "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
     },
     {
       "name": "ごはん 2倍盛",
@@ -4811,7 +6057,8 @@
       "saltG": 5,
       "source": "official_disclosure",
       "sourceUrl": "https://images.zensho.co.jp/materials/sukiya/allergen/nutrition.pdf",
-      "sourceCapturedAt": "2026-05-18"
+      "sourceCapturedAt": "2026-05-18",
+      "discontinued": true
     }
   ]
 }
