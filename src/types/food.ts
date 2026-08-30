@@ -78,6 +78,16 @@ export interface Food extends ExtendedNutrients {
   fatG: number;
   carbG: number;
   source: FoodSource;
+  /** S5b — 外食チェーン行 (search_index 由来) の出典ラベル。
+   * search_index.source_label のミラー: 'official_disclosure' /
+   * 'package_label' = 公式一次情報、 'ai_estimate' = AI 推定。
+   * foods テーブル由来の行は undefined (バッジ非表示)。 */
+  sourceLabel?: 'official_disclosure' | 'package_label' | 'ai_estimate' | 'manual' | null;
+  /** S5b — 出典の取得日 (ISO YYYY-MM-DD)。 詳細画面の
+   * 「出典: チェーン名（取得日時点）」表示用。 */
+  sourceCapturedAt?: string | null;
+  /** S5b — 出典 URL (公式栄養一覧 PDF / item ページ)。 */
+  sourceUrl?: string | null;
   externalId: string | null;
   isCustom: boolean;
   isFavorite: boolean;
