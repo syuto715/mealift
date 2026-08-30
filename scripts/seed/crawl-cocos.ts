@@ -145,6 +145,12 @@ async function main(): Promise<void> {
     try {
       const html = await fetchHtml(cat);
       const urls = extractItemUrls(html);
+      if (urls.length === 0) {
+        // Codex R2 Important — fetch は成功したが item URL が 1 件も
+        // 取れないカテゴリは構造変化の兆候。 他カテゴリが正常でも
+        // 欠落として観測可能にする。
+        dropped.push(`category-empty: ${cat}`);
+      }
       for (const u of urls) itemUrls.add(u);
       console.log(`  ${cat} → ${urls.length} item URLs`);
     } catch (e) {
