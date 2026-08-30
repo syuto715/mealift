@@ -18,6 +18,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseZenshoPdf } from './zensho';
 import { NAKAU_MENU_NAMES } from './menu_names/nakau';
+import { carryDiscontinued } from '../discontinued';
 import type { RestaurantScrapeOutput } from '../types';
 
 export const NAKAU_SIZE_LABELS: readonly string[] = [
@@ -29,6 +30,7 @@ export const NAKAU_SIZE_LABELS: readonly string[] = [
   '大盛',
   '特',
   '特盛',
+  '２倍盛',
   '豪快盛',
   'W 小盛',
   'W 並盛',
@@ -72,16 +74,28 @@ export function parseNakau(opts: NakauParseOptions): RestaurantScrapeOutput {
 }
 
 async function main(): Promise<void> {
-  const output = parseNakau({
+  const parsed = parseNakau({
     rawTextPath: path.join(REPO_ROOT, 'scripts', 'seed', '_raw', 'nakau.txt'),
     sourceUrl: 'https://images.zensho.co.jp/materials/nakau/allergen/nutrition.pdf',
-    sourceCapturedAt: '2026-05-18',
+    sourceCapturedAt: '2026-08-30',
   });
   const outPath = path.join(REPO_ROOT, 'scripts', 'seed', 'data', 'nakau.json');
+  // S5b 廃番 carry-over。 注: 2026-08-19 版 PDF は size label 体系が
+  // 変わった (うどん系が 並盛→並 等) ため、 同一メニューでも
+  // 「〜 並盛」(旧) と 「〜 並」(新) は別 item 扱いになり、 旧側は
+  // discontinued (検索から除外) として温存される — 検索に出るのは
+  // 新 label の現役 item のみ。
+  const prev = fs.existsSync(outPath)
+    ? (JSON.parse(fs.readFileSync(outPath, 'utf-8')) as RestaurantScrapeOutput)
+    : null;
+  const { output, discontinuedNames } = carryDiscontinued(prev, parsed);
   fs.writeFileSync(outPath, JSON.stringify(output, null, 2) + '\n', 'utf-8');
   console.log(
-    `[nakau] wrote ${output.menuItems.length} items → ${path.relative(REPO_ROOT, outPath)}`,
+    `[nakau] wrote ${output.menuItems.length} items (discontinued ${discontinuedNames.length}) → ${path.relative(REPO_ROOT, outPath)}`,
   );
+  if (discontinuedNames.length > 0) {
+    console.log(`[nakau] discontinued: ${discontinuedNames.join(' / ')}`);
+  }
 }
 
 if (require.main === module) {

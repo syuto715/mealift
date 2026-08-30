@@ -134,9 +134,9 @@ W 大盛 1584 45.6 72.8 182.5 9.0
     it('captures 単独漢字 / W 〜 / 豪快盛 labels with the extended list', () => {
       const rows = extractSizeRows(NAKAU_FIXTURE, NAKAU_SIZE_LABELS);
       expect(rows.length).toBe(17);
-      const wRow = rows.find((r) => r.size === 'W 小盛');
+      const wRow = rows.find((r) => r.size === 'W小盛');
       expect(wRow).toEqual({
-        size: 'W 小盛', calories: 1325, protein: 41.3, fat: 71.9, carb: 123.8, salt: 9.0,
+        size: 'W小盛', calories: 1325, protein: 41.3, fat: 71.9, carb: 123.8, salt: 9.0,
       });
       const plain = rows.find((r) => r.size === '並' && r.calories === 425);
       expect(plain).toBeDefined();
@@ -153,7 +153,7 @@ W 大盛 1584 45.6 72.8 182.5 9.0
       const rows = extractSizeRows(NAKAU_FIXTURE, NAKAU_SIZE_LABELS);
       const groups = groupSizeRows(rows, NAKAU_SIZE_LABELS);
       expect(groups.map((g) => g.length)).toEqual([3, 3, 3, 4, 4]);
-      expect(groups[1][0].size).toBe('W 小盛');
+      expect(groups[1][0].size).toBe('W小盛');
       // W card の直後の base card が別 group になっている
       expect(groups[2][0].size).toBe('小盛');
       expect(groups[2][0].calories).toBe(412);

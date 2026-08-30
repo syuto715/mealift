@@ -101,8 +101,11 @@ export function extractSizeRows(
 
 function normalizeSize(s: string): string {
   // 全角 ２倍盛 → 半角 2倍盛 は表示用にそのまま残すが、
-  // index 計算用に正規化版を返す。
-  return s.replace(/２/g, '2').replace(/３/g, '3').replace(/４/g, '4').replace(/５/g, '5');
+  // index 計算用に正規化版を返す。 なか卯の `W 小盛` は表示・index
+  // とも空白を潰して `W小盛` に (item 名 「〜 W小盛」 の読みやすさ)。
+  return s
+    .replace(/２/g, '2').replace(/３/g, '3').replace(/４/g, '4').replace(/５/g, '5')
+    .replace(/^W\s+/, 'W');
 }
 
 function sizeIndex(size: string, labels: readonly string[]): number {
@@ -122,7 +125,9 @@ function sizeIndex(size: string, labels: readonly string[]): number {
 // 既存 chain (sukiya 等) の label は全て 'std' family なので、 この
 // 判定は従来の index-reset 判定と完全に同値 = 無回帰。
 function sizeFamily(size: string): string {
-  if (size.startsWith('W ')) return 'W';
+  // rows は normalizeSize 済み (`W 小盛` → `W小盛`) だが、 labels 側の
+  // 生値と両対応できるよう空白有無どちらも W family と判定する。
+  if (/^W\s?/.test(size)) return 'W';
   if (size === '小' || size === '並' || size === '大' || size === '特') return 'plain';
   return 'std';
 }
@@ -150,8 +155,16 @@ export function groupSizeRows(
     const prevIdx = sizeIndex(prev.size, labels);
     const curIdx = sizeIndex(row.size, labels);
     // 新 group の判定: 現サイズが直前サイズより前方 OR 同じ、
-    // または size family の切り替わり (sizeFamily コメント参照)。
-    if (curIdx <= prevIdx || sizeFamily(row.size) !== sizeFamily(prev.size)) {
+    // size family の切り替わり (sizeFamily コメント参照)、 または
+    // kcal の減少。 同一メニューでサイズが上がって kcal が下がることは
+    // ない (Zensho 不変量) — なか卯 p8 の「ライス 大盛 519 → うな皿
+    // 特盛 502」のように、 前 card の続きに見える昇順 size で始まる
+    // 別メニューを切るための判定。
+    if (
+      curIdx <= prevIdx
+      || sizeFamily(row.size) !== sizeFamily(prev.size)
+      || row.calories < prev.calories
+    ) {
       groups.push(current);
       current = [row];
     } else {
@@ -208,8 +221,18 @@ export function parseZenshoPdf(
   meta: { sourceUrl: string; sourceCapturedAt: string; restaurantCategory?: string },
   labels: readonly string[] = DEFAULT_SIZE_LABELS,
 ): { items: MenuItemRecord[]; totalGroups: number; unmappedGroups: number } {
-  const rows = extractSizeRows(rawText, labels);
-  const groups = groupSizeRows(rows, labels);
+  // menu card はページを跨がない (全ページ視覚照合で確認済みの
+  // レイアウト不変量) — pdf-parse v2 のページマーカー
+  // 「-- N of M --」で分割してから group 化する。 これが無いと、
+  // 前ページ末尾 card の続きに見える昇順 size で次ページが始まる
+  // 場合に融合する (実例: sukiya p8 ごはん 大盛 519 → p9
+  // 牛カルビ焼肉皿 2倍盛 972)。 マーカーが無い text は従来どおり
+  // 単一チャンク。
+  const groups: ZenshoSizeRow[][] = [];
+  for (const chunk of rawText.split(/^\s*-- \d+ of \d+ --\s*$/m)) {
+    const rows = extractSizeRows(chunk, labels);
+    groups.push(...groupSizeRows(rows, labels));
+  }
   const { items, unmappedGroups } = applyMenuNames(groups, menuNames, meta);
   return {
     items,
