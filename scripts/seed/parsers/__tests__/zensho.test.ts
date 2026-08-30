@@ -6,6 +6,7 @@ import {
   applyMenuNames,
   parseZenshoPdf,
 } from '../zensho';
+import { NAKAU_SIZE_LABELS } from '../nakau';
 
 const SUKIYA_FIRST_2_GROUPS = `
 栄養成分について
@@ -100,6 +101,76 @@ describe('Zensho parser', () => {
       });
       expect(items.length).toBe(7); // 牛皿 only
       expect(unmappedGroups).toBe(1); // 牛丼 dropped
+    });
+  });
+
+  // S5b — なか卯 2026-08-19 版 PDF の label 体系拡張。
+  describe('NAKAU_SIZE_LABELS (S5b chain-specific labels)', () => {
+    // 実 PDF (2026-08-19) の実測値による fixture:
+    //   card 1 = 丼 (小盛/並盛/大盛)、 card 2 = W 系、 card 3 = 丼、
+    //   card 4 = 麺 (単独漢字)、 card 5 = 特盛+豪快盛付き丼。
+    const NAKAU_FIXTURE = `
+(kcal) (g) (g) (g) (g)
+小盛 884 26.1 41.2 100.9 6.0
+並盛 1022 28.5 41.6 132.1 6.0
+大盛 1143 30.5 42.1 159.5 6.0
+W 小盛 1325 41.3 71.9 123.8 9.0
+W 並盛 1464 43.6 72.3 155.4 9.0
+W 大盛 1584 45.6 72.8 182.5 9.0
+小盛 412 15.6 8.5 68.1 3.5
+並盛 532 18.0 9.0 99.4 3.5
+大盛 672 20.0 9.4 126.8 3.5
+小 349 10.2 3.9 65.5 3.1
+並 425 12.5 4.3 82.3 3.8
+大 574 16.2 5.3 111.6 4.9
+特 723 19.9 6.3 140.9 6.0
+並盛 709 24.5 21.2 105.0 2.1
+大盛 830 26.5 21.7 132.3 2.1
+特盛 1071 42.0 39.6 136.9 3.0
+豪快盛 1313 57.4 57.5 141.5 3.9
+更新日 2026年8月19日
+`;
+
+    it('captures 単独漢字 / W 〜 / 豪快盛 labels with the extended list', () => {
+      const rows = extractSizeRows(NAKAU_FIXTURE, NAKAU_SIZE_LABELS);
+      expect(rows.length).toBe(17);
+      const wRow = rows.find((r) => r.size === 'W小盛');
+      expect(wRow).toEqual({
+        size: 'W小盛', calories: 1325, protein: 41.3, fat: 71.9, carb: 123.8, salt: 9.0,
+      });
+      const plain = rows.find((r) => r.size === '並' && r.calories === 425);
+      expect(plain).toBeDefined();
+      expect(plain!.protein).toBe(12.5);
+    });
+
+    it('does not let 単独漢字 label shadow 〜盛 label (alternation length order)', () => {
+      const rows = extractSizeRows('小盛 412 15.6 8.5 68.1 3.5', NAKAU_SIZE_LABELS);
+      expect(rows.length).toBe(1);
+      expect(rows[0].size).toBe('小盛');
+    });
+
+    it('splits groups on family change (W card does not swallow the next base card)', () => {
+      const rows = extractSizeRows(NAKAU_FIXTURE, NAKAU_SIZE_LABELS);
+      const groups = groupSizeRows(rows, NAKAU_SIZE_LABELS);
+      expect(groups.map((g) => g.length)).toEqual([3, 3, 3, 4, 4]);
+      expect(groups[1][0].size).toBe('W小盛');
+      // W card の直後の base card が別 group になっている
+      expect(groups[2][0].size).toBe('小盛');
+      expect(groups[2][0].calories).toBe(412);
+      // 麺類の単独漢字 card
+      expect(groups[3].map((r) => r.size)).toEqual(['小', '並', '大', '特']);
+      // 豪快盛 は直前の 特盛 card に merge (昇順 + 同 family)
+      expect(groups[4].map((r) => r.size)).toEqual(['並盛', '大盛', '特盛', '豪快盛']);
+    });
+
+    it('keeps sukiya extraction identical with DEFAULT labels (no regression)', () => {
+      const defaultRows = extractSizeRows(SUKIYA_FIRST_2_GROUPS);
+      const groups = groupSizeRows(defaultRows);
+      expect(defaultRows.length).toBe(13);
+      expect(groups.length).toBe(2);
+      // 単独漢字 / W 行は default labels では無視される
+      const mixed = `${SUKIYA_FIRST_2_GROUPS}\n小 349 10.2 3.9 65.5 3.1\nW 小盛 1325 41.3 71.9 123.8 9.0`;
+      expect(extractSizeRows(mixed).length).toBe(13);
     });
   });
 

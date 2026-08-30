@@ -14,6 +14,7 @@ import { getColors, radius, shadow } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { Food, ExtendedNutrients, EXTENDED_NUTRIENT_KEYS } from '../../types/food';
+import { getSourceBadge, sourceDisclaimer } from './foodSourceBadge';
 import { Dish } from '../../types/dish';
 import { DAILY_NUTRIENT_TARGETS } from '../../constants/dailyNutrientTargets';
 import {
@@ -430,6 +431,16 @@ export function ServingQuantityModal({
           </>
         )}
 
+        {/* S5b — 出典注記 (外食チェーン行のみ)。 確認画面でも
+            推定値である旨が見えるようにする (色のみ依存なし)。 */}
+        {item?.type === 'food' && getSourceBadge(item.food) && (
+          <Text style={[styles.sourceNote, { color: colors.textTertiary }]} numberOfLines={2}>
+            {getSourceBadge(item.food)!.label === '公式'
+              ? `${item.food.brand ?? ''}公式値${item.food.sourceCapturedAt ? `（${item.food.sourceCapturedAt}時点）` : ''} ${sourceDisclaimer(item.food) ?? ''}`.trim()
+              : sourceDisclaimer(item.food)}
+          </Text>
+        )}
+
         {/* Custom numpad */}
         <View style={styles.numpad}>
           {NUMPAD_KEYS.map((row, rowIdx) => (
@@ -579,6 +590,12 @@ const styles = StyleSheet.create({
   },
   nutritionLabel: {
     ...typography.labelSmall,
+  },
+  sourceNote: {
+    ...typography.labelSmall,
+    lineHeight: 14,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
   },
   numpad: {
     flex: 1,

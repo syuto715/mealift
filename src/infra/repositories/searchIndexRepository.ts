@@ -58,6 +58,7 @@ interface SearchIndexRow {
   name_en: string | null;
   brand: string | null;
   is_common: number;
+  source_label: string;
   nutrition_json: string;
 }
 
@@ -78,6 +79,20 @@ interface NutritionJson {
   sodiumMg?: number;
   saturatedFatG?: number;
   cholesterolMg?: number;
+  /** S5b — 出典 URL と取得日 (出典バッジ/詳細画面の出典行用)。 */
+  sourceUrl?: string | null;
+  sourceCapturedAt?: string | null;
+}
+
+// search_index.source_label の CHECK enum ミラー。 想定外の値は
+// バッジ非表示に落とす (throw しない — 表示系の防御的既定)。
+function toSourceLabel(raw: string): Food['sourceLabel'] {
+  return raw === 'official_disclosure'
+    || raw === 'package_label'
+    || raw === 'ai_estimate'
+    || raw === 'manual'
+    ? raw
+    : null;
 }
 
 function escapeFts5Phrase(raw: string): string {
@@ -171,6 +186,10 @@ function rowToFood(row: SearchIndexRow): Food {
     sugarG: parsed.sugarG ?? null,
     saltG: parsed.saltG ?? null,
     source: 'manual_seed',
+    // S5b — 出典バッジ (公式/AI推定)・出典行の表示素材。
+    sourceLabel: toSourceLabel(row.source_label),
+    sourceCapturedAt: parsed.sourceCapturedAt ?? null,
+    sourceUrl: parsed.sourceUrl ?? null,
     externalId: row.source_id,
     isCustom: false,
     isFavorite: false,
@@ -195,7 +214,7 @@ export async function searchSearchIndex(
     if (!ftsQuery) return [];
     const rows = await db.getAllAsync<SearchIndexRow>(
       `SELECT si.source_id, si.name_ja, si.name_en, si.brand,
-              si.is_common, si.nutrition_json
+              si.is_common, si.source_label, si.nutrition_json
        FROM search_index_fts fts
        JOIN search_index si ON si.rowid = fts.rowid
        WHERE search_index_fts MATCH ?

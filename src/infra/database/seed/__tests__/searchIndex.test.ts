@@ -18,6 +18,7 @@ interface SearchIndexSeedRow {
   aliases_concat: string;
   source_label: string;
   is_common: 0 | 1;
+  nutrition_json: string;
 }
 
 const rows = SEARCH_INDEX_JSON as SearchIndexSeedRow[];
@@ -83,4 +84,89 @@ describe('search-index snapshot (Drafting 159 build-time kuromoji)', () => {
 
   // Reference: findByName for ad-hoc debugging; unused in green path.
   void findByName;
+
+  // ------------------------------------------------------------------
+  // S5b — source_id 安定キー化 + 外食チェーン第 1 弾投入の不変条件。
+  // ------------------------------------------------------------------
+  describe('S5b stable source_id + chain data batch 1', () => {
+    const restaurant = rows.filter((r) => r.source_type === 'restaurant_menu');
+
+    it('has NO legacy positional ids (`slug_0012` 形式) left in the snapshot', () => {
+      const legacy = restaurant.filter((r) => /^[a-z_]+_\d{4}(?:#\d+)?$/.test(r.source_id));
+      expect(legacy).toHaveLength(0);
+    });
+
+    it('uses `slug:品名` stable ids whose name part matches name_ja', () => {
+      for (const r of restaurant) {
+        const idx = r.source_id.indexOf(':');
+        expect(idx).toBeGreaterThan(0);
+        const namePart = r.source_id.slice(idx + 1).replace(/#\d+$/, '');
+        expect(namePart).toBe(r.name_ja);
+      }
+    });
+
+    it('contains the 4 batch-1 chains with expected live item counts', () => {
+      const countBySlug = new Map<string, number>();
+      for (const r of restaurant) {
+        const slug = r.source_id.slice(0, r.source_id.indexOf(':'));
+        countBySlug.set(slug, (countBySlug.get(slug) ?? 0) + 1);
+      }
+      expect(countBySlug.get('sukiya')).toBe(401);
+      expect(countBySlug.get('nakau')).toBe(248);
+      expect(countBySlug.get('joyfull')).toBe(346);
+      expect(countBySlug.get('cocos')).toBe(175);
+    });
+
+    it('excludes discontinued items from the snapshot (検索から除外)', () => {
+      // sukiya 2026-08 更新で公式一覧から消えた代表 (chain JSON には
+      // discontinued: true で温存されている)
+      expect(restaurant.some((r) => r.source_id === 'sukiya:シャキうま塩野菜牛丼 並盛')).toBe(false);
+      expect(restaurant.some((r) => r.source_id === 'sukiya:牛カルビ焼肉丼 並盛')).toBe(false);
+      // 旧パーサーのページ跨ぎ融合が生んだ phantom item も居ない
+      expect(restaurant.some((r) => r.name_ja === 'ごはん 2倍盛')).toBe(false);
+    });
+
+    it('folds the normalized chainName into aliases_concat (混在表記ブランドの検索修正)', () => {
+      // query 側 normalizeForSearch は ひらがな→カタカナ 変換するため、
+      // 「すき家」は「スキ家」として FTS に渡る。 raw brand 列とは
+      // 一致しないので、 正規化形が aliases_concat に居ることが
+      // 「すき家 牛丼」ヒットの前提 (S5b dogfood simulation で確認)。
+      const gyudon = restaurant.find((r) => r.source_id === 'sukiya:牛丼 並盛');
+      expect(gyudon?.aliases_concat).toContain('スキ家');
+      const oyakodon = restaurant.find((r) => r.source_id === 'nakau:親子丼 並盛');
+      expect(oyakodon?.aliases_concat).toContain('ナカ卯');
+    });
+
+    it('carries sourceCapturedAt (取得日) in nutrition_json for batch-1 rows', () => {
+      for (const id of ['sukiya:牛丼 並盛', 'nakau:親子丼 並盛', 'joyfull:キッズうどん', 'cocos:ココスのハンバーグ']) {
+        const row = restaurant.find((r) => r.source_id === id);
+        expect(row).toBeDefined();
+        const nutrition = JSON.parse(row!.nutrition_json) as { sourceCapturedAt?: string; sourceUrl?: string };
+        expect(nutrition.sourceCapturedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(nutrition.sourceUrl).toBeTruthy();
+      }
+    });
+
+    it('does NOT pull new data for the 見送り chains (規約判断の遵守)', () => {
+      // スシロー / はま寿司: 既存 ai_estimate 維持、 official 昇格なし。
+      for (const slug of ['sushiro', 'hama_sushi']) {
+        const chainRows = restaurant.filter((r) => r.source_id.startsWith(`${slug}:`));
+        expect(chainRows.length).toBeGreaterThan(0); // 既存 ai_estimate は維持
+        for (const r of chainRows) {
+          expect(r.source_label).toBe('ai_estimate');
+        }
+      }
+      // やよい軒: 未収録のまま (新規取り込みなし)。
+      expect(restaurant.some((r) => r.source_id.startsWith('yayoiken:'))).toBe(false);
+      // 大戸屋: Phase 2.2b 時点の既存 85 件 (official) は現状維持 —
+      // S5b では一切 touch していない (2026-08-30 の取得日を持つ行が無い)。
+      // 既存 official 扱いの是非は Syuto 判断待ち (report 引き継ぎ参照)。
+      const ootoya = restaurant.filter((r) => r.source_id.startsWith('ootoya:'));
+      expect(ootoya.length).toBeGreaterThan(0);
+      for (const r of ootoya) {
+        const nutrition = JSON.parse(r.nutrition_json) as { sourceCapturedAt?: string };
+        expect(nutrition.sourceCapturedAt).not.toBe('2026-08-30');
+      }
+    });
+  });
 });

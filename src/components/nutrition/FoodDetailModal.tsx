@@ -13,6 +13,7 @@ import { getColors, radius } from '../../theme/tokens';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { Food, ExtendedNutrients } from '../../types/food';
+import { getSourceBadge, formatSourceLine, sourceDisclaimer } from './foodSourceBadge';
 import { DAILY_NUTRIENT_TARGETS } from '../../constants/dailyNutrientTargets';
 import { Gender } from '../../types/common';
 import { formatServingHint } from '../../constants/servingUnits';
@@ -383,6 +384,54 @@ export function FoodDetailModal({
             </View>
           </View>
 
+          {/* S5b — 出典 (外食チェーン行のみ)。 バッジはラベル文字列
+              併記 = 色のみ依存なし。 注記は各社公式一覧の注記を踏襲、
+              AI 推定は中立トーンの説明。 */}
+          {(() => {
+            const badge = getSourceBadge(food);
+            if (!badge) return null;
+            // Codex R1 Important — 小文字の文字色は AA 対応の successText。
+            const badgeTextColor =
+              badge.kind === 'official' ? colors.successText : colors.textSecondary;
+            const badgeBgColor =
+              (badge.kind === 'official' ? colors.success : colors.textSecondary) + '18';
+            const line = formatSourceLine(food);
+            const disclaimer = sourceDisclaimer(food);
+            return (
+              <View
+                style={[
+                  styles.sourceCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+                accessibilityLabel={`${line ?? ''} ${disclaimer ?? ''}`.trim()}
+              >
+                <View style={styles.sourceHeaderRow}>
+                  <Text
+                    style={[
+                      styles.sourceBadge,
+                      { color: badgeTextColor, backgroundColor: badgeBgColor },
+                    ]}
+                  >
+                    {badge.label}
+                  </Text>
+                  {line && (
+                    <Text
+                      style={[styles.sourceLine, { color: colors.textSecondary }]}
+                      numberOfLines={2}
+                    >
+                      {line}
+                    </Text>
+                  )}
+                </View>
+                {disclaimer && (
+                  <Text style={[styles.sourceDisclaimer, { color: colors.textTertiary }]}>
+                    {disclaimer}
+                  </Text>
+                )}
+              </View>
+            );
+          })()}
+
           {renderSection('ミネラル', MINERALS, mineralsOpen, () =>
             setMineralsOpen((p) => !p),
           )}
@@ -582,6 +631,33 @@ const styles = StyleSheet.create({
     ...typography.labelLarge,
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  sourceCard: {
+    borderRadius: radius.md,
+    borderWidth: 0.5,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  sourceHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  sourceBadge: {
+    ...typography.labelSmall,
+    fontWeight: '600',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+  },
+  sourceLine: {
+    ...typography.bodySmall,
+    flex: 1,
+  },
+  sourceDisclaimer: {
+    ...typography.bodySmall,
+    lineHeight: 16,
   },
   lockedBadge: {
     flexDirection: 'row',

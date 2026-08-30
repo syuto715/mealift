@@ -94,6 +94,15 @@ export interface MenuItemRecord {
   source: MenuItemSource;
   sourceUrl: string;
   sourceCapturedAt: string;      // ISO YYYY-MM-DD
+
+  // S5b 廃番フラグ — 再取得時に公式一覧から消えた item を chain JSON
+  // 内に「末尾 + discontinued: true」で保全する (provenance 履歴)。
+  // build-search-index はこのフラグの行を snapshot から除外し、 seed
+  // loader の stale-row sweep が既存端末の search_index からも消す =
+  // 「検索から除外」設計 (docs/recon-chain-data-5a.md §4 の宿題)。
+  // Supabase 側 builder は 5b スコープ外なので未消費 (キー追加のみで
+  // 無害 — migration 不要)。
+  discontinued?: boolean;
 }
 
 // Output of a successful scrape — one file per chain in

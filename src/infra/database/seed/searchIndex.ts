@@ -13,6 +13,18 @@ import SEARCH_INDEX_JSON from './data/search-index.json';
 // Re-running this on every boot is cheap (~8K upserts) and keeps
 // the index aligned with newly published snapshots without a
 // dedicated migration bump.
+//
+// S5b — stale-row sweep: source_id を安定キー (`slug:品名`) 化した
+// ため、 旧 snapshot の positional id (`slug_0012`) 行が既存端末の
+// search_index に残ると同一メニューが二重ヒットする。 upsert 後、
+// 「この seed 実行で touch されなかった restaurant_menu 行」 =
+// snapshot に存在しない行 (旧 id 形式・廃番 item) を削除する。
+// updated_at は毎 boot の upsert で更新されるので、 実行開始時刻より
+// 古い restaurant_menu 行 = snapshot 外と判定できる。 v36 の
+// search_index_ad トリガーが FTS5 側も同期削除する。 user データは
+// search_index に無い (user_submitted は search_index に挿入する
+// コードが存在しない) ため削除対象は seed 由来行のみ。 food 行は
+// id が安定 (八訂 food.id) なので sweep 不要。
 
 interface SearchIndexSeedRow {
   source_type: 'food' | 'restaurant_menu';
@@ -32,6 +44,9 @@ export async function seedSearchIndex(db: SQLite.SQLiteDatabase): Promise<void> 
 
   await db.execAsync('BEGIN TRANSACTION');
   try {
+    const seedStart = await db.getFirstAsync<{ now: string }>(
+      "SELECT datetime('now') AS now",
+    );
     for (const row of rows) {
       await db.runAsync(
         `INSERT INTO search_index (source_type, source_id, name_ja, name_en, brand, aliases_concat, source_label, is_common, nutrition_json, updated_at)
@@ -56,6 +71,15 @@ export async function seedSearchIndex(db: SQLite.SQLiteDatabase): Promise<void> 
           row.is_common,
           row.nutrition_json,
         ],
+      );
+    }
+    // 上の upsert で touch されなかった restaurant_menu 行を掃除
+    // (strictly `<` — 同一秒に touch された行は消さない安全側)。
+    if (seedStart?.now) {
+      await db.runAsync(
+        `DELETE FROM search_index
+         WHERE source_type = 'restaurant_menu' AND updated_at < ?`,
+        [seedStart.now],
       );
     }
     await db.execAsync('COMMIT');

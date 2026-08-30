@@ -74,6 +74,7 @@ import {
 import { useSubscription } from '../src/hooks/useSubscription';
 import { DishDetailModal } from '../src/components/nutrition/DishDetailModal';
 import { FoodDetailModal } from '../src/components/nutrition/FoodDetailModal';
+import { getSourceBadge } from '../src/components/nutrition/foodSourceBadge';
 import { UpgradePromptModal } from '../src/components/subscription/UpgradePromptModal';
 import { formatServingHint, getCounterJa } from '../src/constants/servingUnits';
 import { UNIT_SEGMENTS_FULL } from '../src/constants/units';
@@ -937,6 +938,16 @@ export default function AddFoodScreen() {
       // foods table; v38 search_favorites natural-key plumbing is a
       // post-hotfix cleanup queue item.
       const food = item.data;
+      // S5b — 出典バッジ (公式/AI推定)。 ラベル文字列併記なので
+      // 色のみ依存にならない。 公式 = success 系、 AI 推定 = 中立
+      // (不安を煽らないトーン、 詳細画面に説明あり)。
+      const sourceBadge = getSourceBadge(food);
+      // Codex R1 Important — success は白地の小文字で 2.22:1 (AA 不適合)。
+      // 文字は successText、 背景の淡色 tint は success のまま。
+      const sourceBadgeTextColor =
+        sourceBadge?.kind === 'official' ? colors.successText : colors.textSecondary;
+      const sourceBadgeBgColor =
+        (sourceBadge?.kind === 'official' ? colors.success : colors.textSecondary) + '18';
       return (
         <TouchableOpacity
           style={[styles.foodRow, { borderBottomColor: colors.border }]}
@@ -963,6 +974,20 @@ export default function AddFoodScreen() {
                   numberOfLines={1}
                 >
                   {food.brand}
+                </Text>
+              )}
+              {sourceBadge && (
+                <Text
+                  style={[
+                    styles.sourceBadge,
+                    {
+                      color: sourceBadgeTextColor,
+                      backgroundColor: sourceBadgeBgColor,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {sourceBadge.label}
                 </Text>
               )}
             </View>
